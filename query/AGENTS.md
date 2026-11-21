@@ -24,7 +24,6 @@ code_sources:
   - path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryStateStore.kt
   - path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/RetainedQueryPresentation.kt
   - path: query/protocol/src/test/kotlin/io/github/amichne/kast/query/protocol/CompleteOnlyCallbackQueryTest.kt
-  - path: query/protocol/src/test/kotlin/io/github/amichne/kast/query/protocol/PartialPrefixProducerTest.kt
   - path: query/service/build.gradle.kts
   - path: query/service/src/main/kotlin/io/github/amichne/kast/query/service/QueryService.kt
   - path: query/service/src/main/kotlin/io/github/amichne/kast/query/service/QueryTraceTasks.kt
@@ -69,7 +68,6 @@ Owns query plans, semantic execution, strict completion, and retained output und
 - Gradle projects: `:query:contract`, `:query:service`, and `:query:protocol`.
 - [CompleteOnlyCallbackQueryTest.kt](protocol/src/test/kotlin/io/github/amichne/kast/query/protocol/CompleteOnlyCallbackQueryTest.kt) - strict callback completion cases.
 - [QueryJoinCompositionTest.kt](service/src/test/kotlin/io/github/amichne/kast/query/service/QueryJoinCompositionTest.kt) - binding rows and complete-right admission.
-- [PartialPrefixProducerTest.kt](protocol/src/test/kotlin/io/github/amichne/kast/query/protocol/PartialPrefixProducerTest.kt) - retained output delivery without a native host.
 
 ## Navigation Hints
 

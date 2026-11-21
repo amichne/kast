@@ -16,4 +16,4 @@ RUN chmod -R a+rX /opt/kast-cloud \
     && mkdir /runtime /work && chown evaluator:evaluator /runtime /work
 USER evaluator
 WORKDIR /work
-CMD ["python3", "/opt/kast-cloud/bootstrap.py", "--root", "/runtime/pi-eval"]
+CMD ["python3", "/opt/kast-cloud/bootstrap.py", "--root", "/runtime/kast-cloud"]

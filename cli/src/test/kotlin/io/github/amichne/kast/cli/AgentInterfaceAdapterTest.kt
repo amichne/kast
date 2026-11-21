@@ -1,12 +1,9 @@
 package io.github.amichne.kast.cli
 
 import io.github.amichne.kast.appserver.query.PublicToolContract
-import io.github.amichne.kast.cli.direct.KastDirectToolSession
 import io.github.amichne.kast.cli.direct.directToolDocument
 import io.github.amichne.kast.cli.mcp.KastMcpServer
 import io.github.amichne.kast.cli.mcp.McpStructuredResults
-import io.github.amichne.kast.cli.rpc.KastToolRpcBridge
-import io.github.amichne.kast.cli.rpc.ToolRpcReply
 import io.github.amichne.kast.distribution.managed.FilesystemCanonicalRootDiscovery
 import io.github.amichne.kast.protocol.contract.ToolOutputDetail
 import io.github.amichne.kast.protocol.registry.PublicToolIdentity
@@ -19,7 +16,6 @@ import java.io.PipedOutputStream
 import java.io.PrintStream
 import java.nio.file.Files
 import java.nio.file.Path
-import java.util.concurrent.TimeUnit
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
@@ -35,7 +31,7 @@ class AgentInterfaceAdapterTest {
     @TempDir lateinit var temporary: Path
 
     @Test
-    fun `MCP and RPC emit the admitted production documents without extra invocation`() {
+    fun `MCP emits the admitted production documents without extra invocation`() {
         Files.writeString(temporary.resolve("settings.gradle.kts"), "rootProject.name = \"fixture\"")
         for (outcome in outcomes()) {
             for (detail in ToolOutputDetail.entries) {
@@ -56,8 +52,6 @@ class AgentInterfaceAdapterTest {
                 .jsonObject
         val exit = outcome.exit(detail)
         val expected = Json.parseToJsonElement(exit.document.value).jsonObject
-        val rpc = assertRpc(exit, arguments)
-        assertEquals(outcome.reply(expected), rpc)
         assertTrue(McpStructuredResults.validates("query_symbols", expected))
         val mcp = assertMcp(exit, arguments)
         println(
@@ -67,29 +61,9 @@ class AgentInterfaceAdapterTest {
                     detail,
                     exit.document.value.toByteArray(Charsets.UTF_8).size,
                     mcp.toByteArray(Charsets.UTF_8).size,
-                    adapterJson.encodeToString(ToolRpcReply.serializer(), rpc).toByteArray(Charsets.UTF_8).size,
                 )
             )
         )
-    }
-
-    private fun assertRpc(exit: CliExit, arguments: JsonObject): ToolRpcReply {
-        var calls = 0
-        val reply =
-            KastToolRpcBridge(
-                    KastDirectToolSession(
-                        catalog,
-                        { FilesystemCanonicalRootDiscovery.discover(temporary) },
-                        {
-                            calls++
-                            assertEquals(1, calls, "No semantic retry or detail read is permitted")
-                            exit
-                        },
-                    )
-                )
-                .call("query_symbols", arguments.toString())
-        assertEquals(1, calls)
-        return reply
     }
 
     private fun assertMcp(exit: CliExit, arguments: JsonObject): String {
@@ -141,37 +115,6 @@ class AgentInterfaceAdapterTest {
         return lines.last()
     }
 
-    @Test
-    fun `bundled Pi and Copilot presentation preserve current production fixtures`() {
-        val samples =
-            outcomes().map { outcome ->
-                AdapterPresentationSample(
-                    compact =
-                        outcome.reply(
-                            Json.parseToJsonElement(outcome.exit(ToolOutputDetail.COMPACT).document.value).jsonObject
-                        ),
-                    verbose =
-                        outcome.reply(
-                            Json.parseToJsonElement(outcome.exit(ToolOutputDetail.VERBOSE).document.value).jsonObject
-                        ),
-                )
-            }
-        val log = temporary.resolve("adapter-proof.log")
-        val process =
-            ProcessBuilder("node", "--experimental-vm-modules", "src/test/js/agent-interface-adapters.mjs")
-                .redirectErrorStream(true)
-                .redirectOutput(log.toFile())
-                .start()
-        process.outputStream.bufferedWriter(Charsets.UTF_8).use {
-            it.write(adapterJson.encodeToString(AdapterPresentationInput(samples)))
-        }
-        val completed = process.waitFor(30, TimeUnit.SECONDS)
-        if (!completed) process.destroyForcibly()
-        assertTrue(completed, "Adapter proof did not finish: ${Files.readString(log)}")
-        assertEquals(0, process.exitValue(), Files.readString(log))
-        println(Files.readString(log))
-    }
-
     private fun outcomes(): List<ProjectedOperationOutcome> =
         listOf(
             AgentInterfaceDiscoveryFixture.complete(),
@@ -186,13 +129,6 @@ private fun ProjectedOperationOutcome.exit(detail: ToolOutputDetail): CliExit =
         is ProjectedOperationOutcome.Complete -> CliExit.Complete(document.present(detail))
         is ProjectedOperationOutcome.Qualified -> CliExit.Qualified(document.present(detail))
         is ProjectedOperationOutcome.Rejected -> CliExit.OperationRejected(document.present(detail))
-    }
-
-private fun ProjectedOperationOutcome.reply(document: JsonObject): ToolRpcReply =
-    when (this) {
-        is ProjectedOperationOutcome.Complete -> ToolRpcReply.Complete(document)
-        is ProjectedOperationOutcome.Qualified -> ToolRpcReply.Qualified(document)
-        is ProjectedOperationOutcome.Rejected -> ToolRpcReply.RejectedDocument(document)
     }
 
 private val adapterJson = Json { encodeDefaults = true }
@@ -211,15 +147,10 @@ private data class AdapterCall(
 // The public tool owns this dynamic argument document and admits it before invocation.
 @Serializable private data class AdapterCallParameters(val arguments: JsonObject, val name: String = "query_symbols")
 
-@Serializable private data class AdapterPresentationInput(val samples: List<AdapterPresentationSample>)
-
-@Serializable private data class AdapterPresentationSample(val compact: ToolRpcReply, val verbose: ToolRpcReply)
-
 @Serializable
 private data class AdapterBytes(
     val status: String,
     val detail: ToolOutputDetail,
     val documentBytes: Int,
     val mcpResponseBytes: Int,
-    val rpcResponseBytes: Int,
 )

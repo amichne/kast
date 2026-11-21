@@ -74,18 +74,5 @@ class CloudEnvironmentTest(unittest.TestCase):
             self.assertIn("receipt outside participant", result.stderr)
             self.assertFalse(destination.exists())
 
-    def test_plan_inside_participant_tree_is_rejected_before_node_or_authentication(self):
-        with tempfile.TemporaryDirectory() as temporary:
-            root = Path(temporary)
-            workspace = root / "participant"
-            workspace.mkdir()
-            plan = workspace / "plan.json"
-            plan.write_text(json.dumps({"workspaceRoot": str(workspace), "outputRoot": str(root / "output")}))
-            result = subprocess.run([sys.executable, str(CLOUD / "evaluate.py"), "--plan", str(plan)],
-                capture_output=True, text=True)
-            self.assertNotEqual(0, result.returncode)
-            self.assertIn("plan outside participant", result.stderr)
-
-
 if __name__ == "__main__":
     unittest.main()

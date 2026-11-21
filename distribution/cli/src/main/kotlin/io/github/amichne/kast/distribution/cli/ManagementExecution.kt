@@ -20,8 +20,8 @@ internal fun perform(command: ManagementCommand, output: ManagementOutput = Mana
         is ManagementCommand.Config -> publishWorkspaceConfig(root, command, environment, output)
         is ManagementCommand.Status -> printManagementStatus(root, command.json, output, command.scope)
         is ManagementCommand.Stop -> executeWorkspaceStop(root, command, environment, output)
-        is ManagementCommand.Install ->
-            presentProvisioning(installGuidance(root, Path.of(home), command.target, environment), command.json, output)
+        is ManagementCommand.InstallSkill ->
+            presentProvisioning(exportCliSkill(root, Path.of(command.output ?: ".agents/skills")), command.json, output)
         is ManagementCommand.Versions -> printSelectableBuilds(command.json, output)
         is ManagementCommand.Upgrade -> upgradeSelectedBuild(root, Path.of(home), command, environment, output)
         ManagementCommand.Uninstall ->
@@ -37,12 +37,6 @@ internal fun perform(command: ManagementCommand, output: ManagementOutput = Mana
                 ForceResetExit.INCOMPLETE -> exitProcess(1)
             }
         }
-        is ManagementCommand.UninstallHarness ->
-            when (val removal = uninstallHarness(root, Path.of(home), command.harness, environment)) {
-                is PluginObservation.Observed -> output.message("Removed ${command.harness.publicName} integration")
-                is PluginObservation.Rejected ->
-                    throw ManagementRejected("uninstall-harness", pluginFailure(removal.failure).name)
-            }
         ManagementCommand.Version -> println(MANAGEMENT_VERSION)
         ManagementCommand.Help -> Unit
     }

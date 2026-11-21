@@ -404,7 +404,7 @@ The existing `ModuleImpact` owner calculates the consumer closure.
 The production-only `topologyImpact` contract stays separate.
 `verifyVerificationGraph` compares the generated report with `config/ci/verification-graph.json`.
 Source admission examines every recorded input digest before it trusts the graph.
-Explicit shared-resource consumers cover query-delivery JavaScript and the host-observation suite.
+Explicit shared-resource consumers cover the host-observation suite and the delivery schema read by public-query generation.
 Hosted protocol consumers include query protocol and CLI checks.
 
 The existing semantic manifest adds `verification_owner` to each case.

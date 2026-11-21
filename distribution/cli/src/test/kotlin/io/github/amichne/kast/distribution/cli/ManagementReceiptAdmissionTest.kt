@@ -1,158 +1,75 @@
 package io.github.amichne.kast.distribution.cli
 
-import io.github.amichne.kast.distribution.contract.InstalledBuildIdentity
-import io.github.amichne.kast.distribution.contract.UpdatePolicy
+import java.nio.file.Files
 import java.nio.file.Path
+import kotlinx.serialization.Required
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
-import kotlinx.serialization.json.jsonArray
-import kotlinx.serialization.json.jsonObject
-import kotlinx.serialization.json.jsonPrimitive
 import org.junit.jupiter.api.Assertions.assertEquals
-import org.junit.jupiter.api.Assertions.assertInstanceOf
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.io.TempDir
 
 class ManagementReceiptAdmissionTest {
-    private val root = Path.of("/home/example/.local/share/kast")
-    private val stable = InstalledBuildIdentity("v1.2.3", "1.2.3", "a".repeat(40), "b".repeat(40))
-    private val main =
-        InstalledBuildIdentity("developer-v0.0.1", "0.0.1", "a".repeat(40), "b".repeat(40), "c".repeat(40))
-    private val receipt =
-        ManagementReceipt(
-            2,
-            root.toString(),
-            "/home/example/.local/bin/kast",
-            "d".repeat(64),
-            ReleaseChannel.STABLE,
-            emptyList(),
-        )
-    private val guidance =
-        ManagedGuidance(
-            Harness.PI,
-            "/home/example/.pi/agent/skills/kast",
-            listOf(GuidanceFile("SKILL.md", "e".repeat(64))),
-        )
-
-    @Serializable
-    private data class LegacyRegistration(
-        val connection: HarnessConnection,
-        val destination: String,
-        val payloadSha256: String,
-    )
+    @TempDir lateinit var temporary: Path
 
     @Test
-    fun `provider routing retains exact namespaces and rejects ambiguous records`() {
-        for (harness in ProviderHarness.entries) {
-            val provider = ProviderRegistration(harness, "/home/example/custom")
-            val value = receipt.copy(providers = listOf(provider))
-            assertEquals(ReceiptRead.Read(value), admit(value))
-            val encoded =
-                managementJson
-                    .parseToJsonElement(encodeManagementReceipt(value))
-                    .jsonObject
-                    .getValue("providers")
-                    .jsonArray
-                    .single()
-                    .jsonObject
-            assertEquals(setOf("harness", "directory"), encoded.keys)
-            assertEquals(harness.name, encoded.getValue("harness").jsonPrimitive.content)
-            assertEquals("/home/example/custom", encoded.getValue("directory").jsonPrimitive.content)
-            for (invalid in
-                listOf(
-                    listOf(provider, provider),
-                    listOf(provider.copy(directory = "relative")),
-                    listOf(provider.copy(directory = "/home/../foreign")),
-                    (1..33).map { provider.copy(directory = "/home/example/$it") },
-                )) assertInstanceOf(ReceiptRead.Unavailable::class.java, admit(receipt.copy(providers = invalid)))
-        }
-        assertEquals(
-            false,
-            managementJson.parseToJsonElement(encodeManagementReceipt(receipt)).jsonObject.containsKey("providers"),
-        )
+    fun `a schema 3 product receipt is admitted with its exact product identity`() {
+        val fixture = productFixture(temporary)
+        val root = fixture.installation.parent
+        val executable = Files.writeString(temporary.resolve("public-kast"), "public Control")
+        writeTestManagementReceipt(root, executable, fixture.reference)
+        val admitted = readReceipt(root) as ReceiptRead.Read
+        assertEquals(fixture.reference, admitted.receipt.product)
+        assertEquals(executable.toString(), admitted.receipt.executable)
     }
 
     @Test
-    fun `legacy registrations retain MCP and new receipts explicitly encode composition`() {
-        val legacy =
-            LegacyRegistration(HarnessConnection.PI, "/home/example/.pi/agent/extensions/kast.ts", "e".repeat(64))
-        val decoded = managementJson.decodeFromString<ManagedRegistration>(managementJson.encodeToString(legacy))
-        assertEquals(HarnessComposition.CliWithMcp, decoded.composition)
-        for (composition in HarnessComposition.entries) {
-            val registration = decoded.copy(composition = composition)
-            val encoded = managementJson.parseToJsonElement(managementJson.encodeToString(registration)).jsonObject
-            assertEquals(composition.name, encoded.getValue("composition").jsonPrimitive.content)
-            assertEquals(
-                ReceiptRead.Read(receipt.copy(registrations = listOf(registration))),
-                admit(receipt.copy(registrations = listOf(registration))),
+    fun `a pre-product schema 2 receipt is not admitted`() {
+        val fixture = productFixture(temporary)
+        val root = fixture.installation.parent
+        val executable = Files.writeString(temporary.resolve("public-kast"), "public Control")
+        val retired =
+            RetiredSchemaTwoReceipt(root.toString(), executable.toString(), sha256(executable), "STABLE", emptyList())
+        Files.writeString(receiptPath(root), managementJson.encodeToString(retired))
+        assertEquals(ReceiptRead.Unavailable("receipt_invalid"), readReceipt(root))
+    }
+
+    @Test
+    fun `recorded agent registrations are not part of the receipt and reject`() {
+        val fixture = productFixture(temporary)
+        val root = fixture.installation.parent
+        val executable = Files.writeString(temporary.resolve("public-kast"), "public Control")
+        val retired =
+            RetiredRegistrationReceipt(
+                root.toString(),
+                executable.toString(),
+                sha256(executable),
+                fixture.reference,
+                emptyList(),
             )
-        }
-        val unknown = managementJson.encodeToString(decoded).replace("CliWithMcp", "UnknownComposition")
-        org.junit.jupiter.api.assertThrows<kotlinx.serialization.SerializationException> {
-            managementJson.decodeFromString<ManagedRegistration>(unknown)
-        }
+        Files.writeString(receiptPath(root), managementJson.encodeToString(retired))
+        assertEquals(ReceiptRead.Unavailable("receipt_invalid"), readReceipt(root))
     }
-
-    @Test
-    fun `legacy tracked receipts and consistent installed identities remain admitted`() {
-        val legal =
-            listOf(
-                receipt,
-                receipt.copy(updatePolicy = UpdatePolicy.TrackMain),
-                receipt.copy(installedBuild = stable),
-                receipt.copy(installedBuild = main, updatePolicy = UpdatePolicy.TrackMain),
-                receipt.copy(
-                    installedBuild = stable,
-                    updatePolicy = UpdatePolicy.PinnedBuild(stable),
-                    guidance = listOf(guidance),
-                ),
-            )
-        for (value in legal) assertEquals(ReceiptRead.Read(value), admit(value))
-    }
-
-    @Test
-    fun `policy admission rejects mismatched pins and channel identities`() {
-        val illegal =
-            listOf(
-                receipt.copy(updatePolicy = UpdatePolicy.PinnedBuild(stable)),
-                receipt.copy(installedBuild = main),
-                receipt.copy(installedBuild = stable, updatePolicy = UpdatePolicy.TrackMain),
-                receipt.copy(installedBuild = main, updatePolicy = UpdatePolicy.PinnedBuild(stable)),
-            )
-        for (value in illegal) assertInstanceOf(ReceiptRead.Unavailable::class.java, admit(value))
-    }
-
-    @Test
-    fun `guidance admission rejects duplicate harnesses and duplicate files`() {
-        val illegal = listOf(listOf(guidance, guidance), listOf(guidance.copy(files = guidance.files + guidance.files)))
-        for (values in illegal) assertInstanceOf(
-            ReceiptRead.Unavailable::class.java,
-            admit(receipt.copy(guidance = values)),
-        )
-    }
-
-    @Test
-    fun `guidance admission rejects unsafe paths and malformed digests`() {
-        val paths =
-            listOf(
-                "",
-                "/SKILL.md",
-                "../SKILL.md",
-                "resources/../SKILL.md",
-                "resources//ref.md",
-                "a\\ref.md",
-                "./SKILL.md",
-            )
-        for (path in paths) assertInvalidGuidance(guidance.copy(files = listOf(GuidanceFile(path, "e".repeat(64)))))
-        assertInvalidGuidance(guidance.copy(files = listOf(GuidanceFile("SKILL.md", "invalid"))))
-        assertInvalidGuidance(guidance.copy(destination = "relative/kast"))
-        assertInvalidGuidance(guidance.copy(destination = "/home/example/../kast"))
-        assertInvalidGuidance(guidance.copy(files = emptyList()))
-    }
-
-    private fun assertInvalidGuidance(value: ManagedGuidance) {
-        assertEquals(ReceiptRead.Unavailable("receipt_invalid"), admit(receipt.copy(guidance = listOf(value))))
-    }
-
-    private fun admit(value: ManagementReceipt): ReceiptRead =
-        admitManagementReceipt(root, managementJson.encodeToString(value))
 }
+
+/** The retired pre-product receipt: no product identity and harness registrations owned by Kast. */
+@Serializable
+private data class RetiredSchemaTwoReceipt(
+    val installationRoot: String,
+    val executable: String,
+    val executableSha256: String,
+    val channel: String,
+    val registrations: List<String>,
+    @Required val schemaVersion: Int = 2,
+)
+
+/** A schema 3 receipt that still records agent registrations, which Kast no longer owns. */
+@Serializable
+private data class RetiredRegistrationReceipt(
+    val installationRoot: String,
+    val executable: String,
+    val executableSha256: String,
+    val product: InstalledProductReference,
+    val registrations: List<String>,
+    @Required val schemaVersion: Int = 3,
+)

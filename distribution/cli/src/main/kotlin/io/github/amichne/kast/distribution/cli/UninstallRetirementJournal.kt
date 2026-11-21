@@ -92,15 +92,8 @@ internal fun admittedUninstallReceipt(root: Path): ManagementReceipt =
 
 private fun retiredManagementReceipt(journal: UninstallRetirementJournal): ManagementReceipt =
     when (val product = journal.product) {
-        null ->
-            ManagementReceipt(
-                2,
-                journal.installationRoot,
-                journal.executable,
-                journal.executableSha256,
-                journal.channel,
-                emptyList(),
-            )
+        // Only product installations are managed; a pre-product retirement record is not admitted.
+        null -> throw ManagementRejected("uninstall-retirement", "pre-product retirement record")
         else ->
             ProductManagementReceipt(
                     PRODUCT_MANAGEMENT_SCHEMA_VERSION,

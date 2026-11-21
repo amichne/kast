@@ -17,8 +17,6 @@ internal class PublicResetScope private constructor(val root: Path, val home: Pa
         listOf(
             home.resolve(".kast"),
             home.resolve(".config/kast"),
-            home.resolve(".pi/agent/extensions/kast.ts"),
-            home.resolve(".copilot/extensions/kast"),
             home.resolve(".local/bin/kast-codex"),
         )
 

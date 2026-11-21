@@ -119,18 +119,17 @@ Set `KAST_DEBUG=1` to send preparation stages to stderr.
 
 ## Optional MCP tools
 
-`kast install <harness> --mcp` selects the optional MCP composition.
-CLI, MCP, and tool RPC share the managed workspace Host and semantic contracts.
-Use `find` before exact relationship tasks. Use `kind` `class` for interfaces.
-Use `source` with `ANCHOR` before a body region.
-Use `schema` before an advanced existing operation through `raw`.
-Source changes need the user's request, an issued exact target, and explicit write admission.
+The project's `agents.toml` can register the Kast MCP server.
+The CLI and MCP share the managed workspace Host and semantic contracts.
+The server lists `query_symbols`, `check_diagnostics`, `add_declaration`, `replace_body`, and `health_check`.
+Read each tool's input schema from `tools/list` before the first call.
+Select an exact declaration with `query_symbols` before a relationship query or a source change.
+Source changes need the user's request and an issued exact target.
 Do not infer live readiness from registration or schema admission.
 
 ## Fresh sessions
 
 A core update interrupts owned work and invalidates Host-issued references after a Host transition.
-Kast refreshes guidance for its installed harness integrations.
-Start a fresh agent session after installation or an update.
-If the core result reports `HARNESS_REFRESH_REQUIRED`, repeat `kast install <harness>` before that session.
+Kast writes no agent configuration and does not refresh exported skills.
+After an update, the user re-exports the skill and starts a fresh agent session.
 A standalone skill export keeps its bytes until explicit removal or another output directory.

@@ -154,7 +154,6 @@ class ProductRemovalRecoveryTest {
                             emptyList(),
                             uninstallFilesystemIdentity(fixture.runtime.root.parent),
                             null,
-                            null,
                         )
                 )
         Files.writeString(uninstallJournalPath(root), managementJson.encodeToString(journal))

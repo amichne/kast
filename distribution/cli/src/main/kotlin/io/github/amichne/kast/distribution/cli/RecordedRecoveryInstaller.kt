@@ -229,3 +229,8 @@ private const val CAPABILITY = "share/kast/managed-install-v1"
 
 private const val MAXIMUM_CAPABILITY_BYTES = 4L
 private const val UNIX_PERMISSION_MASK = 0xFFF
+
+private fun sha256Text(content: String): String =
+    java.security.MessageDigest.getInstance("SHA-256").digest(content.toByteArray(Charsets.UTF_8)).joinToString("") {
+        "%02x".format(it)
+    }

@@ -5,7 +5,6 @@ import base64
 import bz2
 import hashlib
 import io
-import shutil
 import sys
 import tarfile
 import tokenize
@@ -15,13 +14,11 @@ from pathlib import Path
 sys.path.extend(
     [
         str(Path(__file__).resolve().parents[1] / family)
-        for family in ("composition", "installation", "mcp", "product", "runtime")
+        for family in ("composition", "installation", "product", "runtime")
     ]
     + [str(Path(__file__).resolve().parents[2])]
 )
 
-import mcp_dependency_artifact as producer
-import mcp_environment as mcp
 from private_interpreter import DEPENDENCY_SHA256, DEPENDENCY_URL, PINS
 
 HERE = Path(__file__).resolve().parent
@@ -52,9 +49,8 @@ SOURCE_PATHS = {
     "managed_release.py": "installation/managed_release.py",
     "managed_update_contract.py": "installation/managed_update_contract.py",
     "managed_update_journal.py": "installation/managed_update_journal.py",
-    "mcp_environment.py": "mcp/mcp_environment.py",
     "private_interpreter.py": "bootstrap/private_interpreter.py",
-    "product_mcp_removal.py": "product/product_mcp_removal.py",
+    "product_state_removal.py": "product/product_state_removal.py",
     "product_removal_recovery.py": "product/product_removal_recovery.py",
     "runtime_archive.py": "runtime/runtime_archive.py",
     "runtime_base.py": "runtime/runtime_base.py",
@@ -70,8 +66,7 @@ SOURCES = (
     "managed_product_removal.py",
     "immutable_store.py",
     "product_removal_recovery.py",
-    "product_mcp_removal.py",
-    "mcp_environment.py",
+    "product_state_removal.py",
     "managed_update_contract.py",
     "managed_update_journal.py",
     "host-installation.py",
@@ -92,8 +87,6 @@ RETAINED = (
     "codex-mcp-registration.py",
 )
 FIXED = (
-    "mcp-requirements.txt",
-    "mcp-requirements.txt.lock",
     "managed-install-v1",
     "install-completion-v1",
 )
@@ -143,52 +136,28 @@ def stage_recipe(destination: Path) -> None:
         _ = (destination / name).write_bytes(source.read_bytes())
 
 
-def dependency_artifact_matches(destination: Path, target: mcp.DependencyTarget) -> bool:
-    artifact = destination / "mcp-dependencies"
-    export = producer.source_export()
-    inventory = mcp.inventory(artifact / "site-packages")
-    return (
-        mcp.owned(artifact, directory=True)
-        and {path.name for path in artifact.iterdir()} == {"artifact.json", "site-packages"}
-        and not isinstance(export, mcp.Rejected)
-        and not isinstance(inventory, mcp.Rejected)
-        and bool(inventory.files)
-        and all(entry.mode == 0o644 for entry in inventory.files)
-        and mcp.record_bytes(artifact / "artifact.json")
-        == mcp.encoded(mcp.DependencyArtifact(target, export, inventory))
-    )
-
-
-def check_support(destination: Path, target: mcp.DependencyTarget | None = None) -> bool:
+def check_support(destination: Path) -> bool:
     files = support_files()
     return (
         destination.is_dir()
         and not destination.is_symlink()
-        and {path.name for path in destination.iterdir()}
-        == {name for name, _ in files} | ({"mcp-dependencies"} if target is not None else set())
+        and {path.name for path in destination.iterdir()} == {name for name, _ in files}
         and all(
             (destination / name).is_file()
             and not (destination / name).is_symlink()
             and (destination / name).read_bytes() == source.read_bytes()
             for name, source in files
         )
-        and (target is None or dependency_artifact_matches(destination, target))
     )
 
 
-def stage_support(
-    destination: Path, target: mcp.DependencyTarget | None = None, uv: Path | None = None
-) -> None:
+def stage_support(destination: Path) -> None:
     files = support_files()
     permitted = {name for name, _ in files}
-    if target is not None:
-        permitted.add("mcp-dependencies")
     if destination.is_symlink() or (
         destination.exists()
         and any(
-            path.name not in permitted
-            or path.is_symlink()
-            or (not path.is_file() and path.name != "mcp-dependencies")
+            path.name not in permitted or path.is_symlink() or not path.is_file()
             for path in destination.iterdir()
         )
     ):
@@ -196,20 +165,7 @@ def stage_support(
     destination.mkdir(parents=True, exist_ok=True)
     for name, source in files:
         _ = (destination / name).write_bytes(source.read_bytes())
-    if target is not None:
-        if (destination / "mcp-dependencies").exists():
-            if not dependency_artifact_matches(destination, target):
-                raise ValueError("changed MCP artifact; clean generated support before rebuilding")
-        else:
-            result = (
-                mcp.Rejected(mcp.Failure.PROCESS)
-                if uv is None
-                else producer.produce(destination.resolve(), target, uv=uv)
-            )
-            if isinstance(result, mcp.Rejected):
-                print(mcp.encoded(result).decode(), end="", file=sys.stderr)
-                raise ValueError(f"MCP dependency production rejected: {result.failure.value}")
-    if not check_support(destination, target):
+    if not check_support(destination):
         raise ValueError("installer support projection changed")
 
 
@@ -258,13 +214,11 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     _ = parser.add_argument("--check", action="store_true")
     _ = parser.add_argument("--support-directory", type=Path)
-    _ = parser.add_argument("--target", type=mcp.DependencyTarget, choices=mcp.DependencyTarget)
     args = parser.parse_args()
     if args.support_directory is not None:
         if args.check:
-            return 0 if check_support(args.support_directory, args.target) else 1
-        uv = shutil.which("uv")
-        stage_support(args.support_directory, args.target, Path(uv) if uv is not None else None)
+            return 0 if check_support(args.support_directory) else 1
+        stage_support(args.support_directory)
         return 0
     destination = REPOSITORY / "install.sh"
     expected = render()

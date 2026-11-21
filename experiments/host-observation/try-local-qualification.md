@@ -2,7 +2,7 @@
 
 The fixture templates and source intent are independently authored inputs. The
 Python checker validates captured observations. Neither establishes native K2
-or Pi execution by itself. Every pin, build wrapper, driver invocation and receipt
+execution by itself. Every pin, build wrapper, driver invocation and receipt
 check requires the same explicit `--qualification-slice`.
 
 `TRY_BRANCH_RESULTS` requires public contract 6 and the exact common/try owner
@@ -13,11 +13,10 @@ class set, including local/source projection and compiler-type proof enums. It
 runs the full fixture and Konditional scenarios. Unknown profiles, missing or
 extra native owners, incompatible versions and cross-slice receipts fail closed.
 
-`run_try_local_pi.mjs` starts a real authenticated Pi SDK session, loads the
-candidate's shipped extension, asks its model to dispatch one registered probe,
-and invokes `query_symbols` through `ctx.executeTool`. This uses the registered
-tool pipeline and hooks. The deterministic probe sequence is a qualification
-workload; it is not evidence of an agent independently discovering the answer.
+The Pi SDK driver that captured these receipts was removed with the Pi
+extension. The oracles and the receipt checker remain. A new capture needs a
+driver over the public `kast` CLI or the native MCP server that writes the same
+receipts.
 
 The driver admits only an owned `fixture` or `konditional-copy` root and a start
 native pin for that exact root and candidate. It does not provision, install,
@@ -50,21 +49,18 @@ these cases. A separate `supplemental` scenario runs against the same owned
 fixture in its own capture directory, preserving previous receipt paths.
 
 Prepare source intent after staging all three templates in the owned imported
-fixture. Substitute the admitted paths below; the model must already exist in
-the selected Pi provider's local catalog.
+fixture. Substitute the admitted paths below.
 
 ```sh
 python3 experiments/host-observation/try_local_oracle.py --source "$OWNED/fixture/logging/src/main/kotlin/representation/fixture/RepresentationImpactFixture.kt" --other-source "$OWNED/fixture/logging/src/main/kotlin/representation/other/LocalIdentityOtherFixture.kt" --supplemental-source "$OWNED/fixture/logging/src/main/kotlin/representation/supplemental/SupplementalTrustFixture.kt" > "$OWNED/evidence/try-local-oracle.json"
 python3 experiments/host-observation/konditional_try_oracle.py --root "$OWNED/konditional-copy" > "$OWNED/evidence/konditional-oracle.json"
-node experiments/host-observation/run_try_local_pi.mjs --qualification-slice TRY_LOCAL_IDENTITIES --root "$OWNED/fixture" --owned-root "$OWNED" --candidate "$CANDIDATE" --oracle "$OWNED/evidence/try-local-oracle.json" --start-pin "$OWNED/start-pin/pin.json" --pi-package "$PI_PACKAGE" --auth "$PI_AUTH" --model "$PI_MODEL"
 python3 experiments/host-observation/verify_try_local_receipts.py --qualification-slice TRY_LOCAL_IDENTITIES --scenario fixture --root "$OWNED/fixture" --source "$OWNED/fixture/logging/src/main/kotlin/representation/fixture/RepresentationImpactFixture.kt" --other-source "$OWNED/fixture/logging/src/main/kotlin/representation/other/LocalIdentityOtherFixture.kt" --supplemental-source "$OWNED/fixture/logging/src/main/kotlin/representation/supplemental/SupplementalTrustFixture.kt" --receipts "$OWNED/pi-qualification-fixture/receipts.json"
 ```
 
 After the copied Konditional project has its own successful native import and
-start pin, repeat the read-only scenario:
+start pin, repeat the read-only scenario check:
 
 ```sh
-node experiments/host-observation/run_try_local_pi.mjs --qualification-slice TRY_LOCAL_IDENTITIES --root "$OWNED/konditional-copy" --owned-root "$OWNED" --candidate "$CANDIDATE" --oracle "$OWNED/evidence/konditional-oracle.json" --start-pin "$OWNED/konditional-start-pin/pin.json" --pi-package "$PI_PACKAGE" --auth "$PI_AUTH" --model "$PI_MODEL"
 python3 experiments/host-observation/verify_try_local_receipts.py --qualification-slice TRY_LOCAL_IDENTITIES --scenario konditional --root "$OWNED/konditional-copy" --receipts "$OWNED/pi-qualification-konditional/receipts.json"
 ```
 
@@ -73,8 +69,7 @@ transport hashes and, for the fixture, source-refresh/mutation receipts. Failure
 publish only a finite stage and outcome; inspect the private receipts at that
 boundary. A provider authentication failure, empty selection, missing imported
 model or absent native receipt is a prerequisite failure, never behavioral
-evidence. Existing auth is read through `ReadOnlyAuthStorage`; no credentials are
-copied or changed.
+evidence. No credentials are copied or changed.
 
 Require an end native pin after the fixture has been restored. Compare exact
 host/process start, candidate artifact hashes, fixture hashes and imported
@@ -91,13 +86,10 @@ cursors; and explicit stale-reference rejection followed by a fresh read.
 Qualify the independently built try-only candidate first, using its own exact
 source/build receipts and native start/end pins. The pin command also requires
 `--qualification-slice TRY_BRANCH_RESULTS`; it must observe catalog version 6.
-The registered tool driver uses the candidate's shipped extension, whose own
-catalog admission must agree. Run both scenarios:
+The driver's own catalog admission must agree. Check both scenarios:
 
 ```sh
-node experiments/host-observation/run_try_local_pi.mjs --qualification-slice TRY_BRANCH_RESULTS --root "$OWNED/fixture" --owned-root "$OWNED" --candidate "$TRY_CANDIDATE" --oracle "$OWNED/evidence/try-local-oracle.json" --start-pin "$OWNED/try-start-pin/pin.json" --pi-package "$PI_PACKAGE" --auth "$PI_AUTH" --model "$PI_MODEL"
 python3 experiments/host-observation/verify_try_local_receipts.py --qualification-slice TRY_BRANCH_RESULTS --scenario fixture --root "$OWNED/fixture" --source "$OWNED/fixture/logging/src/main/kotlin/representation/fixture/RepresentationImpactFixture.kt" --other-source "$OWNED/fixture/logging/src/main/kotlin/representation/other/LocalIdentityOtherFixture.kt" --receipts "$OWNED/pi-qualification-try-branch-results-fixture/receipts.json"
-node experiments/host-observation/run_try_local_pi.mjs --qualification-slice TRY_BRANCH_RESULTS --root "$OWNED/konditional-copy" --owned-root "$OWNED" --candidate "$TRY_CANDIDATE" --oracle "$OWNED/evidence/konditional-oracle.json" --start-pin "$OWNED/try-konditional-start-pin/pin.json" --pi-package "$PI_PACKAGE" --auth "$PI_AUTH" --model "$PI_MODEL"
 python3 experiments/host-observation/verify_try_local_receipts.py --qualification-slice TRY_BRANCH_RESULTS --scenario konditional --root "$OWNED/konditional-copy" --receipts "$OWNED/pi-qualification-try-branch-results-konditional/receipts.json"
 ```
 

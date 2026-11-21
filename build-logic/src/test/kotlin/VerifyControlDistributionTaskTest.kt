@@ -16,62 +16,6 @@ import kotlinx.serialization.json.jsonPrimitive
 
 class VerifyControlDistributionTaskTest {
     @Test
-    fun `ELF dynamic metadata needs a consistent file and memory mapping`(@TempDir directory: Path) {
-        val path = directory.resolve("extension.so")
-        val library = completeElfLibrary(java.util.HexFormat.of().parseHex(
-            "7f454c4602010100000000000000000003003e00010000000090000000000000"))
-        Files.write(path, library)
-        assertEquals(support.tasks.ElfLibraryAdmission.LIBRARY, support.tasks.admitElfLibrary(path, "linux-x86_64"))
-        for ((field, value) in listOf(136 to 0L, 104 to 128L, 160 to 16L, 136 to Long.MAX_VALUE, 80 to Long.MAX_VALUE)) {
-            val malformed = library.copyOf()
-            java.nio.ByteBuffer.wrap(malformed).order(java.nio.ByteOrder.LITTLE_ENDIAN).putLong(field, value)
-            Files.write(path, malformed)
-            assertEquals(support.tasks.ElfLibraryAdmission.MALFORMED,
-                support.tasks.admitElfLibrary(path, "linux-x86_64"), "field=$field value=$value")
-        }
-    }
-
-    @Test
-    fun `ELF dependency admission uses dynamic metadata rather than entry point alone`(@TempDir directory: Path) {
-        val task = guidanceFixture(directory)
-        task.maximumInstalledBytes.set(4096)
-        task.targetPlatform.set("linux-x86_64")
-        Files.write(task.qualifiedControlExecutable.get().asFile.toPath(),
-            java.util.HexFormat.of().parseHex("7f454c4602010100000000000000000002003e00"))
-        val dependency = task.controlDirectory.get().asFile.toPath()
-            .resolve("share/kast/mcp-dependencies/site-packages/extension.so")
-        Files.createDirectories(dependency.parent)
-        // ELF64 ET_DYN with a nonzero entry point, PT_LOAD and PT_DYNAMIC, no PT_INTERP or DF_1_PIE.
-        val library = java.nio.ByteBuffer.allocate(256).order(java.nio.ByteOrder.LITTLE_ENDIAN).apply {
-            put(java.util.HexFormat.of().parseHex("7f454c4602010100000000000000000003003e00010000000090000000000000"))
-            putLong(32, 64); putShort(52, 64); putShort(54, 56); putShort(56, 2)
-            putInt(64, 1); putInt(68, 5); putLong(96, 256); putLong(104, 256)
-            putInt(120, 2); putLong(128, 192); putLong(136, 192); putLong(152, 32); putLong(160, 32)
-            putLong(192, 0x6ffffffb); putLong(200, 0)
-        }.array()
-        Files.write(dependency, library)
-        task.verify()
-
-        for (bytes in listOf(
-            library.copyOf().apply { java.nio.ByteBuffer.wrap(this).order(java.nio.ByteOrder.LITTLE_ENDIAN).putLong(200, 0x08000000) },
-            library.copyOf().apply {
-                java.nio.ByteBuffer.wrap(this).order(java.nio.ByteOrder.LITTLE_ENDIAN).apply {
-                    putLong(24, 0); putLong(200, 0x08000000)
-                }
-            },
-            library.copyOf().apply { java.nio.ByteBuffer.wrap(this).order(java.nio.ByteOrder.LITTLE_ENDIAN).putInt(64, 3) },
-            library.copyOf().apply { java.nio.ByteBuffer.wrap(this).order(java.nio.ByteOrder.LITTLE_ENDIAN).putLong(32, Long.MAX_VALUE) },
-            library.copyOf().apply { java.nio.ByteBuffer.wrap(this).order(java.nio.ByteOrder.LITTLE_ENDIAN).putShort(18, 183) },
-            library.copyOf().apply { java.nio.ByteBuffer.wrap(this).order(java.nio.ByteOrder.LITTLE_ENDIAN).putLong(208, 1) },
-            library.copyOf(80),
-        )) {
-            Files.write(dependency, bytes)
-            assertEquals("control product must contain exactly one native executable",
-                assertThrows(IllegalStateException::class.java, task::verify).message)
-        }
-    }
-
-    @Test
     fun `native inventory records accepted and rejected candidate identities`(@TempDir directory: Path) {
         val task = guidanceFixture(directory)
         task.maximumInstalledBytes.set(4096)
@@ -99,7 +43,7 @@ class VerifyControlDistributionTaskTest {
         assertEquals("REJECTED", rejected.getValue("outcome").jsonPrimitive.content)
         val unexpected = rejected.getValue("candidates").jsonArray.map { it.jsonObject }
             .single { it.getValue("path").jsonPrimitive.content == "extra-native" }
-        assertEquals("OUTSIDE_DEPENDENCIES", unexpected.getValue("classification").jsonPrimitive.content)
+        assertEquals("UNEXPECTED", unexpected.getValue("classification").jsonPrimitive.content)
         assertEquals(expectedDigest, unexpected.getValue("sha256").jsonPrimitive.content)
     }
 
@@ -163,54 +107,6 @@ class VerifyControlDistributionTaskTest {
     }
 
     @Test
-    fun `MCP shared libraries are not additional Control executables`(@TempDir directory: Path) {
-        val cases = listOf(
-            Triple("macos-aarch64", "cffaedfe0c000001000000000200000000000000", "cffaedfe0c000001000000000600000000000000"),
-            Triple("macos-aarch64", "cffaedfe0c000001000000000200000000000000", "cffaedfe0c000001000000000800000000000000"),
-            Triple("linux-aarch64", "7f454c460201010000000000000000000200b700", "7f454c460201010000000000000000000300b700010000000000000000000000"),
-            Triple("linux-x86_64", "7f454c4602010100000000000000000002003e00", "7f454c4602010100000000000000000003003e00010000000000000000000000"),
-        )
-        for ((index, case) in cases.withIndex()) {
-            val (platform, executable, library) = case
-            val task = guidanceFixture(Files.createDirectory(directory.resolve("case-$index")))
-            task.maximumInstalledBytes.set(4096)
-            task.targetPlatform.set(platform)
-            Files.write(task.qualifiedControlExecutable.get().asFile.toPath(), java.util.HexFormat.of().parseHex(executable))
-            val root = task.controlDirectory.get().asFile.toPath()
-            val dependency = root.resolve("share/kast/mcp-dependencies/site-packages/extension.so")
-            Files.createDirectories(dependency.parent)
-            val libraryBytes = java.util.HexFormat.of().parseHex(library).let { header ->
-                if (platform.startsWith("linux")) completeElfLibrary(header) else header
-            }
-            Files.write(dependency, libraryBytes)
-            task.verify()
-
-            val outsideDependencies = root.resolve("extension.so")
-            Files.move(dependency, outsideDependencies)
-            assertEquals("control product must contain exactly one native executable",
-                assertThrows(IllegalStateException::class.java, task::verify).message)
-            Files.move(outsideDependencies, dependency)
-
-            // A native executable remains forbidden even when named like a dependency.
-            val disguised = if (platform.startsWith("linux")) libraryBytes.copyOf().apply {
-                java.nio.ByteBuffer.wrap(this).order(java.nio.ByteOrder.LITTLE_ENDIAN).putLong(200, 0x08000000)
-            } else java.util.HexFormat.of().parseHex(executable)
-            Files.write(dependency, disguised)
-            assertEquals("control product must contain exactly one native executable",
-                assertThrows(IllegalStateException::class.java, task::verify).message)
-        }
-    }
-
-    private fun completeElfLibrary(header: ByteArray): ByteArray =
-        java.nio.ByteBuffer.allocate(256).order(java.nio.ByteOrder.LITTLE_ENDIAN).apply {
-            put(header)
-            putLong(32, 64); putShort(52, 64); putShort(54, 56); putShort(56, 2)
-            putInt(64, 1); putInt(68, 5); putLong(96, 256); putLong(104, 256)
-            putInt(120, 2); putLong(128, 192); putLong(136, 192); putLong(152, 32); putLong(160, 32)
-            putLong(192, 0x6ffffffb); putLong(200, 0)
-        }.array()
-
-    @Test
     fun `control rejects retired payloads`(@TempDir directory: Path) {
         val task = guidanceFixture(directory)
         val root = task.controlDirectory.get().asFile.toPath()
@@ -223,10 +119,10 @@ class VerifyControlDistributionTaskTest {
     }
 
     @Test
-    fun `optional MCP composition needs its complete transport`(@TempDir directory: Path) {
+    fun `optional MCP composition needs its native launcher`(@TempDir directory: Path) {
         val task = guidanceFixture(directory)
         Files.delete(task.controlDirectory.get().asFile.toPath().resolve(
-            "share/kast/agent-tools/compositions/mcp/plugins/kast/skills/kast/scripts/transport.py"))
+            "share/kast/agent-tools/compositions/mcp/plugins/kast/.mcp.json"))
         assertEquals("control product is missing required entries",
             assertThrows(IllegalStateException::class.java, task::verify).message)
     }
@@ -237,7 +133,7 @@ class VerifyControlDistributionTaskTest {
         val root = task.controlDirectory.get().asFile.toPath()
         val defaultTransport = root.resolve("share/kast/agent-tools/plugins/kast/.mcp.json")
         Files.write(defaultTransport, byteArrayOf())
-        assertEquals("default guidance contains automatic MCP or Python transport",
+        assertEquals("default guidance contains automatic MCP transport",
             assertThrows(IllegalStateException::class.java, task::verify).message)
         Files.delete(defaultTransport)
         val environment = Files.createDirectories(root.resolve("share/kast/.venv"))
@@ -260,24 +156,18 @@ class VerifyControlDistributionTaskTest {
         task.maximumInstalledBytes.set(23)
         val root = task.controlDirectory.get().asFile.toPath()
         val entries = listOf(
-            "bin/kast", "bin/kast-codex", "bin/kast-mcp", "bin/kast-tool-rpc", "bin/kast-query",
-            "share/kast/adapters/copilot/extension.mjs", "share/kast/adapters/pi/extension.ts",
+            "bin/kast", "bin/kast-codex", "bin/kast-mcp", "bin/kast-query",
             "share/kast/libexec/kast-daemon", "share/kast/libexec/kast-service", "share/kast/libexec/kast-management",
             "share/kast/install.sh", "share/kast/operation-registry.json", "share/kast/provider-catalog.json",
             "share/kast/configuration-schema.json", "share/kast/wire-schema.json", "share/kast/ide-host.json",
             "share/kast/licenses/LICENSE", "share/kast/frontend.json", "lib/kast-cli.jar",
         ) + listOf("", "compositions/mcp/").flatMap { composition ->
             val prefix = "share/kast/agent-tools/$composition"
-            listOf(".agents/plugins/marketplace.json", ".github/plugin/marketplace.json",
-                "plugins/kast/.codex-plugin/plugin.json", "plugins/kast/.github/plugin/plugin.json",
+            listOf(".agents/plugins/marketplace.json", "plugins/kast/.codex-plugin/plugin.json",
                 "plugins/kast/skills/kast/SKILL.md", "plugins/kast/skills/kast/public-cli.md",
-                "plugins/kast/hooks/hooks.json", "plugins/kast/hooks/copilot.json", "plugins/kast/hooks/pi.ts",
+                "plugins/kast/hooks/hooks.json",
                 "plugins/kast/references/onboarding.md", "plugins/kast/references/query-examples.json").map { prefix + it }
-        } + listOf(".mcp.json", "skills/kast/scripts/server.py", "skills/kast/scripts/server.py.lock",
-            "skills/kast/scripts/service.py", "skills/kast/scripts/tasks.py", "skills/kast/scripts/transport.py",
-            "skills/kast/scripts/access.py", "skills/kast/scripts/access.py.lock").map {
-            "share/kast/agent-tools/compositions/mcp/plugins/kast/$it"
-        }
+        } + "share/kast/agent-tools/compositions/mcp/plugins/kast/.mcp.json"
         for (entry in entries) {
             val file = root.resolve(entry)
             Files.createDirectories(file.parent)

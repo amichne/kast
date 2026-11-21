@@ -314,7 +314,6 @@ def build_product(arguments: argparse.Namespace) -> BuiltProduct:
         str(checkout / "packaging/internal/bootstrap"),
         str(checkout / "packaging/internal/composition"),
         str(checkout / "packaging/internal/installation"),
-        str(checkout / "packaging/internal/mcp"),
         str(checkout / "packaging/internal/product"),
         str(checkout / "packaging/internal/runtime"),
         str(checkout / "packaging/internal/verification"),

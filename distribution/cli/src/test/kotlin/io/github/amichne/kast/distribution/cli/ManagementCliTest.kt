@@ -25,57 +25,6 @@ class ManagementCliTest {
     @TempDir lateinit var temporary: Path
 
     @Test
-    fun `force uninstall is explicit and cannot target a harness`() {
-        assertEquals(
-            ManagementParsing.Selected(ManagementCommand.ForceUninstall(true)),
-            parseManagementCommand(listOf("uninstall", "--force", "--json")),
-        )
-        assertEquals(
-            ManagementParsing.Selected(ManagementCommand.Uninstall),
-            parseManagementCommand(listOf("uninstall")),
-        )
-        for (arguments in listOf(listOf("uninstall", "pi", "--force"), listOf("uninstall", "--json"))) {
-            val result = parseManagementCommand(arguments)
-            assertTrue(result is ManagementParsing.Print && result.error)
-        }
-    }
-
-    @Test
-    fun `retired connection syntax rejects and names the install replacement`() {
-        for (arguments in
-            listOf(
-                listOf("connect", "codex"),
-                listOf("connect", "codex", "mcp"),
-                listOf("connect", "codex", "app-server"),
-                listOf("connect", "codex", "--force"),
-                listOf("connect", "codex", "other"),
-                listOf("connect", "pi", "mcp"),
-                listOf("connect", "copilot", "app-server"),
-            )) {
-            val result = parseManagementCommand(arguments) as ManagementParsing.Print
-            assertTrue(result.error)
-            assertTrue(result.text.contains("kast install"))
-        }
-    }
-
-    @Test
-    fun `management commands preserve the status default and reject private entry points`() {
-        assertEquals(ManagementParsing.Selected(ManagementCommand.Status(false)), parseManagementCommand(emptyList()))
-        assertEquals(
-            ManagementParsing.Selected(ManagementCommand.Status(true)),
-            parseManagementCommand(listOf("status", "--json")),
-        )
-        for (arguments in listOf(listOf("connect", "pi"), listOf("connect"))) {
-            val result = parseManagementCommand(arguments) as ManagementParsing.Print
-            assertTrue(result.error)
-            assertTrue(result.text.contains("kast install"))
-        }
-        assertTrue((parseManagementCommand(listOf("serve")) as ManagementParsing.Print).error)
-        assertTrue((parseManagementCommand(listOf("call", "query_symbols")) as ManagementParsing.Print).error)
-        assertTrue((parseManagementCommand(listOf("--version")) as ManagementParsing.Print).text.isNotBlank())
-    }
-
-    @Test
     fun `retired container routes reject before runtime effects`() {
         for (arguments in listOf(listOf("container", "status"), listOf("status", "container"))) {
             val parsed = parseManagementCommand(arguments)
@@ -101,128 +50,33 @@ class ManagementCliTest {
             selectDestination(home, "relative/config", "/usr/bin"),
         )
     }
-
-    @Test
-    fun `status distinguishes unavailable runtime observations from empty registrations`() {
-        val root = temporary.resolve("kast")
-        Files.createDirectories(root)
-        val executable = temporary.resolve("kast-command")
-        Files.writeString(executable, "native")
-        writeManagementReceipt(
-            root,
-            ManagementReceipt(
-                2,
-                root.toString(),
-                executable.toString(),
-                sha256(executable),
-                ReleaseChannel.STABLE,
-                emptyList(),
-            ),
-        )
-        val status = readStatus(root, executable.toString())
-        assertEquals(ObservationState.VERIFIED, status.registrations.state)
-        assertEquals(emptyList<ManagedRegistration>(), status.registrations.value)
-        assertEquals(ObservationState.UNAVAILABLE, status.loadedVersion.state)
-        assertEquals(ObservationState.UNAVAILABLE, status.activeWorkspaces.state)
-        assertEquals(ObservationState.UNAVAILABLE, status.liveConnections.state)
-    }
-
-    @Test
-    fun `Pi registration is idempotent and disconnect preserves a foreign replacement`() {
-        val (root, home) = integrationFixture(temporary, HarnessConnection.PI)
-        val target = home.resolve(".pi/agent/extensions/kast.ts")
-        assertFalse(connectHarness(root, home, HarnessConnection.PI))
-        assertTrue(connectHarness(root, home, HarnessConnection.PI))
-        assertEquals("release adapter", Files.readString(target))
-        Files.writeString(target, "foreign adapter")
-        org.junit.jupiter.api.assertThrows<ManagementRejected> { disconnectHarness(root, home, Harness.PI) }
-        assertEquals("foreign adapter", Files.readString(target))
-        assertEquals(1, (readReceipt(root) as ReceiptRead.Read).receipt.registrations.size)
-        Files.writeString(target, "release adapter")
-        assertTrue(disconnectHarness(root, home, Harness.PI))
-        assertFalse(Files.exists(target))
-    }
-
-    @Test
-    fun `matching unowned Pi file is not adopted or removed`() {
-        val (root, home) = integrationFixture(temporary, HarnessConnection.PI)
-        val target = home.resolve(".pi/agent/extensions/kast.ts")
-        Files.createDirectories(target.parent)
-        Files.writeString(target, "release adapter")
-        org.junit.jupiter.api.assertThrows<ManagementRejected> {
-            connectHarness(root, home, HarnessConnection.PI, RegistrationOwnership.REQUIRE_OWNED)
-        }
-        assertEquals("release adapter", Files.readString(target))
-        assertEquals(emptyList<ManagedRegistration>(), (readReceipt(root) as ReceiptRead.Read).receipt.registrations)
-    }
-
-    @Test
-    fun `Copilot registration installs and removes only its bundled adapter`() {
-        val (root, home) = integrationFixture(temporary, HarnessConnection.COPILOT)
-        val target = home.resolve(".copilot/extensions/kast/extension.mjs")
-        assertFalse(connectHarness(root, home, HarnessConnection.COPILOT))
-        assertEquals("release adapter", Files.readString(target))
-        assertTrue(disconnectHarness(root, home, Harness.COPILOT))
-        assertFalse(Files.exists(target))
-    }
 }
 
-internal fun integrationFixture(
-    temporary: Path,
-    connection: HarnessConnection,
-    sourceContent: String = "release adapter",
-    composition: HarnessComposition = HarnessComposition.CliWithMcp,
-): Pair<Path, Path> {
-    val root = temporary.resolve("kast")
-    val home = temporary.resolve("home")
-    val installation = root.resolve("installation")
-    val relative = integrationSourcePath(connection, composition)
+/** A product installation whose manifest also owns one bundled integration source. */
+internal fun integrationFixture(temporary: Path, connection: HarnessConnection): Pair<Path, Path> {
+    val product = productFixture(temporary)
+    val installation = product.installation
+    val root = installation.parent
+    val home = Files.createDirectories(temporary.resolve("home"))
+    val relative =
+        when (connection) {
+            HarnessConnection.CODEX_MCP -> "bin/kast-mcp-complete"
+            HarnessConnection.CODEX_APP_SERVER -> "bin/kast-codex-complete"
+        }
     val source = installation.resolve(relative)
     Files.createDirectories(source.parent)
-    Files.createDirectories(home)
-    Files.writeString(source, sourceContent)
-    if (connection == HarnessConnection.CODEX_APP_SERVER) source.toFile().setExecutable(true, false)
+    Files.writeString(source, "release adapter")
+    source.toFile().setExecutable(true, false)
+    val owned =
+        listOf(relative, "share/kast/build-record.json", "share/kast/product-selection.json").map {
+            TestPayload(it, "sha256:${sha256(installation.resolve(it))}", if (it == relative) 493 else 420)
+        }
     Files.writeString(
         installation.resolve("installation.json"),
-        Json.encodeToString(
-            TestManifest(
-                3,
-                installation.toRealPath().toString(),
-                listOf(
-                    TestPayload(
-                        relative,
-                        "sha256:${sha256(source)}",
-                        if (connection == HarnessConnection.CODEX_APP_SERVER) 493 else 420,
-                    )
-                ),
-                "1.2.3",
-            )
-        ),
+        Json.encodeToString(TestManifest(3, installation.toRealPath().toString(), owned, "1.2.3")),
     )
     val executable = temporary.resolve("kast-command")
     Files.writeString(executable, "native")
-    writeManagementReceipt(
-        root,
-        ManagementReceipt(
-            2,
-            root.toString(),
-            executable.toString(),
-            sha256(executable),
-            ReleaseChannel.STABLE,
-            emptyList(),
-        ),
-    )
+    writeTestManagementReceipt(root, executable, product.reference)
     return root to home
 }
-
-private fun integrationSourcePath(connection: HarnessConnection, composition: HarnessComposition): String =
-    when (connection) {
-        HarnessConnection.COPILOT -> "share/kast/adapters/copilot/extension.mjs"
-        HarnessConnection.PI ->
-            when (composition) {
-                HarnessComposition.CliOnly -> "share/kast/agent-tools/plugins/kast/hooks/pi.ts"
-                HarnessComposition.CliWithMcp -> "share/kast/adapters/pi/extension.ts"
-            }
-        HarnessConnection.CODEX_MCP -> "bin/kast-mcp-complete"
-        HarnessConnection.CODEX_APP_SERVER -> "bin/kast-codex-complete"
-    }

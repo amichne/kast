@@ -153,7 +153,6 @@ class ValidationScopeTest(unittest.TestCase):
             "experiments/host-observation/README.md",
             "experiments/host-observation/EVALUATION_CHECKLIST.md",
             "experiments/host-observation/HOSTED_ENDPOINT.md",
-            "experiments/host-observation/PI_EVALUATION.md",
             "experiments/host-observation/SEMANTIC_REPRODUCTION.md",
             "experiments/representation-impact/README.md",
         )

@@ -6,9 +6,6 @@ import io.github.amichne.kast.appserver.query.PublicToolParameter
 import io.github.amichne.kast.appserver.query.PublicToolRule
 import io.github.amichne.kast.cli.CliExit
 import io.github.amichne.kast.cli.mcp.McpStructuredResults
-import io.github.amichne.kast.cli.rpc.KastToolRpcBridge
-import io.github.amichne.kast.cli.rpc.ToolRpcFailure
-import io.github.amichne.kast.cli.rpc.ToolRpcReply
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.protocol.registry.OperationEffect
 import io.github.amichne.kast.protocol.registry.PublicToolCatalog
@@ -70,10 +67,6 @@ class DirectCatalogArgumentsTest {
             (PublicToolContract.admit(identity, input, PublicToolCatalog.COMPLETE) as Refinement.Refined).value
         val exit = session.invokeAdmitted(admitted) as CliExit.PublicInputRejected
         assertEquals(PublicToolInputFailure.SchemaMismatch, exit.failure)
-        assertEquals(
-            ToolRpcReply.Rejected(ToolRpcFailure.INVALID_ARGUMENTS),
-            KastToolRpcBridge(session).callAdmitted(admitted),
-        )
         assertEquals(0, calls.get())
     }
 

@@ -1,22 +1,8 @@
 package io.github.amichne.kast.distribution.cli
 
 import java.nio.file.Files
-import java.nio.file.LinkOption
 import java.nio.file.Path
-import java.nio.file.StandardCopyOption
-import java.nio.file.attribute.PosixFilePermissions
 import java.security.MessageDigest
-
-internal fun writeManagementReceipt(root: Path, receipt: ManagementReceipt) {
-    val path = receiptPath(root)
-    val temporary = Files.createTempFile(root, ".management-", ".json")
-    try {
-        Files.writeString(temporary, encodeManagementReceipt(receipt) + "\n")
-        Files.move(temporary, path, StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING)
-    } finally {
-        Files.deleteIfExists(temporary)
-    }
-}
 
 internal fun sha256(path: Path): String {
     val started = System.nanoTime()
@@ -90,30 +76,3 @@ private sealed interface ManagementPathAdmission {
         }
     }
 }
-
-internal fun writeConnectionConfiguration(path: Path, configuration: ConnectionConfiguration) {
-    val staged = Files.createTempFile(path.parent, ".kast-config-", ".new")
-    try {
-        Files.setPosixFilePermissions(staged, PosixFilePermissions.fromString("rw-------"))
-        Files.writeString(staged, encodeConnectionConfiguration(configuration))
-        Files.move(staged, path, StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING)
-    } finally {
-        Files.deleteIfExists(staged)
-    }
-}
-
-internal fun writePublicResetRecovery(file: PublicRecoveryFile, receipt: ManagementReceipt): LifecycleEffect =
-    try {
-        Files.writeString(
-            file.path,
-            encodeManagementReceipt(receipt),
-            java.nio.file.StandardOpenOption.CREATE_NEW,
-            java.nio.file.StandardOpenOption.WRITE,
-            LinkOption.NOFOLLOW_LINKS,
-        )
-        LifecycleEffect.Completed
-    } catch (_: java.io.IOException) {
-        LifecycleEffect.Rejected(LifecycleFailure.REGISTRATION_REPAIR_REQUIRED)
-    } catch (_: SecurityException) {
-        LifecycleEffect.Rejected(LifecycleFailure.REGISTRATION_REPAIR_REQUIRED)
-    }

@@ -166,17 +166,7 @@ class SourceValidationTest(unittest.TestCase):
 
     def test_direct_file_consumers_keep_full_owner_obligations_and_cases(self):
         matrix = (
-            ("cli/src/main/js/query-delivery.mjs", {":app-server:check", ":app-server:test",
-              ":app-server:verifyPublicQueryGeneration"}, {":runtime:hosted"}),
-            ("cli/src/main/js/query-delivery-contract.mjs", {":app-server:check", ":app-server:test",
-              ":app-server:verifyPublicQueryGeneration"}, {":runtime:hosted"}),
-            ("cli/src/main/js/query-presentation.mjs", {":app-server:check", ":app-server:test",
-              ":app-server:verifyPublicQueryGeneration"}, {":runtime:hosted"}),
-            ("cli/src/main/js/query-session.mjs", {":app-server:check", ":app-server:test",
-              ":app-server:verifyPublicQueryGeneration"}, {":runtime:hosted"}),
             ("cli/src/main/resources/query-delivery.schema.json",
-             {":app-server:check", ":app-server:test", ":app-server:verifyPublicQueryGeneration"}, set()),
-            ("cli/src/main/kotlin/io/github/amichne/kast/cli/rpc/KastToolRpcMain.kt",
              {":app-server:check", ":app-server:test", ":app-server:verifyPublicQueryGeneration"}, set()),
             ("cli/src/test/resources/hosted-read-failure-encodings.json",
              {":workspace:intellij-read:check", ":workspace:intellij-read:test"},

@@ -13,22 +13,9 @@ internal fun retiredUninstallFixture(temporary: Path): RetiredFixture {
     val executable = home.resolve(".local/bin/kast")
     Files.createDirectories(executable.parent)
     Files.writeString(executable, "owned executable")
-    val extension = home.resolve(".pi/agent/extensions/kast.ts")
-    Files.createDirectories(extension.parent)
-    Files.writeString(extension, "owned adapter")
-    val sentinel = extension.resolveSibling("unrelated.ts")
-    Files.writeString(sentinel, "unrelated")
-    writeManagementReceipt(
-        root,
-        ManagementReceipt(
-            2,
-            root.toString(),
-            executable.toString(),
-            sha256(executable),
-            ReleaseChannel.STABLE,
-            listOf(ManagedRegistration(HarnessConnection.PI, extension.toString(), sha256(extension))),
-        ),
-    )
+    // The retired installation's payload is gone; its product identity comes from an unrelated fixture.
+    val product = productFixture(Files.createDirectory(temporary.resolve("product"))).reference
+    writeTestManagementReceipt(root, executable, product)
     Files.writeString(
         uninstallJournalPath(root),
         managementJson.encodeToString(
@@ -41,6 +28,7 @@ internal fun retiredUninstallFixture(temporary: Path): RetiredFixture {
                 ManagedRecoveryRemovalProof.Absent,
                 captureUninstallManagedRoot(root),
                 HomeConfigurationRemovalProof.Absent,
+                product = product,
             )
         ),
     )
@@ -48,15 +36,13 @@ internal fun retiredUninstallFixture(temporary: Path): RetiredFixture {
         uninstallJournalPath(root),
         java.nio.file.attribute.PosixFilePermissions.fromString("rw-------"),
     )
-    return RetiredFixture(root, home, executable, extension, sentinel)
+    return RetiredFixture(root, home, executable)
 }
 
 internal data class RetiredFixture(
     val root: Path,
     val home: Path,
     val executable: Path,
-    val extension: Path,
-    val sentinel: Path,
 )
 
 @Serializable
@@ -70,4 +56,5 @@ internal data class FixtureRetirementRecord(
     val controlIdentity: InstallationFilesystemIdentity,
     val homeConfiguration: HomeConfigurationRemovalProof,
     val channel: String = "STABLE",
+    val product: InstalledProductReference? = null,
 )

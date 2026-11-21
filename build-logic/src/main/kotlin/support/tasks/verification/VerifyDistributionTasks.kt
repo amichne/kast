@@ -20,7 +20,7 @@ import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 
 @Serializable
-private enum class NativeClassification { CONTROL, DEPENDENCY_LIBRARY, UNEXPECTED_DEPENDENCY_NATIVE, OUTSIDE_DEPENDENCIES }
+private enum class NativeClassification { CONTROL, UNEXPECTED }
 
 @Serializable
 private enum class NativeInventoryOutcome { ACCEPTED, REJECTED }
@@ -115,21 +115,14 @@ abstract class VerifyControlDistributionTask : DefaultTask() {
                 val native = java.util.HexFormat.of().formatHex(header.take(4).toByteArray()) in setOf(
                     "cffaedfe", "feedfacf", "cefaedfe", "feedface", "cafebabe", "bebafeca", "cafebabf", "bfbafeca", "7f454c46",
                 )
-                val dependencyLibrary = native && root.relativize(path).startsWith("share/kast/mcp-dependencies/site-packages") &&
-                    nativeLibraryHeaderMatches(path, header, targetPlatform.get())
                 if (native) {
-                    val classification = when {
-                        path == executable -> NativeClassification.CONTROL
-                        dependencyLibrary -> NativeClassification.DEPENDENCY_LIBRARY
-                        root.relativize(path).startsWith("share/kast/mcp-dependencies/site-packages") ->
-                            NativeClassification.UNEXPECTED_DEPENDENCY_NATIVE
-                        else -> NativeClassification.OUTSIDE_DEPENDENCIES
-                    }
+                    val classification =
+                        if (path == executable) NativeClassification.CONTROL else NativeClassification.UNEXPECTED
                     Triple(path, header, classification)
                 } else null
             }
         }
-        val nativeExecutables = nativeCandidates.filter { it.third != NativeClassification.DEPENDENCY_LIBRARY }.map { it.first }
+        val nativeExecutables = nativeCandidates.map { it.first }
         // Keep the evidence bounded while counting every admitted inventory entry.
         val recorded = nativeCandidates.sortedBy { root.relativize(it.first).toString() }.take(64).map { (path, header, classification) ->
             val digest = MessageDigest.getInstance("SHA-256")
@@ -161,10 +154,7 @@ abstract class VerifyControlDistributionTask : DefaultTask() {
         }
         val required = listOf(
             "bin/kast",
-            "bin/kast-tool-rpc",
             "bin/kast-query",
-            "share/kast/adapters/copilot/extension.mjs",
-            "share/kast/adapters/pi/extension.ts",
             "share/kast/libexec/kast-daemon",
             "share/kast/libexec/kast-service",
             "share/kast/libexec/kast-management",
@@ -186,11 +176,11 @@ abstract class VerifyControlDistributionTask : DefaultTask() {
             "control JVM layout marker is unsupported"
         }
         val defaultPlugin = "share/kast/agent-tools/plugins/kast/"
-        val defaultEffects = listOf(".mcp.json", "mcp.json", "skills/kast/scripts")
+        val defaultEffects = listOf(".mcp.json", "mcp.json")
         check(entries.none { entry -> defaultEffects.any { effect ->
             entry == defaultPlugin + effect || entry.startsWith(defaultPlugin + effect + "/")
-        } }) { "default guidance contains automatic MCP or Python transport" }
-        val allowedHooks = setOf("hooks/hooks.json", "hooks/copilot.json", "hooks/pi.ts")
+        } }) { "default guidance contains automatic MCP transport" }
+        val allowedHooks = setOf("hooks/hooks.json")
         check(entries.none { entry ->
             entry.startsWith(defaultPlugin + "hooks/") && entry.removePrefix(defaultPlugin) !in allowedHooks
         }) { "default guidance contains an undeclared hook" }
@@ -200,10 +190,10 @@ abstract class VerifyControlDistributionTask : DefaultTask() {
         val publicExecutables = Files.list(root.resolve("bin")).use { paths ->
             paths.filter(Files::isRegularFile).map { path -> path.fileName.toString() }.toList()
         }
-        check(publicExecutables.toSet() == setOf("kast", "kast-codex", "kast-mcp", "kast-tool-rpc", "kast-query")) {
+        check(publicExecutables.toSet() == setOf("kast", "kast-codex", "kast-mcp", "kast-query")) {
             "control product must expose the semantic CLI and integration host: $publicExecutables"
         }
-        check(listOf("bin/kast", "bin/kast-codex", "bin/kast-mcp", "bin/kast-tool-rpc", "bin/kast-query", "share/kast/libexec/kast-daemon", "share/kast/libexec/kast-service", "share/kast/libexec/kast-management").all { Files.isExecutable(root.resolve(it)) }) {
+        check(listOf("bin/kast", "bin/kast-codex", "bin/kast-mcp", "bin/kast-query", "share/kast/libexec/kast-daemon", "share/kast/libexec/kast-service", "share/kast/libexec/kast-management").all { Files.isExecutable(root.resolve(it)) }) {
             "control product kast launcher is not executable"
         }
         check(paths.none(Files::isSymbolicLink)) { "control product contains a symbolic link" }
@@ -216,19 +206,15 @@ abstract class VerifyControlDistributionTask : DefaultTask() {
 
 private fun guidanceDistributionEntries(): List<String> {
     val shared = listOf(
-        ".agents/plugins/marketplace.json", ".github/plugin/marketplace.json",
-        "plugins/kast/.codex-plugin/plugin.json", "plugins/kast/.github/plugin/plugin.json",
+        ".agents/plugins/marketplace.json", "plugins/kast/.codex-plugin/plugin.json",
         "plugins/kast/skills/kast/SKILL.md", "plugins/kast/skills/kast/public-cli.md",
-        "plugins/kast/hooks/hooks.json", "plugins/kast/hooks/copilot.json", "plugins/kast/hooks/pi.ts",
+        "plugins/kast/hooks/hooks.json",
         "plugins/kast/references/onboarding.md", "plugins/kast/references/query-examples.json",
     )
     val compositions = listOf("", "compositions/mcp/").flatMap { composition ->
         shared.map { "share/kast/agent-tools/$composition$it" }
     }
-    val transport = listOf(".mcp.json", "skills/kast/scripts/server.py", "skills/kast/scripts/server.py.lock",
-        "skills/kast/scripts/service.py", "skills/kast/scripts/tasks.py", "skills/kast/scripts/transport.py",
-        "skills/kast/scripts/access.py", "skills/kast/scripts/access.py.lock")
-    return compositions + transport.map { "share/kast/agent-tools/compositions/mcp/plugins/kast/$it" }
+    return compositions + "share/kast/agent-tools/compositions/mcp/plugins/kast/.mcp.json"
 }
 
 internal fun nativeQueryHeaderMatches(header: ByteArray, platform: String): Boolean =
@@ -241,19 +227,6 @@ internal fun nativeQueryHeaderMatches(header: ByteArray, platform: String): Bool
             listOf(127, 69, 76, 70, 2, 1) && (header[18].toInt() and 255) == 183 && header[19].toInt() == 0
         "linux-x86_64" -> header.take(6).map { it.toInt() and 255 } ==
             listOf(127, 69, 76, 70, 2, 1) && header[18].toInt() == 62 && header[19].toInt() == 0
-        else -> false
-    }
-
-private fun nativeLibraryHeaderMatches(path: java.nio.file.Path, header: ByteArray, platform: String): Boolean =
-    when (platform) {
-        "macos-aarch64", "macos-x86_64" -> {
-            val cpu = if (platform == "macos-aarch64") 12 else 7
-            header.size >= 20 && header.take(8).map { it.toInt() and 255 } ==
-                listOf(207, 250, 237, 254, cpu, 0, 0, 1) &&
-                header[12].toInt() in setOf(6, 8) && header.slice(13..15).all { it == 0.toByte() }
-        }
-        "linux-aarch64", "linux-x86_64" ->
-            admitElfLibrary(path, platform) == ElfLibraryAdmission.LIBRARY
         else -> false
     }
 

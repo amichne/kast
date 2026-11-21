@@ -58,13 +58,6 @@ class ImmutableRemoval:
 
 
 @dataclass(frozen=True)
-class McpRemoval:
-    identity: journal.Identity
-    stateIdentity: journal.Identity
-    receiptSha256: str
-
-
-@dataclass(frozen=True)
 class ProductRemoval:
     phase: str
     executionIdentity: journal.Identity
@@ -73,7 +66,6 @@ class ProductRemoval:
     runtimeStoreIdentity: journal.Identity | None
     baseStoreIdentity: journal.Identity | None
     schemaVersion: int = 1
-    mcp: McpRemoval | None = None
 
 
 @dataclass(frozen=True)
@@ -128,7 +120,6 @@ def shape(
         Provenance
         | ImmutableRemoval
         | ProductRemoval
-        | McpRemoval
         | journal.Identity
         | Publication
         | ResetEntry
@@ -189,12 +180,6 @@ def removal(value: object) -> ProductRemoval:
         )
     if len({(proof.kind, proof.archiveSha256) for proof in proofs}) != len(proofs):
         raise ValueError("duplicate immutable proof")
-    mcp = None
-    if item["mcp"] is not None:
-        fact = shape(item["mcp"], McpRemoval)
-        mcp = McpRemoval(
-            identity(fact["identity"]), identity(fact["stateIdentity"]), sha(fact["receiptSha256"])
-        )
     return ProductRemoval(
         phase,
         identity(item["executionIdentity"]),
@@ -204,7 +189,6 @@ def removal(value: object) -> ProductRemoval:
         if item["runtimeStoreIdentity"] is not None
         else None,
         identity(item["baseStoreIdentity"]) if item["baseStoreIdentity"] is not None else None,
-        mcp=mcp,
     )
 
 

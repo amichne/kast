@@ -4,7 +4,6 @@ package io.github.amichne.kast.protocol.registry
 enum class SupportToolHost {
     APP_SERVER,
     MCP,
-    RPC,
 }
 
 enum class SupportToolIdentity(
@@ -31,6 +30,6 @@ enum class SupportToolIdentity(
         "Observe exact workspace binding and saved/indexed readiness. This passive check does not validate " +
             "semantic answers.",
         "McpHealthRequest",
-        setOf(SupportToolHost.MCP, SupportToolHost.RPC),
+        setOf(SupportToolHost.MCP),
     ),
 }

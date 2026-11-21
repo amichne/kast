@@ -109,16 +109,15 @@ test('the projection carries a launcher rejection into provider metadata without
 });
 
 test('every catalogued participant prompt and system text is admissible as delivered', async () => {
-  const [{ skillCases }, { developerCases }, { casesForSuite, suites }, { comprehensionCases, comprehensionSystem },
+  const [{ skillCases }, { developerCases }, { casesForSuite, suites },
     { neutralSystem }, { developerSystem }, { corpusParticipantSystem }] = await Promise.all([
-    import('./skill-cases.mjs'), import('./developer-cases.mjs'), import('./corpus-cases.mjs'), import('./comprehension-cases.mjs'),
+    import('./skill-cases.mjs'), import('./developer-cases.mjs'), import('./corpus-cases.mjs'),
     import('./skill-provider.mjs'), import('./developer-provider.mjs'), import('./corpus-participant.mjs'),
   ]);
   const surfaces = [
     ...Object.entries(skillCases).map(([id, item]) => [`skill/${id}`, neutralSystem, item.prompt]),
     ...developerCases.map(item => [`developer/${item.id}`, developerSystem, item.prompt]),
     ...suites.flatMap(casesForSuite).map(item => [`corpus/${item.id}`, corpusParticipantSystem, item.task]),
-    ...comprehensionCases().map(item => [`comprehension/${item.id}`, comprehensionSystem, item.prompt]),
   ];
   assert.ok(surfaces.length > 20);
   for (const [label, system, prompt] of surfaces) {

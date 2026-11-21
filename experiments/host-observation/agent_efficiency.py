@@ -956,7 +956,7 @@ def record_trial_run(
         "agent_efficiency_integrity.py",
         "agent_efficiency_tokens.py",
         "agent_efficiency_timing.py",
-        "pi_evaluation_controller.mjs",
+        "owned_worker.mjs",
         "promptfoo/agent-efficiency.config.mjs",
         "promptfoo/agent-efficiency-provider.mjs",
         "promptfoo/python-scenario.mjs",

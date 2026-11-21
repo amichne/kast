@@ -15,10 +15,10 @@ Find your symptom below.
 ## Your agent does not use Kast
 
 1. From your project root, run the [first query](/start#3-run-your-first-query) yourself. If it fails, fix that first with the sections below.
-2. Repeat [Connect your agent](/start#2-install-agent-guidance), for example `kast install codex`.
+2. Check that `agents.toml` declares the Kast skill and MCP server, then run `npx @sentry/dotagents --project install`. See [Connect your agent](/reference/integrations).
 3. Start a new agent session in your Kotlin project, and ask your question again.
 
-Do the same if an upgrade reports `HARNESS_REFRESH_REQUIRED`. It means the Kast guidance in your agent tool, such as Codex, Copilot, or Pi, is older than the new build.
+After an upgrade, [refresh the exported skill](/reference/integrations#refresh-the-skill-after-an-upgrade) before step 2.
 
 <span id="inspect-installation-and-activation" />
 <span id="2-inspect-the-installation-before-recovery" />

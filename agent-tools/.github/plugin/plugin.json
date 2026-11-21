@@ -1,7 +1,0 @@
-{
-  "name": "kast",
-  "version": "0.0.0",
-  "description": "Canonical CLI guidance for the installed native Kast command.",
-  "skills": "./skills/",
-  "hooks": "./hooks/copilot.json"
-}

@@ -1,12 +1,11 @@
 ---
 title: "Set up Kast"
 sidebarTitle: "Set up"
-description: "Install Kast, connect Codex, Copilot, or Pi, and run your first query in a Kotlin Gradle project."
+description: "Install Kast, connect your coding agent, and run your first query in a Kotlin Gradle project."
 keywords:
   - "CLI"
-  - "Codex"
-  - "Copilot"
-  - "Pi"
+  - "dotagents"
+  - "MCP"
   - "IntelliJ IDEA"
 icon: "terminal"
 ---
@@ -23,7 +22,7 @@ You need:
 
 - An Apple silicon Mac for the current preview.
 - A Kotlin Gradle project.
-- The Codex, Copilot, or Pi CLI.
+- A coding agent that [dotagents](https://github.com/getsentry/dotagents) supports, and Node.js to run it.
 
 Kast supplies its private runtime. You do not need desktop IDEA, Python, or uv.
 
@@ -66,35 +65,10 @@ Kast supplies its private runtime. You do not need desktop IDEA, Python, or uv.
     <span id="2-restart-your-tools" />
     <span id="3-connect-your-agent" />
 
-    Install guidance that teaches your agent when and how to run `kast`:
+    Your agent gets the Kast skill and the Kast MCP server from your repository's `agents.toml`.
+    Follow [Connect your agent](/reference/integrations): export the skill with `kast install skill`, declare it with the MCP server in `agents.toml`, and run dotagents.
 
-    <Tabs sync={false}>
-      <Tab title="Codex">
-
-        ```shell
-        kast install codex
-        ```
-
-      </Tab>
-      <Tab title="Copilot">
-
-        ```shell
-        kast install copilot
-        ```
-
-      </Tab>
-      <Tab title="Pi">
-
-        ```shell
-        kast install pi
-        ```
-
-      </Tab>
-    </Tabs>
-
-    Start a new agent session in your project. Session hooks only supply context; they do not prepare projects or grant trust.
-
-    You do not need MCP to ask about your code. Edits through Kast need the [optional MCP setup](/reference/integrations#optional-mcp).
+    Then start a new agent session in your project. Agent setup does not prepare projects or grant trust.
   </Step>
 
   <Step title="Run your first query" id="3-run-your-first-query">

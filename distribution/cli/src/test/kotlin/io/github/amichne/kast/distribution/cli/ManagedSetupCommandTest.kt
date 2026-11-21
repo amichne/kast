@@ -5,12 +5,9 @@ import org.junit.jupiter.api.Test
 
 class ManagedSetupCommandTest {
     @Test
-    fun `public setup admits CLI skill and explicit MCP compositions`() {
+    fun `public setup admits skill export and release selection`() {
         for (arguments in
             listOf(
-                listOf("install", "codex"),
-                listOf("install", "copilot", "--mcp", "--json"),
-                listOf("install", "pi"),
                 listOf("install", "skill", "--output", "custom skills", "--json"),
                 listOf("versions", "--json"),
                 listOf("upgrade", "--channel", "preview", "--dry-run", "--json"),
@@ -30,6 +27,10 @@ class ManagedSetupCommandTest {
                 listOf("upgrade", "--version", "1.2.3", "--commit", "abcdef123456"),
                 listOf("install", "skill", "--force"),
                 listOf("install", "skill", "--mcp"),
+                // Agents receive the skill and MCP server through dotagents, not a Kast harness install.
+                listOf("install", "codex"),
+                listOf("install", "copilot"),
+                listOf("install", "pi"),
             )) assertTrue((parseManagementCommand(arguments) as ManagementParsing.Print).error, arguments.toString())
     }
 }

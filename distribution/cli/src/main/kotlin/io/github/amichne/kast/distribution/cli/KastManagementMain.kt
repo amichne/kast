@@ -7,7 +7,6 @@ import com.github.ajalt.clikt.core.PrintHelpMessage
 import com.github.ajalt.clikt.core.PrintMessage
 import com.github.ajalt.clikt.core.subcommands
 import com.github.ajalt.clikt.parameters.arguments.argument
-import com.github.ajalt.clikt.parameters.arguments.optional
 import com.github.ajalt.clikt.parameters.options.eagerOption
 import com.github.ajalt.clikt.parameters.options.flag
 import com.github.ajalt.clikt.parameters.options.option
@@ -71,8 +70,6 @@ internal sealed interface ManagementParsing {
 internal fun parseManagementCommand(arguments: List<String>): ManagementParsing {
     if (arguments.firstOrNull() in publicQueryNamespaces)
         return ManagementParsing.Selected(ManagementCommand.PublicQuery(arguments.toList()))
-    if (arguments.firstOrNull() in setOf("connect", "plugin"))
-        return ManagementParsing.Print("kast: setup syntax is retired; use kast install <harness> [--mcp]", true)
     val root =
         ManagementRoot()
             .subcommands(
@@ -174,41 +171,29 @@ private class VersionsCommand : ManagementNode("versions") {
 }
 
 private class InstallCommand : ManagementNode("install") {
-    private val target by argument("harness|skill")
+    private val target by argument("skill")
     private val output by
         option("--output", help = "Select the parent skill directory. The default is ./.agents/skills.")
-    private val mcp by option("--mcp", help = "Install the optional MCP composition.").flag()
     private val json by option("--json", help = "Print one terminal provisioning result.").flag()
 
     override fun help(context: Context) =
-        "Install canonical CLI guidance for codex, copilot, or pi, or export its skill."
+        "Export the Kast agent skill. Agents receive the skill and MCP server through dotagents."
 
     override fun selection(): ManagementCommand =
-        when (val selected = admitProvisionTarget(target, output, mcp)) {
-            is ProvisionTargetAdmission.Admitted -> ManagementCommand.Install(selected.target, json)
-            is ProvisionTargetAdmission.Rejected -> throw CliktError(selected.reason)
-        }
+        if (target == "skill") ManagementCommand.InstallSkill(output, json)
+        else throw CliktError("Select skill; configure agents with dotagents")
 }
 
 private class UninstallCommand : ManagementNode("uninstall") {
-    private val harness by argument("harness").optional()
     private val force by
         option("--force", help = "Reset legacy state; managed products require ordinary uninstall.").flag()
     private val json by option("--json", help = "Print the force reset result.").flag()
 
-    override fun help(context: Context) = "Remove one harness integration, or this installation when omitted."
+    override fun help(context: Context) = "Remove this installation."
 
     override fun selection(): ManagementCommand {
-        val invalidOptions = if (force) harness != null else json
-        if (invalidOptions) throw CliktError("--force [--json] requires uninstall without a harness")
-        if (force) return ManagementCommand.ForceUninstall(json)
-        return when (val selected = harness) {
-            null -> ManagementCommand.Uninstall
-            else ->
-                ManagementCommand.UninstallHarness(
-                    Harness.parse(selected) ?: throw CliktError("Select codex, copilot, or pi")
-                )
-        }
+        if (json && !force) throw CliktError("--json requires --force")
+        return if (force) ManagementCommand.ForceUninstall(json) else ManagementCommand.Uninstall
     }
 }
 

@@ -88,7 +88,7 @@ The switch covers semantic results, descriptors, plans, startup rejections, and 
 Management commands keep their human output unless `--json` or TOON is selected.
 For semantic commands, plans, and discovery, `--json` selects JSON even when the switch selects TOON.
 Help, version text, and stderr diagnostics keep their existing formats.
-JSON requests, stored records, Host messages, MCP, and tool RPC keep their existing JSON contracts.
+JSON requests, stored records, Host messages, and MCP keep their existing JSON contracts.
 
 Set `KAST_OUTPUT_TOON=1` to select [TOON](https://toonformat.dev/guide/getting-started).
 An unset or empty variable selects JSON, as does `KAST_OUTPUT_TOON=0`.

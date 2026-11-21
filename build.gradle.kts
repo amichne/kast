@@ -166,12 +166,10 @@ val generateInstallerSupport = tasks.register<Exec>("generateInstallerSupport") 
     group = "distribution"
     description = "Projects installer support from the bootstrap generator's inventory."
     inputs.file("install.sh")
-    inputs.property("platform", controlArchivePlatform)
-    inputs.files(fileTree("agent-tools/skills/kast/scripts") { include("server.py", "server.py.lock") })
-    inputs.files(fileTree("packaging") { include("composed_bundle.py", "managed_headless.py", "internal/*/*.py", "internal/*/*.sh", "internal/*/*.lock", "*.lock", "*.txt", "*-v1") })
+    inputs.files(fileTree("packaging") { include("composed_bundle.py", "managed_headless.py", "internal/*/*.py", "internal/*/*.sh", "internal/*/*.lock", "*.lock", "*-v1") })
     outputs.dir(installerSupportDirectory)
     commandLine("python3", "packaging/internal/bootstrap/generate_bootstrap.py", "--support-directory",
-        installerSupportDirectory.get().asFile.absolutePath, "--target", controlArchivePlatform.get())
+        installerSupportDirectory.get().asFile.absolutePath)
 }
 val agentToolsDirectory = layout.buildDirectory.dir("generated/agent-tools")
 val generateKastAgentTools = tasks.register<GenerateAgentToolsTask>("generateKastAgentTools") {
@@ -206,7 +204,6 @@ val stageKastControlProduct = tasks.register<Sync>("stageKastControlProduct") {
     from("distribution/cli/lifecycle-fence-v1") { into("share/kast") }
     from("distribution/cli/public-reset-v1") { into("share/kast") }
     from("distribution/cli/reset-fence-v1") { into("share/kast") }
-    from("distribution/cli/guidance-refresh-v1") { into("share/kast") }
     from("distribution/contract/src/main/resources/management/reset-inventory-observation.schema.json") { into("share/kast/schema") }
     from("distribution/contract/src/main/resources/management/management-lifecycle.schema.json") { into("share/kast/schema") }
     from("distribution/cli/one-shot-observation-v1") {
@@ -231,7 +228,6 @@ val assembleKastControlDist = tasks.register<Tar>("assembleKastControlDist") {
                 "bin/kast",
                 "bin/kast-codex",
                 "bin/kast-mcp",
-                "bin/kast-tool-rpc",
                 "bin/kast-query",
                 "share/kast/libexec/kast-daemon",
                 "share/kast/libexec/kast-service",
@@ -374,7 +370,7 @@ val offlineInstallerChecks = setOf(
 
 val packagingTestModulePath = listOf(
     "packaging/internal/bootstrap", "packaging/internal/composition", "packaging/internal/installation",
-    "packaging/internal/product", "packaging/internal/mcp", "packaging/internal/runtime",
+    "packaging/internal/product", "packaging/internal/runtime",
     "packaging/internal/query", "packaging/internal/verification", "packaging/internal/configuration",
     "packaging", "packaging/tests",
 )
@@ -412,7 +408,6 @@ val managedInstallationTest = tasks.register<VerificationReportTask>("managedIns
         "packaging/tests/test_composition_descriptors.py", "packaging/tests/test_composition_host.py",
         "packaging/tests/test_composition_bundle.py", "packaging/tests/test_composition_release.py",
         "packaging/tests/test_runtime_archive.py", "packaging/tests/test_composition_platform.py",
-        "packaging/tests/test_mcp_environment.py", "packaging/tests/test_mcp_dependency_artifact.py",
         "packaging/tests/test_local_product_install.py", "-q"))
 }
 

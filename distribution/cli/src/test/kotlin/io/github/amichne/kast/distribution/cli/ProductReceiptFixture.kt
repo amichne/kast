@@ -12,8 +12,6 @@ internal data class ProductReceiptFixture(
     val executable: String,
     val executableSha256: String,
     val product: InstalledProductReference,
-    val registrations: List<ManagedRegistration>,
-    val guidance: List<ManagedGuidance>,
 )
 
 internal fun writeProductManagement(installation: Path, executable: Path, reference: InstalledProductReference) {
@@ -24,8 +22,6 @@ internal fun writeProductManagement(installation: Path, executable: Path, refere
             executable.toString(),
             sha256(executable),
             reference,
-            emptyList(),
-            emptyList(),
         )
     Files.writeString(receiptPath(installation.parent), containerJson.encodeToString(receipt))
 }

@@ -76,7 +76,6 @@ internal class ResetScopedProcess private constructor(val snapshot: LifecyclePro
                 "io.github.amichne.kast.cli.KastServiceMain",
                 "io.github.amichne.kast.appserver.KastCodexMain",
                 "io.github.amichne.kast.appserver.KastCodexMainKt",
-                "io.github.amichne.kast.cli.rpc.KastToolRpcMain",
                 "io.github.amichne.kast.cli.publicshell.KastPublicCliMain",
                 "io.github.amichne.kast.cli.mcp.KastMcpMain",
             )
@@ -137,7 +136,6 @@ internal class ResetScopedProcess private constructor(val snapshot: LifecyclePro
                     when (admitted.value.entry) {
                         NativeControlEntry.QUERY,
                         NativeControlEntry.MCP,
-                        NativeControlEntry.RPC,
                         NativeControlEntry.JQ,
                         NativeControlEntry.SERVICE,
                         NativeControlEntry.DAEMON,
@@ -159,12 +157,10 @@ internal class ResetScopedProcess private constructor(val snapshot: LifecyclePro
                         "kast-daemon",
                         "kast-service",
                         "kast-mcp",
-                        "kast-tool-rpc",
                         "kast-query",
                         "kast-query-complete",
                         "kast-codex",
                         "kast-mcp-complete",
-                        "kast-tool-rpc-complete",
                         "kast-codex-complete",
                     )
         }

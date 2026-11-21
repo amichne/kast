@@ -18,8 +18,8 @@ import managed_product as product
 import managed_product_installation as activation
 import managed_release as release
 import managed_update_journal as journal
-import product_mcp_removal
 import product_removal_recovery as recovery
+import product_state_removal
 
 
 class Failure(StrEnum):
@@ -146,7 +146,7 @@ def remove(root: Path, path: Path) -> Removed | Rejected:
         entries = recovery.preflight(root, proof, partial=True)
         for item, evidence in entries:
             immutable_store.erase(immutable_store.entry(root, item), evidence, item)
-        product_mcp_removal.erase(root, recovery.location(root), proof)
+        product_state_removal.erase(root)
         stage = Stage.CONTROL_PAYLOAD
         if not present:
             return Removed(str(root))

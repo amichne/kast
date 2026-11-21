@@ -1,7 +1,0 @@
-#!/bin/sh
-set -eu
-executable_dir=$(CDPATH= cd -- "$(dirname -- "$0")/../share/kast/libexec" && pwd -P)
-set -- --internal-entrypoint=rpc "$@"
-if [ -n "${HOME-}" ]; then set -- "-Duser.home=$HOME" "$@"; fi
-if [ -n "${TMPDIR-}" ]; then set -- "-Djava.io.tmpdir=$TMPDIR" "$@"; fi
-exec "$executable_dir/kast-management" "$@"

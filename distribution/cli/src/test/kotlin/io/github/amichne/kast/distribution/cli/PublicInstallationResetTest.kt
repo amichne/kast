@@ -86,7 +86,7 @@ class PublicInstallationResetTest {
     }
 
     @Test
-    fun `public reset removes unreceipted paths and keeps neighboring files`() {
+    fun `public reset removes unreceipted Kast paths and keeps agent configuration`() {
         val home = Files.createDirectories(temporary.toRealPath().resolve("home"))
         val root = Files.createDirectories(home.resolve(".local/share/kast"))
         val configuration = Files.createDirectories(home.resolve(".config/kast"))
@@ -94,10 +94,10 @@ class PublicInstallationResetTest {
         val bin = Files.createDirectories(home.resolve(".local/bin"))
         val backup = Files.writeString(bin.resolve(".kast-123.old"), "obsolete launcher")
         val staged = Files.writeString(bin.resolve(".kast-456.new"), "abandoned launcher")
+        // Agent configuration belongs to the agent, even where an older Kast once wrote it.
         val extension = home.resolve(".pi/agent/extensions/kast.ts")
         Files.createDirectories(extension.parent)
-        Files.writeString(extension, "obsolete extension")
-        val protected = Files.writeString(extension.resolveSibling("other.ts"), "keep")
+        Files.writeString(extension, "agent-owned extension")
         val unrelated = Files.writeString(bin.resolve("kast-other"), "keep")
         var inspections = 0
         var tables = 0
@@ -127,8 +127,8 @@ class PublicInstallationResetTest {
             resetPublicInstallation(admitted(root, home), execution(runtime)),
         )
 
-        for (path in listOf(configuration, backup, staged, extension)) assertFalse(Files.exists(path), path.toString())
-        assertEquals("keep", Files.readString(protected))
+        for (path in listOf(configuration, backup, staged)) assertFalse(Files.exists(path), path.toString())
+        assertEquals("agent-owned extension", Files.readString(extension))
         assertEquals("keep", Files.readString(unrelated))
         assertEquals(6, inspections)
         assertEquals(6, tables)

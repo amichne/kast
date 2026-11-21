@@ -154,11 +154,11 @@ class PublicQueryGenerationTest(unittest.TestCase):
         self.assertIn("Use `find`", brief)
         self.assertNotIn("EXACT|FUZZY", brief)
 
-    def test_adapter_versions_follow_the_same_authority(self):
+    def test_registry_version_follows_the_authority(self):
         self.authority["contractVersion"] = 37
         generated = generator.render_tools(self.authority)
-        for relative in ("copilot/extension.mjs", "pi/extension.ts"):
-            self.assertIn("const PUBLIC_TOOL_CONTRACT_VERSION = 37;", generated[ROOT / relative])
+        registry = generated[ROOT / "protocol/registry/src/main/kotlin/io/github/amichne/kast/protocol/registry/PublicToolIdentity.kt"]
+        self.assertIn("\nconst val PUBLIC_TOOL_CONTRACT_VERSION = 37\n", registry)
 
     def test_workflow_description_projects_to_registry_and_provider_catalogs(self):
         # Mutate metadata independently of parameter and response schemas.
@@ -196,16 +196,17 @@ class PublicQueryGenerationTest(unittest.TestCase):
             definitions["ImpactProducer"]["properties"]["anchor"],
         )
 
-    def test_pi_exposure_projects_the_authored_loading_policy(self):
-        self.authority["tools"][0]["deferLoading"] = True
+    def test_loading_policy_projects_to_registry_and_app_server_catalog(self):
+        # Invert every authored policy so an unchanged projection cannot pass.
+        for tool in self.authority["tools"]:
+            tool["deferLoading"] = not tool["deferLoading"]
+        expected = {tool["name"]: tool["deferLoading"] for tool in self.authority["tools"]}
         generated = generator.render_tools(self.authority)
-        source = generated[ROOT / "pi/extension.ts"]
-        match = re.search(r"const DEFERRED_TOOL_NAMES: readonly string\[\] = (\[.*?\]);", source, re.DOTALL)
-        self.assertIsNotNone(match)
-        self.assertEqual(
-            [tool["name"] for tool in self.authority["tools"] if tool["deferLoading"]],
-            json.loads(match.group(1)),
-        )
+        app_server = json.loads(generated[generator.RESOURCES / "tools.app-server.json"])
+        self.assertEqual(expected, {tool["name"]: tool["deferLoading"] for tool in app_server["tools"]})
+        registry = generated[ROOT / "protocol/registry/src/main/kotlin/io/github/amichne/kast/protocol/registry/PublicToolIdentity.kt"]
+        projected = dict(re.findall(r'\("([a-z_]+)", CanonicalOperation\.[A-Z_]+,.*?HostedToolLoading\.([A-Z]+),', registry, re.DOTALL))
+        self.assertEqual({name: "DEFERRED" if deferred else "EAGER" for name, deferred in expected.items()}, projected)
 
     def test_shared_refs_preserve_the_expanded_query_contract(self):
         # Expanded schemas pin constraints, defaults, budget guidance, and required fields.
@@ -291,40 +292,6 @@ class PublicQueryGenerationTest(unittest.TestCase):
         generated = generator.render_tools(self.authority)
         table = generated[ROOT / "agent-tools/references/query-row-compatibility.md"]
         self.assertIn("| WHERE, DISTINCT_SYMBOLS | Symbols | Preserved symbols |", table)
-
-    def test_adapter_failures_project_the_runtime_enum_owner(self):
-        owner = (ROOT / "cli/src/main/kotlin/io/github/amichne/kast/cli/rpc/KastToolRpcMain.kt").read_text()
-        values = re.search(r"internal enum class ToolRpcFailure \{([^}]+)\}", owner).group(1)
-        expected = [entry.strip() for entry in values.split(",") if entry.strip()]
-        generated = generator.render_tools(self.authority)
-        for relative in ("copilot/extension.mjs", "pi/extension.ts"):
-            block = re.search(r"const TOOL_RPC_FAILURES = \[(.*?)\]", generated[ROOT / relative], re.DOTALL).group(1)
-            self.assertEqual(expected, re.findall(r'"([A-Z_]+)"', block))
-
-    def test_portable_delivery_is_one_embedded_source_for_single_file_adapters(self):
-        owner = (ROOT / "cli/src/main/js/query-delivery.mjs").read_text().rstrip()
-        generated = generator.render_tools(self.authority)
-        for relative in ("copilot/extension.mjs", "pi/extension.ts"):
-            source = generated[ROOT / relative]
-            self.assertIn(owner, source)
-            self.assertEqual(1, source.count("async function awaitQueryDelivery("))
-            self.assertNotIn("from \"../", source)
-
-    def test_invocation_session_has_one_embedded_owner(self):
-        owner = (ROOT / "cli/src/main/js/query-session.mjs").read_text().rstrip()
-        generated = generator.render_tools(self.authority)
-        for relative in ("copilot/extension.mjs", "pi/extension.ts"):
-            source = generated[ROOT / relative]
-            self.assertIn(owner, source)
-            self.assertEqual(1, source.count("function createQuerySession("))
-
-    def test_importable_presentation_reuses_the_embedded_owner_exactly(self):
-        generated = generator.render_tools(self.authority)
-        owner = generated[ROOT / "cli/src/main/js/query-delivery.mjs"].rstrip()
-        companion = generated[ROOT / "cli/src/main/js/query-presentation.mjs"]
-        self.assertEqual(
-            '// Generated importable presentation; owned by cli/src/main/js/query-delivery.mjs.\n' +
-            owner + '\nexport { queryPresentation };\n', companion)
 
     def test_word_discovery_is_a_closed_scoped_source(self):
         source = self.authority["$defs"]["TextSource"]

@@ -20,8 +20,6 @@ code_sources:
   - path: packaging/internal/installation/host-installation.py
   - path: packaging/internal/bootstrap/generate_bootstrap.py
   - path: packaging/internal/product/local_product_install.py
-  - path: packaging/internal/mcp/mcp_dependency_artifact.py
-  - path: packaging/internal/mcp/mcp_environment.py
   - path: packaging/internal/installation/installation-lifecycle.py
   - path: packaging/internal/installation/installation-recovery.py
   - path: packaging/internal/verification/run-installed-product.py
@@ -53,8 +51,6 @@ Owns installer adapters, isolated runtime archives, offline lifecycle helpers, c
 - [managed_headless.py](managed_headless.py) - archive assembly without product installation.
 - [composed_host.py](internal/composition/composed_host.py) - module-based assembly from a pinned donor inventory.
 - [composed_bundle.py](composed_bundle.py) - authenticated product input archives.
-- [mcp_dependency_artifact.py](internal/mcp/mcp_dependency_artifact.py) - producer-only target-specific dependency materialization.
-- [mcp_environment.py](internal/mcp/mcp_environment.py) - admitted dependency copying and isolated MCP preparation without a package manager.
 - [composition_platform.py](internal/composition/composition_platform.py) - pinned macOS ARM64 and Linux x86-64 donors.
 - [composition_recipe.py](internal/composition/composition_recipe.py) - pinned roots and plugin provider candidates.
 - [composed_host_probe.py](internal/verification/composed_host_probe.py) - native callers, Java references, and result rejection.
@@ -66,7 +62,7 @@ Owns installer adapters, isolated runtime archives, offline lifecycle helpers, c
 
 ## Subdirectories
 
-- [internal/](internal/) - private bootstrap, composition, installation, MCP, product, query, runtime, verification, and configuration families.
+- [internal/](internal/) - private bootstrap, composition, installation, product, query, runtime, verification, and configuration families.
 - [tests/](tests/) - packaging tests and their fixture adapter.
 - [topology/](topology/) - explicit Git byte attribution for supplied historical paths.
 

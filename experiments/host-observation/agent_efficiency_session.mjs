@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { pathToFileURL, fileURLToPath } from 'node:url';
 import { createHash } from 'node:crypto';
-import { runOwnedWorker, WorkerDeadlineEnvironmentKey } from './pi_evaluation_controller.mjs';
+import { runOwnedWorker, WorkerDeadlineEnvironmentKey } from './owned_worker.mjs';
 import { admitProviderRequest } from './agent_efficiency_limits.mjs';
 import { projectCall, projectResult, createReferenceExposureAudit, projectProviderTiming } from './agent_efficiency_audit.mjs';
 
@@ -255,7 +255,7 @@ async function main(args) {
   const {plan}=admitted;
   if(args[0]==='--worker') {
     if(!process.send)throw Error('OWNED_WORKER_REQUIRED');
-    // The parent enforces the deadline. Its private KAST_ input is not a
+    // The parent enforces the deadline. Its private deadline input is not a
     // product configuration key and must not enter the native MCP process.
     delete process.env[WorkerDeadlineEnvironmentKey];
     const report=await runSession(plan);
@@ -267,7 +267,7 @@ async function main(args) {
   process.once('SIGINT',cancel);process.once('SIGTERM',cancel);
   const started=performance.now();
   const result=await runOwnedWorker(process.execPath,[fileURLToPath(import.meta.url),'--worker',file],{
-    cwd:plan.workspaceRoot,env:{...process.env,PI_OFFLINE:'1',PI_TELEMETRY:'0',KAST_TOOL_RPC_COMMAND:undefined},
+    cwd:plan.workspaceRoot,env:{...process.env,PI_OFFLINE:'1',PI_TELEMETRY:'0'},
     signal:controller.signal,wallMillis:plan.wallSeconds*1000});
   fs.writeFileSync(file+'.result.json',JSON.stringify({...result,parentWallSeconds:(performance.now()-started)/1000},null,2)+'\n',{mode:0o600,flag:'wx'});
   process.removeListener('SIGINT',cancel);process.removeListener('SIGTERM',cancel);

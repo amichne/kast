@@ -9,7 +9,7 @@
   },
   {
     "type": "REJECTED",
-    "artifact": "PI_REGISTRATION",
+    "artifact": "MANAGEMENT_RECEIPT",
     "failure": "OWNERSHIP_UNPROVEN"
   },
   {
@@ -21,11 +21,6 @@
     "type": "RECOVERY_REJECTED",
     "failure": "FOREIGN_CONTENT",
     "artifact": "RECOVERY_BUNDLE"
-  },
-  {
-    "type": "HOST_REJECTED",
-    "failure": "OWNERSHIP_UNPROVEN",
-    "artifact": "HOST_PLUGIN"
   },
   {
     "type": "HOME_CONFIGURATION_REJECTED",

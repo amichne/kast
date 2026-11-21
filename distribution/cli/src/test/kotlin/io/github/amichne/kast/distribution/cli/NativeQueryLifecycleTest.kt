@@ -15,7 +15,7 @@ class NativeQueryLifecycleTest {
     @Test
     fun `unified image admits only recorded client modes`(@TempDir temporary: Path) {
         val fixture = fixture(temporary, "share/kast/libexec/kast-management")
-        for (entry in listOf("query", "rpc", "mcp")) {
+        for (entry in listOf("query", "mcp")) {
             val observed =
                 fixture.snapshot.copy(
                     arguments = listOf("-Duser.home=/selected", "-Xmx256m", "--internal-entrypoint=$entry")
@@ -32,7 +32,7 @@ class NativeQueryLifecycleTest {
                 listOf("--internal-entrypoint=service"),
                 listOf("--internal-entrypoint=daemon"),
                 listOf("--internal-entrypoint=unknown"),
-                listOf("query", "--internal-entrypoint=rpc"),
+                listOf("query", "--internal-entrypoint=mcp"),
             )) assertEquals(
             ShutdownProcessAdmission.Rejected,
             fixture.admit(fixture.snapshot.copy(arguments = arguments)),
@@ -203,7 +203,7 @@ class NativeQueryLifecycleTest {
                 payloadFiles =
                     fixture.manifest.payloadFiles + BundledPayload("lib/kast.jar", "sha256:${sha256(jar)}", 420)
             )
-        for (main in listOf("mcp.KastMcpMain", "rpc.KastToolRpcMain", "publicshell.KastPublicCliMain")) {
+        for (main in listOf("mcp.KastMcpMain", "publicshell.KastPublicCliMain")) {
             val snapshot =
                 fixture.snapshot.copy(
                     command = "/fixture/bin/java",

@@ -47,15 +47,9 @@ internal object KastCleanSlateModules {
                 JvmClassName("io/github/amichne/kast/distribution/cli/ContainerManagementKt"),
                 JvmClassName("io/github/amichne/kast/distribution/cli/ManagementInstallationKt"),
                 JvmClassName("io/github/amichne/kast/distribution/cli/AdmittedCliSkill"),
-                JvmClassName("io/github/amichne/kast/distribution/cli/GuidanceProviderExecutionKt"),
                 JvmClassName("io/github/amichne/kast/distribution/cli/ManagedUpgradeKt"),
-                JvmClassName("io/github/amichne/kast/distribution/cli/PiSkillReplacementKt\$finishPiStage\$1\$1"),
                 JvmClassName("io/github/amichne/kast/distribution/cli/SkillExportKt"),
                 JvmClassName("io/github/amichne/kast/distribution/cli/SkillExportKt\$discardSkillStage\$1\$1"),
-                JvmClassName("io/github/amichne/kast/distribution/cli/IntegrationRegistrationKt"),
-                // Existing registration mutation and rollback effects, split into their owning files.
-                JvmClassName("io/github/amichne/kast/distribution/cli/IntegrationDisconnectionKt"),
-                JvmClassName("io/github/amichne/kast/distribution/cli/RegistrationPreimageKt"),
                 JvmClassName("io/github/amichne/kast/distribution/cli/ManagementLifecycleKt"),
                 // Resumable uninstall retains exact ownership before retiring artifacts.
                 JvmClassName("io/github/amichne/kast/distribution/cli/ManagementUninstallKt"),

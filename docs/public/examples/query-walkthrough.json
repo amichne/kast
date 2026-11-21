@@ -7,11 +7,11 @@
     "ideaBuild": "262.10315.125",
     "kotlinPluginBuild": "262.10315.125-IJ",
     "pluginSha256": "sha256:5e6a3054481cfdfea6d87236abdeece769d4f8d68b90c128aa70e42979b1f185",
-    "transport": "kast-tool-rpc-complete call query_symbols",
+    "transport": "query_symbols through the one-shot tool transport of the captured version; Kast 1.0 retires that transport",
     "workspace": "/workspace/kast",
     "normalization": "Only the absolute checkout prefix is replaced with /workspace/kast in all string values. Issued handles, host identity, epochs, ranges, timestamps and payloads are otherwise unchanged.",
     "outputDetail": "The matched installed CLI and IDEA plugin predate the verbose option and return detailed output. No compact-output claim is made by these captures.",
-    "reproduction": "Start at call 01 in the pinned source checkout. Reacquire every symbol/result/continuation from the preceding responses; recorded tokens are session-bound. Use each call.request as the Tool RPC stdin document. Pause builds and edits while composing retained results."
+    "reproduction": "Start at call 01 in the pinned source checkout. Reacquire every symbol/result/continuation from the preceding responses; recorded tokens are session-bound. Send each call.request as the arguments of a native MCP query_symbols call from kast --internal-entrypoint=mcp --catalog=COMPLETE. The requests keep the captured version's schema; current admission is not verified. Pause builds and edits while composing retained results."
   },
   "calls": [
     {

@@ -130,7 +130,7 @@ class NativeLifecycleProcessesTest {
                     Path.of(System.getProperty("java.home"), "bin/java").toString(),
                     "-cp",
                     jar.toString(),
-                    "io.github.amichne.kast.cli.rpc.KastToolRpcMain",
+                    "io.github.amichne.kast.cli.mcp.KastMcpMain",
                 )
                 .start()
         val reader = Executors.newSingleThreadExecutor()
@@ -161,8 +161,8 @@ class NativeLifecycleProcessesTest {
     }
 
     private fun createChildJar(installation: Path): Path {
-        val source = temporary.resolve("KastToolRpcMain.java")
-        Files.writeString(source, checkNotNull(javaClass.getResource("/lifecycle/KastToolRpcMain.java")).readText())
+        val source = temporary.resolve("KastMcpMain.java")
+        Files.writeString(source, checkNotNull(javaClass.getResource("/lifecycle/KastMcpMain.java")).readText())
         val classes = Files.createDirectory(temporary.resolve("classes"))
         assertEquals(
             0,
@@ -176,7 +176,7 @@ class NativeLifecycleProcessesTest {
                     source.toString(),
                 ),
         )
-        val relative = "io/github/amichne/kast/cli/rpc/KastToolRpcMain.class"
+        val relative = "io/github/amichne/kast/cli/mcp/KastMcpMain.class"
         val jar = installation.resolve("lib/kast.jar")
         JarOutputStream(Files.newOutputStream(jar)).use {
             it.putNextEntry(JarEntry(relative))

@@ -21,12 +21,11 @@ class UninstallContractTest {
                 UninstallCleanupObservation.Started(UninstallArtifact.CONTROL_PAYLOAD),
                 UninstallCleanupObservation.Completed(UninstallArtifact.PUBLIC_EXECUTABLE),
                 UninstallCleanupObservation.Rejected(
-                    UninstallArtifact.PI_REGISTRATION,
+                    UninstallArtifact.MANAGEMENT_RECEIPT,
                     UninstallCleanupFailure.OWNERSHIP_UNPROVEN,
                 ),
                 UninstallCleanupObservation.UserStateRejected(UserStateCleanupFailure.UNSETTLED_MUTATION),
                 UninstallCleanupObservation.RecoveryRejected(RecoveryRemovalFailure.FOREIGN_CONTENT),
-                UninstallCleanupObservation.HostRejected(HostPluginCleanupFailure.OWNERSHIP_UNPROVEN),
                 UninstallCleanupObservation.HomeConfigurationRejected(HomeConfigurationCleanupFailure.CONTENT_CHANGED),
                 UninstallCleanupObservation.ControlChildRejected(9),
                 UninstallCleanupObservation.ControlPayloadRetained(),

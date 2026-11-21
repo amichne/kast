@@ -26,8 +26,6 @@ RESOURCE_NAMES = ("onboarding.md", "query-schema.json", "query-examples.json")
 
 class Host(Enum):
     CODEX = "codex"
-    COPILOT = "copilot"
-    PI = "pi"
 
 
 class Failure(Enum):
@@ -59,11 +57,6 @@ class CodexOutput:
 
 
 @dataclass(frozen=True)
-class CopilotOutput:
-    additionalContext: str
-
-
-@dataclass(frozen=True)
 class Diagnostic:
     outcome: str
     stage: Literal["KAST_SESSION_CONTEXT"] = "KAST_SESSION_CONTEXT"
@@ -78,11 +71,7 @@ def workspace_from_event(raw: bytes) -> Path | Rejected:
         return Rejected(Failure.INVALID_EVENT)
     if not isinstance(event, dict):
         return Rejected(Failure.INVALID_EVENT)
-    cwd: object = event.get("cwd")
-    return workspace_from_path(cwd)
-
-
-def workspace_from_path(raw: object) -> Path | Rejected:
+    raw: object = event.get("cwd")
     if not isinstance(raw, str) or not raw or len(raw) > 4096 or any(ord(c) < 32 for c in raw):
         return Rejected(Failure.INVALID_EVENT)
     path = Path(raw)
@@ -128,10 +117,6 @@ def read_context(plugin: Path, workspace: Path) -> Context | Rejected:
 def encode(host: Host, context: Context) -> str:
     if host is Host.CODEX:
         return json.dumps(asdict(CodexOutput(CodexContext(context.text))), ensure_ascii=False)
-    if host is Host.COPILOT:
-        return json.dumps(asdict(CopilotOutput(context.text)), ensure_ascii=False)
-    if host is Host.PI:
-        return context.text
     return unexpected_host(host)
 
 
@@ -140,20 +125,11 @@ def unexpected_host(host: NoReturn) -> NoReturn:
 
 
 def main(arguments: list[str]) -> int:
-    if (
-        len(arguments) not in (1, 2)
-        or arguments[0] not in {host.value for host in Host}
-        or len(arguments) == 2
-        and arguments[0] != Host.PI.value
-    ):
+    if len(arguments) != 1 or arguments[0] not in {host.value for host in Host}:
         result = Rejected(Failure.INVALID_EVENT)
     else:
         host = Host(arguments[0])
-        workspace = (
-            workspace_from_path(arguments[1])
-            if len(arguments) == 2 and host is Host.PI
-            else workspace_from_event(sys.stdin.buffer.read(MAX_INPUT_BYTES + 1))
-        )
+        workspace = workspace_from_event(sys.stdin.buffer.read(MAX_INPUT_BYTES + 1))
         result = (
             workspace
             if isinstance(workspace, Rejected)

@@ -15,7 +15,6 @@ code_sources:
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/direct/KastDirectToolSession.kt
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/mcp/KastMcpMain.kt
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/publicshell/KastPublicCliMain.kt
-  - path: cli/src/main/kotlin/io/github/amichne/kast/cli/rpc/KastToolRpcMain.kt
   - path: distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/KastManagementMain.kt
   - path: install.sh
   - path: mise.toml
@@ -57,8 +56,6 @@ This guide owns repository rules and routes source investigation.
 - [`app-server/`](app-server/AGENTS.md) - persistent coordinator, host adapters, workspace lanes, and Codex protocol integration.
 - [`cli/`](cli/AGENTS.md) - the public semantic CLI, private JVM entry points, direct tools, installation workflows, and typed output projections.
 - [`frontend/`](frontend/AGENTS.md) - the tracer Go frontend for the persistent JVM coordinator, its staging, and acceptance.
-- [`copilot/`](copilot/extension.mjs) - optional agent extension over the shared tool RPC.
-- [`pi/`](pi/mcp-extension.ts) - shared context and native MCP registration for Pi.
 - [`distribution/`](distribution/AGENTS.md) and [`packaging/`](packaging/AGENTS.md) - installation contracts, managed artifacts, release assembly, and acceptance harnesses.
 - [`agent-tools/`](agent-tools/AGENTS.md) - shared context, generated query references, MCP plugins, and marketplace source.
 - [`build-logic/`](build-logic/AGENTS.md) - Gradle conventions and architecture enforcement.
@@ -75,8 +72,7 @@ This guide owns repository rules and routes source investigation.
 - Consumer graph: run `./gradlew generateVerificationGraph` after dependency changes. Copy its report to `config/ci/verification-graph.json` and examine the diff.
 - The opt-in CI rollout compares frozen changes before affected selection becomes the default. Read `.github/scripts/ci/README.md` for its evidence limits.
 - Cross-platform CI handoff: `.github/scripts/ci/release_handoff.py` binds the assembled release to source identity and digest. Linux assembles it; the Mac product job exercises that exact Control product.
-- Interface decision replay: read `experiments/host-observation/interface-replay/README.md` for the no-inference plan and restricted-shell adapter.
-- For agent evaluations, use the [Promptfoo suites](experiments/host-observation/promptfoo/README.md). For replay targets, use the [target contract](experiments/host-observation/interface-replay/hill-climb.md).
+- For agent evaluations, use the [Promptfoo suites](experiments/host-observation/promptfoo/README.md).
 - Candidate qualification: `mise exec -- python3 distribution/release/run_product_gate.py`. Source success grants no publication authority.
 - Release assembly: `./gradlew assembleRelease`.
 - Product installation: use the [managed installer](docs/public/reference/installation.mdx). Desktop IDEA, user Python, and uv are not product prerequisites.
@@ -89,7 +85,6 @@ This guide owns repository rules and routes source investigation.
 - Semantic host: `runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedEndpointService.kt`.
 - Codex/App Server main: `app-server/src/main/kotlin/io/github/amichne/kast/appserver/KastCodexMain.kt`.
 - Codex MCP main: `cli/src/main/kotlin/io/github/amichne/kast/cli/mcp/KastMcpMain.kt`.
-- Harness-neutral tool RPC main: `cli/src/main/kotlin/io/github/amichne/kast/cli/rpc/KastToolRpcMain.kt`.
 
 ## New Thread Remote Refresh
 
@@ -119,7 +114,7 @@ OpenWiki keeps its native root and lifecycle. Do not move its store through a re
 - For architecture uncertainty, use optional OpenWiki retrieval. If retrieval tools are unavailable, read `openwiki/quickstart.md` and its source citations.
 - For domain behavior, start in the matching `*/contract`, then read `*/service`, and open `*/intellij` only for platform effects.
 - For public syntax, start with the authored schema and admission in the [public query guide](app-server/src/main/kotlin/io/github/amichne/kast/appserver/query/AGENTS.md).
-- For semantic execution, trace the public CLI, direct MCP, or tool RPC through the existing-IDE client into `runtime/hosted` and the domain protocol owner.
+- For semantic execution, trace the public CLI or direct MCP through the existing-IDE client into `runtime/hosted` and the domain protocol owner.
 - For wire contracts, trace `protocol/contract` -> `protocol/registry` -> `protocol/wire`.
 - For startup or connectivity, start with `docs/public/start.mdx` and `docs/public/reference/installation.mdx`, then examine `cli`, `app-server`, and `runtime/hosted`.
 - For installation failures, start with `install.sh`, `distribution`, and `packaging`; use `app-server/docs/compatibility.md` for known Codex integration gates.

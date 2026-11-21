@@ -664,56 +664,6 @@ class AcceptanceTest(unittest.TestCase):
                                 live.assert_not_called()
             self.assertEqual(set[acceptance.Case](), runner.completed)
 
-    def test_rpc_catalog_uses_installed_launcher_and_rejects_unsuccessful_documents(self) -> None:
-        # A real child is needed here: the selected launcher, not a scripted
-        # semantic adapter, must produce the document that acceptance checks.
-        catalog = CatalogReply(
-            Catalog(
-                tuple(
-                    CatalogTool(name)
-                    for name in (
-                        "add_declaration",
-                        "check_diagnostics",
-                        "health_check",
-                        "query_symbols",
-                        "replace_body",
-                    )
-                )
-            )
-        )
-        with tempfile.TemporaryDirectory(prefix="rpc probe ") as temporary:
-            root = Path(temporary)
-            evidence = root / "evidence"
-            evidence.mkdir()
-            runner = probe.Probe(root / "kast", root / "home", evidence, root, root, {})
-            public = runner.home / ".local/bin/kast"
-            rpc = runner.root / "installation/bin/kast-tool-rpc"
-            for launcher in (public, rpc):
-                launcher.parent.mkdir(parents=True)
-            for reply in (
-                catalog,
-                RejectedReply(),
-                replace(catalog, type="complete"),
-                CatalogReply(Catalog(())),
-                CatalogReply(Catalog((CatalogTool("health_check"),))),
-            ):
-                with self.subTest(reply=reply):
-                    raw = json.dumps(asdict(reply)).encode()
-                    for launcher, output in (
-                        (public, json.dumps(asdict(RejectedReply())).encode()),
-                        (rpc, raw),
-                    ):
-                        _ = launcher.write_text(
-                            f"#!{sys.executable}\nimport sys\nsys.stdout.buffer.write({output!r})\n"
-                        )
-                        launcher.chmod(0o755)
-                    if reply == catalog:
-                        runner.catalog(root)
-                    else:
-                        with self.assertRaisesRegex(ValueError, "RPC catalog"):
-                            runner.catalog(root)
-                    self.assertEqual(raw, (evidence / "passive-catalog.stdout").read_bytes())
-                    self.assertEqual(set[acceptance.Case](), runner.completed)
 
     def test_local_fixture_keeps_real_native_binding_but_has_no_other_target_payload(self) -> None:
         native = record().targets[1]
@@ -895,7 +845,6 @@ class AcceptanceTest(unittest.TestCase):
                 "FRESH_INSTALL",
                 "PASSIVE_DISCOVERY",
                 "CLI_SEMANTICS",
-                "RPC_SEMANTICS",
                 "MCP_SEMANTICS",
                 "STOP_RESTART",
                 "SAME_ROOT_PARALLEL_FIRST_QUERIES",
@@ -931,12 +880,7 @@ class AcceptanceTest(unittest.TestCase):
             receipt,
             acceptance.decode(acceptance.encode(receipt), selected, "c" * 64, "linux-x86_64"),
         )
-        self.assertEqual(2, receipt.schemaVersion)
-        legacy = replace(receipt, schemaVersion=1, completedCases=receipt.completedCases[:12])
-        self.assertEqual(
-            legacy,
-            acceptance.decode(acceptance.encode(legacy), selected, "c" * 64, "linux-x86_64"),
-        )
+        self.assertEqual(3, receipt.schemaVersion)
         with tempfile.TemporaryDirectory() as temporary:
             directory = Path(temporary)
             (directory / "payload").mkdir()
@@ -946,24 +890,16 @@ class AcceptanceTest(unittest.TestCase):
             for target in selected.targets:
                 _ = (directory / "payload" / acceptance.filename(target.target)).write_bytes(
                     acceptance.encode(
-                        replace(legacy, target=target.target, buildRecordSha256=digest)
+                        replace(receipt, target=target.target, buildRecordSha256=digest)
                     )
                 )
                 _ = (directory / "payload" / target.qualification.receipt.name).write_text(
                     json.dumps(asdict(component))
                 )
             self.assertEqual(2, len(acceptance.assets(directory, selected)))
-            # Deliberately incompatible evidence: acceptance v1 cannot replace
-            # the missing native cases when the qualification stage changes.
-            _ = (directory / "payload" / selected.targets[0].qualification.receipt.name).write_text(
-                json.dumps(asdict(replace(component, qualificationStage="COMPONENT_ASSEMBLY")))
-            )
-            with self.assertRaisesRegex(ValueError, "requires installed acceptance v2"):
-                _ = acceptance.assets(directory, selected)
         for changed in (
-            replace(receipt, schemaVersion=3),
+            replace(receipt, schemaVersion=2),
             replace(receipt, completedCases=receipt.completedCases[:12]),
-            replace(legacy, completedCases=receipt.completedCases),
             replace(receipt, qualificationStage="COMPONENT_NATIVE"),
             replace(receipt, qualification="NOT_RUN"),
             replace(receipt, completedCases=()),

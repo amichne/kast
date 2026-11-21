@@ -11,7 +11,6 @@ import re
 import shutil
 import ssl
 import stat
-import struct
 import subprocess
 import tarfile
 import tempfile
@@ -1532,93 +1531,6 @@ def integration_digest(control: Path) -> str:
     return digest.hexdigest()
 
 
-def native_dependency_library(stream: IO[bytes], header: bytes, target: str) -> bool:
-    if len(header) != 32:
-        return False
-    if target == "macos-aarch64":
-        return header[:8] == b"\xcf\xfa\xed\xfe\x0c\x00\x00\x01" and header[12:16] in (
-            b"\x06\x00\x00\x00",
-            b"\x08\x00\x00\x00",
-        )
-    if target == "linux-x86_64":
-        return _elf_library(stream, header)
-    return False
-
-
-@dataclass(frozen=True, slots=True)
-class _ElfSegment:
-    kind: int
-    offset: int
-    address: int
-    size: int
-    memory_size: int
-
-
-def _elf_library(stream: IO[bytes], header: bytes) -> bool:
-    if header[:6] != b"\x7fELF\x02\x01" or header[16:24] != b"\x03\x00\x3e\x00\x01\x00\x00\x00":
-        return False
-    rest = stream.read(32)
-    if len(rest) != 32:
-        return False
-    table_offset, header_size, entry_size, count = struct.unpack("<Q12xHHH6x", rest)
-    length = stream.seek(0, os.SEEK_END)
-    if (
-        header_size != 64
-        or entry_size != 56
-        or not 1 <= count <= 256
-        or not 64 <= table_offset <= length - count * entry_size
-    ):
-        return False
-    _ = stream.seek(table_offset)
-    table = stream.read(count * entry_size)
-    if len(table) != count * entry_size:
-        return False
-    segments = tuple(_ElfSegment(*entry) for entry in struct.iter_unpack("<I4xQQ8xQQ8x", table))
-    # ET_DYN includes PIE. Reject PT_INTERP and inspect the mapped dynamic table.
-    for item in segments:
-        if item.kind == 3 or item.offset + item.size > length:
-            return False
-        if item.kind in (1, 2) and (
-            item.memory_size < item.size or item.address + item.memory_size >= 2**63
-        ):
-            return False
-    dynamic = tuple(segment for segment in segments if segment.kind == 2)
-    if len(dynamic) != 1:
-        return False
-    (segment,) = dynamic
-    if not 16 <= segment.size <= 65_536 or segment.size % 16:
-        return False
-    loads = tuple(
-        load
-        for load in segments
-        if load.kind == 1
-        and load.address <= segment.address
-        and segment.address + segment.memory_size <= load.address + load.memory_size
-    )
-    if len(loads) != 1:
-        return False
-    (load,) = loads
-    delta = segment.address - load.address
-    if segment.offset != load.offset + delta or delta + segment.size > load.size:
-        return False
-    _ = stream.seek(segment.offset)
-    entries = stream.read(segment.size)
-    if len(entries) != segment.size:
-        return False
-    flags_seen = False
-    terminated = False
-    for tag, value in struct.iter_unpack("<QQ", entries):
-        if terminated and (tag != 0 or value != 0):
-            return False
-        if tag == 0:
-            terminated = True
-        elif tag == 0x6FFFFFFB:
-            if flags_seen or value & 0x08000000:
-                return False
-            flags_seen = True
-    return terminated
-
-
 def inspect_control(
     control: Path, selection: Selection, record: ComponentRecord, target: str = PLATFORM
 ) -> BuildIdentity | Failure:
@@ -1689,7 +1601,7 @@ def inspect_control(
                 for path in control.rglob("*")
             ):
                 return Failure.ARTIFACT_INVALID
-            if native_executables(control, target) != [executable]:
+            if native_executables(control) != [executable]:
                 return Failure.ARTIFACT_INVALID
         elif native_layout.exists():
             if native_layout.read_bytes() != b"1\n":
@@ -1698,7 +1610,7 @@ def inspect_control(
                 return Failure.ARTIFACT_INVALID
             if any(path.suffix in (".jar", ".class") for path in control.rglob("*")):
                 return Failure.ARTIFACT_INVALID
-            if native_executables(control, target) != [executable]:
+            if native_executables(control) != [executable]:
                 return Failure.ARTIFACT_INVALID
         elif query_header != native_header:
             return Failure.ARTIFACT_INVALID
@@ -1722,17 +1634,13 @@ NATIVE_HEADERS = (
 )
 
 
-def native_executables(control: Path, target: str) -> list[Path]:
-    """Every native file outside admitted dependency libraries; the Control executable must be the only one."""
+def native_executables(control: Path) -> list[Path]:
+    """Every native file in the payload; the Control executable must be the only one."""
     found: list[Path] = []
     for path in control.rglob("*"):
         if path.is_file():
             with path.open("rb") as stream:
-                header = stream.read(32)
-                if header[:4] in NATIVE_HEADERS and not (
-                    path.is_relative_to(control / "share/kast/mcp-dependencies/site-packages")
-                    and native_dependency_library(stream, header, target)
-                ):
+                if stream.read(4) in NATIVE_HEADERS:
                     found.append(path)
     return found
 

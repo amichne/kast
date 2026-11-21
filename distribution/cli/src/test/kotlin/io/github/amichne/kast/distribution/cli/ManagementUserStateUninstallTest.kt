@@ -56,15 +56,9 @@ class ManagementUserStateUninstallTest {
         val root = Files.createDirectories(home.resolve(".local/share/kast"))
         val executable = Files.createDirectories(home.resolve(".local/bin")).resolve("kast")
         Files.writeString(executable, "owned executable")
+        val product = productFixture(Files.createDirectory(temporary.resolve("product"))).reference
         val receipt =
-            ManagementReceipt(
-                2,
-                root.toString(),
-                executable.toString(),
-                sha256(executable),
-                ReleaseChannel.STABLE,
-                emptyList(),
-            )
+            ProductManagementReceipt(3, root.toString(), executable.toString(), sha256(executable), product).refine()
         writeManagementReceipt(root, receipt)
         persistUninstallRetirement(root, receipt)
         return Fixture(home, root, executable)

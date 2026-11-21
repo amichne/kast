@@ -6,7 +6,7 @@
       "timeout": 3780000,
       "args": [
         "-c",
-        "I=\"${KAST_INSTALL_ROOT:-${HOME}/.local/share/kast}/installation\"; exec \"$I/share/kast/private-python/bin/python3.12\" -I -S -B \"$I/share/kast/mcp_environment.py\" serve --install-root \"$I\""
+        "PATH=\"${HOME}/.local/bin:${PATH}\" exec kast --internal-entrypoint=mcp"
       ]
     }
   }

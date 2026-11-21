@@ -25,42 +25,27 @@ Use the repository Node version from `mise.toml`. Run these commands from the re
 ```sh
 cd experiments/host-observation/promptfoo
 npm ci --ignore-scripts --no-audit --no-fund
-node --test participant-surface.test.mjs review-packet.test.mjs comprehension.test.mjs compare.test.mjs pi-accounting.test.mjs corpus-provider.test.mjs corpus-report.test.mjs portfolio.test.mjs
+node --test participant-surface.test.mjs review-packet.test.mjs compare.test.mjs pi-accounting.test.mjs pi-credential.test.mjs corpus-provider.test.mjs corpus-report.test.mjs portfolio.test.mjs
 uv run --locked --project .. pytest -q --noconftest -p no:cacheprovider test_corpus_trial.py
 ```
 
 These tests exercise the real deterministic rules with pinned inputs or injected process effects. They do not invoke models or the Promptfoo CLI.
-The default Pi configuration still contains 33 positive and negative decisions for the six interface replay graders.
-The added comprehension mode contains 52 controls, including the archived `ktfmt` answer. A control pass confirms the expected grader decision.
 
 The pinned Promptfoo 0.125.1 CLI attempts telemetry even when `PROMPTFOO_DISABLE_TELEMETRY=1` is set.
 Its telemetry-disabled notification still posts to `r.promptfoo.app`; `PROMPTFOO_DISABLE_UPDATE=1` stops the separate update check.
-Six CLI integration checks remain blocked in an environment that rejects those requests. `npm test` includes those checks.
+The CLI integration checks remain blocked in an environment that rejects those requests. `npm test` includes those checks.
 The direct checks above do not replace CLI integration qualification. Do not describe the CLI as fully offline until its outbound behavior is resolved.
 
 ## Curated portfolio
 
-Keep natural engineering tasks (Panel A) separate from supplied-evidence comprehension diagnostics (Panel B).
+The curated portfolio holds natural engineering tasks (Panel A).
 Set `KAST_EVAL_PORTFOLIO=curated` for the existing corpus and developer configurations. The default keeps all existing cases.
-Set `KAST_PI_COMPREHENSION=controls` for deterministic Panel B controls or `live` for explicit model trials through `pi.config.mjs`.
-Those modes cannot be combined with a Pi plan or recorded target. Live mode invokes participant models and needs its normal prerequisites.
 
 | Panel | Case | Distinct question | Current qualification |
 |---|---|---|---|
 | A | `spring-reactive-server-response-primitive-status-callers` | Can ordinary maintenance identify the exact primitive overload across source files? | Blocked before credentials or models: the corpus baseline lacks ordinary compiler/test inspection. |
 | A | `picnic-ansi` | Can a change preserve visible table widths, escape bytes, and multiline behavior? | Existing independent Kotlin effect oracle; extracted upstream fixture and macOS execution prerequisites. |
 | A | `coroutine-delay-rounding` | Does Kast help with an ordinary local arithmetic repair? | Existing independent Kotlin effect oracle; extracted conversion function and macOS execution prerequisites. |
-| B | `ktfmt-constant-indent-negation-evidence-v1` | Can a model deliver every required exact line from supplied evidence? | Pinned source reconstruction; archived incorrect answer retained separately from synthetic controls. |
-| B | `C5` | Does a model distinguish a representative walk from exhaustive scope? | Existing independent replay grader and synthetic contract fixture. |
-| B | `source-freshness-after-edit-v1` | Can a model reject retained evidence after the source changes? | Frozen synthetic packet and independent decision oracle. |
-| B | `readiness-failure-no-absence-v1` | Can a model distinguish readiness failure from an absent symbol? | Frozen synthetic packet and independent decision oracle. |
-
-Panel B input, oracle, control, and guidance hashes are frozen in [the manifest](comprehension/manifest.json).
-Each case also declares its `participantFields`. The participant receives only that projection of the frozen input, and its hash is `participantSha256`.
-Curator provenance, owner paths, archived run identifiers, and model names stay in the input file. Private answer files stay with the grader.
-Both arms have identical evidence, no tools, a 60-second participant-process limit, and a post-hoc one-response check.
-No pre-send response or output-token ceiling is claimed. These diagnostics cannot establish end-to-end engineering uplift.
-Native readiness, freshness, and semantic tests keep their existing owners.
 
 The corpus source tools now filter eligible pinned files before applying capture limits and expose recoverable text truncation.
 That repair does not qualify their restricted tool set as a competent ordinary engineering baseline.
@@ -116,7 +101,6 @@ Promptfoo uses a fresh model response for each live trial. Provider caches can s
 | `separation.config.mjs` | Three twin cases with three configurations: two binary-dependency cases and an imported project. | Prepare with `npm run separation:prepare`. [Separation guide](separation.md) |
 | `corpus.config.mjs` | Full `ktfmt`, kotlinx.coroutines, and Spring Framework checkouts with three low-reasoning delegates. | [Upstream workspace guide](upstream-workspaces.md) |
 | `developer.config.mjs` | Implement features, migrate an API, trace dispatch, and fix a scheduler defect with or without Kast. | Use Pi, Kast, Kotlin/JVM, and macOS. [Developer task guide](developer-tasks.md) |
-| `pi.config.mjs` | Six replay graders, paired interface formats, fresh Pi tasks, received results, or a recorded target | Use `KAST_PI_EVAL_PLAN` for a live plan. Use `KAST_PI_EVAL_TARGET` for a recorded target. [Pi guide](../PI_EVALUATION.md) |
 | `agent-efficiency.config.mjs` | Paired control and Kast treatment on a curated development or holdout corpus. The optimization plan adds candidate configurations. | Supply the private corpus and `KAST_EFFICIENCY_PLAN`. [Efficiency guide](../AGENT_EFFICIENCY.md) |
 | `semantic-campaign.config.mjs` | Source witnesses for baseline, relation, and source variants across the named repositories | Supply `KAST_CAMPAIGN_PLAN` and the specified checkout, executable, and log. [Campaign guide](../CAMPAIGN_RESULTS.md) |
 | `skill.config.mjs` | Canonical skill, historical skill revisions, and matched source questions with and without Kast | Use Pi and Kast. The repository case uses this checkout or `KAST_EVAL_QCD_WORKSPACE`. |
@@ -147,10 +131,7 @@ The `literal-read` case passes only when the agent answers from source without a
 The `unprepared` case copies the fixture without a Gradle wrapper into an owned temporary directory.
 It passes only for the typed preparation cause with no identical retry. It stops that Host and removes the directory.
 
-The interface replay manifest also lists four reserved tasks. Its development suite runs the six cases with published graders.
-
 Host acceptance, SDK admission, corpus preparation, and deterministic adapter tests keep their existing owners.
-The historical `run_try_local_pi.mjs` probe uses Pi to invoke a scripted native qualification sequence.
 Each agent evaluation starts through a Promptfoo configuration.
 
 ## Interpret a comparison
@@ -168,10 +149,10 @@ The report pairs each observed case and repetition. A missing arm, a provider er
 Each case has equal weight. An arm wins on correctness if it alone solved a pair and the other arm never won a pair.
 If each arm wins a different pair, the report shows mixed correctness.
 Efficiency comparison requires two correct answers on every pair, matching task and source or evidence hashes, model, effort, permissions, and budgets.
-Panel A also requires baseline admission. Both Panel A and Panel B rows need an admitted `participantSurface` under the same vocabulary version. Otherwise the report gives `UNBLINDED_PARTICIPANT_SURFACE` and no preference, even on correctness.
+Panel A also requires baseline admission. Panel A rows, and Panel B rows in archived exports, need an admitted `participantSurface` under the same vocabulary version. Otherwise the report gives `UNBLINDED_PARTICIPANT_SURFACE` and no preference, even on correctness.
 Observed resolved-model mismatches block a preference even on incomplete attempts.
 Complete dollars are compared first; a dollar tie permits peak input-context comparison, then model responses, then full task time.
-The full-time boundary includes preparation, participant work, independent grading, and cleanup. Participant-only and comprehension-provider timing remain descriptive.
+The full-time boundary includes preparation, participant work, independent grading, and cleanup. Participant-only timing remains descriptive.
 Token and tool-call totals are descriptive counters, not fallback rankings when dollars are missing. No combined quality/cost/speed score is produced.
 Repetitions measure consistency on the selected cases. The report makes no population-level estimate.
 

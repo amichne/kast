@@ -8,16 +8,11 @@ import kotlinx.serialization.Serializable
 @Serializable
 internal enum class UninstallArtifact {
     CONTROL_PAYLOAD,
-    HOST_PLUGIN,
     HOME_CONFIGURATION,
     USER_STATE,
     RECOVERY_BUNDLE,
     ACTIVATION_LOCK,
     MANAGED_ROOT,
-    CODEX_MCP_REGISTRATION,
-    CODEX_APP_SERVER_REGISTRATION,
-    COPILOT_REGISTRATION,
-    PI_REGISTRATION,
     PUBLIC_EXECUTABLE,
     MANAGEMENT_LOCK,
     MANAGEMENT_RECEIPT,
@@ -67,12 +62,6 @@ internal sealed interface UninstallCleanupObservation {
     }
 
     @Serializable
-    @SerialName("HOST_REJECTED")
-    data class HostRejected(val failure: HostPluginCleanupFailure) : UninstallCleanupObservation {
-        @Required override val artifact: UninstallArtifact = UninstallArtifact.HOST_PLUGIN
-    }
-
-    @Serializable
     @SerialName("RECOVERY_REJECTED")
     data class RecoveryRejected(val failure: RecoveryRemovalFailure) : UninstallCleanupObservation {
         @Required override val artifact: UninstallArtifact = UninstallArtifact.RECOVERY_BUNDLE
@@ -84,11 +73,3 @@ internal sealed interface UninstallCleanupObservation {
         @Required override val artifact: UninstallArtifact = UninstallArtifact.USER_STATE
     }
 }
-
-internal fun HarnessConnection.uninstallArtifact(): UninstallArtifact =
-    when (this) {
-        HarnessConnection.CODEX_MCP -> UninstallArtifact.CODEX_MCP_REGISTRATION
-        HarnessConnection.CODEX_APP_SERVER -> UninstallArtifact.CODEX_APP_SERVER_REGISTRATION
-        HarnessConnection.COPILOT -> UninstallArtifact.COPILOT_REGISTRATION
-        HarnessConnection.PI -> UninstallArtifact.PI_REGISTRATION
-    }

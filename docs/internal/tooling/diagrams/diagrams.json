@@ -61,7 +61,7 @@
   },
   {
     "name": "request-lifecycle",
-    "label": "From a Tool RPC request to its reply",
+    "label": "From a tool call to its reply",
     "page": "reference/lifecycles.mdx",
     "component": "RequestLifecycleDiagram"
   },

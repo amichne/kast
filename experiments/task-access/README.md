@@ -2,7 +2,7 @@
 
 The candidate now lives in the [bundled Kast skill](../../agent-tools/skills/kast/SKILL.md).
 The [agent integration guide](../../agent-tools/README.md) describes its default MCP and native adapter routes.
-The implementation uses the existing tool RPC. Its tests live in `packaging/task-access`.
+The original tool RPC implementation and its `packaging/task-access` tests were removed with tool RPC.
 The records in this document describe the original contract-17 candidate before promotion.
 
 The [Promptfoo guide](../host-observation/promptfoo/README.md) describes the current procedure for these historical cases.

@@ -6,7 +6,7 @@ import { constants } from 'node:fs';
 import { homedir, tmpdir } from 'node:os';
 import { delimiter, isAbsolute, join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { decodeReplayCredential } from '../pi_evaluation_replay_auth.mjs';
+import { decodeReplayCredential } from './pi-credential.mjs';
 import { loadKastGuidance, stageKastGuidance } from './kast-guidance.mjs';
 import { armCapabilities, completionFile, guidedCases, invocationFile, originalCases, skillCases } from './skill-cases.mjs';
 import { runtimeEnvironment } from './skill-sandbox.mjs';

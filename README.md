@@ -11,7 +11,7 @@ Each answer says whether the search finished, so the agent can tell "none found"
 You need:
 
 - An Apple silicon Mac and a Kotlin Gradle project.
-- The Codex, Copilot, or Pi CLI.
+- A coding agent that [dotagents](https://github.com/getsentry/dotagents) supports, and Node.js to run it.
 
 Kast supplies its runtime. You do not need desktop IDEA, Python, or uv.
 This branch documents the managed-runtime contract; native acceptance and publication are not yet complete.
@@ -27,13 +27,15 @@ Setup takes three steps.
    The installer selects one complete build. Step 2 connects your agent.
    If your shell cannot find `kast`, add the directory that the installer prints to your `PATH`, then open a new terminal.
 
-2. Connect your agent. Use `copilot` or `pi` instead of `codex` for those agents.
+2. Connect your agent. From your repository root, export the Kast skill:
 
    ```shell
-   kast install codex
+   kast install skill
    ```
 
-   Start a new agent session in your project. Session hooks are passive; they do not start the runtime or grant trust.
+   Declare that skill and the Kast MCP server in `agents.toml`, then run `npx @sentry/dotagents --project install`.
+   [Connect your agent](https://kast.michne.com/reference/integrations/) gives the exact entries.
+   Start a new agent session in your project. Agent setup does not start the runtime or grant trust.
 
 3. Query from a project root whose build code you trust. The first explicit semantic request grants trust to that exact root and starts its private Host. Replace `DECLARATION_NAME` with a class or function in your project.
 

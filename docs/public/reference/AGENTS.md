@@ -18,7 +18,7 @@ code_sources:
 
 # Public reference ownership
 
-- The MCP and tool RPC contract pages and transport model pages are authored content.
+- The MCP contract page and transport model pages are authored content.
 - `cli.mdx` owns common native CLI examples. The installed `kast describe` output owns the current command contract.
 - `installation.mdx` and `management.mdx` describe managed build selection and activation. `integrations.mdx` owns CLI guidance and explicit optional MCP setup.
 - `docs/okf-public.json` selects public views of shared OpenWiki OKF concepts.

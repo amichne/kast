@@ -1,8 +1,6 @@
 package io.github.amichne.kast.distribution.cli
 
 import io.github.amichne.kast.distribution.contract.InstallationShutdownRequest
-import io.github.amichne.kast.distribution.contract.InstalledBuildIdentity
-import io.github.amichne.kast.distribution.contract.UpdatePolicy
 import java.nio.file.Files
 import java.nio.file.Path
 import java.security.MessageDigest
@@ -314,14 +312,23 @@ class ManagedUpgradeTest {
                 )
             ),
         )
-        if (pinned) {
-            val receipt = (readReceipt(fixture.root) as ReceiptRead.Read).receipt
-            val identity = InstalledBuildIdentity("v1.2.3", "1.2.3", "a".repeat(40), "b".repeat(40))
-            writeManagementReceipt(
-                fixture.root,
-                receipt.copy(updatePolicy = UpdatePolicy.PinnedBuild(identity), installedBuild = identity),
-            )
-        }
+        if (pinned) pinFixtureProduct(fixture)
         return fixture
     }
+}
+
+/** A pin is the product's selection policy, recorded in the installation and its receipt. */
+private fun pinFixtureProduct(fixture: LifecycleFixture) {
+    val receipt = (readReceipt(fixture.root) as ReceiptRead.Read).receipt
+    val product = receipt.product.copy(policy = ProductSelectionPolicy.PinnedBuild)
+    val selection = fixture.installation.resolve("share/kast/product-selection.json")
+    Files.writeString(selection, containerJson.encodeToString(product))
+    val manifestPath = fixture.installation.resolve("installation.json")
+    val written = managementJson.decodeFromString<FixtureLifecycleManifest>(Files.readString(manifestPath))
+    val refreshed =
+        written.payloadFiles.map {
+            if (it.path == "share/kast/product-selection.json") it.copy(sha256 = "sha256:${sha256(selection)}") else it
+        }
+    Files.writeString(manifestPath, managementJson.encodeToString(written.copy(payloadFiles = refreshed)))
+    writeTestManagementReceipt(fixture.root, Path.of(receipt.executable), product)
 }

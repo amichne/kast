@@ -1,13 +1,11 @@
 package io.github.amichne.kast.distribution.cli
 
-import io.github.amichne.kast.distribution.contract.UpdatePolicy
 import io.github.amichne.kast.distribution.managed.CanonicalRootDiscovery
 import io.github.amichne.kast.distribution.managed.FilesystemCanonicalRootDiscovery
 import io.github.amichne.kast.kernel.Refinement
 import java.nio.file.Files
 import java.nio.file.Path
 import kotlinx.serialization.encodeToString
-import kotlinx.serialization.json.jsonObject
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertNotEquals
@@ -142,49 +140,6 @@ class InstalledProductRuntimeTest {
             )) {
             assertTrue(parseManagementCommand(arguments) is ManagementParsing.Print)
         }
-    }
-
-    @Test
-    fun `product management receipts preserve exact identity and guidance across writes`() {
-        val fixture = productFixture(temporary)
-        val root = fixture.installation.parent
-        val guidance =
-            listOf(
-                ManagedGuidance(
-                    Harness.PI,
-                    temporary.resolve("skills/kast").toString(),
-                    listOf(GuidanceFile("SKILL.md", "e".repeat(64))),
-                )
-            )
-        val wire =
-            ProductReceiptFixture(
-                3,
-                root.toString(),
-                temporary.resolve("bin/kast").toString(),
-                "d".repeat(64),
-                fixture.reference,
-                emptyList(),
-                guidance,
-            )
-        val admitted = admitManagementReceipt(root, containerJson.encodeToString(wire))
-        assertTrue(admitted is ReceiptRead.Read, admitted.toString())
-        val receipt = (admitted as ReceiptRead.Read).receipt
-        assertEquals(UpdatePolicy.TrackMain, receipt.updatePolicy)
-        assertEquals(guidance, receipt.guidance)
-        writeManagementReceipt(root, receipt)
-        val actual = containerJson.parseToJsonElement(Files.readString(receiptPath(root))).jsonObject
-        val expected = containerJson.parseToJsonElement(containerJson.encodeToString(wire)).jsonObject
-        assertEquals(expected, actual)
-        assertEquals(admitted, readReceipt(root))
-        assertEquals(
-            ReceiptRead.Unavailable("receipt_invalid"),
-            admitManagementReceipt(
-                root,
-                containerJson.encodeToString(
-                    wire.copy(product = fixture.reference.copy(sourceRevision = "e".repeat(40)))
-                ),
-            ),
-        )
     }
 
     @Test

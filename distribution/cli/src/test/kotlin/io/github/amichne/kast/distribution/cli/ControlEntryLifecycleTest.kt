@@ -31,7 +31,7 @@ class ControlEntryLifecycleTest {
         for (entry in
             listOf(
                 listOf("--internal-entrypoint=mcp"),
-                listOf("--internal-entrypoint=rpc"),
+                listOf("--internal-entrypoint=mcp"),
                 listOf("--internal-entrypoint=query", "query"),
                 listOf("query", "--name", "Fixture"),
             )) {

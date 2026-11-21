@@ -7,7 +7,6 @@ tags: [kast, navigation]
 timestamp: "2026-10-26T11:36:07Z"
 source_revision: 371fb8bfcb7c2c22a12ab373b3d7c49d1fbb528a
 code_sources:
-  - path: build-logic/src/main/kotlin/support/tasks/verification/NativeElfLibrary.kt
   - path: build-logic/src/main/kotlin/support/tasks/verification/VerifyDistributionTasks.kt
   - path: build-logic/src/main/kotlin/support/tasks/nativefixtures/CompileDependencyFixture.kt
   - path: build-logic/build.gradle.kts
@@ -82,8 +81,6 @@ Defines Gradle conventions, effect ownership, architecture gates, generated cont
 
 ## Native distribution inventory
 
-`VerifyControlDistributionTask` keeps one native executable and admits target-compatible libraries only inside the MCP dependency tree.
+`VerifyControlDistributionTask` keeps exactly one native executable, the Control executable, and admits no other native file.
 Its bounded report records candidate paths, sizes, digests, header bytes, classifications, and complete counts before rejection.
 Read `build/reports/distribution/control-native-inventory.json` after an inventory failure.
-`NativeElfLibrary.kt` owns Linux program-header and dynamic-metadata admission.
-The [pinned CFFI investigation](../docs/internal/reviews/native-library-classification.md) records the failure mechanism and its evidence limits.

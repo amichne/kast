@@ -324,7 +324,6 @@ private fun addRetainedEvidence(bundle: Path, proof: ProductRemovalProof, expect
                 RetainedFile(target.qualification.receipt.sha256, PRIVATE_FILE_MODE)
         } else requireRemoval(Files.notExists(directory.resolve("qualification.json"), NOFOLLOW_LINKS))
     }
-    proof.mcp?.let { expected[bundle.resolve("mcp-receipt.json")] = RetainedFile(it.receiptSha256, PRIVATE_FILE_MODE) }
 }
 
 private fun removalPaths(directory: Path): List<Path> {

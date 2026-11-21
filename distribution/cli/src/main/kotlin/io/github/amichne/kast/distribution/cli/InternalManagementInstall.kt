@@ -27,22 +27,8 @@ private fun internalInstall(arguments: List<String>, environment: Map<String, St
         }
     when (arguments[1]) {
         "managed-retire" -> return retireManagedInstallation(root, environment)
-        "refresh-guidance",
-        "refresh-guidance-with-codex" ->
-            return when (
-                val refreshed =
-                    refreshCompletedInstallation(root, environment, arguments[1] == "refresh-guidance-with-codex")
-            ) {
-                LifecycleEffect.Completed -> InternalInstallExit.COMPLETED
-                is LifecycleEffect.Rejected -> throw ManagementRejected("guidance-refresh", refreshed.failure.name)
-            }
         "preflight-reset",
         "reset" -> return internalPublicReset(root, environment, arguments[1])
-        "restore-connections" ->
-            return when (val restored = restorePublicResetConnections(root, environment)) {
-                LifecycleEffect.Completed -> InternalInstallExit.COMPLETED
-                is LifecycleEffect.Rejected -> throw ManagementRejected("reset-connections", restored.failure.name)
-            }
         else -> throw ManagementRejected("installer-protocol", "invalid request")
     }
 }
@@ -56,10 +42,6 @@ private fun internalPublicReset(root: Path, environment: Map<String, String>, ac
     if (action == "preflight-reset") {
         println(scope.command)
         return InternalInstallExit.COMPLETED
-    }
-    when (val saved = savePublicResetConnections(root, environment)) {
-        LifecycleEffect.Completed -> Unit
-        is LifecycleEffect.Rejected -> throw ManagementRejected("reset-connections", saved.failure.name)
     }
     return when (presentForceReset(resetPublicInstallation(scope), true)) {
         ForceResetExit.COMPLETE -> InternalInstallExit.COMPLETED

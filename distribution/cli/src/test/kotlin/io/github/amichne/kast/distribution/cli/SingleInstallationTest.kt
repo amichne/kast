@@ -15,17 +15,9 @@ class SingleInstallationTest {
 
     @Test
     fun `management admits one ordinary installation and all integration paths use that location`() {
-        val (root, home) = integrationFixture(temporary, HarnessConnection.CODEX_MCP)
+        val (root, _) = integrationFixture(temporary, HarnessConnection.CODEX_MCP)
         val installation = root.resolve("installation").toRealPath()
         assertEquals(installation, selectedInstallation(root))
-        assertEquals(
-            root.resolve("installation/bin/kast-mcp-complete"),
-            registrationDestinationFor(root, home, HarnessConnection.CODEX_MCP),
-        )
-        assertEquals(
-            installation.resolve("bin/kast-codex-complete"),
-            registrationSourceFor(installation, HarnessConnection.CODEX_APP_SERVER),
-        )
         assertFalse(Files.isSymbolicLink(installation))
         assertEquals(
             listOf("installation", "management.json"),

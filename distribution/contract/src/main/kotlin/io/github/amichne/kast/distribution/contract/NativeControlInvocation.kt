@@ -7,7 +7,6 @@ enum class NativeControlEntry(val selector: String) {
     QUERY("query"),
     JQ("jq"),
     MCP("mcp"),
-    RPC("rpc"),
     SERVICE("service"),
     DAEMON("daemon"),
     CODEX("codex"),

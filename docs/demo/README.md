@@ -66,7 +66,7 @@ The [request templates](requests.json) include the transport lookup omitted from
 They use contract 17's required EMIT terminals, with output inside `terminalStep`.
 This syntax update does not change the historical clip or evidence and does not establish new semantic results.
 Replace each placeholder with the ref or result just issued by its prior call.
-Follow the [public request capture guide](../../experiments/representation-impact/README.md) and [Tool RPC contract](../tool-rpc.md).
+Follow the [fixture investigation recipe](../../experiments/representation-impact/README.md).
 Acquire fresh callable references through public queries; keep each `RUN` and its retained reads tied to the same result.
 Never reuse or decode old opaque references.
 Preserve rejection states and drain the evidence before making an absence claim.

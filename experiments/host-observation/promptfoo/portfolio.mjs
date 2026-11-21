@@ -5,13 +5,6 @@ export const naturalPortfolio = Object.freeze([
   'coroutine-delay-rounding',
 ]);
 
-export const comprehensionPortfolio = Object.freeze([
-  'ktfmt-constant-indent-negation-evidence-v1',
-  'C5',
-  'source-freshness-after-edit-v1',
-  'readiness-failure-no-absence-v1',
-]);
-
 export function selectPortfolioCases(cases, selection = 'all') {
   if (selection === 'all') return cases;
   if (selection === 'curated') return cases.filter(item => naturalPortfolio.includes(item.id));
@@ -20,7 +13,6 @@ export function selectPortfolioCases(cases, selection = 'all') {
 
 const variants = Object.freeze({
   A: 'Kast tool access with the ordinary Kast skill, against the same source-only tools and permissions.',
-  B: 'The ordinary Kast skill text, against no added guidance, with identical supplied evidence and no tools.',
 });
 
 // Frame each selected case before any trial (pstack eval playbook, step 1): the
@@ -47,27 +39,5 @@ export const portfolioFrames = Object.freeze(Object.fromEntries([
     'Returns exact millisecond durations unchanged, including large finite values.',
     'Returns zero for nonpositive durations and Long.MAX_VALUE for positive infinity.',
     'Keeps the existing toDelayMillis signature.',
-  ]],
-  ['ktfmt-constant-indent-negation-evidence-v1', 'B', [
-    'Returns all seven call sites that resolve statically to Indentation.Const.unaryMinus.',
-    'Omits plausible nonmatching expressions from the supplied windows.',
-    'Reports each site once as a repository-relative path:line string.',
-    'Distinguishes enclosing-declaration ranges in the prior receipt from exact use-site lines.',
-  ]],
-  ['C5', 'B', [
-    'Does not conclude absence from a result whose coverage is not exhaustive.',
-    'Preserves the requested directory and source-set scope.',
-    'Copies the issued limitation codes verbatim without adding evidence fields.',
-  ]],
-  ['source-freshness-after-edit-v1', 'B', [
-    'Keeps the target identity submit(Long) after the edit.',
-    'Rejects the prior location as justification for editing.',
-    'Locates the current line from the supplied text and labels compiler authority unproven.',
-    'Chooses to reacquire current source instead of repeating the identical request.',
-  ]],
-  ['readiness-failure-no-absence-v1', 'B', [
-    'Does not treat the readiness rejection as evidence that the symbol is absent.',
-    'Reports the supplied failure code and an unavailable compiler model.',
-    'Reports the readiness blocker without an identical automatic retry.',
   ]],
 ].map(([id, panel, criteria]) => [id, Object.freeze({ panel, variant: variants[panel], criteria: Object.freeze(criteria) })])));

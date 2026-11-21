@@ -5,7 +5,7 @@ Requires four component release inventories and their checksums. Runs as the cur
 UID using the sole normal installation and normal IDEA profile. Backups are inert
 archives, never another installation. Requires IDEA to be closed at entry.
 No fake model, extracted plugin shortcut, hot reload, or semantic substitute is
-used. The normal installer and installed Tool RPC own every product decision.
+used. The normal installer and installed native MCP server own every product decision.
 This is deliberately outside routine packaging and unit-test inventories.
 """
 from __future__ import annotations
@@ -24,6 +24,7 @@ import platform
 import plistlib
 import pwd
 import re
+import selectors
 import shutil
 import socket
 import stat
@@ -174,8 +175,9 @@ def restart_fresh_read(rejection: SemanticRejection) -> bool:
 
 
 def semantic_rejection(reply, reply_file: str) -> SemanticRejection:
-    document = reply['document']
-    if (document.get('schemaVersion') != 1 or document.get('outcome') != 'rejected'
+    """Admit a rejected native MCP tool result; its structured content carries the closed rejection."""
+    document = reply.get('structuredContent')
+    if (reply.get('isError') is not True or not isinstance(document, dict) or document.get('schemaVersion') != 1 or document.get('outcome') != 'rejected'
             or not isinstance(document.get('detail'), (str, dict, list))):
         raise Rejected(Failure.SEMANTIC_QUERY_REJECTED)
     try:
@@ -253,6 +255,25 @@ class QueryRun:
 class QueryCall:
     request: QueryRun
     verbose: bool = True
+
+
+@dataclass(frozen=True)
+class McpInitialize:
+    protocolVersion: str = '2025-06-18'
+
+
+@dataclass(frozen=True)
+class McpToolCall:
+    arguments: QueryCall
+    name: str = 'query_symbols'
+
+
+@dataclass(frozen=True)
+class McpRequest:
+    id: int
+    method: str
+    params: McpInitialize | McpToolCall
+    jsonrpc: str = '2.0'
 
 
 @dataclass(frozen=True)
@@ -524,6 +545,56 @@ class NativeProof:
             raise Rejected(reject, result.returncode)
         return result
 
+    def semantic_call(self, call: QueryCall, *, timeout: float) -> dict:
+        """One native MCP query. Input stays open until the call answers, because input EOF cancels it."""
+        self.commands += 1
+        prefix = self.root / 'logs' / f'{self.commands:02d}-{self.stage.value.lower()}'
+        stdout, stderr = prefix.with_suffix('.stdout'), prefix.with_suffix('.stderr')
+        deadline = time.monotonic() + timeout
+        responses = []
+        try:
+            with stderr.open('wb') as errors, subprocess.Popen(
+                    [str(self.installation / 'bin/kast-mcp-complete')], cwd=self.workspace, env=self.env,
+                    stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=errors, bufsize=0) as process:
+                try:
+                    with selectors.DefaultSelector() as selector:
+                        selector.register(process.stdout, selectors.EVENT_READ)
+                        for request in (McpRequest(1, 'initialize', McpInitialize()),
+                                        McpRequest(2, 'tools/call', McpToolCall(call))):
+                            process.stdin.write((json.dumps(asdict(request), separators=(',', ':')) + '\n').encode())
+                            process.stdin.flush()
+                            while True:
+                                remaining = deadline - time.monotonic()
+                                if remaining <= 0 or not selector.select(timeout=remaining):
+                                    raise Rejected(Failure.COMMAND_TIMED_OUT)
+                                line = process.stdout.readline(16_777_217)
+                                if not line:
+                                    raise Rejected(Failure.SEMANTIC_QUERY_REJECTED, process.poll())
+                                responses.append(line)
+                                response = json.loads(line)
+                                # Notifications carry no id; only the exact response answers the request.
+                                if isinstance(response, dict) and 'id' not in response and 'method' in response:
+                                    continue
+                                if not isinstance(response, dict) or response.get('id') != request.id or 'error' in response:
+                                    raise Rejected(Failure.SEMANTIC_QUERY_REJECTED)
+                                break
+                    process.stdin.close()
+                    if process.wait(timeout=60) != 0:
+                        raise Rejected(Failure.SEMANTIC_QUERY_REJECTED, process.returncode)
+                finally:
+                    if process.poll() is None:
+                        process.kill()
+                        process.wait(timeout=60)
+        finally:
+            stdout.write_bytes(b''.join(responses))
+            for path in (stdout, stderr):
+                path.chmod(0o600)
+            self.last_stdout_log = str(stdout)
+        result = response.get('result')
+        if not isinstance(result, dict) or type(result.get('isError')) is not bool:
+            raise Rejected(Failure.SEMANTIC_QUERY_REJECTED)
+        return result
+
     def installer(self, version, component=None, host_version=None, *, expected_nonzero=False):
         command = ['/bin/bash', self.args.repository / 'install.sh', '--idea-home', self.args.idea_home,
                    '--version', version, '--skip-codex-mcp', '--verbose']
@@ -597,7 +668,7 @@ class NativeProof:
         observed = socket_path.lstat()
         if not stat.S_ISSOCK(observed.st_mode) or observed.st_uid != os.getuid():
             raise Rejected(Failure.OWNERSHIP_REJECTED)
-        # Observation only. Production Tool RPC and host-admission independently own compatibility decisions.
+        # Observation only. The native MCP server and host admission independently own compatibility decisions.
         payload = encode(DescribeRequest(str(self.workspace))).encode()
         with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as client:
             client.settimeout(5)
@@ -639,11 +710,8 @@ class NativeProof:
                 raise Rejected(Failure.OWNERSHIP_REJECTED)
             # Every attempt is a new RUN with fresh authority. No handle/continuation survives rejection.
             call = QueryCall(QueryRun('RUN', QuerySource(), QueryOutput()))
-            result = self.command([self.installation / 'bin/kast-tool-rpc-complete', 'call', 'query_symbols'],
-                                  input_text=encode(call), timeout=self.args.readiness_seconds,
-                                  reject=Failure.SEMANTIC_QUERY_REJECTED)
-            reply = json.loads(result.stdout)
-            if reply.get('type') != 'rejected_document':
+            reply = self.semantic_call(call, timeout=self.args.readiness_seconds)
+            if reply.get('isError') is not True:
                 break
             rejected = semantic_rejection(reply, self.last_stdout_log)
             rejections.append(rejected)
@@ -651,9 +719,11 @@ class NativeProof:
             evidence.write_text(encode(rejected));evidence.chmod(0o600)
             if not restart_fresh_read(rejected) or attempt == 3:
                 raise Rejected(Failure.SEMANTIC_QUERY_REJECTED, semantic=rejected)
-        document = reply.get('document', {})
+        document = reply.get('structuredContent')
+        if not isinstance(document, dict):
+            raise Rejected(Failure.SEMANTIC_QUERY_REJECTED)
         rows, live = document.get('items', []), document.get('live', {})
-        if (reply.get('type') != 'complete' or document.get('status') != 'complete' or len(rows) != 1
+        if (reply.get('isError') is not False or document.get('status') != 'complete' or len(rows) != 1
                 or document.get('coverage', {}).get('exhaustive') is not True
                 or document.get('failures') != [] or document.get('omissions') != []
                 or rows[0].get('type') != 'exact-symbol'

@@ -13,7 +13,6 @@ import tarfile
 import tempfile
 import unittest
 import zipfile
-from contextlib import redirect_stderr
 from dataclasses import replace
 from pathlib import Path
 from unittest.mock import patch
@@ -21,7 +20,6 @@ from unittest.mock import patch
 import defusedxml
 
 import generate_bootstrap as generator
-import mcp_environment as mcp
 import private_interpreter as private
 
 
@@ -46,8 +44,7 @@ class BootstrapTest(unittest.TestCase):
             "managed_product_removal.py": "packaging/internal/product/managed_product_removal.py",
             "immutable_store.py": "packaging/internal/installation/immutable_store.py",
             "product_removal_recovery.py": "packaging/internal/product/product_removal_recovery.py",
-            "product_mcp_removal.py": "packaging/internal/product/product_mcp_removal.py",
-            "mcp_environment.py": "packaging/internal/mcp/mcp_environment.py",
+            "product_state_removal.py": "packaging/internal/product/product_state_removal.py",
             "managed_update_contract.py": (
                 "packaging/internal/installation/managed_update_contract.py"
             ),
@@ -74,8 +71,6 @@ class BootstrapTest(unittest.TestCase):
             "codex-mcp-registration.py": (
                 "packaging/internal/installation/codex-mcp-registration.py"
             ),
-            "mcp-requirements.txt": "packaging/mcp-requirements.txt",
-            "mcp-requirements.txt.lock": "packaging/mcp-requirements.txt.lock",
             "managed-install-v1": "packaging/managed-install-v1",
             "install-completion-v1": "packaging/install-completion-v1",
             "install.sh": "install.sh",
@@ -97,8 +92,7 @@ class BootstrapTest(unittest.TestCase):
             "managed_product_removal.py",
             "immutable_store.py",
             "product_removal_recovery.py",
-            "product_mcp_removal.py",
-            "mcp_environment.py",
+            "product_state_removal.py",
             "managed_update_contract.py",
             "managed_update_journal.py",
             "host-installation.py",
@@ -113,8 +107,6 @@ class BootstrapTest(unittest.TestCase):
             "install.sh",
             "install-candidate.sh",
             "managed_installation.py.lock",
-            "mcp-requirements.txt",
-            "mcp-requirements.txt.lock",
             "managed-install-v1",
             "install-completion-v1",
             "codex-mcp-registration.py",
@@ -137,78 +129,16 @@ class BootstrapTest(unittest.TestCase):
             with self.subTest(names=names), self.assertRaises(ValueError):
                 _ = generator.validate_members(names)
 
-    def test_dependency_production_preserves_finite_rejection(self) -> None:
-        for uv, failure in (
-            (None, mcp.Failure.PROCESS),
-            (Path("/producer/uv"), mcp.Failure.INSTALL),
-            (Path("/producer/uv"), mcp.Failure.TIMEOUT),
-        ):
-            with self.subTest(failure=failure), tempfile.TemporaryDirectory() as temporary:
-                output = Path(temporary).resolve() / "support"
-                diagnostic = io.StringIO()
-                with (
-                    patch.object(generator.producer, "produce", return_value=mcp.Rejected(failure)),
-                    redirect_stderr(diagnostic),
-                    self.assertRaisesRegex(ValueError, failure.value),
-                ):
-                    generator.stage_support(output, mcp.DependencyTarget.MACOS_ARM64, uv)
-                self.assertEqual(
-                    {"status": "MCP_REJECTED", "failure": failure.value},
-                    json.loads(diagnostic.getvalue()),
-                )
-                self.assertFalse((output / "mcp-dependencies").exists())
-
-    def test_shipped_support_requires_exact_target_dependency_artifact(self) -> None:
+    def test_support_rejects_a_foreign_directory_member(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
-            output = Path(temporary).resolve()
+            output = Path(temporary).resolve() / "support"
             generator.stage_support(output)
-            target = mcp.DependencyTarget.MACOS_ARM64
-            self.assertFalse(generator.check_support(output, target))
-            site = output / "mcp-dependencies/site-packages"
-            site.mkdir(parents=True)
-            dependency = site / "native.so"
-            _ = dependency.write_bytes(b"native dependency fixture")
-            dependency.chmod(0o644)
-            scripts = generator.REPOSITORY / "agent-tools/skills/kast/scripts"
-            server, lock, requirements = (
-                "sha256:" + hashlib.sha256(path.read_bytes()).hexdigest()
-                for path in (
-                    scripts / "server.py",
-                    scripts / "server.py.lock",
-                    generator.PACKAGING / "mcp-requirements.txt",
-                )
-            )
-            export = mcp.RequirementsLock(server, lock, requirements)
-            artifact = mcp.DependencyArtifact(
-                target,
-                export,
-                mcp.Inventory(
-                    (
-                        mcp.File(
-                            "native.so",
-                            "sha256:" + hashlib.sha256(b"native dependency fixture").hexdigest(),
-                            0o644,
-                        ),
-                    ),
-                    (),
-                ),
-            )
-            _ = (site.parent / "artifact.json").write_bytes(mcp.encoded(artifact))
-            self.assertTrue(generator.check_support(output, target))
-            self.assertFalse(generator.check_support(output, mcp.DependencyTarget.LINUX_X86_64))
-            dependency.chmod(0o755)
-            executable = replace(
-                artifact,
-                inventory=replace(
-                    artifact.inventory, files=(replace(artifact.inventory.files[0], mode=0o755),)
-                ),
-            )
-            _ = (site.parent / "artifact.json").write_bytes(mcp.encoded(executable))
-            self.assertFalse(generator.check_support(output, target))
-            dependency.chmod(0o644)
-            _ = (site.parent / "artifact.json").write_bytes(mcp.encoded(artifact))
-            _ = dependency.write_bytes(b"changed dependency")
-            self.assertFalse(generator.check_support(output, target))
+            artifact = output / "dependencies"
+            artifact.mkdir()
+            self.assertFalse(generator.check_support(output))
+            with self.assertRaises(ValueError):
+                generator.stage_support(output)
+            self.assertTrue(artifact.is_dir())
 
     def test_engine_members_keep_their_source_syntax_tree_and_positions(self) -> None:
         for name in generator.SOURCES:

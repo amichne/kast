@@ -10,9 +10,6 @@ import io.github.amichne.kast.protocol.contract.QueryStepDocument
 import io.github.amichne.kast.protocol.contract.TraversalExtentDocument
 import io.github.amichne.kast.protocol.registry.PublicToolCatalog
 import io.github.amichne.kast.protocol.registry.PublicToolIdentity
-import java.nio.file.Files
-import java.nio.file.Path
-import java.util.concurrent.TimeUnit
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
@@ -23,7 +20,6 @@ import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertInstanceOf
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
-import org.junit.jupiter.api.io.TempDir
 
 class QueryCostPlanTest {
     @Test
@@ -156,89 +152,6 @@ class QueryCostPlanTest {
         assertEquals(setOf("type", "failure"), rejected.keys)
         assertEquals("rejected", rejected.getValue("type").jsonPrimitive.content)
         assertEquals("RUN_REQUIRED", rejected.getValue("failure").jsonPrimitive.content)
-    }
-
-    @Test
-    fun `real entry plans from an empty home without installation or project discovery`(@TempDir temporary: Path) {
-        val home = Files.createDirectory(temporary.resolve("home"))
-        val stdout = temporary.resolve("stdout.json")
-        val stderr = temporary.resolve("stderr.txt")
-        val child =
-            ProcessBuilder(
-                    Path.of(System.getProperty("java.home"), "bin", "java").toString(),
-                    "-Duser.home=$home",
-                    "-cp",
-                    System.getProperty("java.class.path"),
-                    KastToolRpcMain::class.java.name,
-                    "plan-query",
-                )
-                .directory(temporary.toFile())
-                .redirectOutput(stdout.toFile())
-                .redirectError(stderr.toFile())
-                .apply { environment().clear() }
-                .start()
-        try {
-            val bytes = example("traceAffectedUses")
-            child.outputStream.use { it.write(bytes) }
-            assertTrue(child.waitFor(20, TimeUnit.SECONDS), "Request-only planner did not finish")
-            assertEquals(0, child.exitValue(), Files.readString(stderr))
-            assertEquals(planToolQuery(bytes), Json.decodeFromString<QueryCostPlanReply>(Files.readString(stdout)))
-            Files.list(home).use { assertEquals(0, it.count()) }
-        } finally {
-            if (child.isAlive) child.destroyForcibly().waitFor(5, TimeUnit.SECONDS)
-        }
-    }
-
-    @Test
-    fun `real entry rejects advanced common planning and admits explicit complete without an installation`(
-        @TempDir temporary: Path
-    ) {
-        val home = Files.createDirectory(temporary.resolve("home"))
-        val cases =
-            listOf(
-                listOf("plan-query"),
-                listOf("--catalog=COMMON", "plan-query"),
-                listOf("--catalog=COMPLETE", "plan-query"),
-            )
-        for ((index, arguments) in cases.withIndex()) {
-            val stdout = temporary.resolve("stdout-$index.json")
-            val stderr = temporary.resolve("stderr-$index.txt")
-            val command =
-                listOf(
-                    Path.of(System.getProperty("java.home"), "bin", "java").toString(),
-                    "-Duser.home=$home",
-                    "-cp",
-                    System.getProperty("java.class.path"),
-                    KastToolRpcMain::class.java.name,
-                ) + arguments
-            val child =
-                ProcessBuilder(command)
-                    .directory(temporary.toFile())
-                    .redirectOutput(stdout.toFile())
-                    .redirectError(stderr.toFile())
-                    .apply { environment().clear() }
-                    .start()
-            try {
-                child.outputStream.use { it.write(example("publicFunctionInventory")) }
-                assertTrue(child.waitFor(20, TimeUnit.SECONDS), "Request-only planner did not finish")
-                assertEquals(0, child.exitValue(), Files.readString(stderr))
-                val reply = Json.decodeFromString<QueryCostPlanReply>(Files.readString(stdout))
-                if (index < 2) assertEquals(QueryCostPlanReply.Rejected(QueryCostPlanFailure.INVALID_ARGUMENTS), reply)
-                else {
-                    val complete = assertInstanceOf(QueryCostPlanReply.Planned::class.java, reply)
-                    assertEquals(
-                        listOf(
-                            QueryCostAdvice.USE_EXACT_NAME_OR_REFERENCE,
-                            QueryCostAdvice.LATE_FILTER_DOES_NOT_NARROW_DISCOVERY,
-                        ),
-                        complete.advice,
-                    )
-                }
-                Files.list(home).use { assertEquals(0, it.count()) }
-            } finally {
-                if (child.isAlive) child.destroyForcibly().waitFor(5, TimeUnit.SECONDS)
-            }
-        }
     }
 
     private fun example(name: String): ByteArray =

@@ -6,7 +6,6 @@ import io.github.amichne.kast.cli.boundaryExit
 import io.github.amichne.kast.cli.direct.DirectToolDocument
 import io.github.amichne.kast.cli.direct.KastDirectToolSession
 import io.github.amichne.kast.cli.mcp.McpStructuredResults
-import io.github.amichne.kast.cli.rpc.KastToolRpcBridge
 import io.github.amichne.kast.distribution.managed.FilesystemCanonicalRootDiscovery
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.protocol.registry.OperationEffect
@@ -52,7 +51,6 @@ class PublicAuthorityReadTest {
                 },
             )
         assertEquals(PublicShellExit.IO, invokePublicSession(session, admitted).exit)
-        KastToolRpcBridge(session).callAdmitted(admitted)
-        assertEquals(2, invocations)
+        assertEquals(1, invocations)
     }
 }

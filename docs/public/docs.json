@@ -132,7 +132,6 @@
             "group": "Clients",
             "pages": [
               "reference/mcp-catalog",
-              "reference/rpc-catalog",
               "reference/compatibility"
             ]
           },
@@ -160,7 +159,6 @@
                   "reference/models/mcp-read-result",
                   "reference/models/mcp-investigation-result",
                   "reference/models/mcp-change-result",
-                  "reference/models/tool-rpc-reply",
                   "reference/models/query-item",
                   "reference/models/relation-fact",
                   "reference/models/diagnostic",
