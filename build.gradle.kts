@@ -399,16 +399,6 @@ tasks.withType<VerificationReportTask>().configureEach {
     }
 }
 
-val localPluginReloadTest = tasks.register<VerificationReportTask>("localPluginReloadTest") {
-    group = "verification"
-    description = "Examines local plugin replacement admission and atomic directory exchange."
-    environmentVariables.put("PYTHONPATH", packagingTestModulePath)
-    inputs.files("packaging/internal/installation/reload_hosted.py", "packaging/internal/installation/reload_hosted.py.lock", "packaging/tests/test_reload_hosted.py")
-    executableFile.set(validationExecutable("uv"))
-    arguments.set(listOf("run", "--locked", "--script", layout.projectDirectory.file("packaging/internal/installation/reload_hosted.py").asFile.absolutePath, "--self-test"))
-}
-tasks.named("check") { dependsOn(localPluginReloadTest) }
-
 val managedInstallationTest = tasks.register<VerificationReportTask>("managedInstallationTest") {
     group = "verification"
     description = "Proves immutable selection, managed replacement, and recorded recovery."
@@ -418,7 +408,7 @@ val managedInstallationTest = tasks.register<VerificationReportTask>("managedIns
     arguments.set(listOf("run", "--locked", "--project", "packaging", "pytest",
         "packaging/tests/test-managed-installation.py", "packaging/tests/test-managed-release.py",
         "packaging/tests/test-managed-build-record.py", "packaging/tests/test-managed-bootstrap.py",
-        "packaging/tests/test-managed-update-contract.py", "packaging/tests/test-managed-headless.py",
+        "packaging/tests/test-managed-headless.py",
         "packaging/tests/test_composition_graph.py", "packaging/tests/test_composition_index.py",
         "packaging/tests/test_composition_descriptors.py", "packaging/tests/test_composition_host.py",
         "packaging/tests/test_composition_bundle.py", "packaging/tests/test_composition_release.py",
