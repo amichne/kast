@@ -28,7 +28,6 @@ object BrokerOperationalLimits {
     const val maximumWorkspaceQueued: Int = 4_096
     const val maximumWorkspaceEvents: Int = 128
     const val maximumSessionEvents: Int = 128
-    const val maximumThreadStoreBytes: Int = 4 * 1_024 * 1_024
     const val maximumTaskSessions: Int = 4_096
     const val maximumRuntimeConnections: Int = 32
     const val defaultCodexSchemaBytes: Int = 16 * 1_024 * 1_024
@@ -44,7 +43,6 @@ object BrokerOperationalLimits {
     const val maximumKastOutputBytes: Int = maximumToolResultBytes
     const val maximumWorkspaces: Int = 256
     const val maximumRegistryBytes: Int = 1_048_576
-    const val maximumInvocationJournalBytes: Int = 2_097_152
     const val maximumInvocations: Int = 4_096
     const val maximumServerRequests: Int = 4_096
     const val sessionChannelCapacity: Int = 256
@@ -283,13 +281,6 @@ object BrokerOperationalLimits {
                     "maximumSessionEvents",
                 ),
                 declaration(
-                    "broker.thread_catalog.maximum_bytes",
-                    maximumThreadStoreBytes.toLong(),
-                    ConfigurationUnit.BYTES,
-                    ConfigurationScope.INSTALLATION,
-                    "maximumThreadStoreBytes",
-                ),
-                declaration(
                     "broker.tasks.maximum",
                     maximumTaskSessions.toLong(),
                     ConfigurationUnit.COUNT,
@@ -386,13 +377,6 @@ object BrokerOperationalLimits {
                     ConfigurationUnit.BYTES,
                     ConfigurationScope.INSTALLATION,
                     "maximumRegistryBytes",
-                ),
-                declaration(
-                    "broker.invocation_journal.maximum_bytes",
-                    maximumInvocationJournalBytes.toLong(),
-                    ConfigurationUnit.BYTES,
-                    ConfigurationScope.INSTALLATION,
-                    "maximumInvocationJournalBytes",
                 ),
                 declaration(
                     "broker.invocations.maximum",

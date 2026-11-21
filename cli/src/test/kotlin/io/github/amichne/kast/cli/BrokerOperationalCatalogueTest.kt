@@ -22,7 +22,6 @@ class BrokerOperationalCatalogueTest {
                 "broker.workspace.queue.wait" to 10_000L,
                 "broker.workspace.interaction" to 1_260_000L,
                 "broker.workspace.events.maximum" to 128L,
-                "broker.thread_catalog.maximum_bytes" to 4_194_304L,
                 "broker.tasks.maximum" to 4_096L,
                 "broker.runtime.connections.maximum" to 32L,
                 "broker.codex.schema.default_bytes" to 16_777_216L,
@@ -40,7 +39,6 @@ class BrokerOperationalCatalogueTest {
                 "broker.host.argument.maximum_bytes" to 65_536L,
                 "broker.registry.maximum_workspaces" to 256L,
                 "broker.registry.maximum_bytes" to 1_048_576L,
-                "broker.invocation_journal.maximum_bytes" to 2_097_152L,
                 "broker.invocations.maximum" to 4_096L,
             )
         val limits = InstalledConfigurationSchema.document.operationalLimits

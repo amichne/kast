@@ -28,9 +28,3 @@ internal data class InvocationRecordDocument(
 }
 
 @Serializable internal data class InvocationStoreLayout(val schemaVersion: Int)
-
-/** The legacy contract is a digest-keyed dictionary; its keys are refined before migration. */
-@Serializable
-internal data class LegacyInvocationDocument(val schemaVersion: Int, val records: Map<String, LegacyInvocationRecord>)
-
-@Serializable internal data class LegacyInvocationRecord(val fingerprint: String, val phase: InvocationPhase)

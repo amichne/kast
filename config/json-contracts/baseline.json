@@ -4053,16 +4053,6 @@
     },
     {
       "fingerprint": {
-        "path": "app-server/src/test/kotlin/io/github/amichne/kast/appserver/runtime/InvocationFileStoreTest.kt",
-        "scope": "type:InvocationFileStoreTest/fun:malformed duplicate legacy fields never publish migrated evidence(4:Path)",
-        "kind": "JSON_LITERAL",
-        "sha256": "7d0abd085562d7c6cd8407a641b780df8060ff6c4d8038f41c3b71dd620b8a63"
-      },
-      "count": 1,
-      "justification": "Deliberately contradictory duplicate schemaVersion fields prove legacy invocation migration rejects lossy decoding before publishing a layout. Exact negative fixture; not a valid contract construction."
-    },
-    {
-      "fingerprint": {
         "path": "app-server/src/test/kotlin/io/github/amichne/kast/appserver/runtime/KtorBrokerServerTest.kt",
         "scope": "type:KtorBrokerServerTest/fun:Ktor Unix WebSocket server transparently bridges one upstream session(4:Path)/declaration:<anonymous>/declaration:<anonymous>",
         "kind": "JSON_LITERAL",

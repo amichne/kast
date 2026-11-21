@@ -79,40 +79,6 @@ class FileThreadCatalogStoreTest {
     }
 
     @Test
-    fun `duplicate thread identities fail closed`(@TempDir temporary: Path) {
-        val state = Files.createDirectory(temporary.resolve("state")).toRealPath()
-        Files.setPosixFilePermissions(state, java.nio.file.attribute.PosixFilePermissions.fromString("rwx------"))
-        val cwd = Files.createDirectory(temporary.resolve("workspace")).toRealPath()
-        val path = state.resolve("threads.json")
-        val workspace =
-            io.github.amichne.kast.appserver.WorkspaceRegistration(
-                io.github.amichne.kast.appserver.core.CanonicalBrokerDirectory.admit(cwd)!!
-            )
-        val first =
-            LegacyThreadBindingDocument(
-                threadId = "thread-1",
-                catalogDigest = "sha256:${"a".repeat(64)}",
-                cwd = cwd.toString(),
-                workspaceRoot = cwd.toString(),
-                workspaceId = workspace.id.value,
-                ownerKind = "protocolFixture",
-            )
-        val document =
-            LegacyThreadStoreDocument(2, listOf(first, first.copy(catalogDigest = "sha256:${"b".repeat(64)}")))
-        Files.writeString(
-            path,
-            kotlinx.serialization.json
-                .Json { explicitNulls = false }
-                .encodeToString(LegacyThreadStoreDocument.serializer(), document),
-        )
-        Files.setPosixFilePermissions(path, java.nio.file.attribute.PosixFilePermissions.fromString("rw-------"))
-
-        val rejection = FileThreadCatalogStore.open(path) as FileThreadCatalogStoreOpen.Rejected
-
-        assertEquals(ThreadCatalogStoreFailure.DUPLICATE_THREAD_ID, rejection.failure)
-    }
-
-    @Test
     fun `existing bindings cannot be retargeted in either store`(@TempDir temporary: Path) = runBlocking {
         val root = temporary.toRealPath()
         val first = Files.createDirectory(root.resolve("first"))

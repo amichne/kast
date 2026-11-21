@@ -17,10 +17,24 @@ import org.junit.jupiter.api.io.TempDir
 
 class InvocationFileStoreTest {
     @Test
-    fun `malformed private journal retains decoding failure`(@TempDir root: Path) {
+    fun `a prior single-file journal is never read`(@TempDir root: Path) {
         val file = root.toRealPath().resolve("invocations.json")
-        privateWrite(file, "broken journal")
-        assertEquals(rejected(InvocationFenceFailure.DOCUMENT_MALFORMED), InvocationFence(file).initialization())
+        privateWrite(file, "prior single-file journal")
+        assertEquals(InvocationAdmission.Admitted, InvocationFence(file).initialization())
+        assertEquals("prior single-file journal", Files.readString(file))
+        assertTrue(Files.exists(store(file).resolve("layout.json")))
+    }
+
+    @Test
+    fun `unexpected store contents without a layout reject without effects`(@TempDir root: Path) {
+        val file = root.toRealPath().resolve("invocations.json")
+        val directory = store(file)
+        Files.createDirectory(directory)
+        Files.setPosixFilePermissions(directory, PosixFilePermissions.fromString("rwx------"))
+        val stray = Files.createDirectory(directory.resolve(".migration-interrupted"))
+        assertEquals(rejected(InvocationFenceFailure.STORE_REJECTED), InvocationFence(file).initialization())
+        assertTrue(Files.exists(stray))
+        assertFalse(Files.exists(directory.resolve("layout.json")))
     }
 
     @Test
@@ -56,65 +70,6 @@ class InvocationFileStoreTest {
         assertEquals(setOf("schemaVersion"), layout.keys)
         assertEquals(JsonPrimitive(2), layout["schemaVersion"])
         assertFalse(Files.exists(file))
-    }
-
-    @Test
-    fun `migration preserves every phase and original bytes before publishing layout`(@TempDir root: Path) {
-        val file = root.toRealPath().resolve("invocations.json")
-        val source =
-            LegacyInvocationDocument(
-                1,
-                InvocationPhase.entries.associate { phase ->
-                    InvocationFence.digest(phase.name) to LegacyInvocationRecord(fingerprint, phase)
-                },
-            )
-        privateWrite(file, Json.encodeToString(source))
-        val original = Files.readAllBytes(file)
-        val observations = mutableListOf<InvocationMigrationObservation>()
-        val fence = InvocationFence(file, observeMigration = observations::add)
-        assertEquals(InvocationAdmission.Admitted, fence.initialization())
-        assertTrue(original.contentEquals(Files.readAllBytes(file)))
-        assertEquals(
-            listOf(InvocationMigrationOutcome.Started, InvocationMigrationOutcome.Committed),
-            observations.map { it.outcome },
-        )
-        for (phase in InvocationPhase.entries) {
-            val expected =
-                if (phase == InvocationPhase.COMPLETED) InvocationFenceFailure.ALREADY_COMPLETED
-                else InvocationFenceFailure.OUTCOME_UNCERTAIN
-            assertEquals(rejected(expected), fence.admit(phase.name, fingerprint))
-            assertEquals(
-                rejected(InvocationFenceFailure.TRANSITION_REJECTED),
-                fence.finish(phase.name, InvocationSettlement.COMPLETED),
-            )
-        }
-        observations.clear()
-        assertEquals(
-            InvocationAdmission.Admitted,
-            InvocationFence(file, observeMigration = observations::add).initialization(),
-        )
-        assertTrue(observations.isEmpty())
-    }
-
-    @Test
-    fun `an incomplete migration remains rejected and retained`(@TempDir root: Path) {
-        val file = root.toRealPath().resolve("invocations.json")
-        val directory = store(file)
-        Files.createDirectory(directory)
-        Files.setPosixFilePermissions(directory, PosixFilePermissions.fromString("rwx------"))
-        val stage = Files.createDirectory(directory.resolve(".migration-interrupted"))
-        val observations = mutableListOf<InvocationMigrationObservation>()
-        val fence = InvocationFence(file, observeMigration = observations::add)
-        assertEquals(rejected(InvocationFenceFailure.MIGRATION_REJECTED), fence.initialization())
-        assertTrue(Files.exists(stage))
-        assertFalse(Files.exists(directory.resolve("layout.json")))
-        assertEquals(
-            listOf(
-                InvocationMigrationOutcome.Started,
-                InvocationMigrationOutcome.Rejected(InvocationFenceFailure.MIGRATION_REJECTED),
-            ),
-            observations.map { it.outcome },
-        )
     }
 
     @Test
@@ -163,50 +118,6 @@ class InvocationFileStoreTest {
         privateWrite(path, Json.encodeToString(replaced))
         assertEquals(rejected(InvocationFenceFailure.STORE_REJECTED), fence.admit("call", fingerprint))
         assertEquals(Json.encodeToString(replaced), Files.readString(path))
-    }
-
-    @Test
-    fun `malformed duplicate legacy fields never publish migrated evidence`(@TempDir root: Path) {
-        val file = root.toRealPath().resolve("invocations.json")
-        // Deliberately invalid duplicate fields: a decoder must not erase contradictory evidence.
-        privateWrite(file, """{"schemaVersion":9,"schemaVersion":1,"records":{}}""")
-        val observations = mutableListOf<InvocationMigrationObservation>()
-        assertEquals(
-            rejected(InvocationFenceFailure.STORE_REJECTED),
-            InvocationFence(file, observeMigration = observations::add).initialization(),
-        )
-        assertFalse(Files.exists(store(file).resolve("layout.json")))
-        assertEquals(
-            InvocationMigrationOutcome.Rejected(InvocationFenceFailure.STORE_REJECTED),
-            observations.last().outcome,
-        )
-    }
-
-    @Test
-    fun `migration observations have bounded closed wire shapes`() {
-        val started =
-            Json.parseToJsonElement(InvocationMigrationObservation(InvocationMigrationOutcome.Started).toJson())
-                .jsonObject
-        assertEquals(setOf("event", "outcome"), started.keys)
-        assertEquals(JsonPrimitive("kast_invocation_migration"), started["event"])
-        assertEquals(setOf("type"), started.getValue("outcome").jsonObject.keys)
-        assertEquals(JsonPrimitive("started"), started.getValue("outcome").jsonObject["type"])
-        val committed =
-            Json.parseToJsonElement(InvocationMigrationObservation(InvocationMigrationOutcome.Committed).toJson())
-                .jsonObject
-        assertEquals(JsonPrimitive("committed"), committed.getValue("outcome").jsonObject["type"])
-        for (failure in InvocationFenceFailure.entries) {
-            val rejected =
-                Json.parseToJsonElement(
-                        InvocationMigrationObservation(InvocationMigrationOutcome.Rejected(failure)).toJson()
-                    )
-                    .jsonObject
-                    .getValue("outcome")
-                    .jsonObject
-            assertEquals(setOf("type", "failure"), rejected.keys)
-            assertEquals(JsonPrimitive("rejected"), rejected["type"])
-            assertEquals(JsonPrimitive(failure.name), rejected["failure"])
-        }
     }
 
     private fun store(file: Path) = file.resolveSibling("${file.fileName}.d")

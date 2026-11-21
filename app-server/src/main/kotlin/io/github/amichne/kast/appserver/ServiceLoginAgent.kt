@@ -9,7 +9,6 @@ import java.nio.file.attribute.PosixFilePermissions
 internal enum class ServiceLoginAgentObservation {
     ABSENT,
     SERVICE,
-    LEGACY_BOOTSTRAP,
     REJECTED,
 }
 
@@ -22,26 +21,18 @@ internal object ServiceLoginAgent {
     fun path(command: BrokerServiceLaunchCommand): Path =
         command.userHome.resolve("Library/LaunchAgents/${command.serviceLabel.value}.login.plist")
 
-    fun observe(command: BrokerServiceLaunchCommand): ServiceLoginAgentObservation {
-        val agent = path(command)
-        return when (
-            LegacyLoginBootstrap.observe(
-                agent,
+    fun observe(command: BrokerServiceLaunchCommand): ServiceLoginAgentObservation =
+        when (
+            OwnedLaunchAgentFile.observe(
+                path(command),
                 command.userHome,
                 BrokerLaunchdServiceDocument.render(command, BrokerLaunchdStart.LOGIN),
             )
         ) {
-            LegacyLoginBootstrapObservation.Absent -> ServiceLoginAgentObservation.ABSENT
-            LegacyLoginBootstrapObservation.Exact -> ServiceLoginAgentObservation.SERVICE
-            LegacyLoginBootstrapObservation.Rejected ->
-                if (
-                    LegacyLoginBootstrap.observe(agent, command.userHome, LegacyLoginBootstrap.render(command)) ==
-                        LegacyLoginBootstrapObservation.Exact
-                )
-                    ServiceLoginAgentObservation.LEGACY_BOOTSTRAP
-                else ServiceLoginAgentObservation.REJECTED
+            OwnedLaunchAgentObservation.Absent -> ServiceLoginAgentObservation.ABSENT
+            OwnedLaunchAgentObservation.Exact -> ServiceLoginAgentObservation.SERVICE
+            OwnedLaunchAgentObservation.Rejected -> ServiceLoginAgentObservation.REJECTED
         }
-    }
 
     fun publish(command: BrokerServiceLaunchCommand): ServiceLoginAgentChange =
         try {
@@ -71,8 +62,7 @@ internal object ServiceLoginAgent {
         try {
             when (observe(command)) {
                 ServiceLoginAgentObservation.ABSENT -> ServiceLoginAgentChange.READY
-                ServiceLoginAgentObservation.SERVICE,
-                ServiceLoginAgentObservation.LEGACY_BOOTSTRAP -> {
+                ServiceLoginAgentObservation.SERVICE -> {
                     Files.delete(path(command))
                     ServiceLoginAgentChange.READY
                 }

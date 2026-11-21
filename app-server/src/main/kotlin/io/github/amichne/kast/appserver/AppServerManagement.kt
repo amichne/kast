@@ -201,7 +201,6 @@ internal constructor(
                         return reject(AppServerManagementFailure.SERVICE_OWNERSHIP_UNPROVEN)
                     if (enrollment.read() is EnrollmentRead.Rejected)
                         return reject(AppServerManagementFailure.ENROLLMENT_REJECTED)
-                    // Older one-shot login jobs converge on the directly loaded service job.
                     Files.deleteIfExists(command.stateDirectory.resolve("stopped"))
                     bootstrapAndPublish(command)
                 }

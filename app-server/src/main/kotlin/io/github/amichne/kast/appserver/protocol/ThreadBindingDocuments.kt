@@ -45,10 +45,6 @@ internal sealed interface StoredThreadBinding {
     @Serializable
     @SerialName("current")
     data class Current(override val document: ThreadBindingDocument) : StoredThreadBinding
-
-    @Serializable
-    @SerialName("new_conversation_required")
-    data class Legacy(override val document: ThreadBindingDocument) : StoredThreadBinding
 }
 
 @Serializable
@@ -60,23 +56,6 @@ internal data class ThreadBindingDocument(
     val workspaceId: String,
     val owner: StoredThreadOwner,
 ) {
-    /** Historical shape validation is pure and never treats an old path as current filesystem authority. */
-    fun validateHistory(): Refinement<ThreadBindingDocument, ThreadCatalogStoreFailure> {
-        if (BrokerThreadId.admit(threadId) == null || CatalogDigest.admit(catalogDigest) == null)
-            return Refinement.Rejected(ThreadCatalogStoreFailure.BINDING_REJECTED)
-        val paths =
-            when (val result = paths()) {
-                is Refinement.Rejected -> return result
-                is Refinement.Refined -> result.value
-            }
-        if (threadRecordDigest(paths.root.toString()) != workspaceId)
-            return Refinement.Rejected(ThreadCatalogStoreFailure.BINDING_REJECTED)
-        return when (val admitted = owner.admit()) {
-            is Refinement.Rejected -> admitted
-            is Refinement.Refined -> Refinement.Refined(this)
-        }
-    }
-
     fun admit(): Refinement<ThreadCatalogBinding, ThreadCatalogStoreFailure> {
         val digest =
             CatalogDigest.admit(catalogDigest) ?: return Refinement.Rejected(ThreadCatalogStoreFailure.BINDING_REJECTED)
@@ -157,32 +136,3 @@ internal sealed interface StoredThreadOwner {
 }
 
 @Serializable internal data class ThreadStoreLayout(val version: Int)
-
-@Serializable
-internal data class LegacyThreadStoreDocument(val version: Int, val bindings: List<LegacyThreadBindingDocument>)
-
-@Serializable
-internal data class LegacyThreadBindingDocument(
-    val threadId: String,
-    val catalogDigest: String,
-    val cwd: String,
-    val workspaceRoot: String,
-    val workspaceId: String,
-    val ownerKind: String,
-    val installationId: String? = null,
-    val stateEpoch: String? = null,
-) {
-    fun admitHistory(): Refinement<ThreadBindingDocument, ThreadCatalogStoreFailure> {
-        val owner =
-            when (ownerKind) {
-                "protocolFixture" ->
-                    if (installationId == null && stateEpoch == null) StoredThreadOwner.Fixture else return rejected()
-                "installation" ->
-                    StoredThreadOwner.Installation(installationId ?: return rejected(), stateEpoch ?: return rejected())
-                else -> return rejected()
-            }
-        return ThreadBindingDocument(threadId, catalogDigest, cwd, workspaceRoot, workspaceId, owner).validateHistory()
-    }
-
-    private fun rejected() = Refinement.Rejected(ThreadCatalogStoreFailure.BINDING_REJECTED)
-}
