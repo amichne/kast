@@ -12,7 +12,6 @@ code_sources:
   - path: docs/internal/documentation-structure.md
   - path: docs/glossary.json
   - path: docs/hosted-read-configuration.md
-  - path: docs/installation-recovery.md
   - path: docs/public/docs.json
   - path: docs/public/reference/cli.mdx
   - path: docs/public/sidebar-toggle.js
@@ -47,7 +46,6 @@ This directory owns the Mintlify site, contributor guides, and glossary rules. R
 - [tool-rpc.md](tool-rpc.md) - tool RPC and harness extension behavior.
 - [source-map.mdx](public/reference/source-map.mdx) - source owners and their focused tests.
 - [cli.mdx](public/reference/cli.mdx) - native CLI discovery, queries, source reads, and retained output.
-- [installation-recovery.md](installation-recovery.md) - offline installation recovery.
 - [hosted-read-configuration.md](hosted-read-configuration.md) - read grants, retention, and limits.
 
 ## Subdirectories

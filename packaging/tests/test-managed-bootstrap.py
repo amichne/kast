@@ -71,9 +71,6 @@ class BootstrapTest(unittest.TestCase):
             "managed_installation.py.lock": (
                 "packaging/internal/installation/managed_installation.py.lock"
             ),
-            "prune-prior-installations.py": (
-                "packaging/internal/installation/prune-prior-installations.py"
-            ),
             "codex-mcp-registration.py": (
                 "packaging/internal/installation/codex-mcp-registration.py"
             ),
@@ -120,7 +117,6 @@ class BootstrapTest(unittest.TestCase):
             "mcp-requirements.txt.lock",
             "managed-install-v1",
             "install-completion-v1",
-            "prune-prior-installations.py",
             "codex-mcp-registration.py",
         }
         with tempfile.TemporaryDirectory() as temporary:

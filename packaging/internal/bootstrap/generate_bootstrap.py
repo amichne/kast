@@ -56,7 +56,6 @@ SOURCE_PATHS = {
     "private_interpreter.py": "bootstrap/private_interpreter.py",
     "product_mcp_removal.py": "product/product_mcp_removal.py",
     "product_removal_recovery.py": "product/product_removal_recovery.py",
-    "prune-prior-installations.py": "installation/prune-prior-installations.py",
     "runtime_archive.py": "runtime/runtime_archive.py",
     "runtime_base.py": "runtime/runtime_base.py",
 }
@@ -90,7 +89,6 @@ SOURCES = (
 RETAINED = (
     "install-candidate.sh",
     "managed_installation.py.lock",
-    "prune-prior-installations.py",
     "codex-mcp-registration.py",
 )
 FIXED = (

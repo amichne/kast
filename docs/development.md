@@ -501,7 +501,7 @@ After changing source-bound knowledge, run from the repository root:
 ./gradlew knowledgeImpact verifyKnowledgeBase verifyKnowledgeClaims
 ```
 
-For a damaged installation, use the [recovery runbook](installation-recovery.md).
+For an interrupted installation, rerun the installer: it resumes the recorded replacement journal or reports `RECOVERY_REQUIRED`.
 
 ### Installer development inputs
 
