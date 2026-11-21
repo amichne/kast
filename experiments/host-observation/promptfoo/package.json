@@ -18,6 +18,6 @@
   },
   "devDependencies": {
     "ajv": "8.20.0",
-    "promptfoo": "0.125.1"
+    "promptfoo": "0.126.0"
   }
 }
