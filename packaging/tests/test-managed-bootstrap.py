@@ -54,7 +54,6 @@ class BootstrapTest(unittest.TestCase):
             "managed_update_journal.py": (
                 "packaging/internal/installation/managed_update_journal.py"
             ),
-            "reload_hosted.py": "packaging/internal/installation/reload_hosted.py",
             "host-installation.py": "packaging/internal/installation/host-installation.py",
             "installation-recovery.py": "packaging/internal/installation/installation-recovery.py",
             "installation-lifecycle.py": (
@@ -105,7 +104,6 @@ class BootstrapTest(unittest.TestCase):
             "mcp_environment.py",
             "managed_update_contract.py",
             "managed_update_journal.py",
-            "reload_hosted.py",
             "host-installation.py",
             "installation-recovery.py",
             "installation-lifecycle.py",
