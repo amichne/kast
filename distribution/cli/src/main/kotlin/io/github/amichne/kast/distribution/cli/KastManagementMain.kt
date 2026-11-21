@@ -141,7 +141,7 @@ private class StopCommand : ManagementNode("stop") {
 }
 
 private class UpgradeCommand : ManagementNode("upgrade") {
-    private val channel by option("--channel", help = "Select stable or preview (main is a preview alias).")
+    private val channel by option("--channel", help = "Select stable or preview.")
     private val version by option("--version", help = "Pin an exact stable release.")
     private val commit by
         option("--commit", help = "Pin a published main revision or its displayed 12-character prefix.")

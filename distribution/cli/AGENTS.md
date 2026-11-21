@@ -88,7 +88,7 @@ If migration fails, restore the provider configuration and management receipt. T
 
 ## Managed product and workspace admission
 
-`kast versions [--json]` lists complete stable and preview products. `main` is a compatibility alias for preview.
+`kast versions [--json]` lists complete stable and preview products.
 `kast upgrade` obeys the recorded update policy.
 Explicit selectors use `--channel stable|preview`, `--version`, or `--commit`. These selectors are mutually exclusive.
 Exact versions and commits create pins. An unqualified upgrade of a pin rejects with `PINNED_BUILD`.

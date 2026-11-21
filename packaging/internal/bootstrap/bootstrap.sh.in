@@ -9,7 +9,7 @@ selection=0
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --help|-h)
-      printf '%s\n' 'Usage: install.sh [--channel stable|preview|main | --version X.Y.Z | --commit SHA | --local-artifact DIRECTORY] [--dry-run] [--purge-legacy] [--json]' \
+      printf '%s\n' 'Usage: install.sh [--channel stable|preview | --version X.Y.Z | --commit SHA | --local-artifact DIRECTORY] [--dry-run] [--purge-legacy] [--json]' \
         'Installs one complete private-runtime product. No Python, uv, or IDEA installation is required.' \
         '--purge-legacy removes a pre-product Kast (0.51.3 or older), its workspace state, and IDEs still running its plugin.' \
         'Local products contain build-record.json and payload/; private bootstrap inputs still download.'
@@ -20,7 +20,7 @@ while [[ $# -gt 0 ]]; do
     --channel|--version|--commit|--local-artifact)
       [[ "$selection" == 0 && $# -ge 2 ]] || fail 'select exactly one build with a value'
       case "$1:$2" in
-        --channel:stable|--channel:preview|--channel:main) ;;
+        --channel:stable|--channel:preview) ;;
         --version:*) [[ "$2" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || fail 'invalid version' ;;
         --commit:*) [[ "$2" =~ ^[0-9a-f]{7,40}$ ]] || fail 'invalid commit' ;;
         --local-artifact:*) [[ -d "$2" && ! -L "$2" ]] || fail 'local artifact directory required' ;;
@@ -28,7 +28,6 @@ while [[ $# -gt 0 ]]; do
       esac
       selection=1; arguments+=("$1" "$2"); shift 2 ;;
     --dry-run|--json|--recover-only|--purge-legacy) arguments+=("$1"); shift ;;
-    --skip-codex-plugin) shift ;; # Historical public command; no harness is installed implicitly.
     *) fail "unsupported product installation option: $1" ;;
   esac
 done

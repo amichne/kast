@@ -13,7 +13,7 @@ class ManagedSetupCommandTest {
                 listOf("install", "pi"),
                 listOf("install", "skill", "--output", "custom skills", "--json"),
                 listOf("versions", "--json"),
-                listOf("upgrade", "--channel", "main", "--dry-run", "--json"),
+                listOf("upgrade", "--channel", "preview", "--dry-run", "--json"),
                 listOf("upgrade", "--commit", "abcdef123456"),
                 listOf("upgrade", "--version", "1.2.3"),
                 listOf("upgrade", "--repair"),
@@ -26,7 +26,7 @@ class ManagedSetupCommandTest {
             listOf(
                 listOf("connect", "codex"),
                 listOf("plugin", "codex"),
-                listOf("upgrade", "--channel", "main", "--commit", "abcdef123456"),
+                listOf("upgrade", "--channel", "preview", "--commit", "abcdef123456"),
                 listOf("upgrade", "--version", "1.2.3", "--commit", "abcdef123456"),
                 listOf("install", "skill", "--force"),
                 listOf("install", "skill", "--mcp"),

@@ -390,7 +390,7 @@ class ReleaseAdmissionTest(unittest.TestCase):
     def test_main_263_selects_its_authenticated_variant(self) -> None:
         source = self.source("0.0.123", with_263=True)
         _ = self.main(source)
-        selected = release.resolve_selection("main", None, None, source)
+        selected = release.resolve_selection("preview", None, None, source)
         assert isinstance(selected, release.MainSelection)
         admitted = release.stage_component_archives(selected, "263", self.stage, source)
         assert isinstance(admitted, release.AdmittedComposition), admitted
@@ -403,7 +403,7 @@ class ReleaseAdmissionTest(unittest.TestCase):
         del source.assets["kast-host-release-v0.0.123-idea-263.json"]
         del source.assets["kast-host-release-v0.0.123-idea-263.json.sha256"]
         _ = self.main(source)
-        selected = release.resolve_selection("main", None, None, source)
+        selected = release.resolve_selection("preview", None, None, source)
         assert isinstance(selected, release.MainSelection)
         self.assertIsInstance(
             release.stage_component_archives(selected, "262", self.stage, source), release.Rejected
@@ -414,7 +414,7 @@ class ReleaseAdmissionTest(unittest.TestCase):
     ) -> None:
         source = self.source("0.0.123")
         _ = self.main(source)
-        selected = release.resolve_selection("main", None, None, source)
+        selected = release.resolve_selection("preview", None, None, source)
         assert isinstance(selected, release.MainSelection)
         source.change_catalog_on_download = True
         admitted = release.stage_component_archives(selected, "262", self.stage, source)
@@ -676,16 +676,23 @@ class ReleaseAdmissionTest(unittest.TestCase):
         source.assets[release.CATALOG_URL] = encoded(
             Catalog((replace(one, platformTargets=("unsupported-target",)), two))
         )
-        result = release.resolve_selection("main", None, None, source)
+        result = release.resolve_selection("preview", None, None, source)
         assert isinstance(result, release.Rejected)
         self.assertEqual(release.Failure.PLATFORM_UNAVAILABLE, result.reason)
         self.assertEqual((one.mainRevision, two.mainRevision), result.selectable)
+
+    def test_main_is_not_a_channel_selector(self) -> None:
+        source = self.source("0.0.123")
+        result = release.resolve_selection("main", None, None, source)
+        assert isinstance(result, release.Rejected)
+        self.assertEqual(release.Failure.SELECTOR_INVALID, result.reason)
+        self.assertEqual([], source.calls)
 
     def test_conflicting_selectors_and_captured_identity_mismatch_reject_without_downloads(
         self,
     ) -> None:
         source = self.source("0.0.123")
-        result = release.resolve_selection("main", "0.0.123", None, source)
+        result = release.resolve_selection("preview", "0.0.123", None, source)
         assert isinstance(result, release.Rejected)
         self.assertEqual(release.Failure.SELECTORS_CONFLICT, result.reason)
         self.assertEqual([], source.calls)
@@ -804,13 +811,13 @@ class TransferCauseTest(unittest.TestCase):
             "trust": "KEYCHAIN",
             "httpStatus": None,
         }
-        selection = release.resolve_selection("main", None, None, untrusted)
+        selection = release.resolve_selection("preview", None, None, untrusted)
         assert isinstance(selection, release.Rejected)
         self.assertEqual(
             {
                 "reason": "CATALOG_UNAVAILABLE",
                 "stage": "SELECTION",
-                "requested": "main",
+                "requested": "preview",
                 "platform": "macos-aarch64",
                 "selectable": [],
                 "transfer": expected_transfer,
