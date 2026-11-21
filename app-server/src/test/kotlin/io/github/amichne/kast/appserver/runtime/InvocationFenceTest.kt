@@ -54,26 +54,33 @@ class InvocationFenceTest {
     }
 
     @Test
-    fun `corrupt journal never permits execution`(@TempDir root: Path) {
+    fun `corrupt journal record never permits execution`(@TempDir root: Path) {
         val file = root.toRealPath().resolve("invocations.json")
-        Files.writeString(file, "broken")
-        Files.setPosixFilePermissions(file, PosixFilePermissions.fromString("rw-------"))
+        val record = startedRecord(file)
+        Files.writeString(record, "broken")
         assertEquals(
             InvocationAdmission.Rejected(InvocationFenceFailure.DOCUMENT_MALFORMED),
             InvocationFence(file).admit("call", InvocationFence.digest("x")),
         )
-        assertEquals("broken", Files.readString(file))
+        assertEquals("broken", Files.readString(record))
     }
 
     @Test
-    fun `non-private corrupt journal is rejected before parsing`(@TempDir root: Path) {
+    fun `non-private journal record is rejected before parsing`(@TempDir root: Path) {
         val file = root.toRealPath().resolve("invocations.json")
-        Files.writeString(file, "broken")
-        Files.setPosixFilePermissions(file, PosixFilePermissions.fromString("rw-r--r--"))
+        val record = startedRecord(file)
+        Files.writeString(record, "broken")
+        Files.setPosixFilePermissions(record, PosixFilePermissions.fromString("rw-r--r--"))
         assertEquals(
             InvocationAdmission.Rejected(InvocationFenceFailure.STORE_REJECTED),
             InvocationFence(file).admit("call", InvocationFence.digest("x")),
         )
-        assertEquals("broken", Files.readString(file))
+        assertEquals("broken", Files.readString(record))
+    }
+
+    private fun startedRecord(file: Path): Path {
+        assertEquals(InvocationAdmission.Admitted, InvocationFence(file).admit("call", InvocationFence.digest("x")))
+        val records = file.resolveSibling("${file.fileName}.d").resolve("records-v2")
+        return Files.walk(records).use { paths -> paths.filter { Files.isRegularFile(it) }.toList().single() }
     }
 }

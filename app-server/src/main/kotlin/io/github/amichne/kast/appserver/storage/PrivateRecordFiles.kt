@@ -25,14 +25,9 @@ private constructor(
     private val owner: UserPrincipal,
     private val failure: (PrivateRecordFailure) -> Failure,
 ) {
-    fun createStage(): Path =
-        Files.createTempDirectory(root, ".migration-", PosixFilePermissions.asFileAttribute(directoryMode))
-
-    fun publishStage(stage: Path, target: Path) {
-        requireDirectory(stage)
-        Files.move(stage, target, ATOMIC_MOVE)
-        force(root)
-    }
+    /** True when the admitted store holds nothing but its lock: a store with no layout yet. */
+    fun onlyLock(): Boolean =
+        Files.newDirectoryStream(root).use { entries -> entries.all { it.fileName.toString() == ".lock" } }
 
     fun directory(path: Path) {
         if (!Files.exists(path, NOFOLLOW_LINKS)) {
@@ -97,27 +92,29 @@ private constructor(
         force(root)
     }
 
-    fun <T> locked(block: () -> Refinement<T, Failure>): Refinement<T, Failure> = guarded {
-        requireDirectory(root)
-        val lockPath = root.resolve(".lock")
-        if (!Files.exists(lockPath, NOFOLLOW_LINKS)) {
-            try {
-                Files.createFile(lockPath, PosixFilePermissions.asFileAttribute(fileMode))
-            } catch (_: java.nio.file.FileAlreadyExistsException) {
-                /* Another opener established the same lock. */
+    fun <T> locked(block: () -> Refinement<T, Failure>): Refinement<T, Failure> =
+        guarded(failure) {
+            requireDirectory(root)
+            val lockPath = root.resolve(".lock")
+            if (!Files.exists(lockPath, NOFOLLOW_LINKS)) {
+                try {
+                    Files.createFile(lockPath, PosixFilePermissions.asFileAttribute(fileMode))
+                } catch (_: java.nio.file.FileAlreadyExistsException) {
+                    /* Another opener established the same lock. */
+                }
+            }
+            requireFile(lockPath)
+            FileChannel.open(lockPath, WRITE, NOFOLLOW_LINKS).use { channel ->
+                val lock =
+                    try {
+                        channel.tryLock()
+                    } catch (_: OverlappingFileLockException) {
+                        null
+                    }
+                if (lock == null) Refinement.Rejected(failure(PrivateRecordFailure.STORE_BUSY))
+                else lock.use { block() }
             }
         }
-        requireFile(lockPath)
-        FileChannel.open(lockPath, WRITE, NOFOLLOW_LINKS).use { channel ->
-            val lock =
-                try {
-                    channel.tryLock()
-                } catch (_: OverlappingFileLockException) {
-                    null
-                }
-            if (lock == null) Refinement.Rejected(failure(PrivateRecordFailure.STORE_BUSY)) else lock.use { block() }
-        }
-    }
 
     private fun requireFile(path: Path) {
         if (
@@ -127,8 +124,6 @@ private constructor(
         )
             throw IOException("Private file rejected")
     }
-
-    fun <T> guarded(block: () -> Refinement<T, Failure>): Refinement<T, Failure> = guarded(failure, block)
 
     companion object {
         private val directoryMode = PosixFilePermissions.fromString("rwx------")

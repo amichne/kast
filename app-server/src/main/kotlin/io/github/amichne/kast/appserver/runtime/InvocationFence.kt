@@ -17,7 +17,6 @@ internal enum class InvocationFenceFailure {
     TRANSITION_REJECTED,
     STORE_BUSY,
     VERSION_UNSUPPORTED,
-    MIGRATION_REJECTED,
 }
 
 internal sealed interface InvocationAdmission {
@@ -30,11 +29,9 @@ internal sealed interface InvocationAdmission {
 internal class InvocationFence(
     file: Path?,
     private val maximumActive: InvocationCapacityLimit = InvocationCapacityLimit.Default,
-    observeMigration: (InvocationMigrationObservation) -> Unit = { System.err.println(it.toJson()) },
 ) {
     private val store: Refinement<InvocationRecords, InvocationFenceFailure> =
-        if (file == null) Refinement.Refined(MemoryInvocationRecords())
-        else FileInvocationRecords.open(file, observeMigration)
+        if (file == null) Refinement.Refined(MemoryInvocationRecords()) else FileInvocationRecords.open(file)
     private val active = mutableSetOf<InvocationKey>()
 
     @Synchronized

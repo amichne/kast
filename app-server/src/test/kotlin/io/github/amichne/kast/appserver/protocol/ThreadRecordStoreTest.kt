@@ -1,7 +1,5 @@
 package io.github.amichne.kast.appserver.protocol
 
-import io.github.amichne.kast.appserver.WorkspaceRegistration
-import io.github.amichne.kast.appserver.core.CanonicalBrokerDirectory
 import io.github.amichne.kast.appserver.core.CatalogDigest
 import io.github.amichne.kast.appserver.protocol.codex.codexThreadStoreFailurePresentation
 import io.github.amichne.kast.kernel.Refinement
@@ -11,7 +9,6 @@ import java.nio.file.Path
 import java.nio.file.StandardOpenOption.WRITE
 import java.nio.file.attribute.PosixFilePermissions
 import kotlinx.coroutines.test.runTest
-import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.jsonObject
@@ -22,56 +19,31 @@ import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
 
-class ThreadBindingMigrationTest {
+class ThreadRecordStoreTest {
     @Test
-    fun `legacy bindings retain original bytes and require a new conversation even when the workspace is gone`(
-        @TempDir temporary: Path
-    ) = runTest {
+    fun `a prior single-file thread store is never read`(@TempDir temporary: Path) = runTest {
         val root = temporary.toRealPath()
-        val workspace = Files.createDirectory(root.resolve("workspace"))
-        val registration = WorkspaceRegistration(checkNotNull(CanonicalBrokerDirectory.admit(workspace)))
-        val legacy =
-            LegacyThreadBindingDocument(
-                threadId = "old-thread",
-                catalogDigest = digest.value,
-                cwd = workspace.toString(),
-                workspaceRoot = workspace.toString(),
-                workspaceId = registration.id.value,
-                ownerKind = "protocolFixture",
-            )
         val file = root.resolve("threads.json")
-        privateWrite(file, Json { explicitNulls = false }.encodeToString(LegacyThreadStoreDocument(2, listOf(legacy))))
-        val before = Files.readAllBytes(file)
-        Files.delete(workspace)
-        val observations = mutableListOf<ThreadMigrationObservation>()
-        val store =
-            assertInstanceOf(
-                    FileThreadCatalogStoreOpen.Opened::class.java,
-                    FileThreadCatalogStore.open(file, observations::add),
-                )
-                .store
+        privateWrite(file, "prior single-file thread store")
+        val store = opened(file)
+        assertEquals(ThreadStoreRead.Missing, store.read("old-thread"))
+        assertEquals("prior single-file thread store", Files.readString(file))
+        assertTrue(Files.exists(file.resolveSibling("threads.json.d").resolve("layout.json")))
+    }
+
+    @Test
+    fun `unexpected store contents without a layout reject without effects`(@TempDir temporary: Path) {
+        val root = temporary.toRealPath()
+        val file = root.resolve("threads.json")
+        val directory = Files.createDirectory(root.resolve("threads.json.d"))
+        Files.setPosixFilePermissions(directory, PosixFilePermissions.fromString("rwx------"))
+        val stray = Files.createDirectory(directory.resolve(".migration-interrupted"))
         assertEquals(
-            ThreadStoreRead.Rejected(ThreadCatalogStoreFailure.NEW_CONVERSATION_REQUIRED),
-            store.read("old-thread"),
+            FileThreadCatalogStoreOpen.Rejected(ThreadCatalogStoreFailure.STORE_REJECTED),
+            FileThreadCatalogStore.open(file),
         )
-        assertTrue(before.contentEquals(Files.readAllBytes(file)))
-        assertEquals(
-            listOf(ThreadMigrationOutcome.Started, ThreadMigrationOutcome.Committed),
-            observations.map { it.outcome },
-        )
-        val fresh = binding("fresh-thread", root)
-        assertEquals(ThreadStoreWrite.Written, store.write(fresh))
-        assertInstanceOf(ThreadStoreRead.Found::class.java, store.read("fresh-thread"))
-        assertEquals(
-            ThreadStoreWrite.Rejected(ThreadCatalogStoreFailure.NEW_CONVERSATION_REQUIRED),
-            store.write(binding("old-thread", root)),
-        )
-        observations.clear()
-        assertInstanceOf(
-            FileThreadCatalogStoreOpen.Opened::class.java,
-            FileThreadCatalogStore.open(file, observations::add),
-        )
-        assertTrue(observations.isEmpty())
+        assertTrue(Files.exists(stray))
+        assertFalse(Files.exists(directory.resolve("layout.json")))
     }
 
     @Test
@@ -125,24 +97,8 @@ class ThreadBindingMigrationTest {
     }
 
     @Test
-    fun `migration and tool failures retain every finite cause in bounded wire documents`() {
-        val started =
-            Json.parseToJsonElement(ThreadMigrationObservation(ThreadMigrationOutcome.Started).toJson()).jsonObject
-        assertEquals(setOf("event", "outcome"), started.keys)
-        assertEquals(JsonPrimitive("kast_thread_migration"), started["event"])
-        assertEquals(JsonPrimitive("started"), started.getValue("outcome").jsonObject["type"])
-        val committed =
-            Json.parseToJsonElement(ThreadMigrationObservation(ThreadMigrationOutcome.Committed).toJson()).jsonObject
-        assertEquals(JsonPrimitive("committed"), committed.getValue("outcome").jsonObject["type"])
+    fun `store failures retain every finite cause in tool presentations`() {
         for (failure in ThreadCatalogStoreFailure.entries) {
-            val rejected =
-                Json.parseToJsonElement(ThreadMigrationObservation(ThreadMigrationOutcome.Rejected(failure)).toJson())
-                    .jsonObject
-                    .getValue("outcome")
-                    .jsonObject
-            assertEquals(setOf("type", "failure"), rejected.keys)
-            assertEquals(JsonPrimitive("rejected"), rejected["type"])
-            assertEquals(JsonPrimitive(failure.name), rejected["failure"])
             val presentation = codexThreadStoreFailurePresentation(failure)
             assertFalse(presentation.success)
             val payload = Json.parseToJsonElement(presentation.content.single().text).jsonObject

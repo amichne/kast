@@ -625,15 +625,7 @@ def detach_login(root, bundle):
         document = plistlib.loads(raw)
         if not isinstance(document, dict):
             return [Failure.OWNERSHIP]
-        arguments = document.get('ProgramArguments')
-        legacy = (document.get('Label') == service_label + '.login'
-                  and set(document) == {'Label', 'ProgramArguments', 'RunAtLoad', 'EnvironmentVariables'}
-                  and arguments == [str(root / 'bin/kast'), 'app-server', 'bootstrap']
-                  and document.get('RunAtLoad') is True
-                  and isinstance(document.get('EnvironmentVariables'), dict)
-                  and b'<!-- Kast App Server login bootstrap v1 -->' in raw)
-        direct = document.get('Label') == service_label and exact_service_login(root, raw, document)
-        if not (legacy or direct):
+        if not (document.get('Label') == service_label and exact_service_login(root, raw, document)):
             return [Failure.OWNERSHIP]
         if Identity.observe(path) != Identity(observed.st_dev, observed.st_ino, observed.st_uid):
             return [Failure.OWNERSHIP]

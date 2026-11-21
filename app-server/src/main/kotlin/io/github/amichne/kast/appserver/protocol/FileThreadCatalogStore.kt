@@ -1,6 +1,5 @@
 package io.github.amichne.kast.appserver.protocol
 
-import io.github.amichne.kast.appserver.BrokerOperationalLimits
 import io.github.amichne.kast.appserver.core.BrokerThreadId
 import io.github.amichne.kast.appserver.storage.PrivateRecordFailure
 import io.github.amichne.kast.appserver.storage.PrivateRecordFiles
@@ -10,7 +9,6 @@ import java.nio.file.LinkOption.NOFOLLOW_LINKS
 import java.nio.file.Path
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import kotlinx.serialization.json.Json
 
 /** Persistent history is read by thread digest; only the requested current binding acquires filesystem proof. */
 internal class FileThreadCatalogStore
@@ -33,14 +31,9 @@ private constructor(private val files: PrivateRecordFiles<ThreadCatalogStoreFail
         }
 
     private fun readBinding(binding: StoredThreadBinding): ThreadStoreRead =
-        when (binding) {
-            is StoredThreadBinding.Legacy ->
-                ThreadStoreRead.Rejected(ThreadCatalogStoreFailure.NEW_CONVERSATION_REQUIRED)
-            is StoredThreadBinding.Current ->
-                when (val admitted = binding.document.admit()) {
-                    is Refinement.Rejected -> ThreadStoreRead.Rejected(admitted.failure)
-                    is Refinement.Refined -> ThreadStoreRead.Found(admitted.value)
-                }
+        when (val admitted = binding.document.admit()) {
+            is Refinement.Rejected -> ThreadStoreRead.Rejected(admitted.failure)
+            is Refinement.Refined -> ThreadStoreRead.Found(admitted.value)
         }
 
     override suspend fun write(binding: ThreadCatalogBinding): ThreadStoreWrite =
@@ -81,13 +74,8 @@ private constructor(private val files: PrivateRecordFiles<ThreadCatalogStoreFail
                 Refinement.Refined(Unit)
             }
             is ThreadRecordLookup.Present ->
-                when (val existing = previous.binding) {
-                    is StoredThreadBinding.Legacy ->
-                        Refinement.Rejected(ThreadCatalogStoreFailure.NEW_CONVERSATION_REQUIRED)
-                    is StoredThreadBinding.Current ->
-                        if (existing.document == document) Refinement.Refined(Unit)
-                        else Refinement.Rejected(ThreadCatalogStoreFailure.BINDING_CONFLICT)
-                }
+                if (previous.binding.document == document) Refinement.Refined(Unit)
+                else Refinement.Rejected(ThreadCatalogStoreFailure.BINDING_CONFLICT)
         }
 
     private fun lookup(key: ThreadRecordKey): Refinement<ThreadRecordLookup, ThreadCatalogStoreFailure> {
@@ -110,30 +98,25 @@ private constructor(private val files: PrivateRecordFiles<ThreadCatalogStoreFail
         private const val LAYOUT = "layout.json"
         private const val SHARD_CHARACTERS = 2
         private const val MAXIMUM_RECORD_BYTES = 64 * 1024
-        private val legacyJson = Json { explicitNulls = false }
 
-        fun open(
-            legacy: Path,
-            observe: (ThreadMigrationObservation) -> Unit = { System.err.println(it.toJson()) },
-        ): FileThreadCatalogStoreOpen {
+        /** The store lives in `<location>.d`; a file at `location` itself is never read. */
+        fun open(location: Path): FileThreadCatalogStoreOpen {
             val files =
                 when (
                     val opened =
-                        PrivateRecordFiles.open(legacy.resolveSibling("${legacy.fileName}.d"), ::storageFailure)
+                        PrivateRecordFiles.open(location.resolveSibling("${location.fileName}.d"), ::storageFailure)
                 ) {
                     is Refinement.Rejected -> return FileThreadCatalogStoreOpen.Rejected(opened.failure)
                     is Refinement.Refined -> opened.value
                 }
-            return when (val result = files.locked { openLayout(files, legacy, observe) }) {
+            return when (val result = files.locked { openLayout(files) }) {
                 is Refinement.Rejected -> FileThreadCatalogStoreOpen.Rejected(result.failure)
                 is Refinement.Refined -> FileThreadCatalogStoreOpen.Opened(FileThreadCatalogStore(files))
             }
         }
 
         private fun openLayout(
-            files: PrivateRecordFiles<ThreadCatalogStoreFailure>,
-            legacy: Path,
-            observe: (ThreadMigrationObservation) -> Unit,
+            files: PrivateRecordFiles<ThreadCatalogStoreFailure>
         ): Refinement<Unit, ThreadCatalogStoreFailure> {
             val marker = files.root.resolve(LAYOUT)
             if (Files.exists(marker, NOFOLLOW_LINKS)) {
@@ -145,17 +128,15 @@ private constructor(private val files: PrivateRecordFiles<ThreadCatalogStoreFail
                 files.requireDirectory(files.root.resolve(RECORDS))
                 return Refinement.Refined(Unit)
             }
-            observe(ThreadMigrationObservation(ThreadMigrationOutcome.Started))
-            val result = files.guarded { migrate(files, legacy) }
-            observe(
-                ThreadMigrationObservation(
-                    when (result) {
-                        is Refinement.Refined -> ThreadMigrationOutcome.Committed
-                        is Refinement.Rejected -> ThreadMigrationOutcome.Rejected(result.failure)
-                    }
-                )
+            if (!files.onlyLock()) return Refinement.Rejected(ThreadCatalogStoreFailure.STORE_REJECTED)
+            files.directory(files.root.resolve(RECORDS))
+            files.write(
+                marker,
+                ThreadStoreLayout.serializer(),
+                ThreadStoreLayout(ThreadRecordDocument.VERSION),
+                maximumBytes = MAXIMUM_RECORD_BYTES,
             )
-            return result
+            return Refinement.Refined(Unit)
         }
 
         private fun storageFailure(failure: PrivateRecordFailure): ThreadCatalogStoreFailure =
@@ -164,84 +145,6 @@ private constructor(private val files: PrivateRecordFiles<ThreadCatalogStoreFail
                 PrivateRecordFailure.STORE_REJECTED -> ThreadCatalogStoreFailure.STORE_REJECTED
                 PrivateRecordFailure.DOCUMENT_MALFORMED -> ThreadCatalogStoreFailure.DOCUMENT_MALFORMED
             }
-
-        private fun legacyRecords(
-            source: LegacyThreadStoreDocument
-        ): Refinement<List<ThreadRecordDocument>, ThreadCatalogStoreFailure> {
-            if (source.version != 2) return Refinement.Rejected(ThreadCatalogStoreFailure.VERSION_UNSUPPORTED)
-            val records = linkedMapOf<String, ThreadRecordDocument>()
-            for (boundary in source.bindings) {
-                val binding =
-                    when (val admitted = boundary.admitHistory()) {
-                        is Refinement.Rejected -> return admitted
-                        is Refinement.Refined -> admitted.value
-                    }
-                val key = threadRecordDigest(binding.threadId)
-                if (key in records) return Refinement.Rejected(ThreadCatalogStoreFailure.DUPLICATE_THREAD_ID)
-                records[key] =
-                    ThreadRecordDocument(ThreadRecordDocument.VERSION, key, StoredThreadBinding.Legacy(binding))
-            }
-            return Refinement.Refined(records.values.toList())
-        }
-
-        private fun migrate(
-            files: PrivateRecordFiles<ThreadCatalogStoreFailure>,
-            legacy: Path,
-        ): Refinement<Unit, ThreadCatalogStoreFailure> {
-            Files.newDirectoryStream(files.root).use { entries ->
-                if (entries.any { it.fileName.toString() != ".lock" })
-                    return Refinement.Rejected(ThreadCatalogStoreFailure.MIGRATION_REJECTED)
-            }
-            val source =
-                if (Files.exists(legacy, NOFOLLOW_LINKS))
-                    files.read(
-                        legacy,
-                        LegacyThreadStoreDocument.serializer(),
-                        BrokerOperationalLimits.maximumThreadStoreBytes,
-                        legacyJson,
-                    )
-                else LegacyThreadStoreDocument(2, emptyList())
-            val records =
-                when (val result = legacyRecords(source)) {
-                    is Refinement.Rejected -> return result
-                    is Refinement.Refined -> result.value
-                }
-            val stage = stage(files, records)
-            if (
-                Files.exists(legacy, NOFOLLOW_LINKS) &&
-                    files.read(
-                        legacy,
-                        LegacyThreadStoreDocument.serializer(),
-                        BrokerOperationalLimits.maximumThreadStoreBytes,
-                        legacyJson,
-                    ) != source
-            )
-                return Refinement.Rejected(ThreadCatalogStoreFailure.MIGRATION_REJECTED)
-            files.publishStage(stage, files.root.resolve(RECORDS))
-            files.write(
-                files.root.resolve(LAYOUT),
-                ThreadStoreLayout.serializer(),
-                ThreadStoreLayout(ThreadRecordDocument.VERSION),
-                maximumBytes = MAXIMUM_RECORD_BYTES,
-            )
-            return Refinement.Refined(Unit)
-        }
-
-        private fun stage(
-            files: PrivateRecordFiles<ThreadCatalogStoreFailure>,
-            records: List<ThreadRecordDocument>,
-        ): Path {
-            val stage = files.createStage()
-            for (record in records) {
-                val shard = stage.resolve(record.key.take(SHARD_CHARACTERS))
-                files.directory(shard)
-                val path = shard.resolve("${record.key}.json")
-                files.write(path, ThreadRecordDocument.serializer(), record, maximumBytes = MAXIMUM_RECORD_BYTES)
-                if (files.read(path, ThreadRecordDocument.serializer(), MAXIMUM_RECORD_BYTES) != record)
-                    throw java.io.IOException("Staged thread binding verification failed")
-            }
-            return stage
-        }
     }
 }
 

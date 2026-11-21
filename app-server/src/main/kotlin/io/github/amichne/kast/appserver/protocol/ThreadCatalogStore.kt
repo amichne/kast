@@ -152,13 +152,10 @@ internal enum class ThreadCatalogStoreFailure {
     DOCUMENT_TOO_LARGE,
     DOCUMENT_MALFORMED,
     VERSION_UNSUPPORTED,
-    DUPLICATE_THREAD_ID,
     BINDING_REJECTED,
     BINDING_CONFLICT,
     STORE_BUSY,
     STORE_REJECTED,
-    MIGRATION_REJECTED,
-    NEW_CONVERSATION_REQUIRED,
 }
 
 internal sealed interface FileThreadCatalogStoreOpen {
