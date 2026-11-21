@@ -24,12 +24,11 @@ import org.junit.jupiter.api.io.TempDir
 
 class ManagedControlAdapterTest {
     @Test
-    fun `prepare rematerializes stable saved settings and preserves the prior bytes`(@TempDir temporary: Path) {
-        val prior = request(temporary, "0.50.2")
+    fun `prepare carries stable saved settings forward and preserves the prior bytes`(@TempDir temporary: Path) {
+        val prior = request(temporary)
         assertInstanceOf(InstallationOutcome.Complete::class.java, executeFixtureInstallation(prior))
         discardFixtureReplacementAfterSetup(prior.installRoot.value)
         val environment = selected(prior).resolve("config/environment")
-        Files.writeString(environment, Files.readString(environment) + "KAST_READ_MODEL_MODULES=512\n")
         val original = Files.readString(environment)
         val identity = observeInstallationFilesystemIdentity(environment)
         val next = request(temporary, "1.2.4", controlOnly = true)
@@ -40,7 +39,7 @@ class ManagedControlAdapterTest {
         )
         val prepared = prepare(next)
         val staged = Path.of(prepared.staged).resolve("config/environment")
-        assertTrue(!Files.readString(staged).contains("KAST_READ_MODEL_MODULES"))
+        assertEquals(original, Files.readString(staged))
         assertEquals(InstallationConfigurationValidationOutcome.ADMITTED, validateStagedConfiguration(staged))
         assertEquals(original, Files.readString(environment))
         assertEquals(identity, observeInstallationFilesystemIdentity(environment))
@@ -48,18 +47,22 @@ class ManagedControlAdapterTest {
 
     @Test
     fun `prepare projects the finite configuration failure stage`(@TempDir temporary: Path) {
-        val prior = request(temporary)
-        assertInstanceOf(InstallationOutcome.Complete::class.java, executeFixtureInstallation(prior))
-        discardFixtureReplacementAfterSetup(prior.installRoot.value)
-        val environment = selected(prior).resolve("config/environment")
-        Files.writeString(environment, "KAST_UNKNOWN_SETTING=1\n")
-        val next = request(temporary, "1.2.4")
-        assertEquals(
-            ManagedControlOutcome.Rejected(InstallationFailure.CONFIGURATION_RESOLUTION_REJECTED),
-            ManagedControlAdapter.prepare(next, TRANSACTION),
-        )
-        assertTrue(Files.notExists(journal(next)))
-        assertEquals("KAST_UNKNOWN_SETTING=1\n", Files.readString(environment))
+        // The retired module-count setting has no migration; it rejects like any unknown setting.
+        for (setting in listOf("KAST_UNKNOWN_SETTING=1\n", "KAST_READ_MODEL_MODULES=512\n")) {
+            val root = Files.createDirectories(temporary.resolve(setting.substringBefore('=')))
+            val prior = request(root)
+            assertInstanceOf(InstallationOutcome.Complete::class.java, executeFixtureInstallation(prior))
+            discardFixtureReplacementAfterSetup(prior.installRoot.value)
+            val environment = selected(prior).resolve("config/environment")
+            Files.writeString(environment, setting)
+            val next = request(root, "1.2.4")
+            assertEquals(
+                ManagedControlOutcome.Rejected(InstallationFailure.CONFIGURATION_RESOLUTION_REJECTED),
+                ManagedControlAdapter.prepare(next, TRANSACTION),
+            )
+            assertTrue(Files.notExists(journal(next)))
+            assertEquals(setting, Files.readString(environment))
+        }
     }
 
     @Test

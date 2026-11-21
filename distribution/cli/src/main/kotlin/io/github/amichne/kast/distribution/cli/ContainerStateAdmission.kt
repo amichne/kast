@@ -17,16 +17,7 @@ import org.xml.sax.InputSource
 internal fun ContainerStore.admitGeneration(
     owned: AdmittedWorkspace,
     retained: AdmittedContainerRuntime? = null,
-): Refinement<AdmittedContainer, ContainerFailure> = containerFiles {
-    when (val source = owned.generation) {
-        is ContainerGenerationSource.Legacy ->
-            when (val selected = runtime(source.runtime)) {
-                is Refinement.Rejected -> selected
-                is Refinement.Refined -> admitContainerState(AdmittedContainer(owned, selected.value))
-            }
-        ContainerGenerationSource.Current -> readGeneration(owned, retained)
-    }
-}
+): Refinement<AdmittedContainer, ContainerFailure> = containerFiles { readGeneration(owned, retained) }
 
 private fun ContainerStore.readGeneration(
     owned: AdmittedWorkspace,
@@ -75,12 +66,8 @@ private fun generationProfile(
     }
 
 private fun ContainerStore.runtime(key: String): Refinement<AdmittedContainerRuntime, ContainerFailure> =
-    when {
-        runtimeDigest.matches(key) -> AdmittedContainerRuntime.read(runtimes.resolve(key), platform)
-        Regex("[0-9]+\\.[0-9]+\\.[0-9]+-${platform.publicName}").matches(key) ->
-            AdmittedContainerRuntime.read(runtimes.resolve(key), platform)
-        else -> Refinement.Rejected(ContainerFailure.INVALID_RECORD)
-    }
+    if (runtimeDigest.matches(key)) AdmittedContainerRuntime.read(runtimes.resolve(key), platform)
+    else Refinement.Rejected(ContainerFailure.INVALID_RECORD)
 
 internal fun ContainerStore.readWorkspace(directory: Path): Refinement<AdmittedWorkspace, ContainerFailure> =
     containerFiles {
@@ -95,8 +82,7 @@ internal fun ContainerStore.readWorkspace(directory: Path): Refinement<AdmittedW
         }
         val parsed = containerFiles { readContainerRecord<ContainerRecord>(directory.resolve("container.json")) }
         when (parsed) {
-            is Refinement.Rejected ->
-                if (parsed.failure == ContainerFailure.INVALID_RECORD) readLegacy(directory, id) else parsed
+            is Refinement.Rejected -> parsed
             is Refinement.Refined -> admitCurrentRecord(parsed.value, id, directory)
         }
     }
@@ -106,43 +92,12 @@ private fun ContainerStore.admitCurrentRecord(
     id: ContainerId,
     directory: Path,
 ): Refinement<AdmittedWorkspace, ContainerFailure> {
-    // Migrated v1 records retain their 32-character identity and unchanged private profile paths.
     if (record.schemaVersion != 2 || record.id != id.text) return Refinement.Rejected(ContainerFailure.INVALID_RECORD)
-    if (id.text.length != LEGACY_CONTAINER_ID_LENGTH && ContainerId.forWorkspace(Path.of(record.workspace)) != id)
+    if (ContainerId.forWorkspace(Path.of(record.workspace)) != id)
         return Refinement.Rejected(ContainerFailure.INVALID_RECORD)
     return when (val trust = admitContainerTrust(directory.resolve("trust.xml"), Path.of(record.workspace))) {
         is Refinement.Rejected -> trust
-        is Refinement.Refined -> admitRecord(record, id, directory, ContainerGenerationSource.Current)
-    }
-}
-
-/** Legacy records remain readable without rewriting a live profile or granting new trust. */
-private fun ContainerStore.readLegacy(
-    directory: Path,
-    id: ContainerId,
-): Refinement<AdmittedWorkspace, ContainerFailure> {
-    val record =
-        when (val parsed = readContainerRecord<LegacyContainerRecord>(directory.resolve("container.json"))) {
-            is Refinement.Rejected -> return parsed
-            is Refinement.Refined -> parsed.value
-        }
-    if (record.schemaVersion != 1 || record.id != id.text) return Refinement.Rejected(ContainerFailure.INVALID_RECORD)
-    val owned =
-        when (
-            val admitted =
-                admitRecord(
-                    ContainerRecord(record.id, record.name, record.workspace, record.gradleHome),
-                    id,
-                    directory,
-                    ContainerGenerationSource.Legacy(record.runtime),
-                )
-        ) {
-            is Refinement.Rejected -> return admitted
-            is Refinement.Refined -> admitted.value
-        }
-    return when (val generation = admitGeneration(owned)) {
-        is Refinement.Rejected -> generation
-        is Refinement.Refined -> Refinement.Refined(owned)
+        is Refinement.Refined -> admitRecord(record, id, directory)
     }
 }
 
@@ -150,7 +105,6 @@ private fun ContainerStore.admitRecord(
     record: ContainerRecord,
     id: ContainerId,
     directory: Path,
-    generation: ContainerGenerationSource,
 ): Refinement<AdmittedWorkspace, ContainerFailure> {
     val name =
         when (val parsed = ContainerName.parse(record.name)) {
@@ -168,9 +122,7 @@ private fun ContainerStore.admitRecord(
                 io.github.amichne.kast.distribution.contract.configuration.WorkspaceDependencySharing.SHARED
     if (gradle != privateGradle && !ownedShared && !validExternalGradlePath(gradle))
         return Refinement.Rejected(ContainerFailure.INVALID_RECORD)
-    return Refinement.Refined(
-        AdmittedWorkspace(id, name, workspace, directory, gradle, generation, record.dependencySharing)
-    )
+    return Refinement.Refined(AdmittedWorkspace(id, name, workspace, directory, gradle, record.dependencySharing))
 }
 
 internal fun ContainerStore.validWorkspace(path: Path): Boolean {
@@ -249,8 +201,6 @@ internal fun selectedContainerPlugins(container: AdmittedContainer): Refinement<
 
 private fun boundedPhysicalRecord(path: Path): Boolean =
     Files.isRegularFile(path, NOFOLLOW_LINKS) && path.toRealPath() == path && Files.size(path) <= CONTAINER_RECORD_BYTES
-
-private const val LEGACY_CONTAINER_ID_LENGTH = 32
 
 internal fun admitContainerTrust(trust: Path, workspace: Path): Refinement<Unit, ContainerFailure> {
     if (!boundedPhysicalRecord(trust)) return Refinement.Rejected(ContainerFailure.INVALID_RECORD)

@@ -40,7 +40,6 @@ internal object KastCleanSlateModules {
                 JvmClassName("io/github/amichne/kast/distribution/cli/ContainerStore"),
                 JvmClassName("io/github/amichne/kast/distribution/cli/WorkspaceSeedingKt"),
                 JvmClassName("io/github/amichne/kast/distribution/cli/WorkspaceSeedCloneKt"),
-                JvmClassName("io/github/amichne/kast/distribution/cli/ContainerMigrationKt"),
                 JvmClassName("io/github/amichne/kast/distribution/cli/ManagedWorkspaceRemovalKt"),
                 JvmClassName("io/github/amichne/kast/distribution/cli/WorkspaceReclamationKt"),
                 JvmClassName("io/github/amichne/kast/distribution/cli/WorkspaceOverlayFile"),
