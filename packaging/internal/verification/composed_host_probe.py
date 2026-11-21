@@ -256,4 +256,3 @@ def live_host(
         )
         assert not external, external
     return result
-

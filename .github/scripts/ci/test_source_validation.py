@@ -29,8 +29,7 @@ def expected_obligations():
         ":managedInstallationTest", ":developerPublicationTest",
         ":verifyDocumentationGlossary", ":documentationToolingTest", ":verifyDocumentationMarkdown",
         ":verifyKotlinSemanticCoverage", ":verifyKotlinSemanticInputs", ":verifyKotlinSemanticInventory",
-        ":cli:udsTest", ":cli:queryDeliveryContractTest", ":cli:queryDeliverySchemaTest",
-        ":cli:queryPresentationTest", ":cli:verifyMintlifyCallableReference", ":app-server:verifyPublicQueryGeneration",
+        ":cli:udsTest", ":cli:verifyMintlifyCallableReference", ":app-server:verifyPublicQueryGeneration",
         ":relation:intellij:semanticCoverageFixtureTest", ":runtime:hosted:semanticCoverageFixtureTest",
         ":symbol:intellij:semanticCoverageFixtureTest", ":relation:intellij:dependencyFixtureTest",
         ":runtime:hosted:dependencyFixtureTest", ":productGateVersionTest", ":installerFixtureTest",
@@ -160,7 +159,7 @@ class SourceValidationTest(unittest.TestCase):
         self.assertIn("--no-daemon", command)
         self.assertIn("-Dorg.gradle.isolated-projects.diagnostics=true", command)
         required = source.obligations(plan)
-        self.assertIn(":cli:queryDeliveryContractTest", required)
+        self.assertIn(":cli:udsTest", required)
         self.assertNotIn(":symbol:intellij:semanticCoverageFixtureTest", required)
         self.assertNotIn(":relation:intellij:semanticCoverageFixtureTest", required)
 
