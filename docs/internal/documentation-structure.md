@@ -40,7 +40,7 @@ The [navigation record](../reviews/navigation-density/README.md) records page co
 | Installation and maintenance | `/reference/integrations`, `/reference/installation`, `/reference/management`, `/reference/troubleshooting`. |
 | Semantic contracts | `/reference/api`, `/reference/responses`, `/reference/symbols`, `/reference/composition`, `/reference/limits`. |
 | Tracing, state, and lifecycle contracts | `/reference/program-tracing`, `/reference/staleness`, `/reference/lifecycles`. |
-| Client contracts | `/reference/mcp-catalog`, `/reference/rpc-catalog`, `/reference/compatibility`. |
+| Client contracts | `/reference/mcp-catalog`, `/reference/compatibility`. |
 | Schemas and recorded evidence | `/reference/schemas`, `/reference/walkthrough`, `/reference/models/...`, `/reference/callables/...`. |
 | Evidence explanation | `/reference/evidence-boundaries`, `/reference/callbacks`, `/explanation/query-lifecycle`. |
 | Runtime explanation | `/reference/internals/architecture`, `/reference/internals/background-startup`. |

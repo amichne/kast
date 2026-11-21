@@ -29,12 +29,9 @@ class LifecycleIngressTest {
     }
 
     @Test
-    fun `harness uninstall selects only one integration`() {
-        for (harness in Harness.entries) {
-            val parsed = parseManagementCommand(listOf("uninstall", harness.publicName))
-            assertEquals(ManagementParsing.Selected(ManagementCommand.UninstallHarness(harness)), parsed)
-        }
-        for (arguments in listOf(listOf("uninstall", "skill"), listOf("uninstall", "pi", "copilot"))) {
+    fun `uninstall takes no harness because agent configuration belongs to dotagents`() {
+        val harnessUninstalls = listOf("codex", "skill", "pi").map { listOf("uninstall", it) }
+        for (arguments in harnessUninstalls) {
             assertTrue((parseManagementCommand(arguments) as ManagementParsing.Print).error)
         }
     }

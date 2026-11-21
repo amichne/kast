@@ -9,7 +9,7 @@ The native `kast` command is the primary interface.
 
 ## Primary audience
 
-Kotlin developers who already use Codex, Copilot, or Pi are the primary readers.
+Kotlin developers who already work with a coding agent are the primary readers.
 The setup path supports a first installation without a checkout or an existing Kast CLI.
 The remote installer selects the latest qualified development build with `--channel preview`.
 An existing installation uses `kast upgrade --channel preview`.
@@ -18,14 +18,14 @@ An existing installation uses `kast upgrade --channel preview`.
 
 The content revision was checked against `2e3feb6b3afd50b0ee90b52b092684ac83e3a879` and the user's revised content draft.
 `install.sh` owns the public bootstrap and developer-channel selection.
-The management CLI owns upgrades and agent guidance.
+The management CLI owns upgrades and skill export. dotagents owns agent configuration.
 `docs/public/start.mdx` owns the complete first-use procedure.
 Keep commands and qualifications aligned with those source owners.
 
 ## Jobs to be done
 
 1. Select a qualified development build.
-2. Install CLI guidance for the selected agent.
+2. Export the Kast skill and declare it with the Kast MCP server in `agents.toml`.
 3. Continue ordinary development with compiler-grounded evidence available to the agent.
 
 ## Navigation and ownership
@@ -36,7 +36,7 @@ The setup page owns installation and agent connection.
 Keep special prompts and a first-query exercise out of the default path.
 Optional fixtures belong in evidence checks; technical request syntax belongs in reference.
 The installation reference owns build policies and activation outcomes.
-The integration reference owns CLI guidance, skill export, and optional MCP.
+The integration reference owns skill export and the dotagents recipe.
 The CLI reference owns common command examples.
 Keep existing routes and anchors. Edit generated contracts through their generator.
 
@@ -46,8 +46,8 @@ The product standard is never silently wrong: establish the fact with evidence o
 State this standard confidently without claiming current universal perfection or guaranteeing the agent's entire answer.
 Keep the current semantic model, completion policy, and consequential evidence limits beside their definitions.
 
-The default agent composition supplies CLI guidance.
-MCP needs an explicit `--mcp` selection.
+The Kast skill teaches the native CLI. One `agents.toml` entry adds the Kast MCP server.
+Kast writes no agent configuration.
 The persistent Host in IntelliJ IDEA supplies compiler analysis for CLI and MCP.
 Keep installed files, loaded Host identity, agent resources, and workspace readiness distinct.
 A successful resource installation does not prove content in an existing agent session.

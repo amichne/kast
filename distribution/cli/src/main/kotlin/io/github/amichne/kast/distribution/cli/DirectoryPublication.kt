@@ -21,9 +21,6 @@ internal fun publishDirectoryNoReplace(staged: Path, destination: Path): Directo
     return renameDirectory(staged, destination, RENAME_EXCL)
 }
 
-internal fun exchangeDirectories(staged: Path, destination: Path): DirectoryPublication =
-    renameDirectory(staged, destination, RENAME_SWAP)
-
 private fun renameDirectory(staged: Path, destination: Path, flags: Int): DirectoryPublication {
     if (!System.getProperty("os.name").startsWith("Mac")) return DirectoryPublication.UNSUPPORTED
     val linker = Linker.nativeLinker()
@@ -44,4 +41,3 @@ private fun renameDirectory(staged: Path, destination: Path, flags: Int): Direct
 }
 
 private const val RENAME_EXCL = 4
-private const val RENAME_SWAP = 2

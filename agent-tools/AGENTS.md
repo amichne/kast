@@ -1,25 +1,21 @@
 ---
 type: Engineering Guide
 title: "Kast agent onboarding"
-description: "Defines the bundled skill, task service, shared brief, and host adapters."
+description: "Defines the bundled skill, shared brief, session hook, and native MCP composition."
 resource: "repo://agent-tools"
 tags: [kast, agents, plugins]
-timestamp: "2026-11-02T16:16:42Z"
-source_revision: 0482f82ac2b2804a8d6bf0a429657aed3219a747
+timestamp: "2026-11-21T00:00:00Z"
+source_revision: 75f3c85bbe6faf8a953cf4717461c4eebec5e452
 code_sources:
   - path: agent-tools/mcp.json
   - path: agent-tools/skills/kast/SKILL.md
   - path: agent-tools/skills/kast/public-cli.md
-  - path: agent-tools/skills/kast/scripts/tasks.py
-  - path: agent-tools/skills/kast/scripts/service.py
-  - path: copilot/task-extension.mjs
   - path: agent-tools/onboarding.template.md
   - path: agent-tools/README.md
+  - path: agent-tools/hooks/hooks.json
   - path: agent-tools/hooks/session_start.py
   - path: packaging/internal/query/generate-public-query.py
   - path: build-logic/src/main/kotlin/support/tasks/control/GenerateAgentToolsTask.kt
-  - path: pi/mcp-extension.ts
-  - path: cli/src/test/js/native-onboarding.test.mjs
 ---
 
 # Agent integration
@@ -30,7 +26,6 @@ The same generator owns `references/query-topics.md` and its named topic files.
 It also owns `references/query-common-schema.json` from `catalogs.COMMON` in the canonical schema.
 Change the template or the authored public schema before regeneration.
 Ship `skills/kast/SKILL.md` inside both compositions.
-Keep Python scripts and dependency locks together in the optional MCP composition.
 The default skill links only to resources within its own directory.
 Do not publish a separate skill archive.
 
@@ -38,31 +33,21 @@ Do not publish a separate skill archive.
 The bundled `skills/kast/SKILL.md` links to it.
 Edit that guide directly. Keep query references under their existing generator owner.
 
-`README.md` owns the on-demand Pi inventory example.
-Its executable assertions stay in `cli/src/test/js/native-onboarding.test.mjs`.
-
-`hooks/session_start.py` owns context assembly and host envelopes.
+`hooks/session_start.py` owns context assembly and the Codex envelope.
 Keep its runtime passive, bounded, offline, and free of semantic calls or workspace writes.
 Keep its PEP 723 metadata and lock together.
 The legacy context helper uses Python 3.9 or later with the standard library. Generated plugins exclude this helper.
-`hooks/hooks.json`, `hooks/copilot.json`, and `hooks/pi.ts` call `kast --internal-entrypoint=query hook session-start` for passive context.
+`hooks/hooks.json` calls `kast --internal-entrypoint=query hook session-start` for passive context.
 The native query executable owns event admission and project selection. Hooks do not grant trust, create workspace state, or start a Host.
 Keep workspace decisions and IDE effects outside the harness adapters.
-The task service delegates preparation and semantic work to the installed tool RPC.
-`skills/kast/scripts/tasks.py` owns the catalog shared by MCP and the Copilot SDK adapter.
-Keep binary and wire contracts unchanged. Expose advanced operations through `schema` and `raw`.
-The default Codex and Copilot manifests select the canonical CLI skill and session hook.
-`mcp.json` owns the optional MCP launcher input.
+The default Codex manifest selects the canonical CLI skill and session hook.
+`mcp.json` owns the optional MCP launcher input. It runs the native MCP server through `kast --internal-entrypoint=mcp`.
+The launcher resolves `kast` from `${HOME}/.local/bin` first, as the session hook does.
 The generator places optional MCP resources under `compositions/mcp`.
 Only that composition receives a root `.mcp.json`.
-No generated composition selects Python context hooks.
-Codex and Copilot own plugin configuration and cached resources.
-Pi default setup uses native skill discovery and its session hook. Its optional adapter selects MCP explicitly.
-The optional Pi adapter in `pi/mcp-extension.ts` reads the selected MCP composition with Node and uses native MCP support.
+No generated composition selects Python context hooks or a Python MCP server.
+Codex owns plugin configuration and cached resources.
 
-Run `mise exec -- uv run --locked --project packaging pytest packaging/tests/test-agent-onboarding.py` for hook output, rejection, and host-command cases.
+Run `mise exec -- uv run --locked --project packaging pytest packaging/tests/test-agent-onboarding.py` for hook output, rejection, host-command, and MCP launcher cases.
 Run `mise exec -- uv run --locked --project packaging pytest packaging/tests/test-public-query-generation.py` for schema and brief parity.
-Run `node --test cli/src/test/js/native-onboarding.test.mjs` for Pi adapter cases.
 These tests do not prove model behavior or live host delivery.
-
-Run `uv run --locked pytest` from `packaging/task-access` for task admission, real MCP sessions, and child cancellation.

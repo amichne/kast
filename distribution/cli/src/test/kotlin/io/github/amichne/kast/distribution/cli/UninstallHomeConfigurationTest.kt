@@ -51,7 +51,12 @@ class UninstallHomeConfigurationTest {
             managementJson.encodeToString(
                 ConnectionConfigurationDocument(
                     1,
-                    listOf(SavedConnectionDirectory(HarnessConnection.PI, fixture.home.resolve("another").toString())),
+                    listOf(
+                        SavedConnectionDirectory(
+                            HarnessConnection.CODEX_MCP,
+                            fixture.home.resolve("another").toString(),
+                        )
+                    ),
                 )
             ),
         )
@@ -119,12 +124,12 @@ class UninstallHomeConfigurationTest {
         val home = Files.createDirectory(temporary.resolve("home")).toRealPath()
         val configuration = connectionConfigurationPath(home)
         Files.createDirectories(configuration.parent)
-        val checkpoint = connectionCheckpointPath(home)
+        val checkpoint = home.resolve(".config/kast/config.last-good.json")
         val document =
             managementJson.encodeToString(
                 ConnectionConfigurationDocument(
                     1,
-                    listOf(SavedConnectionDirectory(HarnessConnection.PI, home.resolve(".pi/agent").toString())),
+                    listOf(SavedConnectionDirectory(HarnessConnection.CODEX_MCP, home.resolve(".pi/agent").toString())),
                 )
             )
         for (path in listOf(configuration, checkpoint)) {

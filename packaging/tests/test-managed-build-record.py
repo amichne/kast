@@ -34,7 +34,6 @@ import managed_product_removal as removal
 import managed_release as release
 import managed_update_contract as contract
 import managed_update_journal as journal
-import mcp_environment as mcp
 import product_removal_recovery
 import runtime_base
 from composition_platform import HostPlatform
@@ -770,7 +769,7 @@ class ProductActivationTest(unittest.TestCase):
         self.assertEqual(0o600, stat.S_IMODE((active / "config/environment").stat().st_mode))
         inventory = {item["path"] for item in manifest["payloadFiles"]}
         self.assertNotIn("config/environment", inventory)
-        for executable in ("kast", "kast-query", "kast-mcp", "kast-tool-rpc", "kast-codex"):
+        for executable in ("kast", "kast-query", "kast-mcp", "kast-codex"):
             relative = f"bin/{executable}-complete"
             self.assertIn(relative, inventory)
             self.assertTrue(os.access(active / relative, os.X_OK))
@@ -784,8 +783,9 @@ class ProductActivationTest(unittest.TestCase):
         )
         self.assertEqual(saved, configuration.read_bytes())
         management = json.loads((self.root / "management.json").read_bytes())
-        self.assertEqual([], management["registrations"])
-        self.assertEqual([], management["guidance"])
+        # Kast writes no harness configuration, so its receipt records none.
+        self.assertNotIn("registrations", management)
+        self.assertNotIn("guidance", management)
         self.assertEqual(str(self.root), management["installationRoot"])
         self.assertFalse((self.root / "recovery/replacement").exists())
         self.assertTrue(
@@ -1085,76 +1085,6 @@ class ProductActivationTest(unittest.TestCase):
         self.assertEqual("PREPARED", proof.phase)
         self.assertEqual(0, self.remove_product(path))
 
-    def mcp_fixture(self) -> Path:
-        payload = self.root / "installation"
-        prior = install.LIFECYCLE.Installation.admit(str(payload)).manifest
-        server = payload / mcp.SERVER
-        server.parent.mkdir(parents=True)
-        _ = server.write_bytes(b"pass\n")
-        _ = (payload / mcp.SERVER_LOCK).write_bytes(b"locked fixture\n")
-        _ = (payload / mcp.REQUIREMENTS).write_bytes(b"fixture-package==1\n")
-        export = mcp.RequirementsLock(
-            mcp.digest(server),
-            mcp.digest(payload / mcp.SERVER_LOCK),
-            mcp.digest(payload / mcp.REQUIREMENTS),
-        )
-        _ = (payload / mcp.EXPORT_LOCK).write_bytes(mcp.encoded(export))
-        site = payload / mcp.DEPENDENCY_SITE
-        (site / "example").mkdir(parents=True)
-        _ = (site / "example/__init__.py").write_bytes(b"pass\n")
-        observed = mcp.inventory(site)
-        target = mcp.native_target()
-        assert isinstance(observed, mcp.Inventory)
-        assert isinstance(target, mcp.DependencyTarget)
-        _ = (payload / mcp.ARTIFACT).write_bytes(
-            mcp.encoded(mcp.DependencyArtifact(target, export, observed))
-        )
-        self.fixture_inventory(prior)
-        calls: list[mcp.Command] = []
-
-        def runner(command: mcp.Command) -> mcp.Exited:
-            self.assertEqual([], calls, "unexpected process")
-            calls.append(command)
-            self.assertEqual(
-                (str(payload / mcp.PYTHON), "-I", "-S", "-B", "-c"),
-                command.arguments[:5],
-            )
-            self.assertNotIn("pip", command.arguments)
-            self.assertNotIn("uv", command.arguments)
-            self.assertEqual("", command.environment["PATH"])
-            prepared_site = payload / "state/.mcp-preparing/site-packages"
-            self.assertEqual(str(prepared_site), command.arguments[-1])
-            self.assertEqual(observed, mcp.inventory(prepared_site))
-            return mcp.Exited(0)
-
-        self.assertIsInstance(mcp.prepare(payload, runner), mcp.Prepared)
-        self.assertEqual(1, len(calls), "unconsumed process expectation")
-        return payload / "state/mcp"
-
-    def test_optional_mcp_state_is_admitted_and_partial_removal_resumes(self) -> None:
-        path, record = self.removal_journal()
-        environment = self.mcp_fixture()
-        for name in ("one-shot", "tool-sessions"):
-            (self.root / "installation/state/run" / name).mkdir(parents=True, mode=0o700)
-        raw = (environment / "receipt.json").read_bytes()
-        original = Path.unlink
-
-        def interrupted(file: Path, missing_ok: bool = False) -> None:
-            original(file, missing_ok=missing_ok)
-            if file == environment / "site-packages/example/__init__.py":
-                raise OSError("interrupted MCP removal")
-
-        with patch.object(Path, "unlink", interrupted):
-            self.assertEqual(1, self.remove_product(path))
-        self.assertEqual(raw, (environment / "receipt.json").read_bytes())
-        self.assertEqual(
-            hashlib.sha256(raw).hexdigest(),
-            json.loads(path.read_bytes())["productRemoval"]["mcp"]["receiptSha256"],
-        )
-        self.assert_retired_journal(path, asdict(replace(record, type="CONTROL_RETIRED")))
-        self.assertEqual(0, self.remove_product(path))
-        self.assertFalse(environment.exists())
-
     def live_coordinator(self) -> tuple[Path, Path]:
         """Create the exact state a running semantic coordinator publishes in its installation."""
         state = self.root / "installation/state"
@@ -1282,7 +1212,6 @@ class ProductActivationTest(unittest.TestCase):
 
     def test_unknown_or_altered_optional_state_is_preserved_before_any_removal(self) -> None:
         path, record = self.removal_journal()
-        environment = self.mcp_fixture()
         raw_journal = path.read_bytes()
         configuration = self.root / "installation/config"
         foreign_configuration = configuration / "foreign"
@@ -1301,20 +1230,14 @@ class ProductActivationTest(unittest.TestCase):
         self.assertTrue(saved.is_symlink())
         saved.unlink()
         _ = saved.write_bytes(content)
-        extra = environment / "site-packages/foreign"
-        _ = extra.write_bytes(b"preserve")
-        self.assertEqual(1, self.remove_product(path))
-        self.assertEqual(raw_journal, path.read_bytes())
-        self.assertTrue(Path(record.product.runtimeRoot).exists())
-        self.assertEqual(b"preserve", extra.read_bytes())
-        extra.unlink()
         unknown = self.root / "installation/state/foreign"
+        unknown.parent.mkdir(mode=0o700)
         _ = unknown.write_bytes(b"preserve unknown state")
         self.assertEqual(1, self.remove_product(path))
         self.assertEqual(raw_journal, path.read_bytes())
         self.assertEqual(b"preserve unknown state", unknown.read_bytes())
         unknown.unlink()
-        partial = self.root / "installation/state/.mcp-preparing"
+        partial = self.root / "installation/state/mcp"
         partial.mkdir()
         self.assertEqual(1, self.remove_product(path))
         self.assertEqual(raw_journal, path.read_bytes())
@@ -1492,94 +1415,6 @@ class ProductActivationTest(unittest.TestCase):
         self.assertFalse((self.root / "shutdown.json").exists())
         self.assertFalse((self.root / "recovery/replacement").exists())
 
-    def test_schema_two_guidance_and_registrations_survive_interrupted_product_activation(
-        self,
-    ) -> None:
-        admitted = self.admitted()
-        self.assertIsInstance(
-            activation.activate(self.root, self.home, admitted), activation.ProductInstalled
-        )
-        command = self.home / ".local/bin/kast"
-        guidance_root = self.home / "guidance"
-        guidance_root.mkdir()
-        guide = guidance_root / "SKILL.md"
-        _ = guide.write_bytes(b"keep authored installed guidance")
-        registrations = (
-            install.Registration(
-                "PI",
-                str(self.home / "pi/extensions/kast.ts"),
-                "9" * 64,
-                str(self.home / "pi"),
-                "CliOnly",
-            ),
-        )
-        guidance = (
-            install.Guidance(
-                "PI",
-                str(guidance_root),
-                (install.GuidanceFile("SKILL.md", release.file_digest(guide)),),
-            ),
-        )
-        old = install.ManagementReceipt(
-            2,
-            str(self.root),
-            str(command),
-            release.file_digest(command),
-            "STABLE",
-            registrations,
-            release.TrackStable(),
-            None,
-            guidance,
-            (install.ProviderRegistration("CODEX", str(self.home / "custom-codex")),),
-        )
-        original = install.encoded(old)
-        _ = (self.root / "management.json").write_bytes(original)
-        with patch.object(install, "replace_file", side_effect=KeyboardInterrupt):
-            result = activation.activate(self.root, self.home, admitted, runner=self.retire)
-        self.assertIsInstance(result, contract.RecoveryRequired)
-        self.assertEqual(
-            original, (self.root / "recovery/replacement/management-preimage").read_bytes()
-        )
-        self.assertIsInstance(activation.resume(self.root, self.home), activation.ProductInstalled)
-        saved = json.loads((self.root / "management.json").read_bytes())
-        self.assertEqual(
-            {
-                "schemaVersion",
-                "installationRoot",
-                "executable",
-                "executableSha256",
-                "product",
-                "registrations",
-                "guidance",
-                "providers",
-            },
-            set(saved),
-        )
-        self.assertEqual(3, saved["schemaVersion"])
-        self.assertEqual(str(self.root), saved["installationRoot"])
-        self.assertEqual(
-            [
-                {
-                    "connection": "PI",
-                    "destination": str(self.home / "pi/extensions/kast.ts"),
-                    "payloadSha256": "9" * 64,
-                    "directory": str(self.home / "pi"),
-                    "composition": "CliOnly",
-                }
-            ],
-            saved["registrations"],
-        )
-        self.assertEqual(json.loads(original)["guidance"], saved["guidance"])
-        self.assertEqual(
-            [{"harness": "CODEX", "directory": str(self.home / "custom-codex")}],
-            saved["providers"],
-        )
-        self.assertEqual(b"keep authored installed guidance", guide.read_bytes())
-        self.assertIsInstance(
-            activation.activate(self.root, self.home, admitted, runner=self.retire),
-            activation.ProductInstalled,
-        )
-        self.assertEqual(saved, json.loads((self.root / "management.json").read_bytes()))
 
     def test_invalid_provisioning_rejects_before_retirement_or_journal_publication(self) -> None:
         admitted = self.admitted()
@@ -1596,57 +1431,6 @@ class ProductActivationTest(unittest.TestCase):
             )
         )
         invalid: tuple[tuple[str, object], ...] = (
-            ("providers", [{"harness": "PI", "directory": "/pi"}]),
-            ("providers", [{"harness": "CODEX", "directory": "relative"}]),
-            ("providers", [{"harness": "CODEX", "directory": "/codex"}] * 2),
-            (
-                "providers",
-                [{"harness": "CODEX", "directory": f"/codex-{index}"} for index in range(33)],
-            ),
-            (
-                "registrations",
-                [{"connection": "UNKNOWN", "destination": "/keep", "payloadSha256": "9" * 64}],
-            ),
-            (
-                "registrations",
-                [{"connection": "PI", "destination": "/keep", "payloadSha256": "bad"}],
-            ),
-            (
-                "registrations",
-                [
-                    {
-                        "connection": "PI",
-                        "destination": "/wrong",
-                        "directory": "/pi",
-                        "payloadSha256": "9" * 64,
-                    }
-                ],
-            ),
-            (
-                "registrations",
-                [{"connection": "PI", "destination": "/keep", "payloadSha256": "9" * 64}] * 2,
-            ),
-            ("guidance", [{"harness": "PI", "destination": "/guidance", "files": list[object]()}]),
-            (
-                "guidance",
-                [
-                    {
-                        "harness": "PI",
-                        "destination": "/guidance",
-                        "files": [{"path": "../escape", "sha256": "8" * 64}],
-                    }
-                ],
-            ),
-            (
-                "guidance",
-                [
-                    {
-                        "harness": "PI",
-                        "destination": "/guidance",
-                        "files": [{"path": "SKILL.md", "sha256": "bad"}],
-                    }
-                ],
-            ),
             ("installationRoot", str(self.root / "installation")),
         )
         prior = journal.Identity.observe(self.root / "installation")
@@ -2684,36 +2468,6 @@ class ProductActivationTest(unittest.TestCase):
                 runtime.unlink(missing_ok=True)
                 _ = runtime.write_bytes(original)
 
-    def test_product_guidance_refresh_retains_selection_and_reports_pending_repair(self) -> None:
-        installed = activation.activate(self.root, self.home, self.admitted())
-        assert isinstance(installed, activation.ProductInstalled)
-        marker = self.root / "installation/share/kast/guidance-refresh-v1"
-        _ = marker.write_bytes(b"1\n")
-        calls: list[list[str]] = []
-
-        def run(
-            arguments: list[str], environment: dict[str, str], timeout: float
-        ) -> subprocess.CompletedProcess[bytes]:
-            calls.append(arguments)
-            self.assertEqual(str(self.root), environment["KAST_INSTALL_ROOT"])
-            self.assertEqual(str(self.home), environment["HOME"])
-            self.assertGreater(timeout, 0)
-            return subprocess.CompletedProcess(arguments, exit_code, b"", b"")
-
-        exit_code = 1
-        pending = install.refresh_installed_guidance(self.root, self.home, installed, run)
-        self.assertEqual(installed.product, pending.product)
-        self.assertEqual(installed.executable, pending.executable)
-        self.assertEqual((journal.ManagedNotice.HARNESS_REFRESH_REQUIRED,), pending.notices)
-        exit_code = 0
-        refreshed = install.refresh_installed_guidance(self.root, self.home, pending, run)
-        self.assertEqual(installed, refreshed)
-        expected = [
-            str(self.root / "installation/share/kast/libexec/kast-management"),
-            "--internal-install",
-            "refresh-guidance",
-        ]
-        self.assertEqual([expected, expected], calls)
 
     def test_replacement_interruption_retains_prior_payload_and_foreign_command(self) -> None:
         admitted = self.admitted()

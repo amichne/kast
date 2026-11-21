@@ -29,7 +29,7 @@ import sys
 import tempfile
 from collections.abc import Iterator
 from contextlib import contextmanager
-from dataclasses import asdict, dataclass, is_dataclass, replace
+from dataclasses import asdict, dataclass, is_dataclass
 from pathlib import Path
 from types import ModuleType
 from typing import TYPE_CHECKING, Literal, Protocol
@@ -77,48 +77,6 @@ class SelectionRejected:
     selectable: tuple[str, ...]
     transfer: release.TransferRejected | None = None
     type: Literal["REJECTED"] = "REJECTED"
-
-
-@dataclass(frozen=True, slots=True)
-class Registration:
-    connection: Literal["CODEX_MCP", "CODEX_APP_SERVER", "COPILOT", "PI"]
-    destination: str
-    payloadSha256: str
-    directory: str | None = None
-    composition: Literal["CliOnly", "CliWithMcp"] = "CliWithMcp"
-
-
-@dataclass(frozen=True, slots=True)
-class GuidanceFile:
-    path: str
-    sha256: str
-
-
-@dataclass(frozen=True, slots=True)
-class Guidance:
-    harness: Literal["CODEX", "COPILOT", "PI"]
-    destination: str
-    files: tuple[GuidanceFile, ...]
-
-
-@dataclass(frozen=True, slots=True)
-class ProviderRegistration:
-    harness: Literal["CODEX", "COPILOT"]
-    directory: str
-
-
-@dataclass(frozen=True, slots=True)
-class ManagementReceipt:
-    schemaVersion: int
-    installationRoot: str
-    executable: str
-    executableSha256: str
-    channel: Literal["STABLE", "DEVELOPER"]
-    registrations: tuple[Registration, ...]
-    updatePolicy: release.UpdatePolicy
-    installedBuild: release.BuildIdentity | None
-    guidance: tuple[Guidance, ...] = ()
-    providers: tuple[ProviderRegistration, ...] = ()
 
 
 @dataclass(slots=True)
@@ -225,173 +183,6 @@ def read_record(path: Path, limit: int = 65_536) -> bytes:
     if len(data) > limit:
         raise OSError("record limit exceeded")
     return data
-
-
-def text_field(value: object) -> str:
-    if not isinstance(value, str) or len(value) > 4096:
-        raise reject(contract.Stage.RE_ADMISSION, contract.Failure.OWNERSHIP_UNPROVEN)
-    return value
-
-
-def parse_management(raw: bytes) -> ManagementReceipt:
-    value = release.document(raw)
-    if (
-        not release.mapping(value)
-        or not {
-            "schemaVersion",
-            "installationRoot",
-            "executable",
-            "executableSha256",
-            "channel",
-            "registrations",
-        }
-        <= set(value)
-        or set(value)
-        - {
-            "schemaVersion",
-            "installationRoot",
-            "executable",
-            "executableSha256",
-            "channel",
-            "registrations",
-            "updatePolicy",
-            "installedBuild",
-            "guidance",
-            "providers",
-        }
-    ):
-        raise reject(contract.Stage.RE_ADMISSION, contract.Failure.OWNERSHIP_UNPROVEN)
-    schema, channel, registrations, guidance = (
-        value["schemaVersion"],
-        value["channel"],
-        value["registrations"],
-        value.get("guidance", []),
-    )
-    if type(schema) is not int or schema not in (1, 2) or channel not in ("STABLE", "DEVELOPER"):
-        raise reject(contract.Stage.RE_ADMISSION, contract.Failure.OWNERSHIP_UNPROVEN)
-    parsed_registrations, parsed_guidance = parse_provisioning(schema, registrations, guidance)
-    raw_build, raw_policy = value.get("installedBuild"), value.get("updatePolicy")
-    build = None if raw_build is None else release.parse_identity(raw_build)
-    if isinstance(build, release.Failure):
-        raise reject(contract.Stage.RE_ADMISSION, contract.Failure.OWNERSHIP_UNPROVEN)
-    if raw_policy is None:
-        policy: release.UpdatePolicy = (
-            release.TrackStable() if channel == "STABLE" else release.TrackMain()
-        )
-    elif release.mapping(raw_policy) and raw_policy == {"type": "TrackStable"}:
-        policy = release.TrackStable()
-    elif release.mapping(raw_policy) and raw_policy == {"type": "TrackMain"}:
-        policy = release.TrackMain()
-    elif (
-        release.mapping(raw_policy)
-        and set(raw_policy) == {"type", "identity"}
-        and raw_policy["type"] == "PinnedBuild"
-    ):
-        pinned = release.parse_identity(raw_policy["identity"])
-        if isinstance(pinned, release.Failure):
-            raise reject(contract.Stage.RE_ADMISSION, contract.Failure.OWNERSHIP_UNPROVEN)
-        policy = release.PinnedBuild(pinned)
-    else:
-        raise reject(contract.Stage.RE_ADMISSION, contract.Failure.OWNERSHIP_UNPROVEN)
-    return ManagementReceipt(
-        2,
-        text_field(value["installationRoot"]),
-        text_field(value["executable"]),
-        text_field(value["executableSha256"]),
-        channel,
-        parsed_registrations,
-        policy,
-        build,
-        parsed_guidance,
-        parse_providers(value.get("providers", [])),
-    )
-
-
-def parse_providers(raw: object) -> tuple[ProviderRegistration, ...]:
-    if not release.sequence(raw) or len(raw) > 32:
-        raise reject(contract.Stage.RE_ADMISSION, contract.Failure.OWNERSHIP_UNPROVEN)
-    providers: list[ProviderRegistration] = []
-    for entry in raw:
-        if not release.mapping(entry) or set(entry) != {"harness", "directory"}:
-            raise reject(contract.Stage.RE_ADMISSION, contract.Failure.OWNERSHIP_UNPROVEN)
-        harness, directory = entry["harness"], entry["directory"]
-        if (
-            harness not in ("CODEX", "COPILOT")
-            or not isinstance(directory, str)
-            or not 1 <= len(directory) <= 4096
-            or any(ord(character) < 32 for character in directory)
-            or not Path(directory).is_absolute()
-            or str(Path(directory)) != directory
-            or os.path.normpath(directory) != directory
-        ):
-            raise reject(contract.Stage.RE_ADMISSION, contract.Failure.OWNERSHIP_UNPROVEN)
-        provider = ProviderRegistration(harness, directory)
-        if provider in providers:
-            raise reject(contract.Stage.RE_ADMISSION, contract.Failure.OWNERSHIP_UNPROVEN)
-        providers.append(provider)
-    return tuple(providers)
-
-
-def parse_provisioning(
-    schema: int, registrations: object, guidance: object
-) -> tuple[tuple[Registration, ...], tuple[Guidance, ...]]:
-    if not release.sequence(registrations) or not release.sequence(guidance):
-        raise reject(contract.Stage.RE_ADMISSION, contract.Failure.OWNERSHIP_UNPROVEN)
-    parsed_registrations: list[Registration] = []
-    for item in registrations:
-        if not release.mapping(item):
-            raise reject(contract.Stage.RE_ADMISSION, contract.Failure.OWNERSHIP_UNPROVEN)
-        if schema == 1:
-            if set(item) != {"harness", "destination", "payloadSha256"} or item["harness"] not in (
-                "CODEX",
-                "COPILOT",
-                "PI",
-            ):
-                raise reject(contract.Stage.RE_ADMISSION, contract.Failure.OWNERSHIP_UNPROVEN)
-            connection = "CODEX_MCP" if item["harness"] == "CODEX" else item["harness"]
-        else:
-            if not {"connection", "destination", "payloadSha256"} <= set(item) or set(item) - {
-                "connection",
-                "destination",
-                "payloadSha256",
-                "directory",
-                "composition",
-            }:
-                raise reject(contract.Stage.RE_ADMISSION, contract.Failure.OWNERSHIP_UNPROVEN)
-            connection = item["connection"]
-        if connection not in ("CODEX_MCP", "CODEX_APP_SERVER", "COPILOT", "PI"):
-            raise reject(contract.Stage.RE_ADMISSION, contract.Failure.OWNERSHIP_UNPROVEN)
-        directory = item.get("directory")
-        composition = item.get("composition", "CliWithMcp")
-        if composition not in ("CliOnly", "CliWithMcp"):
-            raise reject(contract.Stage.RE_ADMISSION, contract.Failure.OWNERSHIP_UNPROVEN)
-        parsed_registrations.append(
-            Registration(
-                connection,
-                text_field(item["destination"]),
-                text_field(item["payloadSha256"]),
-                None if directory is None else text_field(directory),
-                composition,
-            )
-        )
-    parsed_guidance: list[Guidance] = []
-    for item in guidance:
-        if (
-            not release.mapping(item)
-            or set(item) != {"harness", "destination", "files"}
-            or item["harness"] not in ("CODEX", "COPILOT", "PI")
-            or not release.sequence(item["files"])
-        ):
-            raise reject(contract.Stage.RE_ADMISSION, contract.Failure.OWNERSHIP_UNPROVEN)
-        files: list[GuidanceFile] = []
-        for entry in item["files"]:
-            if not release.mapping(entry) or set(entry) != {"path", "sha256"}:
-                raise reject(contract.Stage.RE_ADMISSION, contract.Failure.OWNERSHIP_UNPROVEN)
-            files.append(GuidanceFile(text_field(entry["path"]), text_field(entry["sha256"])))
-        parsed_guidance.append(
-            Guidance(item["harness"], text_field(item["destination"]), tuple(files))
-        )
-    return tuple(parsed_registrations), tuple(parsed_guidance)
 
 
 def emit(
@@ -543,43 +334,6 @@ def rename_file_no_replace(first: Path, second: Path) -> None:
         raise OSError(ctypes.get_errno(), "owned file quarantine failed")
 
 
-# One refresh can prepare optional MCP dependencies for three providers.
-GUIDANCE_REFRESH_TIMEOUT_SECONDS = 300.0
-
-
-def refresh_installed_guidance(
-    root: Path,
-    home: Path,
-    outcome: ProductInstalled,
-    runner: ChildRunner,
-) -> ProductInstalled:
-    installation = root / "installation"
-    marker = installation / "share/kast/guidance-refresh-v1"
-    if not os.path.lexists(marker):
-        return outcome
-    pending = journal_types.ManagedNotice.HARNESS_REFRESH_REQUIRED
-    notices = tuple(notice for notice in outcome.notices if notice != pending)
-    try:
-        if read_record(marker, 2) != b"1\n":
-            return replace(outcome, notices=notices + (pending,))
-        executable = installation / "share/kast/libexec/kast-management"
-        result = runner(
-            [str(executable), "--internal-install", "refresh-guidance"],
-            dict(os.environ)
-            | {
-                "HOME": str(home),
-                "KAST_INSTALL_ROOT": str(root),
-            },
-            GUIDANCE_REFRESH_TIMEOUT_SECONDS,
-        )
-    except (OSError, ValueError, StageRejected, subprocess.TimeoutExpired):
-        return replace(outcome, notices=notices + (pending,))
-    if result.returncode != 0:
-        print("kast: installed guidance refresh did not complete", file=sys.stderr)
-        return replace(outcome, notices=notices + (pending,))
-    return replace(outcome, notices=notices)
-
-
 def main(
     arguments: list[str],
     source: release.ReleaseSource | None = None,
@@ -722,15 +476,6 @@ def main(
                     contract.Stage.PREPARATION, contract.Failure.OWNERSHIP_UNPROVEN
                 )
             )
-    if isinstance(outcome, ProductInstalled):
-        try:
-            outcome = refresh_installed_guidance(root, home, outcome, runner)
-        except KeyboardInterrupt:
-            if state.exit_code is None:
-                state.exit_code = 130
-            pending = journal_types.ManagedNotice.HARNESS_REFRESH_REQUIRED
-            if pending not in outcome.notices:
-                outcome = replace(outcome, notices=outcome.notices + (pending,))
     if args.json:
         print(encoded(outcome).decode().rstrip())
     else:
@@ -739,14 +484,6 @@ def main(
             print(encoded(outcome).decode().rstrip(), file=sys.stderr)
         if isinstance(outcome, SelectionRejected) and outcome.transfer is not None:
             print(transfer_message(outcome.transfer), file=sys.stderr)
-        if (
-            isinstance(outcome, ProductInstalled)
-            and journal_types.ManagedNotice.HARNESS_REFRESH_REQUIRED in outcome.notices
-        ):
-            print(
-                "HARNESS_REFRESH_REQUIRED: run kast install <harness> before a fresh session.",
-                file=sys.stderr,
-            )
     return (
         state.exit_code
         if state.exit_code is not None

@@ -24,7 +24,7 @@ import managed_product as product
 import managed_release as release
 import managed_update_contract as contract
 import managed_update_journal as journal
-import product_mcp_removal
+import product_state_removal
 import runtime_base
 from composition_platform import HostPlatform
 from managed_headless import AssemblyRecord
@@ -60,9 +60,6 @@ class ProductManagement:
     executableSha256: str
     product: product.ProductReference
     schemaVersion: int = 3
-    registrations: tuple[install.Registration, ...] = ()
-    guidance: tuple[install.Guidance, ...] = ()
-    providers: tuple[install.ProviderRegistration, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -142,10 +139,6 @@ def copy_runtime_file(source: str, target: str) -> object:
         ) from None
 
 
-def publish_runtime(admitted: product.AdmittedProduct, reference: product.ProductReference) -> None:
-    _ = prepare_runtime(admitted, reference, immutable_store.RepairPolicy.REJECT)
-
-
 def prepare_runtime(
     admitted: product.AdmittedProduct,
     reference: product.ProductReference,
@@ -211,10 +204,6 @@ def prepare_runtime(
         install.RECOVERY.sync(destination.parent)
     read_runtime(reference)
     return damaged
-
-
-def publish_base(admitted: product.AdmittedProduct, parent: Path) -> None:
-    _ = prepare_base(admitted, parent, immutable_store.RepairPolicy.REJECT)
 
 
 def prepare_base(
@@ -303,6 +292,14 @@ def reference_at(control: Path, root: Path) -> product.ProductReference:
     # The reference proves recorded identity, not present runtime bytes. A prior Control
     # can retire an empty workspace store even when its runtime needs repair.
     return reference
+
+
+def publish_runtime(admitted: product.AdmittedProduct, reference: product.ProductReference) -> None:
+    _ = prepare_runtime(admitted, reference, immutable_store.RepairPolicy.REJECT)
+
+
+def publish_base(admitted: product.AdmittedProduct, parent: Path) -> None:
+    _ = prepare_base(admitted, parent, immutable_store.RepairPolicy.REJECT)
 
 
 def admit_prior(root: Path) -> journal.NoPrevious | journal.PhysicalPrevious:
@@ -407,7 +404,7 @@ def admit_live_semantic_broker(broker: Path) -> None:
 def verify_replacement_state(control: Path, *, live_coordinator: bool = False) -> None:
     """Before retirement a running coordinator may own state; afterwards none may remain."""
     _ = verify_client_configuration(control)
-    _ = product_mcp_removal.empty_invocation_directories(
+    _ = product_state_removal.empty_invocation_directories(
         control, live_coordinator=live_coordinator
     )
     state = control / "state"
@@ -444,7 +441,7 @@ def materialize_client_entries(stage: Path, active: Path) -> None:
         target.chmod(0o600)
     # These are host-interface adapters, not a second semantic dispatch owner.
     # Raw launchers retain their internal entrypoint and native-image arguments.
-    for executable in ("kast", "kast-query", "kast-mcp", "kast-tool-rpc", "kast-codex"):
+    for executable in ("kast", "kast-query", "kast-mcp", "kast-codex"):
         launcher = stage / "bin" / (executable + "-complete")
         with launcher.open("x") as output:
             _ = output.write(
@@ -482,43 +479,16 @@ def require_empty_workspaces(root: Path) -> None:
 
 
 def read_management(raw: bytes, root: Path, command: Path, prior: Path) -> ProductManagement:
+    """Admit the prior schema 3 receipt; recorded agent registrations are not Kast's and are dropped."""
     value = release.document(raw)
     reference = reference_at(prior, root)
-    if not release.mapping(value) or type(value.get("schemaVersion")) is not int:
+    if not release.mapping(value) or value.get("schemaVersion") != 3:
         raise ValueError("management schema")
-    if value["schemaVersion"] == 2:
-        legacy = install.parse_management(raw)
-        registrations, guidance = legacy.registrations, legacy.guidance
-        providers = legacy.providers
-        identity = legacy.installedBuild
-        if identity is not None and (
-            identity.version,
-            identity.buildRevision,
-            identity.sourceTree,
-        ) != (reference.version, reference.sourceRevision, reference.sourceTree):
-            raise ValueError("management build identity")
-    elif value["schemaVersion"] == 3:
-        required = {
-            "schemaVersion",
-            "installationRoot",
-            "executable",
-            "executableSha256",
-            "product",
-        }
-        if not required <= set(value) or set(value) - required - {
-            "registrations",
-            "guidance",
-            "providers",
-        }:
-            raise ValueError("management fields")
-        if value["product"] != release.document(install.encoded(reference)):
-            raise ValueError("management product identity")
-        registrations, guidance = install.parse_provisioning(
-            2, value.get("registrations", []), value.get("guidance", [])
-        )
-        providers = install.parse_providers(value.get("providers", []))
-    else:
-        raise ValueError("management schema")
+    required = {"schemaVersion", "installationRoot", "executable", "executableSha256", "product"}
+    if not required <= set(value) or set(value) - required - {"registrations", "guidance", "providers"}:
+        raise ValueError("management fields")
+    if value["product"] != release.document(install.encoded(reference)):
+        raise ValueError("management product identity")
     digest = release.file_digest(prior / "share/kast/libexec/kast-management")
     if (value.get("installationRoot"), value.get("executable"), value.get("executableSha256")) != (
         str(root),
@@ -526,68 +496,7 @@ def read_management(raw: bytes, root: Path, command: Path, prior: Path) -> Produ
         digest,
     ):
         raise ValueError("management installation identity")
-    validate_provisioning(root, registrations, guidance)
-    return ProductManagement(
-        str(root),
-        str(command),
-        digest,
-        reference,
-        registrations=registrations,
-        guidance=guidance,
-        providers=providers,
-    )
-
-
-def normalized_absolute(raw: str) -> bool:
-    return Path(raw).is_absolute() and os.path.normpath(raw) == raw and "\x00" not in raw
-
-
-def validate_provisioning(
-    root: Path,
-    registrations: tuple[install.Registration, ...],
-    guidance: tuple[install.Guidance, ...],
-) -> None:
-    if len({entry.connection for entry in registrations}) != len(registrations):
-        raise ValueError("duplicate registration")
-    for entry in registrations:
-        if not release.DIGEST.fullmatch(entry.payloadSha256):
-            raise ValueError("registration digest")
-        if entry.directory is not None:
-            if not normalized_absolute(entry.directory) or not normalized_absolute(
-                entry.destination
-            ):
-                raise ValueError("registration directory")
-            directory = Path(entry.directory)
-            match entry.connection:
-                case "CODEX_MCP":
-                    expected = root / "installation/bin/kast-mcp-complete"
-                case "CODEX_APP_SERVER":
-                    expected = directory / "kast-codex"
-                case "COPILOT":
-                    expected = directory / "extensions/kast/extension.mjs"
-                case "PI":
-                    expected = directory / "extensions/kast.ts"
-            if str(expected) != entry.destination:
-                raise ValueError("registration destination")
-    if len({entry.harness for entry in guidance}) != len(guidance):
-        raise ValueError("duplicate guidance")
-    for entry in guidance:
-        if (
-            not normalized_absolute(entry.destination)
-            or not entry.files
-            or (len({item.path for item in entry.files}) != len(entry.files))
-        ):
-            raise ValueError("guidance identity")
-        for item in entry.files:
-            if (
-                not release.DIGEST.fullmatch(item.sha256)
-                or "\\" in item.path
-                or any(
-                    ord(character) < 32 or 127 <= ord(character) <= 159 for character in item.path
-                )
-                or any(part in ("", ".", "..") for part in item.path.split("/"))
-            ):
-                raise ValueError("guidance file")
+    return ProductManagement(str(root), str(command), digest, reference)
 
 
 def activate(
@@ -962,7 +871,6 @@ def resume_locked(
     ):
         raise ValueError("journal selection")
     previous = record.previous
-    prior_receipt: ProductManagement | None = None
     if isinstance(previous, journal.PhysicalPrevious):
         live_coordinator = selected.phase in PRE_RETIREMENT_PHASES
         prior = install.RECOVERY.managed_previous(
@@ -981,7 +889,7 @@ def resume_locked(
         raw = install.read_record(Path(preimage.preimage))
         if hashlib.sha256(raw).hexdigest() != preimage.sha256:
             raise ValueError("management preimage changed")
-        prior_receipt = read_management(
+        _ = read_management(
             raw, root, Path(selected.publicExecutable.destination), prior[0]
         )
     elif selected.previousManifestSha256 is not None or not isinstance(
@@ -1020,9 +928,6 @@ def resume_locked(
         str(command),
         release.file_digest(native),
         reference,
-        registrations=prior_receipt.registrations if prior_receipt else (),
-        guidance=prior_receipt.guidance if prior_receipt else (),
-        providers=prior_receipt.providers if prior_receipt else (),
     )
     for preimage, data, mode, role in (
         (

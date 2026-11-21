@@ -11,7 +11,7 @@ class NativeControlResetSelectionTest {
 
     @Test
     fun `force reset selects each native worker mode with its exact process identity`() {
-        for (mode in listOf("query", "mcp", "rpc", "jq", "service", "daemon", "codex")) {
+        for (mode in listOf("query", "mcp", "jq", "service", "daemon", "codex")) {
             val snapshot =
                 snapshot(
                     listOf("-Duser.home=/fixture/home", "-XX:ActiveProcessorCount=2", "--internal-entrypoint=$mode")

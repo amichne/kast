@@ -1,79 +1,62 @@
 ---
 title: "MCP contract"
-description: "Discover Kast task tools and preserve their RPC evidence."
+description: "Discover and call the tools of the Kast MCP server, and keep the evidence in each reply."
 icon: "plug"
 keywords: ["MCP", "tools/list", "tools/call", "structuredContent"]
 hideFooterPagination: true
 ---
 
-MCP is an optional composition selected with `kast install codex --mcp`, `kast install copilot --mcp`, or `kast install pi --mcp`.
-The default agent guidance uses the native [Kast CLI](/reference/cli).
-The optional composition exposes one task MCP server over stdio.
-Codex, Copilot, and Pi use the same task catalog.
-The client starts the process in the exact repository or worktree.
-The server uses the installed Tool RPC without changes to its binary or wire shapes.
+The installed `kast` command runs a stdio MCP server:
+
+```shell
+kast --internal-entrypoint=mcp
+```
+
+Declare this command in `agents.toml` as [Connect your agent](/reference/integrations) shows. The agent starts the server.
+The server's working directory selects the Kotlin repository or worktree.
 
 Registration and catalog discovery do not grant trust or start a Host.
-The first explicit semantic request trusts its exact workspace root and prepares the managed Host used by CLI and tool RPC too.
-Use a workspace whose build code you trust. No desktop IDEA, user Python, or uv setup is required.
+The first explicit semantic request grants trust to its exact workspace root and prepares the managed Host that the CLI also uses.
+Use a workspace whose build code you trust. Desktop IDEA, user Python, and uv are not required.
 
 ## Catalog
 
-`tools/list` supplies each task's name, description, input schema, and effect annotations.
-The installed task schema governs the session.
+`tools/list` supplies each tool's name, description, input schema, output schema, and annotations.
+The installed schemas govern the session.
 
-| Task | Purpose |
+| Tool | Purpose |
 | --- | --- |
-| `find` | Discover declarations with known name, kind, directory or package, and source sets. |
-| `callers`, `callees`, `implementations`, `inheritors`, `overrides` | Read one-hop declaration relationships. |
-| `references`, `type_uses` | Read individual occurrence evidence. |
-| `trace` | Trace the fixed affected-use topology. |
-| `walk` | Keep traversal records through an explicit depth. |
-| `source` | Read source under an issued reference. The default region is `ANCHOR`. |
-| `result`, `resume` | Recover retained results or produced output. |
-| `diagnostics` | Read compiler diagnostics for a relative path. |
-| `schema`, `raw` | Inspect and call advanced existing operations. |
+| `query_symbols` | Run a public query: declaration selection, relations, traversal, trace, retained results, and source reads. |
+| `check_diagnostics` | Read compiler diagnostics for a workspace-relative file or directory. |
+| `add_declaration` | Add one declaration at an exact top-level Kotlin target. |
+| `replace_body` | Replace the block body of one exact Kotlin function. |
+| `health_check` | Inspect workspace readiness. |
 
-Raw tool names are not separate tools in this catalog.
-For source changes through `raw`, supply `write:true` and preserve the user's authorization.
-The installed catalog still admits the underlying request and effect.
+The default catalog admits the common query grammar. To select the complete grammar, add `--catalog=COMPLETE` after the entry selector.
+Custom-depth `WALK` and forward value `IMPACT` require the complete catalog.
 
 Discovery does not prove IDEA readiness or semantic completion.
-Use the first useful task instead of a readiness probe.
-Read the bundled Kast skill for exact selection, destination scope, source regions, and recovery rules.
+Use the first useful tool instead of a readiness probe.
+Read the Kast skill for exact selection, destination scope, source regions, and recovery rules.
+Source changes need the user's request and an issued exact target.
 
 ## Call and result
 
-`tools/call` selects a task and its input object.
-This example finds a declaration in the selected source sets:
+`tools/call` selects a tool and its input object.
+The [callable schemas](/reference/schemas) define each input.
 
-```json
-{
-  "jsonrpc": "2.0",
-  "id": 2,
-  "method": "tools/call",
-  "params": {
-    "name": "find",
-    "arguments": {"name": "OrderRepository", "kind": "interface", "directory": "src", "source_sets": ["main"]}
-  }
-}
-```
+The reply puts display text in `content[]` and the checked tool document in `structuredContent`.
+The document keeps its status, evidence, and recovery fields.
+`isError` reports a failed tool call without removing the document.
+A transport rejection returns `type: "MCP_REJECTED"` in `structuredContent`. See [Results](/reference/responses).
 
-The interface kind searches the CLASS family. Examine the returned declaration before an interface claim.
-Select the exact owner, signature, receiver, and location before a relationship call.
-
-The reply keeps the original RPC JSON in `content[].text` and its decoded value in `structuredContent`.
-The outer RPC `type` remains intact. The document keeps its status, evidence, and recovery fields.
-A qualified or rejected RPC outcome sets `isError:true` without removing the document.
-Local input, catalog, or process failures use `ACCESS_REJECTED` with their stage and reason.
-
-Decode both the MCP wrapper and the RPC outcome.
+Decode both the MCP wrapper and the inner document.
 A successful exchange does not prove that the semantic answer is complete.
-Cancellation stops the child, but submission or effects can remain uncertain. Never retry automatically.
+Cancellation stops the call, but submission or effects can remain uncertain. Never retry automatically.
 
 ## Select a producer invocation
 
-The native MCP server exposes `producer_invocations` and `impact` with its complete query catalog.
+The complete catalog also lists `producer_invocations` and `impact`.
 Pass an issued exact callable reference as `callable` to `producer_invocations`.
 Each eligible Kotlin call has a `producerSeed` with its enclosing declaration, target callable, and full invocation range.
 Choose the occurrence for the intended call.
@@ -84,11 +67,5 @@ Set `section` to another impact witness section to select different evidence.
 A stale range rejects before the compiler examines the call.
 Repeat discovery after a stale selection.
 For custom domains, requested sites, or models, pass the same seed to the full `IMPACT` query.
-
-## Source and integration
-
-The plugin owns `skills/kast/scripts/tasks.py` and `service.py`.
-The [integration guide](/reference/integrations) describes setup and dependencies.
-The [Tool RPC reference](/reference/rpc-catalog) describes the unchanged underlying transport.
 
 Exact reference: [Schemas and samples](/reference/schemas).

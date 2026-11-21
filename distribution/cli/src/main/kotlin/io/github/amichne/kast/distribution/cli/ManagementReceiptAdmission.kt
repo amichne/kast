@@ -4,8 +4,6 @@ import io.github.amichne.kast.distribution.contract.InstalledBuildIdentity
 import io.github.amichne.kast.distribution.contract.ManagementBuildBinding
 import io.github.amichne.kast.distribution.contract.UpdatePolicy
 import java.nio.file.Path
-import kotlinx.serialization.EncodeDefault
-import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
@@ -19,74 +17,18 @@ internal enum class ReleaseChannel {
     DEVELOPER,
 }
 
-@Serializable
-@OptIn(ExperimentalSerializationApi::class)
-internal data class ManagedRegistration(
-    val connection: HarnessConnection,
-    val destination: String,
-    val payloadSha256: String,
-    // Receipts predating destination selection lack this routing proof.
-    @EncodeDefault(EncodeDefault.Mode.NEVER) val directory: String? = null,
-    // Pi registrations predating preparation-only hooks selected MCP.
-    @EncodeDefault val composition: HarnessComposition = HarnessComposition.CliWithMcp,
-) {
-    constructor(
-        connection: HarnessConnection,
-        destination: Path,
-        payloadSha256: String,
-        directory: ConnectionDirectory,
-        composition: HarnessComposition,
-    ) : this(connection, destination.toString(), payloadSha256, directory.path.toString(), composition)
-}
-
 @Serializable private data class ReceiptVersion(val schemaVersion: Int)
 
-@Serializable
-private data class LegacyManagedRegistration(val harness: Harness, val destination: String, val payloadSha256: String)
-
-@Serializable
-private data class LegacyManagementReceipt(
-    val schemaVersion: Int,
-    val installationRoot: String,
-    val executable: String,
-    val executableSha256: String,
-    val channel: ReleaseChannel,
-    val registrations: List<LegacyManagedRegistration>,
-) {
-    fun refine(): ManagementReceipt =
-        ManagementReceipt(
-            2,
-            installationRoot,
-            executable,
-            executableSha256,
-            channel,
-            registrations.map { registration ->
-                val connection =
-                    when (registration.harness) {
-                        Harness.CODEX -> HarnessConnection.CODEX_MCP
-                        Harness.COPILOT -> HarnessConnection.COPILOT
-                        Harness.PI -> HarnessConnection.PI
-                    }
-                ManagedRegistration(connection, registration.destination, registration.payloadSha256)
-            },
-        )
-}
-
-@Serializable
+/** The admitted projection of a schema 3 product management receipt. Agent configuration is not Kast's. */
 internal data class ManagementReceipt(
     val schemaVersion: Int,
     val installationRoot: String,
     val executable: String,
     val executableSha256: String,
     val channel: ReleaseChannel,
-    val registrations: List<ManagedRegistration>,
-    val updatePolicy: UpdatePolicy =
-        if (channel == ReleaseChannel.STABLE) UpdatePolicy.TrackStable else UpdatePolicy.TrackMain,
-    val installedBuild: InstalledBuildIdentity? = null,
-    val guidance: List<ManagedGuidance> = emptyList(),
-    @kotlinx.serialization.Transient val product: InstalledProductReference? = null,
-    @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
-    val providers: List<ProviderRegistration> = emptyList(),
+    val updatePolicy: UpdatePolicy,
+    val installedBuild: InstalledBuildIdentity,
+    val product: InstalledProductReference,
 )
 
 internal sealed interface ReceiptRead {
@@ -101,8 +43,6 @@ private fun decodeReceipt(raw: String): ReceiptRead {
     val receipt =
         try {
             when (receiptVersionJson.decodeFromString<ReceiptVersion>(raw).schemaVersion) {
-                1 -> managementJson.decodeFromString<LegacyManagementReceipt>(raw).refine()
-                2 -> managementJson.decodeFromString<ManagementReceipt>(raw)
                 PRODUCT_MANAGEMENT_SCHEMA_VERSION ->
                     managementJson.decodeFromString<ProductManagementReceipt>(raw).refine()
                 else -> return ReceiptRead.Unavailable("receipt_invalid")
@@ -125,27 +65,9 @@ internal fun admitManagementReceipt(root: Path, raw: String?): ReceiptRead {
             is ReceiptRead.Read -> decoded.receipt
             is ReceiptRead.Unavailable -> return decoded
         }
-    if (!validReceiptIdentity(root, receipt) || !validRecordedBuild(receipt) || !validGuidance(receipt.guidance))
+    if (!validReceiptIdentity(root, receipt) || !validRecordedBuild(receipt))
         return ReceiptRead.Unavailable("receipt_invalid")
-    if (!validProviders(receipt.providers)) return ReceiptRead.Unavailable("receipt_invalid")
     return ReceiptRead.Read(receipt)
-}
-
-private fun validManagedRegistration(root: Path, registration: ManagedRegistration): Boolean {
-    if (!validSha256(registration.payloadSha256)) return false
-    // Legacy receipts are refined at connect; never manufacture their missing routing proof.
-    val rawDirectory = registration.directory ?: return true
-    val directory =
-        when (val admitted = ConnectionDirectory.admit(rawDirectory)) {
-            is ConnectionDirectoryAdmission.Admitted -> admitted.directory
-            is ConnectionDirectoryAdmission.Rejected -> return false
-        }
-    val destination =
-        when (val admitted = ConnectionDirectory.admit(registration.destination)) {
-            is ConnectionDirectoryAdmission.Admitted -> admitted.directory.path
-            is ConnectionDirectoryAdmission.Rejected -> return false
-        }
-    return registrationDestinationFor(root, registration.connection, directory) == destination
 }
 
 private const val SHA256_HEX_LENGTH = 64
@@ -154,7 +76,7 @@ internal fun validSha256(raw: String): Boolean =
     raw.length == SHA256_HEX_LENGTH && raw.all { it in '0'..'9' || it in 'a'..'f' }
 
 private fun validRecordedBuild(receipt: ManagementReceipt): Boolean {
-    val identity = receipt.installedBuild ?: return receipt.updatePolicy !is UpdatePolicy.PinnedBuild
+    val identity = receipt.installedBuild
     return try {
         ManagementBuildBinding(identity, receipt.updatePolicy)
         true
@@ -162,23 +84,6 @@ private fun validRecordedBuild(receipt: ManagementReceipt): Boolean {
         false
     }
 }
-
-private fun validGuidance(entries: List<ManagedGuidance>): Boolean =
-    entries.map { it.harness }.distinct().size == entries.size && entries.all(::validGuidanceEntry)
-
-private fun validGuidanceEntry(entry: ManagedGuidance): Boolean =
-    normalizedAbsolutePath(entry.destination) && entry.files.isNotEmpty() && validGuidanceFiles(entry.files)
-
-private fun validGuidanceFiles(files: List<GuidanceFile>): Boolean =
-    files.map { it.path }.distinct().size == files.size &&
-        files.all { validRelativeGuidancePath(it.path) && validSha256(it.sha256) }
-
-private fun validRelativeGuidancePath(raw: String): Boolean =
-    raw.isNotEmpty() && validGuidanceCharacters(raw) && raw.split('/').all(::validGuidanceSegment)
-
-private fun validGuidanceCharacters(raw: String): Boolean = '\\' !in raw && raw.none { it.isISOControl() }
-
-private fun validGuidanceSegment(segment: String): Boolean = segment.isNotEmpty() && segment != "." && segment != ".."
 
 private fun normalizedAbsolutePath(raw: String): Boolean =
     try {
@@ -190,18 +95,9 @@ private fun normalizedAbsolutePath(raw: String): Boolean =
 
 private fun validReceiptIdentity(root: Path, receipt: ManagementReceipt): Boolean =
     receipt.installationRoot == root.toString() &&
-        validReceiptResources(root, receipt) &&
-        when (receipt.schemaVersion) {
-            2 -> receipt.product == null
-            PRODUCT_MANAGEMENT_SCHEMA_VERSION -> validManagementProduct(root, receipt)
-            else -> false
-        }
+        validReceiptResources(receipt) &&
+        receipt.schemaVersion == PRODUCT_MANAGEMENT_SCHEMA_VERSION &&
+        validManagementProduct(root, receipt)
 
-private fun validReceiptResources(root: Path, receipt: ManagementReceipt): Boolean =
-    validSha256(receipt.executableSha256) &&
-        normalizedAbsolutePath(receipt.executable) &&
-        validRegistrations(root, receipt.registrations)
-
-private fun validRegistrations(root: Path, registrations: List<ManagedRegistration>): Boolean =
-    registrations.map { it.connection }.distinct().size == registrations.size &&
-        registrations.all { validManagedRegistration(root, it) }
+private fun validReceiptResources(receipt: ManagementReceipt): Boolean =
+    validSha256(receipt.executableSha256) && normalizedAbsolutePath(receipt.executable)

@@ -24,7 +24,7 @@ from typing import Literal
 if not sys.flags.isolated:
     sys.path[:0] = [
         str(Path(__file__).resolve().parents[1] / family)
-        for family in ("bootstrap", "composition", "installation", "mcp", "product", "runtime")
+        for family in ("bootstrap", "composition", "installation", "product", "runtime")
     ] + [str(Path(__file__).resolve().parents[2])]
 
 import managed_installation as installation

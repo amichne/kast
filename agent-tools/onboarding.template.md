@@ -47,7 +47,7 @@ Disabled host extensions can prevent tool access.
 
 The first explicit semantic request trusts the exact workspace root and prepares its private Host.
 Use a workspace whose build code the user trusts. Session hooks and discovery remain passive.
-CLI, MCP, and tool RPC use installed runtime bytes without release-server access.
+The CLI and MCP use installed runtime bytes without release-server access.
 Registration and schema admission do not prove semantic readiness.
 Use the first useful operation, not a readiness probe.
 If tools, readiness, or scope block a query, use ordinary reads and state the limitation.

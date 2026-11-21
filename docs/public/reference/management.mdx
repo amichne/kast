@@ -6,7 +6,7 @@ hideFooterPagination: true
 ---
 
 The public management verbs are `config`, `install`, `status`, `stop`, `versions`, `upgrade`, and `uninstall`.
-Semantic commands use the same installed managed runtime across CLI, MCP, and tool RPC.
+Semantic commands use the same installed managed runtime through the CLI and MCP.
 See [installation limits](/reference/installation) for the current implementation and native acceptance status.
 
 <a id="inspect-the-installation" />
@@ -99,8 +99,7 @@ Progress belongs on stderr; `--json` selects structured stdout.
 A completed installation is not a claim that a workspace imported successfully or that a query completed.
 Read `kast status --all --json`, then run one useful query in the intended workspace.
 
-If the result reports `HARNESS_REFRESH_REQUIRED`, repeat your [agent installation command](/reference/integrations#refresh-guidance-after-a-core-change).
-Keep `--mcp` if you selected MCP. Start a fresh agent session.
+After an upgrade, [refresh each exported skill](/reference/integrations#refresh-the-skill-after-an-upgrade) and start a fresh agent session.
 Do not replay an interrupted source change: inspect source and its [change receipt](/reference/change#read-the-receipt) first.
 
 <a id="force-reset" />
@@ -151,8 +150,9 @@ These are source-level rules; native cleanup qualification remains pending.
 kast uninstall
 ```
 
-The removal contract covers owned installation bytes, workspace state, and agent registrations after process retirement.
-Repositories, external Gradle homes, and foreign registrations remain outside that scope.
+The removal contract covers owned installation bytes and workspace state after process retirement.
+Repositories, external Gradle homes, and agent configuration remain outside that scope.
+To disconnect an agent, remove the Kast entries from `agents.toml` and the exported skill from your repository.
 Uninstall also removes the fixed Kast-owned `kast-workspaces/shared/gradle` cache, without following links to external targets.
 Foreign siblings, foreign owners, or `.kast` recovery evidence prevent that cleanup.
 Removing one workspace does not remove the shared cache.
@@ -161,7 +161,7 @@ Native removal acceptance remains part of the qualification work; this guide is 
 
 ## Change agents
 
-Use [Agent guidance](/reference/integrations) to install guidance for another agent.
+Edit the `agents` list in `agents.toml`, then follow [Connect your agent](/reference/integrations#3-apply-the-configuration).
 
 <span id="explicit-workspace-control-in-the-hosted-app-server" />
 

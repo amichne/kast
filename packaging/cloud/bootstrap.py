@@ -6,7 +6,6 @@ import argparse
 import fcntl
 import hashlib
 import json
-import os
 from pathlib import Path
 import platform
 import shlex
@@ -50,11 +49,11 @@ def verify_idea(target: Path, build: str) -> None:
 def provision(root: Path, with_idea: bool, with_fixture: bool, with_control: bool, cache: Path | None) -> None:
     if platform.system() != "Linux" or platform.machine() != "x86_64":
         raise SystemExit("This profile requires Linux x86_64")
-    if root.exists() and not (root / ".pi-eval-owned").is_file():
-        raise SystemExit("Refusing an existing directory without .pi-eval-owned")
+    if root.exists() and not (root / ".kast-cloud-owned").is_file():
+        raise SystemExit("Refusing an existing directory without .kast-cloud-owned")
     root.mkdir(parents=True, exist_ok=True, mode=0o700)
-    (root / ".pi-eval-owned").touch(mode=0o600)
-    # Bootstrap owns one extraction/npm transaction at a time in this root.
+    (root / ".kast-cloud-owned").touch(mode=0o600)
+    # Bootstrap owns one extraction transaction at a time in this root.
     lock = (root / ".bootstrap.lock").open("w")
     try:
         fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
@@ -102,43 +101,34 @@ def provision(root: Path, with_idea: bool, with_fixture: bool, with_control: boo
         receipt.write_text(spec["sha256"] + "\n")
         if "build" in spec:
             verify_idea(target, spec["build"])
-    for repository in ("slopsentral", "dotfiles"):
-        destination = root / "sources" / repository
-        revision = pins[repository + "_source"]
-        if not destination.exists():
-            destination.parent.mkdir(exist_ok=True)
-            run("git", "init", "--quiet", str(destination))
-            run("git", "-C", str(destination), "remote", "add", "origin", "https://github.com/amichne/" + repository + ".git")
-            run("git", "-C", str(destination), "fetch", "--depth=1", "origin", revision)
-            run("git", "-C", str(destination), "checkout", "--detach", "FETCH_HEAD")
-        verify_source(destination, revision)
-    npm = root / "npm"
-    npm.mkdir(exist_ok=True)
-    for name in ("package.json", "package-lock.json"):
-        shutil.copyfile(HERE / name, npm / name)
+    destination = root / "sources" / "slopsentral"
+    revision = pins["slopsentral_source"]
+    if not destination.exists():
+        destination.parent.mkdir(exist_ok=True)
+        run("git", "init", "--quiet", str(destination))
+        run("git", "-C", str(destination), "remote", "add", "origin", "https://github.com/amichne/slopsentral.git")
+        run("git", "-C", str(destination), "fetch", "--depth=1", "origin", revision)
+        run("git", "-C", str(destination), "checkout", "--detach", "FETCH_HEAD")
+    verify_source(destination, revision)
     node_bin = root / pins["artifacts"]["node"]["directory"] / "bin"
-    child = {**os.environ, "PATH": str(node_bin) + os.pathsep + os.environ["PATH"],
-             "npm_config_cache": str(root / "npm-cache")}
-    run(str(node_bin / "npm"), "ci", "--ignore-scripts", "--no-audit", "--no-fund", cwd=npm, env=child)
-    for directory in ("agent", "gradle", "uv-cache", "uv-python", "config", "data", "state", "cache"):
+    for directory in ("gradle", "uv-cache", "uv-python", "config", "data", "state", "cache"):
         (root / directory).mkdir(exist_ok=True, mode=0o700)
     shutil.copyfile(HERE / "configure-gradle.py", root / "configure-gradle.py")
     quote = shlex.quote
     activation = (
         "# Generated; source in a shell. HOME and credentials stay untouched.\n"
-        f"export PI_EVAL_ROOT={quote(str(root))}\n"
+        f"export KAST_CLOUD_ROOT={quote(str(root))}\n"
         f"export JAVA_HOME={quote(str(root / pins['artifacts']['jdk']['directory']))}\n"
         f"export PATH={quote(str(node_bin))}:{quote(str(root / pins['artifacts']['uv']['directory']))}:"
-        f"{quote(str(npm / 'node_modules/.bin'))}:\"$JAVA_HOME/bin:$PATH\"\n"
-        'export PATH="$PI_EVAL_ROOT/vale:$PATH"\n'
-        'export PI_CODING_AGENT_DIR="$PI_EVAL_ROOT/agent"\n'
-        'export GRADLE_USER_HOME="$PI_EVAL_ROOT/gradle"\n'
-        'export UV_CACHE_DIR="$PI_EVAL_ROOT/uv-cache"\n'
-        'export UV_PYTHON_INSTALL_DIR="$PI_EVAL_ROOT/uv-python"\n'
-        'export npm_config_cache="$PI_EVAL_ROOT/npm-cache"\n'
-        'export PI_EVAL_GRADLE_BASE_OPTS="${PI_EVAL_GRADLE_BASE_OPTS-${GRADLE_OPTS-}}"\n'
-        'python3 "$PI_EVAL_ROOT/configure-gradle.py" || return 1\n'
-        'source "$PI_EVAL_ROOT/gradle-runtime.sh"\n'
+        "\"$JAVA_HOME/bin:$PATH\"\n"
+        'export PATH="$KAST_CLOUD_ROOT/vale:$PATH"\n'
+        'export GRADLE_USER_HOME="$KAST_CLOUD_ROOT/gradle"\n'
+        'export UV_CACHE_DIR="$KAST_CLOUD_ROOT/uv-cache"\n'
+        'export UV_PYTHON_INSTALL_DIR="$KAST_CLOUD_ROOT/uv-python"\n'
+        'export npm_config_cache="$KAST_CLOUD_ROOT/npm-cache"\n'
+        'export KAST_CLOUD_GRADLE_BASE_OPTS="${KAST_CLOUD_GRADLE_BASE_OPTS-${GRADLE_OPTS-}}"\n'
+        'python3 "$KAST_CLOUD_ROOT/configure-gradle.py" || return 1\n'
+        'source "$KAST_CLOUD_ROOT/gradle-runtime.sh"\n'
     )
     if with_control:
         # The pinned release equals frontend/go.mod's toolchain line, so Go never downloads another.

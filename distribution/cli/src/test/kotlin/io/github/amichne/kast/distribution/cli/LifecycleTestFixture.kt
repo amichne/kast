@@ -22,11 +22,12 @@ internal fun closedHostProcesses() =
     }
 
 internal fun createLifecycleFixture(temporary: Path): LifecycleFixture {
-    val root = temporary.toRealPath().resolve("kast")
-    val installation = root.resolve("installation")
+    val product = productFixture(temporary)
+    val installation = product.installation
+    val root = installation.parent
     val home = temporary.toRealPath().resolve("home")
     Files.createDirectories(home)
-    val payloads =
+    val owned =
         listOf(
                 "share/kast/libexec/kast-service",
                 "share/kast/libexec/kast-management",
@@ -43,9 +44,13 @@ internal fun createLifecycleFixture(temporary: Path): LifecycleFixture {
                 path.toFile().setExecutable(true)
                 BundledPayload(relative, "sha256:${sha256(path)}", 493)
             }
+    val selection =
+        listOf("share/kast/build-record.json", "share/kast/product-selection.json").map { relative ->
+            BundledPayload(relative, "sha256:${sha256(installation.resolve(relative))}", 420)
+        }
     Files.writeString(
         installation.resolve("installation.json"),
-        managementJson.encodeToString(FixtureLifecycleManifest(3, "1.2.3", installation.toString(), payloads)),
+        managementJson.encodeToString(FixtureLifecycleManifest(3, "1.2.3", installation.toString(), owned + selection)),
     )
     val config = installation.resolve("config")
     Files.createDirectories(config)
@@ -53,17 +58,7 @@ internal fun createLifecycleFixture(temporary: Path): LifecycleFixture {
     createSelectedHost(temporary, config)
     val native = temporary.toRealPath().resolve("kast-command")
     Files.writeString(native, "native-fixture")
-    writeManagementReceipt(
-        root,
-        ManagementReceipt(
-            2,
-            root.toString(),
-            native.toString(),
-            sha256(native),
-            ReleaseChannel.STABLE,
-            emptyList(),
-        ),
-    )
+    writeTestManagementReceipt(root, native, product.reference)
     return LifecycleFixture(root, installation, home)
 }
 

@@ -2297,10 +2297,6 @@
       "purpose": "schema-binding"
     },
     {
-      "route": "reference/models/tool-rpc-reply",
-      "purpose": "schema-binding"
-    },
-    {
       "route": "reference/program-tracing",
       "purpose": "reader-task-or-contract"
     },
@@ -2310,10 +2306,6 @@
     },
     {
       "route": "reference/responses",
-      "purpose": "reader-task-or-contract"
-    },
-    {
-      "route": "reference/rpc-catalog",
       "purpose": "reader-task-or-contract"
     },
     {

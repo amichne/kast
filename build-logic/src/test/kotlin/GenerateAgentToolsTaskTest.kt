@@ -22,20 +22,18 @@ class GenerateAgentToolsTaskTest {
         task.generate()
         val output = task.outputDirectory.get().asFile.toPath()
         val plugin = output.resolve("plugins/kast")
-        for (manifestPath in listOf(".codex-plugin/plugin.json", ".github/plugin/plugin.json")) {
-            val manifest = Json.parseToJsonElement(Files.readString(plugin.resolve(manifestPath))).jsonObject
-            assertEquals(if (manifestPath.startsWith(".codex")) "./hooks/hooks.json" else "./hooks/copilot.json", manifest.getValue("hooks").jsonPrimitive.content)
-            assertTrue("mcpServers" !in manifest)
-        }
-        for (path in listOf("hooks/session_start.py", ".mcp.json", "skills/kast/scripts")) assertTrue(Files.notExists(plugin.resolve(path)), path)
-        for (path in listOf("hooks/hooks.json", "hooks/copilot.json", "hooks/pi.ts")) assertTrue(Files.isRegularFile(plugin.resolve(path)), path)
+        val manifest = Json.parseToJsonElement(Files.readString(plugin.resolve(".codex-plugin/plugin.json"))).jsonObject
+        assertEquals("./hooks/hooks.json", manifest.getValue("hooks").jsonPrimitive.content)
+        assertTrue("mcpServers" !in manifest)
+        for (path in listOf("hooks/session_start.py", ".mcp.json", "mcp.json")) assertTrue(Files.notExists(plugin.resolve(path)), path)
+        assertTrue(Files.isRegularFile(plugin.resolve("hooks/hooks.json")))
         val mcp = Json.parseToJsonElement(Files.readString(output.resolve("compositions/mcp/plugins/kast/.codex-plugin/plugin.json"))).jsonObject
         assertEquals("./.mcp.json", mcp.getValue("mcpServers").jsonPrimitive.content)
-        assertTrue(Files.exists(output.resolve(".github/plugin/marketplace.json")))
+        for (path in listOf(".github", "plugins/kast/.github")) assertTrue(Files.notExists(output.resolve(path)), path)
     }
 
     @Test
-    fun `MCP composition binds versioned transport and preserves shared context bytes`() {
+    fun `MCP composition binds the native MCP entry and preserves shared context bytes`() {
         val task = task()
         task.generate()
         val output = task.outputDirectory.get().asFile.toPath().resolve("compositions/mcp")
@@ -53,7 +51,8 @@ class GenerateAgentToolsTaskTest {
         val entry = marketplace.getValue("plugins").jsonArray.single().jsonObject
         assertEquals("kast", marketplace.getValue("name").jsonPrimitive.content)
         assertEquals("./plugins/kast", entry.getValue("source").jsonObject.getValue("path").jsonPrimitive.content)
-        for (name in listOf("references/query-examples.json", "references/onboarding.md", "skills/kast/scripts/server.py", "skills/kast/scripts/server.py.lock")) {
+        assertTrue(Files.notExists(plugin.resolve("mcp.json")))
+        for (name in listOf("references/query-examples.json", "references/onboarding.md", "skills/kast/public-cli.md")) {
             assertArrayEquals(Files.readAllBytes(task.sourceDirectory.get().asFile.toPath().resolve(name)),
                 Files.readAllBytes(plugin.resolve(name)))
         }
@@ -63,7 +62,8 @@ class GenerateAgentToolsTaskTest {
         val server = mcp.getValue("mcpServers").jsonObject.getValue("kast").jsonObject
         assertEquals("3780", server.getValue("tool_timeout_sec").jsonPrimitive.content)
         assertEquals("3780000", server.getValue("timeout").jsonPrimitive.content)
-        assertEquals(listOf("-c", "I=\"\${KAST_INSTALL_ROOT:-\${HOME}/.local/share/kast}/installation\"; exec \"\$I/share/kast/private-python/bin/python3.12\" -I -S -B \"\$I/share/kast/mcp_environment.py\" serve --install-root \"\$I\""),
+        assertEquals("/bin/bash", server.getValue("command").jsonPrimitive.content)
+        assertEquals(listOf("-c", "PATH=\"\${HOME}/.local/bin:\${PATH}\" exec kast --internal-entrypoint=mcp"),
             mcp.getValue("mcpServers").jsonObject.getValue("kast").jsonObject.getValue("args").jsonArray.map {
                 it.jsonPrimitive.content
             })
@@ -124,9 +124,9 @@ class GenerateAgentToolsTaskTest {
     fun `missing preparation hook rejects before replacing admitted output`() {
         val task = task()
         task.generate()
-        val output = task.outputDirectory.get().asFile.resolve("plugins/kast/hooks/pi.ts")
+        val output = task.outputDirectory.get().asFile.resolve("plugins/kast/hooks/hooks.json")
         val original = output.readBytes()
-        task.sourceDirectory.get().asFile.resolve("hooks/pi.ts").delete()
+        task.sourceDirectory.get().asFile.resolve("hooks/hooks.json").delete()
         assertThrows(IllegalStateException::class.java) { task.generate() }
         assertArrayEquals(original, output.readBytes())
     }
@@ -150,6 +150,21 @@ class GenerateAgentToolsTaskTest {
         for (path in listOf("hooks/prepare_workspace.py", "hooks/prepare_workspace.py.lock", "pyproject.toml", "uv.lock")) {
             assertTrue(!plugin.resolve(path).exists(), path)
         }
+    }
+
+    @Test
+    fun `a launcher other than the native MCP entry rejects before replacing admitted output`() {
+        val task = task()
+        task.generate()
+        val source = task.sourceDirectory.get().asFile.resolve("mcp.json")
+        val output = task.outputDirectory.get().asFile.resolve("compositions/mcp/plugins/kast/.mcp.json")
+        val protected = output.readBytes()
+        source.writeText(source.readText().replace(
+            "exec kast --internal-entrypoint=mcp",
+            "exec python3 server.py",
+        ))
+        assertThrows(IllegalStateException::class.java) { task.generate() }
+        assertArrayEquals(protected, output.readBytes())
     }
 
     @Test

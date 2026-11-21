@@ -22,7 +22,7 @@ from typing import TYPE_CHECKING, Literal
 sys.path.extend(
     [
         str(Path(__file__).resolve().parents[1] / family)
-        for family in ("bootstrap", "installation", "mcp", "product", "runtime", "verification")
+        for family in ("bootstrap", "installation", "product", "runtime", "verification")
     ]
     + [str(Path(__file__).resolve().parents[2])]
 )

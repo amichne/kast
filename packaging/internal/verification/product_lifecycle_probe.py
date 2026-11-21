@@ -31,7 +31,7 @@ from typing import override
 if not sys.flags.isolated:
     sys.path[:0] = [
         str(Path(__file__).resolve().parents[1] / family)
-        for family in ("bootstrap", "composition", "installation", "mcp", "product", "runtime")
+        for family in ("bootstrap", "composition", "installation", "product", "runtime")
     ] + [str(Path(__file__).resolve().parents[2])]
 
 import managed_installation as installation
@@ -612,32 +612,6 @@ class Probe:
             if os.path.lexists(path) or os.path.lexists(path.with_name("host.sock")):
                 raise ValueError("stop retained endpoint or socket")
 
-    def catalog(self, workspace: Path) -> None:
-        raw = self.run(
-            "passive-catalog",
-            workspace,
-            ("--catalog=COMPLETE", "catalog"),
-            launcher=self.root / "installation/bin/kast-tool-rpc",
-        )
-        value = product.document(raw)
-        if not product.mapping(value) or value.get("type") != "catalog":
-            raise ValueError("RPC catalog rejected")
-        catalog = value.get("catalog")
-        if not product.mapping(catalog):
-            raise ValueError("RPC catalog absent")
-        tools = catalog.get("tools")
-        if (
-            not product.sequence(tools)
-            or not tools
-            or any(
-                not product.mapping(tool) or not isinstance(tool.get("name"), str) for tool in tools
-            )
-            or not any(
-                product.mapping(tool) and tool.get("name") == "query_symbols" for tool in tools
-            )
-        ):
-            raise ValueError("RPC catalog tools incomplete")
-
     def query(
         self,
         case: str,
@@ -948,9 +922,6 @@ def execute(
                 _ = probe.run(f"passive-{case}", roots[0], arguments)
                 if containers.exists():
                     raise ValueError(f"passive {case} created semantic workspace state")
-            probe.catalog(roots[0])
-            if containers.exists():
-                raise ValueError("passive catalog created semantic workspace state")
             probe.completed.add(acceptance.Case.PASSIVE)
             current_host = probe.parallel_first_queries(roots[0])
             probe.warm_coordinator_reuse(roots[0], current_host)
@@ -958,20 +929,6 @@ def execute(
                 (acceptance.Case.FRESH, acceptance.Case.CLI, acceptance.Case.PARALLEL)
             )
             observed_host = probe.compiler_cases(roots[0], current_host, facts.runtime.sha256)
-            rpc_host = complete(
-                probe.run(
-                    "rpc",
-                    roots[0],
-                    ("--catalog=COMPLETE", "call", "query_symbols"),
-                    encoded(Arguments(Query(Source("invokeCallback")))),
-                    launcher=root / "installation/bin/kast-tool-rpc",
-                ),
-                "invokeCallback",
-                roots[0] / INVOCATION_FILE,
-            )
-            if rpc_host != current_host:
-                raise ValueError("RPC answered from a different Host lifetime")
-            probe.completed.add(acceptance.Case.RPC)
             probe.mcp(roots[0], current_host)
             probe.completed.add(acceptance.Case.MCP)
             _ = probe.run("stop", roots[0], ("stop", "--all", "--json"))

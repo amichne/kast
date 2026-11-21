@@ -8,6 +8,8 @@ import java.nio.file.StandardOpenOption
 import java.nio.file.attribute.PosixFilePermissions
 import java.security.MessageDigest
 
+internal const val AGENT_TOOLS_RELATIVE_PATH = "share/kast/agent-tools"
+
 internal const val CLI_SKILL_RELATIVE_PATH = "$AGENT_TOOLS_RELATIVE_PATH/plugins/kast/skills/kast"
 
 internal class AdmittedCliSkill private constructor(private val files: List<SkillFile>) {

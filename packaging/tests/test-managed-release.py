@@ -7,7 +7,6 @@ import io
 import json
 import socket
 import ssl
-import struct
 import subprocess
 import tempfile
 import unittest
@@ -489,7 +488,7 @@ class ReleaseAdmissionTest(unittest.TestCase):
             assert isinstance(rejected, release.Rejected)
             self.assertEqual((release.Failure.ARTIFACT_INVALID, release.Stage.CONTRACT), (rejected.reason, rejected.stage), layout)
 
-    def test_native_dependencies_require_library_headers_target_and_dependency_scope(self) -> None:
+    def test_any_second_native_file_rejects_the_control_payload(self) -> None:
         source = self.source("1.2.3", unified=True)
         selected = release.StableSelection("1.2.3", "v1.2.3", release.StablePolicy.TRACK)
         admitted = release.stage_component_archives(selected, "262", self.stage, source)
@@ -502,49 +501,26 @@ class ReleaseAdmissionTest(unittest.TestCase):
         )
         assert not isinstance(record, release.Failure)
         dylib = bytes.fromhex("cffaedfe0c0000010000000006000000") + bytes(16)
-        bundle = bytes.fromhex("cffaedfe0c0000010000000008000000") + bytes(16)
         executable = bytes.fromhex("cffaedfe0c0000010000000002000000") + bytes(16)
         elf = bytes.fromhex("7f454c4602010100000000000000000003003e0001000000") + bytes(8)
-
-        # CFFI's pinned Linux library has e_entry=0x9000 in the CI inventory.
-        def elf_dependency(*, interpreter: bool = False, pie: bool = False) -> bytes:
-            count = 3 if interpreter else 2
-            offset = 64 + count * 56
-            dynamic = struct.pack("<QQQQ", 0x6FFFFFFB, 0x08000000 if pie else 0, 0, 0)
-            size = offset + len(dynamic)
-            return (
-                elf[:24]
-                + struct.pack("<QQQIHHHHHH", 0x9000, 64, 0, 0, 64, 56, count, 0, 0, 0)
-                + struct.pack("<IIQQQQQQ", 1, 4, 0, 0, 0, size, size, 4096)
-                + struct.pack("<IIQQQQQQ", 2, 4, offset, offset, 0, 32, 32, 8)
-                + (struct.pack("<IIQQQQQQ", 3, 4, 0, 0, 0, 1, 1, 1) if interpreter else b"")
-                + dynamic
-            )
-
-        library = elf_dependency()
-        dependency = "share/kast/mcp-dependencies/site-packages/native/module.so"
-        for target, name, header, accepted in (
-            ("macos-aarch64", dependency, dylib, True),
-            ("macos-aarch64", dependency, bundle, True),
-            ("macos-aarch64", dependency, executable, False),
-            ("macos-aarch64", "share/kast/foreign.so", dylib, False),
-            ("macos-aarch64", dependency, elf, False),
-            ("macos-aarch64", dependency, dylib[:16], False),
-            ("linux-x86_64", dependency, library, True),
-            ("linux-x86_64", dependency, elf_dependency(interpreter=True), False),
-            ("linux-x86_64", dependency, elf_dependency(pie=True), False),
-            ("linux-x86_64", dependency, library[:64], False),
-            ("linux-x86_64", dependency, library[:18] + b"\xb7\x00" + library[20:], False),
+        for target, header in (
+            ("macos-aarch64", dylib),
+            ("macos-aarch64", executable),
+            ("linux-x86_64", elf),
         ):
-            with self.subTest(target=target, name=name, header=header.hex()):
+            with self.subTest(target=target, header=header.hex()):
                 management = admitted.control_root / "share/kast/libexec/kast-management"
                 _ = management.write_bytes(executable if target == "macos-aarch64" else elf)
-                path = admitted.control_root / name
+                self.assertEqual(
+                    admitted.identity,
+                    release.inspect_control(admitted.control_root, selected, record, target),
+                )
+                path = admitted.control_root / "share/kast/site-packages/module.so"
                 path.parent.mkdir(parents=True, exist_ok=True)
                 _ = path.write_bytes(header)
-                result = release.inspect_control(admitted.control_root, selected, record, target)
                 self.assertEqual(
-                    admitted.identity if accepted else release.Failure.ARTIFACT_INVALID, result
+                    release.Failure.ARTIFACT_INVALID,
+                    release.inspect_control(admitted.control_root, selected, record, target),
                 )
                 path.unlink()
         self.assertEqual(b"prior composition", (self.protected / "keep").read_bytes())

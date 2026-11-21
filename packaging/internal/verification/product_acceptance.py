@@ -16,7 +16,6 @@ class Case(StrEnum):
     FRESH = "FRESH_INSTALL"
     PASSIVE = "PASSIVE_DISCOVERY"
     CLI = "CLI_SEMANTICS"
-    RPC = "RPC_SEMANTICS"
     MCP = "MCP_SEMANTICS"
     RESTART = "STOP_RESTART"
     PARALLEL = "SAME_ROOT_PARALLEL_FIRST_QUERIES"
@@ -34,7 +33,6 @@ class Case(StrEnum):
 
 
 # Published acceptance v1 proved only the original lifecycle inventory.
-LEGACY_CASES = tuple(Case)[:12]
 
 
 @dataclass(frozen=True)
@@ -50,7 +48,7 @@ class Receipt:
     baselineRuntimeSha256: str
     baselineControlSha256: str
     completedCases: tuple[Case, ...]
-    schemaVersion: int = 2
+    schemaVersion: int = 3
     qualificationStage: str = "INSTALLED_PRODUCT_NATIVE"
     qualification: str = "COMPLETE"
 
@@ -72,7 +70,7 @@ def decode(raw: bytes, record: product.ProductRecord, digest: str, target: str) 
         or not product.mapping(value)
         or set(value) != set(Receipt.__dataclass_fields__)
         or type(value.get("schemaVersion")) is not int
-        or value.get("schemaVersion") not in (1, 2)
+        or value.get("schemaVersion") != 3
         or value.get("qualificationStage") != "INSTALLED_PRODUCT_NATIVE"
         or value.get("qualification") != "COMPLETE"
         or value.get("buildRecordSha256") != digest
@@ -86,8 +84,7 @@ def decode(raw: bytes, record: product.ProductRecord, digest: str, target: str) 
     baseline, revision, cases = (
         value[key] for key in ("baselineRecordSha256", "baselineSourceRevision", "completedCases")
     )
-    version = value["schemaVersion"]
-    required = LEGACY_CASES if version == 1 else tuple(Case)
+    required = tuple(Case)
     composition: list[str] = []
     for key in ("baselineBundleSha256", "baselineRuntimeSha256", "baselineControlSha256"):
         supplied = value[key]
@@ -120,7 +117,7 @@ def decode(raw: bytes, record: product.ProductRecord, digest: str, target: str) 
         runtime,
         control,
         required,
-        schemaVersion=1 if version == 1 else 2,
+        schemaVersion=3,
     )
 
 
@@ -135,16 +132,6 @@ def assets(directory: Path, record: product.ProductRecord) -> tuple[product.Prod
         if path.is_symlink() or not path.is_file() or path.stat().st_size > MAXIMUM_RECEIPT_BYTES:
             raise ValueError("missing installed acceptance")
         receipt = decode(path.read_bytes(), record, digest, target)
-        if receipt.schemaVersion == 1:
-            proof = directory / "payload" / facts.qualification.receipt.name
-            if proof.is_symlink() or not proof.is_file() or proof.stat().st_size > 1_048_576:
-                raise ValueError("missing legacy native qualification")
-            component = product.document(proof.read_bytes())
-            if (
-                not product.mapping(component)
-                or component.get("qualificationStage") != "COMPONENT_NATIVE"
-            ):
-                raise ValueError("assembly qualification requires installed acceptance v2")
         baselines.add((receipt.baselineRecordSha256, receipt.baselineSourceRevision))
         result.append(
             product.ProductAsset(path.name, product.file_digest(path), path.stat().st_size)

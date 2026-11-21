@@ -41,7 +41,7 @@ def main() -> int:
             'PYTHONPATH': os.pathsep.join(str(ROOT / path) for path in (
                 'packaging/internal/bootstrap', 'packaging/internal/composition',
                 'packaging/internal/configuration', 'packaging/internal/installation',
-                'packaging/internal/mcp', 'packaging/internal/product',
+                'packaging/internal/product',
                 'packaging/internal/query', 'packaging/internal/runtime',
                 'packaging/internal/verification', 'packaging', 'packaging/tests',
             )),

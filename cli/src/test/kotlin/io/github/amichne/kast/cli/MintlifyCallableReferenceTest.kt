@@ -118,7 +118,7 @@ class MintlifyCallableReferenceTest {
             assertFalse("x-codeSamples" in operation)
             assertFalse("cliUsage" in kastMetadata)
             assertTrue(content.contains("MCP contract"))
-            assertTrue(content.contains("tool RPC contract"))
+            assertFalse(content.contains("tool RPC"))
             assertTrue(content.contains("[Schemas and samples](/reference/schemas)"))
             assertFalse(content.contains("```bash"))
         }
@@ -131,75 +131,6 @@ class MintlifyCallableReferenceTest {
                 assertTrue("${identity.toolName}Request" in components)
                 assertTrue("${identity.toolName}SemanticResult" in components)
             }
-    }
-
-    @Test
-    fun `reference publishes the closed RPC reply variants`() {
-        val reference = Json.parseToJsonElement(mintlifyCallableReference().value).jsonObject
-        val components = reference.getValue("components").jsonObject.getValue("schemas").jsonObject
-        val rpc = components.getValue("ToolRpcReply").jsonObject
-        val variants = rpc.getValue("anyOf").jsonArray
-        assertEquals(
-            setOf("catalog", "complete", "qualified", "rejected_document", "rejected"),
-            variants
-                .map {
-                    it.jsonObject
-                        .getValue("properties")
-                        .jsonObject
-                        .getValue("type")
-                        .jsonObject
-                        .getValue("enum")
-                        .jsonArray
-                        .single()
-                        .jsonPrimitive
-                        .content
-                }
-                .toSet(),
-        )
-        assertTrue(
-            variants
-                .filter { "document" in it.jsonObject.getValue("properties").jsonObject }
-                .all {
-                    it.jsonObject
-                        .getValue("properties")
-                        .jsonObject
-                        .getValue("document")
-                        .jsonObject
-                        .getValue("type")
-                        .jsonPrimitive
-                        .content == "object"
-                }
-        )
-    }
-
-    @Test
-    fun `reference requires the RPC catalog version`() {
-        val reference = Json.parseToJsonElement(mintlifyCallableReference().value).jsonObject
-        val components = reference.getValue("components").jsonObject.getValue("schemas").jsonObject
-        val variants = components.getValue("ToolRpcReply").jsonObject.getValue("anyOf").jsonArray
-        val catalog = variants.single {
-            it.jsonObject
-                .getValue("properties")
-                .jsonObject
-                .getValue("type")
-                .jsonObject
-                .getValue("enum")
-                .jsonArray
-                .single()
-                .jsonPrimitive
-                .content == "catalog"
-        }
-        assertTrue(
-            "schemaVersion" in
-                catalog.jsonObject
-                    .getValue("properties")
-                    .jsonObject
-                    .getValue("catalog")
-                    .jsonObject
-                    .getValue("required")
-                    .jsonArray
-                    .map { it.jsonPrimitive.content }
-        )
     }
 
     @Test

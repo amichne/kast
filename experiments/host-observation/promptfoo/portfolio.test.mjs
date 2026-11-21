@@ -34,12 +34,10 @@ test('curated corpus admission rejects the restricted baseline before invoking a
 });
 
 test('each selected case has one reviewer-only frame with three to six criteria', async () => {
-  const { comprehensionPortfolio, naturalPortfolio, portfolioFrames } = await import('./portfolio.mjs');
-  const { comprehensionCases } = await import('./comprehension-cases.mjs');
-  assert.deepEqual(Object.keys(portfolioFrames).sort(), [...naturalPortfolio, ...comprehensionPortfolio].sort());
-  assert.deepEqual(comprehensionCases().map(item => item.id).sort(), [...comprehensionPortfolio].sort());
+  const { naturalPortfolio, portfolioFrames } = await import('./portfolio.mjs');
+  assert.deepEqual(Object.keys(portfolioFrames).sort(), [...naturalPortfolio].sort());
   for (const [id, frame] of Object.entries(portfolioFrames)) {
-    assert.equal(frame.panel, naturalPortfolio.includes(id) ? 'A' : 'B', id);
+    assert.equal(frame.panel, 'A', id);
     assert.ok(frame.criteria.length >= 3 && frame.criteria.length <= 6, id);
     assert.equal(new Set(frame.criteria).size, frame.criteria.length, id);
     assert.ok(Object.isFrozen(frame.criteria), id);
@@ -47,7 +45,6 @@ test('each selected case has one reviewer-only frame with three to six criteria'
   const prompts = [
     ...developerCases.map(item => item.prompt),
     ...suites.flatMap(casesForSuite).map(item => item.task),
-    ...comprehensionCases().map(item => item.prompt),
   ];
   for (const criterion of Object.values(portfolioFrames).flatMap(frame => frame.criteria)) {
     assert.ok(prompts.every(prompt => !prompt.includes(criterion)), criterion);

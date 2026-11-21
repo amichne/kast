@@ -5,7 +5,6 @@ import io.github.amichne.kast.distribution.contract.UpdatePolicy
 import io.github.amichne.kast.kernel.Refinement
 import java.nio.file.Path
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.encodeToString
 
 internal const val PRODUCT_MANAGEMENT_SCHEMA_VERSION = 3
 
@@ -17,10 +16,6 @@ internal data class ProductManagementReceipt(
     val executable: String,
     val executableSha256: String,
     val product: InstalledProductReference,
-    val registrations: List<ManagedRegistration> = emptyList(),
-    val guidance: List<ManagedGuidance> = emptyList(),
-    @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
-    val providers: List<ProviderRegistration> = emptyList(),
 ) {
     fun refine(): ManagementReceipt {
         val identity =
@@ -43,33 +38,12 @@ internal data class ProductManagementReceipt(
             executable,
             executableSha256,
             if (product.publicVersion == null) ReleaseChannel.DEVELOPER else ReleaseChannel.STABLE,
-            registrations,
             policy,
             identity,
-            guidance,
             product,
-            providers,
         )
     }
 }
-
-internal fun encodeManagementReceipt(receipt: ManagementReceipt): String =
-    when (val product = receipt.product) {
-        null -> managementJson.encodeToString(receipt)
-        else ->
-            managementJson.encodeToString(
-                ProductManagementReceipt(
-                    receipt.schemaVersion,
-                    receipt.installationRoot,
-                    receipt.executable,
-                    receipt.executableSha256,
-                    product,
-                    receipt.registrations,
-                    receipt.guidance,
-                    receipt.providers,
-                )
-            )
-    }
 
 internal fun validManagementProduct(root: Path, receipt: ManagementReceipt): Boolean {
     if (java.nio.file.Files.notExists(root.resolve("installation"), java.nio.file.LinkOption.NOFOLLOW_LINKS))

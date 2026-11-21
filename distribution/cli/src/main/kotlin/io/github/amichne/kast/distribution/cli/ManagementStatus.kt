@@ -57,7 +57,6 @@ internal data class InstallationStatus(
     val resolvedInstallationPath: Observation<String>,
     val installedVersion: Observation<String>,
     val loadedVersion: Observation<String>,
-    val registrations: Observation<List<ManagedRegistration>>,
     val activeWorkspaces: Observation<List<String>>,
     val liveConnections: Observation<Int>,
     val oneShotRequestsInFlight: Observation<Int>,
@@ -105,35 +104,25 @@ internal fun readStatus(
             installedVersion?.let { Observation.verified(it) }
                 ?: Observation.unavailable("installed_version_unavailable"),
         loadedVersion = runtime?.loadedVersion ?: Observation.unavailable(noRuntimeProjection),
-        registrations =
-            when (receipt) {
-                is ReceiptRead.Read -> Observation.verified(receipt.receipt.registrations)
-                is ReceiptRead.Unavailable -> Observation.unavailable(receipt.reason)
-            },
         activeWorkspaces = runtime?.activeWorkspaces ?: Observation.unavailable(noRuntimeProjection),
         liveConnections = runtime?.liveConnections ?: Observation.unavailable(noRuntimeProjection),
         oneShotRequestsInFlight =
             installation?.let(::observeOneShotRequests) ?: Observation.unavailable(noRuntimeProjection),
         hostedServices = runtime?.hostedServices ?: Observation.unavailable(noRuntimeProjection),
         installedBuild =
-            if (receipt is ReceiptRead.Read)
-                receipt.receipt.installedBuild?.let { Observation.verified(it) }
-                    ?: Observation.unavailable("build_identity_unrecorded")
+            if (receipt is ReceiptRead.Read) Observation.verified(receipt.receipt.installedBuild)
             else Observation.unavailable("receipt_unavailable"),
         updatePolicy =
             if (receipt is ReceiptRead.Read) Observation.verified(receipt.receipt.updatePolicy)
             else Observation.unavailable("receipt_unavailable"),
         unresolvedTransaction = passiveTransactionState(root),
         applicationHost =
-            if (receipt is ReceiptRead.Read && receipt.receipt.product != null)
-                Observation.unavailable("WORKSPACE_SCOPED")
+            if (receipt is ReceiptRead.Read) Observation.unavailable("WORKSPACE_SCOPED")
             else
                 root.parent?.parent?.parent?.let { readApplicationHost(root, it) }
                     ?: Observation.unavailable("user_home_unavailable"),
         product =
-            if (receipt is ReceiptRead.Read)
-                receipt.receipt.product?.let { Observation.verified(it) }
-                    ?: Observation.unavailable("product_unrecorded")
+            if (receipt is ReceiptRead.Read) Observation.verified(receipt.receipt.product)
             else Observation.unavailable("receipt_unavailable"),
         workspaces = readWorkspaceStatuses(root, scope, directory),
     )

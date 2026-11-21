@@ -26,13 +26,6 @@ internal data class ImmutableProductRemoval(
     val provenanceSha256: String,
 )
 
-@Serializable
-internal data class McpRemovalProof(
-    val identity: InstallationFilesystemIdentity,
-    val stateIdentity: InstallationFilesystemIdentity,
-    val receiptSha256: String,
-)
-
 /** Wire evidence retained by the existing uninstall journal, never an independent transaction. */
 @Serializable
 internal data class ProductRemovalProof(
@@ -43,7 +36,6 @@ internal data class ProductRemovalProof(
     val immutableRemovals: List<ImmutableProductRemoval>,
     val runtimeStoreIdentity: InstallationFilesystemIdentity?,
     val baseStoreIdentity: InstallationFilesystemIdentity?,
-    val mcp: McpRemovalProof?,
 )
 
 internal fun requireProductRemovalProof(journal: UninstallRetirementJournal) {
@@ -73,14 +65,12 @@ private fun validRemovalInventory(proof: ProductRemovalProof): Boolean =
 private fun requireRemovalBindings(proof: ProductRemovalProof) {
     val identities =
         listOfNotNull(proof.executionIdentity, proof.runtimeStoreIdentity, proof.baseStoreIdentity) +
-            proof.immutableRemovals.map { it.identity } +
-            proof.mcp?.let { listOf(it.identity, it.stateIdentity) }.orEmpty()
+            proof.immutableRemovals.map { it.identity }
     val digests =
         listOf(proof.installationManifestSha256) +
             proof.immutableRemovals.flatMap {
                 listOf(it.archiveSha256, it.recordSha256, it.manifestSha256, it.provenanceSha256)
-            } +
-            listOfNotNull(proof.mcp?.receiptSha256)
+            }
     if (identities.any { !validRemovalIdentity(it) } || digests.any { !productDigest(it) })
         throw ManagementRejected("uninstall-recovery", "product removal evidence is invalid")
 }

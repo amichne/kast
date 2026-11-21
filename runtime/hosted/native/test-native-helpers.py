@@ -6,7 +6,6 @@ import os
 from dataclasses import asdict, dataclass, field, replace
 from pathlib import Path
 import sys
-import subprocess
 from types import SimpleNamespace
 import tempfile
 import unittest
@@ -43,8 +42,9 @@ class RejectionDocument:
 
 @dataclass(frozen=True)
 class RejectionReply:
-    document: RejectionDocument
-    type: str = "rejected_document"
+    """A rejected native MCP tool result."""
+    structuredContent: RejectionDocument
+    isError: bool = True
 
 
 class NativeInventoryTest(unittest.TestCase):
@@ -239,7 +239,7 @@ class NativeFreshReadPolicyTest(unittest.TestCase):
         # Deliberately malformed boundary documents prove missing required facts are rejected.
         for missing in ("failure", "detail", "stage", "recovery"):
             document = asdict(RejectionReply(exact))
-            del document["document"][missing]
+            del document["structuredContent"][missing]
             incompatible.append(document)
         for document in incompatible:
             with self.subTest(document=document):
@@ -250,7 +250,7 @@ class NativeFreshReadPolicyTest(unittest.TestCase):
 
     def test_absent_restart_instruction_retains_missing_fact_without_admitting_restart(self):
         reply = asdict(RejectionReply(RejectionDocument()))
-        del reply["document"]["recovery"]["instruction"]
+        del reply["structuredContent"]["recovery"]["instruction"]
         observed = NATIVE.semantic_rejection(reply, "/owned-evidence/reply.json")
         self.assertIsNone(observed.instruction)
         self.assertFalse(NATIVE.restart_fresh_read(observed))
@@ -277,17 +277,16 @@ class NativeFreshReadCapTest(unittest.TestCase):
                         observations.append(observed_host)
                         return observed_host
 
-                    def command(arguments, **options):
-                        self.assertLess(len(calls), 3, "excess semantic command")
-                        self.assertEqual([proof.installation / "bin/kast-tool-rpc-complete", "call", "query_symbols"], arguments)
-                        self.assertEqual("RUN", json.loads(options["input_text"])["request"]["type"])
-                        calls.append(arguments)
+                    def semantic_call(call, **options):
+                        self.assertLess(len(calls), 3, "excess semantic call")
+                        self.assertEqual({"timeout": 1}, options)
+                        self.assertEqual("RUN", call.request.type)
+                        calls.append(call)
                         proof.last_stdout_log = str(root / "logs" / f"reply-{len(calls)}.json")
-                        return subprocess.CompletedProcess(arguments, 0,
-                            stdout=json.dumps(asdict(RejectionReply(RejectionDocument(stage=stage)))))
+                        return asdict(RejectionReply(RejectionDocument(stage=stage)))
 
                     proof.host = host
-                    proof.command = command
+                    proof.semantic_call = semantic_call
                     with patch.object(NATIVE.time, "sleep", side_effect=AssertionError("unexpected semantic sleep")):
                         with self.assertRaises(NATIVE.Rejected) as rejected:
                             proof.query("0.50.3", observed_host.host)
@@ -299,6 +298,62 @@ class NativeFreshReadCapTest(unittest.TestCase):
                     retained = sorted((root / "logs").glob("query_c2_p2-rejection-*.json"))
                     self.assertEqual(3, len(retained))
                     self.assertEqual([stage] * 3, [json.loads(path.read_text())["stage"] for path in retained])
+
+
+class NativeMcpExchangeTest(unittest.TestCase):
+    def test_query_keeps_input_open_until_the_native_mcp_call_answers(self):
+        with tempfile.TemporaryDirectory(prefix="kast-native-mcp-test-") as temporary:
+            root = Path(temporary).resolve()
+            (root / "logs").mkdir()
+            installation = root / "installation"
+            server = installation / "bin/kast-mcp-complete"
+            server.parent.mkdir(parents=True)
+            # The scripted server rejects excess input and answers only after reading each request.
+            server.write_text(
+                f"#!{sys.executable}\n"
+                "import json, sys\n"
+                "assert sys.argv[1:] == [], sys.argv\n"
+                "first = json.loads(sys.stdin.readline())\n"
+                "assert first['method'] == 'initialize' and first['id'] == 1, first\n"
+                "print(json.dumps({'jsonrpc': '2.0', 'id': 1, 'result': {}}), flush=True)\n"
+                "second = json.loads(sys.stdin.readline())\n"
+                "assert second['method'] == 'tools/call' and second['params']['name'] == 'query_symbols', second\n"
+                "assert second['params']['arguments']['request']['type'] == 'RUN', second\n"
+                "print(json.dumps({'jsonrpc': '2.0', 'method': 'notifications/message', 'params': {}}), flush=True)\n"
+                "print(json.dumps({'jsonrpc': '2.0', 'id': 2, 'result': {'isError': False, 'content': [],"
+                " 'structuredContent': {'status': 'complete'}}}), flush=True)\n"
+                "assert sys.stdin.readline() == ''\n"
+            )
+            server.chmod(0o755)
+            proof = object.__new__(NATIVE.NativeProof)
+            proof.root, proof.workspace, proof.installation = root, root, installation
+            proof.env, proof.commands, proof.stage = {"PATH": os.defpath}, 0, NATIVE.Stage.QUERY_C1_P1
+            call = NATIVE.QueryCall(NATIVE.QueryRun("RUN", NATIVE.QuerySource(), NATIVE.QueryOutput()))
+            result = proof.semantic_call(call, timeout=10)
+            self.assertEqual({"isError": False, "content": [], "structuredContent": {"status": "complete"}}, result)
+            self.assertEqual(str(root / "logs/01-query_c1_p1.stdout"), proof.last_stdout_log)
+            self.assertEqual(3, len(Path(proof.last_stdout_log).read_bytes().splitlines()))
+
+    def test_query_rejects_an_mcp_error_response(self):
+        with tempfile.TemporaryDirectory(prefix="kast-native-mcp-test-") as temporary:
+            root = Path(temporary).resolve()
+            (root / "logs").mkdir()
+            server = root / "installation/bin/kast-mcp-complete"
+            server.parent.mkdir(parents=True)
+            server.write_text(
+                f"#!{sys.executable}\n"
+                "import json, sys\n"
+                "sys.stdin.readline()\n"
+                "print(json.dumps({'jsonrpc': '2.0', 'id': 1, 'error': {'code': -32600, 'message': 'x'}}), flush=True)\n"
+            )
+            server.chmod(0o755)
+            proof = object.__new__(NATIVE.NativeProof)
+            proof.root, proof.workspace, proof.installation = root, root, root / "installation"
+            proof.env, proof.commands, proof.stage = {"PATH": os.defpath}, 0, NATIVE.Stage.QUERY_C1_P1
+            call = NATIVE.QueryCall(NATIVE.QueryRun("RUN", NATIVE.QuerySource(), NATIVE.QueryOutput()))
+            with self.assertRaises(NATIVE.Rejected) as rejected:
+                proof.semantic_call(call, timeout=10)
+            self.assertEqual(NATIVE.Failure.SEMANTIC_QUERY_REJECTED, rejected.exception.failure)
 
 
 if __name__ == "__main__":

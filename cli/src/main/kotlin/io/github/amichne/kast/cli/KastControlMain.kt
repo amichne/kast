@@ -4,7 +4,6 @@ import io.github.amichne.kast.cli.mcp.KastMcpMain
 import io.github.amichne.kast.cli.publicshell.KastPublicCliMain
 import io.github.amichne.kast.cli.publicshell.PublicJqWorker
 import io.github.amichne.kast.cli.publicshell.nativeControlEnvironment
-import io.github.amichne.kast.cli.rpc.KastToolRpcMain
 import io.github.amichne.kast.distribution.cli.ControlStage
 import io.github.amichne.kast.distribution.cli.ControlStageOutcome
 import io.github.amichne.kast.distribution.cli.ControlStageTrace
@@ -42,7 +41,6 @@ object KastControlMain {
                     NativeControlEntry.QUERY -> KastPublicCliMain.main(args)
                     NativeControlEntry.JQ -> PublicJqWorker.main(args)
                     NativeControlEntry.MCP -> KastMcpMain.main(args)
-                    NativeControlEntry.RPC -> KastToolRpcMain.main(args)
                     NativeControlEntry.SERVICE -> KastServiceMain.main(args)
                     NativeControlEntry.DAEMON -> KastDaemonMain.main(args)
                     NativeControlEntry.CODEX -> KastCodexMain.main(args)

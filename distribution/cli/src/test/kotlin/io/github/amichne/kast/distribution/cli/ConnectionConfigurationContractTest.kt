@@ -25,8 +25,6 @@ internal class ConnectionConfigurationContractTest {
                 listOf(
                     SavedConnectionDirectory(HarnessConnection.CODEX_MCP, "/Users/developer/.codex"),
                     SavedConnectionDirectory(HarnessConnection.CODEX_APP_SERVER, "/Users/developer/.local/bin"),
-                    SavedConnectionDirectory(HarnessConnection.COPILOT, "/Users/developer/.copilot"),
-                    SavedConnectionDirectory(HarnessConnection.PI, "/Users/developer/.config/pi/agent"),
                 ),
             )
         val encoded = managementJson.encodeToString(document)

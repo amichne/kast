@@ -15,25 +15,16 @@ internal fun uninstallInstallation(
     home: Path,
     executeInstaller: (Path, List<String>) -> Int = { script, arguments -> executePrivateInstaller(script, arguments) },
     observe: (UninstallCleanupObservation) -> Unit = { System.err.println(managementJson.encodeToString(it)) },
-    executeHost: (List<String>) -> HostRemovalProcessObservation = ::executeHostRemoval,
     present: (String) -> Unit = ::println,
     environment: Map<String, String> = emptyMap(),
-    executeProvider: (Map<String, String>, List<String>) -> ProcessObservation = { selected, arguments ->
-        runGuidanceProvider(arguments, selected)
-    },
 ) {
     val receipt = admittedUninstallReceipt(root)
     val remove = {
         admitUninstallPayload(root, receipt)
-        if (receipt.providers.isNotEmpty()) removeInstallationProviders(root, home, environment, executeProvider)
-        removeInstallation(root, home, receipt, executeInstaller, observe, executeHost, present, environment)
+        removeInstallation(root, home, receipt, executeInstaller, observe, present, environment)
         Refinement.Refined(Unit)
     }
-    when (
-        val removed =
-            if (receipt.product == null) remove()
-            else ContainerQueryLease.duringStoreRemoval(root.resolveSibling("kast-workspaces"), remove)
-    ) {
+    when (val removed = ContainerQueryLease.duringStoreRemoval(root.resolveSibling("kast-workspaces"), remove)) {
         is Refinement.Refined -> Unit
         is Refinement.Rejected -> throw ManagementRejected("uninstall-workspaces", removed.failure.name)
     }
@@ -45,23 +36,21 @@ private fun removeInstallation(
     receipt: ManagementReceipt,
     executeInstaller: (Path, List<String>) -> Int,
     observe: (UninstallCleanupObservation) -> Unit,
-    executeHost: (List<String>) -> HostRemovalProcessObservation,
     present: (String) -> Unit,
     environment: Map<String, String>,
 ) {
     cleanupUninstalledUserState(home, observe) {
-        retireUninstallPayload(root, home, receipt, executeInstaller, executeHost, observe, environment)
+        retireUninstallPayload(root, home, receipt, executeInstaller, observe, environment)
     }
     val journal = readUninstallRetirement(root)
     journal.productRemoval?.let { requireProductRuntimeStore(root, it) }
-    if (receipt.product != null) cleanupRemovedWorkspaceStore(root)
+    cleanupRemovedWorkspaceStore(root)
     journal.productRemoval?.let { cleanupProductRemoval(root, it) }
     removeUninstallRecovery(root, journal, observe)
     cleanupUninstallActivationLock(root, observe)
-    removeUninstallRegistrations(root, home, receipt, observe)
     cleanupUninstallHomeConfiguration(home, journal.homeConfiguration, observe)
     finishUninstall(root, receipt, journal, observe)
-    present("Removed Kast installation and owned registrations")
+    present("Removed Kast installation")
 }
 
 private fun admitUninstallPayload(root: Path, receipt: ManagementReceipt) {
@@ -83,17 +72,15 @@ private fun retireUninstallPayload(
     home: Path,
     receipt: ManagementReceipt,
     executeInstaller: (Path, List<String>) -> Int,
-    executeHost: (List<String>) -> HostRemovalProcessObservation,
     observe: (UninstallCleanupObservation) -> Unit,
     environment: Map<String, String>,
 ) {
     val payload = root.resolve("installation")
     observe(UninstallCleanupObservation.Started(UninstallArtifact.CONTROL_PAYLOAD))
     if (Files.exists(payload, LinkOption.NOFOLLOW_LINKS)) {
-        val script = prepareUninstallPayload(root, home, receipt, executeHost, observe, environment)
+        val script = prepareUninstallPayload(root, home, receipt, observe, environment)
         val args =
-            (if (receipt.product == null) listOf("uninstall", "--managed-registrations")
-            else listOf("--remove-product")) +
+            listOf("--remove-product") +
                 listOf(
                     "--install-root",
                     root.toString(),
@@ -102,7 +89,6 @@ private fun retireUninstallPayload(
                 )
         val code =
             withRegistrationLock(root) {
-                requireProvidersRemoved(root)
                 executeInstaller(script, args)
             }
         if (code != 0 || Files.exists(payload, LinkOption.NOFOLLOW_LINKS)) {
@@ -126,23 +112,22 @@ private fun prepareUninstallPayload(
     root: Path,
     home: Path,
     receipt: ManagementReceipt,
-    executeHost: (List<String>) -> HostRemovalProcessObservation,
     observe: (UninstallCleanupObservation) -> Unit,
     environment: Map<String, String>,
 ): Path {
     val payload = root.resolve("installation")
-    if (receipt.product != null && Files.exists(uninstallJournalPath(root), LinkOption.NOFOLLOW_LINKS)) {
+    if (Files.exists(uninstallJournalPath(root), LinkOption.NOFOLLOW_LINKS)) {
         val journal = readUninstallRetirement(root)
         val proof = journal.productRemoval
         if (proof != null) {
             resumeUninstallInventory(root, home, journal, observe)
             return when (proof.phase) {
-                ProductRemovalPhase.PREPARING -> ownedUninstallInstaller(root, true)
+                ProductRemovalPhase.PREPARING -> ownedUninstallInstaller(root)
                 ProductRemovalPhase.PREPARED -> retainedProductInstaller(root, proof)
             }
         }
     }
-    val script = ownedUninstallInstaller(root, receipt.product != null)
+    val script = ownedUninstallInstaller(root)
     val rootIdentity = captureUninstallManagedRoot(root)
     val recoveryProof =
         when (val admission = admitRecoveryRemoval(payload)) {
@@ -169,13 +154,8 @@ private fun prepareUninstallPayload(
             workspaceRemovals = workspaces,
         )
     }
-    val workspaces =
-        if (receipt.product == null) {
-            removeConfiguredUninstallHost(payload, home, observe, executeHost)
-            persist(emptyList())
-            emptyList()
-        } else prepareProductWorkspaceRemoval(root, home, environment, observe, persist)
-    if (receipt.product != null) removeWorkspaceProfiles(uninstallWorkspaceStore(root), workspaces)
+    val workspaces = prepareProductWorkspaceRemoval(root, home, environment, observe, persist)
+    removeWorkspaceProfiles(uninstallWorkspaceStore(root), workspaces)
     return script
 }
 
@@ -219,9 +199,9 @@ private fun requireRetainedUninstallInventory(
     }
 }
 
-private fun ownedUninstallInstaller(root: Path, product: Boolean): Path {
+private fun ownedUninstallInstaller(root: Path): Path {
     val payload = root.resolve("installation")
-    val relative = if (product) "share/kast/install-candidate.sh" else "share/kast/install.sh"
+    val relative = "share/kast/install-candidate.sh"
     val script = payload.resolve(relative)
     val manifest =
         when (val read = readBundledManifest(payload)) {
@@ -255,41 +235,6 @@ private fun removeUninstallRecovery(
     observe(UninstallCleanupObservation.Completed(UninstallArtifact.RECOVERY_BUNDLE))
 }
 
-private fun removeUninstallRegistrations(
-    root: Path,
-    home: Path,
-    receipt: ManagementReceipt,
-    observe: (UninstallCleanupObservation) -> Unit,
-) {
-    for (guidance in receipt.guidance) {
-        when (val removal = withRegistrationLock(root) { removeRecordedGuidance(root, guidance.harness) }) {
-            is PluginObservation.Observed -> Unit
-            is PluginObservation.Rejected ->
-                throw ManagementRejected("uninstall-guidance", pluginFailure(removal.failure).name)
-        }
-    }
-    val failed = mutableListOf<HarnessConnection>()
-    for (registration in receipt.registrations) {
-        val artifact = registration.connection.uninstallArtifact()
-        observe(UninstallCleanupObservation.Started(artifact))
-        try {
-            disconnectConnection(root, home, registration.connection)
-            observe(UninstallCleanupObservation.Completed(artifact))
-        } catch (_: ManagementRejected) {
-            observe(UninstallCleanupObservation.Rejected(artifact, UninstallCleanupFailure.OWNERSHIP_UNPROVEN))
-            failed += registration.connection
-        } catch (_: java.io.IOException) {
-            observe(UninstallCleanupObservation.Rejected(artifact, UninstallCleanupFailure.FILESYSTEM_REJECTED))
-            failed += registration.connection
-        }
-    }
-    if (failed.isNotEmpty())
-        throw ManagementRejected(
-            "uninstall-registrations",
-            "owned registrations require cleanup: ${failed.joinToString { it.publicName }}",
-        )
-}
-
 private fun finishUninstall(
     root: Path,
     receipt: ManagementReceipt,
@@ -308,7 +253,7 @@ private fun finishUninstall(
         journal.recoveryProof,
     )
     removeUninstallArtifact(receiptPath(root), UninstallArtifact.MANAGEMENT_RECEIPT, observe)
-    if (receipt.product != null) cleanupProductRemovalFence(root)
+    cleanupProductRemovalFence(root)
     cleanupEmptyUninstallRoot(root, journal.managedRootIdentity, observe)
     removeUninstallArtifact(uninstallJournalPath(root), UninstallArtifact.RETIREMENT_JOURNAL, observe)
 }

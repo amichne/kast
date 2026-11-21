@@ -22,10 +22,6 @@
           "enum": [
             "CONTROL_PAYLOAD",
             "USER_STATE",
-            "CODEX_MCP_REGISTRATION",
-            "CODEX_APP_SERVER_REGISTRATION",
-            "COPILOT_REGISTRATION",
-            "PI_REGISTRATION",
             "PUBLIC_EXECUTABLE",
             "MANAGEMENT_LOCK",
             "MANAGEMENT_RECEIPT",
@@ -33,7 +29,6 @@
             "RECOVERY_BUNDLE",
             "ACTIVATION_LOCK",
             "MANAGED_ROOT",
-            "HOST_PLUGIN",
             "HOME_CONFIGURATION"
           ]
         }
@@ -58,10 +53,6 @@
           "enum": [
             "CONTROL_PAYLOAD",
             "USER_STATE",
-            "CODEX_MCP_REGISTRATION",
-            "CODEX_APP_SERVER_REGISTRATION",
-            "COPILOT_REGISTRATION",
-            "PI_REGISTRATION",
             "PUBLIC_EXECUTABLE",
             "MANAGEMENT_LOCK",
             "MANAGEMENT_RECEIPT",
@@ -69,7 +60,6 @@
             "RECOVERY_BUNDLE",
             "ACTIVATION_LOCK",
             "MANAGED_ROOT",
-            "HOST_PLUGIN",
             "HOME_CONFIGURATION"
           ]
         }
@@ -95,10 +85,6 @@
           "enum": [
             "CONTROL_PAYLOAD",
             "USER_STATE",
-            "CODEX_MCP_REGISTRATION",
-            "CODEX_APP_SERVER_REGISTRATION",
-            "COPILOT_REGISTRATION",
-            "PI_REGISTRATION",
             "PUBLIC_EXECUTABLE",
             "MANAGEMENT_LOCK",
             "MANAGEMENT_RECEIPT",
@@ -106,7 +92,6 @@
             "RECOVERY_BUNDLE",
             "ACTIVATION_LOCK",
             "MANAGED_ROOT",
-            "HOST_PLUGIN",
             "HOME_CONFIGURATION"
           ]
         },
@@ -197,38 +182,6 @@
       "additionalProperties": false,
       "properties": {
         "type": {
-          "const": "HOST_REJECTED"
-        },
-        "artifact": {
-          "const": "HOST_PLUGIN"
-        },
-        "failure": {
-          "enum": [
-            "CONFIGURATION_UNPROVEN",
-            "OWNERSHIP_UNPROVEN",
-            "FILESYSTEM_REJECTED",
-            "RECOVERY_REQUIRED",
-            "PAYLOAD_REJECTED",
-            "RELEASE_REJECTED",
-            "COMPATIBILITY_REJECTED",
-            "PROCESS_UNAVAILABLE",
-            "DEADLINE_EXCEEDED",
-            "OUTPUT_REJECTED",
-            "TARGET_UNRECORDED"
-          ]
-        }
-      }
-    },
-    {
-      "type": "object",
-      "required": [
-        "type",
-        "artifact",
-        "failure"
-      ],
-      "additionalProperties": false,
-      "properties": {
-        "type": {
           "const": "HOME_CONFIGURATION_REJECTED"
         },
         "artifact": {
@@ -298,7 +251,7 @@
     },
     {
       "type": "REJECTED",
-      "artifact": "PI_REGISTRATION",
+      "artifact": "MANAGEMENT_RECEIPT",
       "failure": "OWNERSHIP_UNPROVEN"
     }
   ]

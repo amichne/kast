@@ -2,7 +2,6 @@
   "kast_main": "877cf9a4d27a2202892dec31a92c53e333669b20",
   "kast_candidate": "7e43fc5bbbdfcc43398a775e0d1b9397bb49442d",
   "slopsentral_source": "97b294bab33037cb58cf426728351743cda7ce7b",
-  "dotfiles_source": "8da93dc24aa3a32865acbb01bdbc1101bfe900a0",
   "artifacts": {
     "vale": {
       "url": "https://github.com/vale-cli/vale/releases/download/v3.24.0/vale_3.24.0_Linux_64-bit.tar.gz",
@@ -41,11 +40,6 @@
       "sha256": "dac2021204c8bf3bd8d66567a1ae36a341da0050b6006c32d42006c6577eb29a",
       "directory": "idea-2026.2.1",
       "build": "262.9437.185"
-    },
-    "slopsentral": {
-      "url": "https://github.com/amichne/slopsentral/releases/download/pi-v0.1.220/slopsentral-pi-0.1.220.tgz",
-      "sha256": "aea6b7741d70e7d17d37e66e5e2b07da110b829f68721098d02fc00d02258de4",
-      "directory": "slopsentral"
     }
   }
 }

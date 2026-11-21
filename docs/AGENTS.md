@@ -17,7 +17,6 @@ code_sources:
   - path: docs/public/sidebar-toggle.js
   - path: docs/public/snippets/deeper-reading.mdx
   - path: docs/public/reference/source-map.mdx
-  - path: docs/tool-rpc.md
   - path: docs/topology-impact.md
   - path: docs/internal/tooling/check_glossary.py
   - path: docs/internal/tooling/glossary_json.py
@@ -43,7 +42,6 @@ This directory owns the Mintlify site, contributor guides, and glossary rules. R
 - [GLOSSARY.md](GLOSSARY.md) - generated view of the terms.
 - [development.md](development.md) - commands to change code and select a focused test.
 - [topology-impact.md](topology-impact.md) - rules for dependency impact, report fields, and the off switch.
-- [tool-rpc.md](tool-rpc.md) - tool RPC and harness extension behavior.
 - [source-map.mdx](public/reference/source-map.mdx) - source owners and their focused tests.
 - [cli.mdx](public/reference/cli.mdx) - native CLI discovery, queries, source reads, and retained output.
 - [hosted-read-configuration.md](hosted-read-configuration.md) - read grants, retention, and limits.
@@ -66,7 +64,7 @@ This directory owns the Mintlify site, contributor guides, and glossary rules. R
 - The value explorer and README preview share `docs/internal/tooling/value-journey` as their source. Run `npm run build --prefix docs/internal/tooling/value-journey`. Commit both generated files.
 - Keep Guides, Architecture, and Reference visible in navigation. Group pages by reader goal.
 - Public setup starts with the remote installer's `--channel preview` option. Use `kast upgrade --channel preview` for updates.
-- Use `kast install` for CLI guidance. Keep MCP setup explicit with `--mcp`. Do not restore retired connection commands.
+- Use `kast install skill` to export the skill. Agents receive the skill and MCP server through dotagents. Do not restore retired harness installers.
 - Describe one complete managed product, private workspace state, and exact-root trust on the first explicit semantic request. Hooks stay passive; stop is temporary and scoped.
 - Keep intended product behavior separate from source checks, native acceptance, and publication. Do not require a user desktop IDEA installation, archive import, Python, or uv for product setup.
 - Use `snippets/deeper-reading.mdx` for bottom links from core pages. `sidebar-toggle.js` owns the desktop toggle for Maple.

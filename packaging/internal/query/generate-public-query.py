@@ -12,7 +12,7 @@ from collections import Counter
 import json
 import re
 from pathlib import Path
-from query_delivery_contract import MODULE as DELIVERY_MODULE, SCHEMA as DELIVERY_SCHEMA, SEMANTIC_KOTLIN, PRESENTATION_SCHEMA, embed_contract, render_contract, render_semantic_kotlin, render_presentation_schema
+from query_delivery_contract import SCHEMA as DELIVERY_SCHEMA, SEMANTIC_KOTLIN, PRESENTATION_SCHEMA, render_semantic_kotlin, render_presentation_schema
 
 ROOT = Path(__file__).resolve().parents[3]
 RESOURCES = ROOT / 'app-server/src/main/resources/io/github/amichne/kast/appserver/query'
@@ -92,7 +92,7 @@ def validate_authority(authority: dict) -> None:
             raise ValueError(f'Invalid public tool loading policy: {tool["name"]}')
     support_bindings = {
         'workspace_lifecycle': ('WorkspaceLifecycleToolInput', ['APP_SERVER']),
-        'health_check': ('McpHealthRequest', ['MCP', 'RPC']),
+        'health_check': ('McpHealthRequest', ['MCP']),
     }
     if {tool['name'] for tool in support} != set(support_bindings):
         raise ValueError('Support tools must have complete, known bindings')
@@ -570,7 +570,7 @@ def render_tools(authority: dict) -> dict[Path, str]:
     support_lines = [
         '// Generated from tools.schema.json by packaging/internal/query/generate-public-query.py. Do not edit.\n',
         'package io.github.amichne.kast.protocol.registry\n\n',
-        'enum class SupportToolHost {\n    APP_SERVER,\n    MCP,\n    RPC,\n}\n\n',
+        'enum class SupportToolHost {\n    APP_SERVER,\n    MCP,\n}\n\n',
         'enum class SupportToolIdentity(\n'
         '    val toolName: String,\n'
         '    val description: String,\n'
@@ -591,14 +591,6 @@ def render_tools(authority: dict) -> dict[Path, str]:
         )
     support_lines.append('}\n')
     outputs[ROOT / 'protocol/registry/src/main/kotlin/io/github/amichne/kast/protocol/registry/SupportToolIdentity.kt'] = ''.join(support_lines)
-    # ToolRpcFailure is the runtime owner; project its closed values into single-file adapters.
-    rpc_owner = ROOT / 'cli/src/main/kotlin/io/github/amichne/kast/cli/rpc/KastToolRpcMain.kt'
-    failure_match = re.search(r'internal enum class ToolRpcFailure \{([^}]+)\}', rpc_owner.read_text())
-    if failure_match is None or not re.fullmatch(r'[\sA-Z_,]+', failure_match.group(1)):
-        raise ValueError('ToolRpcFailure must remain a closed enum of CAPS_CASE entries')
-    failures = [entry.strip() for entry in failure_match.group(1).split(',') if entry.strip()]
-    if not failures or len(failures) != len(set(failures)):
-        raise ValueError('ToolRpcFailure must have unique finite entries')
     minimum_owner = ROOT / 'protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/PublicQueryOutputMinimum.kt'
     minimum_match = re.search(r'const val PUBLIC_QUERY_OUTPUT_MINIMUM_BYTES = ([0-9]+)L', minimum_owner.read_text())
     if minimum_match is None:
@@ -608,141 +600,11 @@ def render_tools(authority: dict) -> dict[Path, str]:
         definitions['ExecutionBudget']['properties']['maxReturnedBytes']['description']
         .replace('{PUBLIC_QUERY_OUTPUT_MINIMUM_BYTES}', str(minimum_bytes))
     )
-    contract = render_contract(json.loads(DELIVERY_SCHEMA.read_text()))
-    outputs[DELIVERY_MODULE] = contract + 'export { admitQueryDeliveryEnvelope, createQueryDeliveryEnvelope, encodeQueryDeliveryEnvelope };\n'
-    outputs[SEMANTIC_KOTLIN] = render_semantic_kotlin(json.loads(DELIVERY_SCHEMA.read_text()))
-    outputs[PRESENTATION_SCHEMA] = render_presentation_schema(json.loads(DELIVERY_SCHEMA.read_text()), referenced_schema(
+    delivery_schema = json.loads(DELIVERY_SCHEMA.read_text())
+    outputs[SEMANTIC_KOTLIN] = render_semantic_kotlin(delivery_schema)
+    outputs[PRESENTATION_SCHEMA] = render_presentation_schema(delivery_schema, referenced_schema(
         {'type': 'object', 'required': ['request'], 'additionalProperties': False,
          'properties': {'request': {'$ref': '#/$defs/ReadResultAction'}}}, definitions))
-    delivery_owner = ROOT / 'cli/src/main/js/query-delivery.mjs'
-    delivery = embed_contract(delivery_owner.read_text(), contract).rstrip()
-    outputs[delivery_owner] = delivery + '\n'
-    outputs[ROOT / 'cli/src/main/js/query-presentation.mjs'] = (
-        '// Generated importable presentation; owned by cli/src/main/js/query-delivery.mjs.\n' +
-        delivery + '\nexport { queryPresentation };\n')
-    # Registration installs each adapter as one file; generate its marked constants in place.
-    for relative in ('copilot/extension.mjs', 'pi/extension.ts'):
-        adapter = ROOT / relative
-        source, count = re.subn(
-            r'(?<=const PUBLIC_TOOL_CONTRACT_VERSION = )\d+(?=;)',
-            str(authority['contractVersion']), adapter.read_text(),
-        )
-        if count != 1:
-            raise ValueError(f'{relative}: missing unique generated contract version')
-        if relative == 'pi/extension.ts':
-            deferred_names = [tool['name'] for tool in authority['tools'] if tool['deferLoading']]
-            source, count = re.subn(
-                r'const DEFERRED_TOOL_NAMES: readonly string\[\] = \[.*?\];',
-                lambda _: 'const DEFERRED_TOOL_NAMES: readonly string[] = ' + json.dumps(deferred_names) + ';',
-                source, flags=re.DOTALL,
-            )
-            if count != 1:
-                raise ValueError(f'{relative}: missing unique generated loading policy')
-        failure_block = ('// Generated from ToolRpcFailure; owned by packaging/internal/query/generate-public-query.py.\n'
-                         'const TOOL_RPC_FAILURES = [\n' +
-                         ''.join('  ' + json.dumps(failure) + ',\n' for failure in failures) +
-                         ('] as const;\n' if relative.startswith('pi/') else '];\n') +
-                         '// End generated ToolRpcFailure.')
-        source, count = re.subn(
-            r'// Generated from ToolRpcFailure; owned by packaging/internal/query/generate-public-query.py\.\n.*?// End generated ToolRpcFailure\.',
-            lambda _: failure_block, source, flags=re.DOTALL,
-        )
-        if count != 1:
-            raise ValueError(f'{relative}: missing unique generated RPC failures')
-        # The RPC owner emits finite typed recovery details. Admit the same closed variants in both clients.
-        admission = r'''function isToolResult(value) {
-  const object = item => item !== null && typeof item === "object" && !Array.isArray(item);
-  const keys = (item, expected) => object(item) && Object.keys(item).length === expected.length &&
-    expected.every(key => Object.hasOwn(item, key));
-  const uuid = "[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}";
-  const token = (item, family) => typeof item === "string" && new RegExp("^" + family + ":v1:" + uuid + "$").test(item);
-  if (!object(value) || typeof value.type !== "string") return false;
-  if (value.type === "rejected") {
-    if (typeof value.failure !== "string" || !TOOL_RPC_FAILURES.includes(value.failure)) return false;
-    if (keys(value, ["type", "failure"])) return true;
-    if (!keys(value, ["type", "failure", "detail"]) || !object(value.detail) || typeof value.detail.type !== "string") return false;
-    const detail = value.detail;
-    if (detail.type === "OUTPUT_ALLOWANCE_REJECTED") return value.failure === "INVALID_ARGUMENTS" &&
-      keys(detail, ["type", "minimumBytes"]) && detail.minimumBytes === PUBLIC_OUTPUT_MINIMUM;
-    if (detail.type === "DETAIL_SELECTOR_REJECTED") return value.failure === "INVALID_ARGUMENTS" &&
-      keys(detail, ["type", "rule"]) && ["SAME_RETAINED_RESULT", "DETAIL_TARGET_KIND", "DETAIL_CURSOR_CONTROL"].includes(detail.rule);
-    if (detail.type === "REQUEST_CONSTRAINT_REJECTED") return value.failure === "INVALID_ARGUMENTS" &&
-      keys(detail, ["type", "parameters", "rule", "remedies"]) && detail.rule === "RUNNER_CONTROLLED_WORK_LIMIT" &&
-      Array.isArray(detail.parameters) && detail.parameters.length === 2 &&
-      detail.parameters.includes("executionMode") && detail.parameters.includes("executionBudget.maxWorkUnits") &&
-      Array.isArray(detail.remedies) && detail.remedies.length === 2 &&
-      detail.remedies.includes("REMOVE_MAX_WORK_UNITS") && detail.remedies.includes("SELECT_BOUNDED");
-    if (detail.type === "SOURCE_ANCHOR_REJECTED") return value.failure === "INVALID_ARGUMENTS" &&
-      keys(detail, ["type", "cause", "next_action"]) && detail.next_action === "USE_ISSUED_CANDIDATE_SELECTOR" && typeof detail.cause === "string" &&
-      ["UNKNOWN_TOKEN_FAMILY", "INVALID_TOKEN_STRUCTURE", "INVALID_PAYLOAD_ENCODING", "PAYLOAD_DIGEST_MISMATCH"].includes(detail.cause);
-    if (value.failure !== "QUERY_SESSION_TRANSITION_REJECTED" || detail.next_action !== "START_NEW_QUERY_SESSION") return false;
-    if (["NEW_RUN_REQUIRES_NEW_SESSION", "SOURCE_READ_REQUIRES_NEW_SESSION"].includes(detail.type))
-      return keys(detail, ["type", "next_action"]);
-    if (detail.type === "RESULT_NOT_ISSUED_BY_PRECEDING_REPLY") return keys(detail, ["type", "expected_result", "requested_result", "next_action"]) &&
-      (detail.expected_result === null || token(detail.expected_result, "result")) && token(detail.requested_result, "result");
-    if (detail.type === "CONTINUATION_NOT_ISSUED_BY_PRECEDING_REPLY") return keys(detail, ["type", "expected_continuation", "requested_continuation", "next_action"]) &&
-      (detail.expected_continuation === null || token(detail.expected_continuation, "query-output")) &&
-      token(detail.requested_continuation, "(?:query|query-output)");
-    return false;
-  }
-  // The canonical document stays opaque here. The Kotlin RPC admits its owning schema.
-  return keys(value, ["type", "document"]) && ["complete", "qualified", "rejected_document"].includes(value.type) && object(value.document);
-}'''
-        admission = admission.replace('PUBLIC_OUTPUT_MINIMUM', str(minimum_bytes))
-        if relative == 'pi/extension.ts':
-            admission = admission.replace('function isToolResult(value) {',
-                                          'function isToolResult(value: unknown): value is ToolRpcResult {')
-            admission = admission.replace('const object = item =>',
-                                          'const object = (item: unknown): item is Record<string, unknown> =>')
-            admission = admission.replace('const keys = (item, expected) =>',
-                                          'const keys = (item: unknown, expected: readonly string[]) =>')
-            admission = admission.replace('const token = (item, family) =>',
-                                          'const token = (item: unknown, family: string) =>')
-            admission = admission.replace('!TOOL_RPC_FAILURES.includes(value.failure)',
-                                          '!(TOOL_RPC_FAILURES as readonly string[]).includes(value.failure)')
-            result_type = '''type ToolRpcResult =
-  | { type: "complete" | "qualified" | "rejected_document"; document: Record<string, unknown> }
-  | { type: "rejected"; failure: (typeof TOOL_RPC_FAILURES)[number]; detail?: never }
-  | { type: "rejected"; failure: "INVALID_ARGUMENTS"; detail: { type: "OUTPUT_ALLOWANCE_REJECTED"; minimumBytes: number } }
-  | { type: "rejected"; failure: "INVALID_ARGUMENTS"; detail: { type: "DETAIL_SELECTOR_REJECTED"; rule: "SAME_RETAINED_RESULT" | "DETAIL_TARGET_KIND" | "DETAIL_CURSOR_CONTROL" } }
-  | { type: "rejected"; failure: "INVALID_ARGUMENTS"; detail: {
-      type: "REQUEST_CONSTRAINT_REJECTED";
-      parameters: ["executionMode", "executionBudget.maxWorkUnits"] | ["executionBudget.maxWorkUnits", "executionMode"];
-      rule: "RUNNER_CONTROLLED_WORK_LIMIT";
-      remedies: ["REMOVE_MAX_WORK_UNITS", "SELECT_BOUNDED"] | ["SELECT_BOUNDED", "REMOVE_MAX_WORK_UNITS"] } }
-  | { type: "rejected"; failure: "INVALID_ARGUMENTS"; detail: {
-      type: "SOURCE_ANCHOR_REJECTED";
-      cause: "UNKNOWN_TOKEN_FAMILY" | "INVALID_TOKEN_STRUCTURE" | "INVALID_PAYLOAD_ENCODING" | "PAYLOAD_DIGEST_MISMATCH";
-      next_action: "USE_ISSUED_CANDIDATE_SELECTOR" } }
-  | { type: "rejected"; failure: "QUERY_SESSION_TRANSITION_REJECTED"; detail:
-      | { type: "NEW_RUN_REQUIRES_NEW_SESSION" | "SOURCE_READ_REQUIRES_NEW_SESSION"; next_action: "START_NEW_QUERY_SESSION" }
-      | { type: "RESULT_NOT_ISSUED_BY_PRECEDING_REPLY"; expected_result: string | null; requested_result: string; next_action: "START_NEW_QUERY_SESSION" }
-      | { type: "CONTINUATION_NOT_ISSUED_BY_PRECEDING_REPLY"; expected_continuation: string | null; requested_continuation: string; next_action: "START_NEW_QUERY_SESSION" } };'''
-            source, count = re.subn(r'type ToolRpcResult =\n.*?;\n\nfunction isObject',
-                                    lambda _: result_type + '\n\nfunction isObject', source, flags=re.DOTALL)
-            if count != 1:
-                raise ValueError(f'{relative}: missing unique RPC reply type')
-        source, count = re.subn(r'function isToolResult\([^\n]+\n.*?\n}', lambda _: admission, source, flags=re.DOTALL)
-        if count != 1:
-            raise ValueError(f'{relative}: missing unique RPC reply admission')
-        delivery_block = ('// Generated query delivery; owned by cli/src/main/js/query-delivery.mjs.\n' +
-                          delivery + '\n// End generated query delivery.')
-        source, count = re.subn(
-            r'// Generated query delivery; owned by cli/src/main/js/query-delivery\.mjs\.\n.*?// End generated query delivery\.',
-            lambda _: delivery_block, source, flags=re.DOTALL,
-        )
-        if count != 1:
-            raise ValueError(f'{relative}: missing unique generated query delivery')
-        session = (ROOT / 'cli/src/main/js/query-session.mjs').read_text().rstrip()
-        session_block = ('// Generated query session; owned by cli/src/main/js/query-session.mjs.\n' +
-                         session + '\n// End generated query session.')
-        source, count = re.subn(
-            r'// Generated query session; owned by cli/src/main/js/query-session\.mjs\.\n.*?// End generated query session\.',
-            lambda _: session_block, source, flags=re.DOTALL,
-        )
-        if count != 1:
-            raise ValueError(f'{relative}: missing unique generated query session')
-        outputs[adapter] = source
     registrations = []
     responses = []
     for tool in authority['tools']:

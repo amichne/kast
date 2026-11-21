@@ -5013,8 +5013,7 @@
       "description": "Observe exact workspace binding and saved/indexed readiness. This passive check does not validate semantic answers.",
       "binding": "McpHealthRequest",
       "hosts": [
-        "MCP",
-        "RPC"
+        "MCP"
       ]
     }
   ],

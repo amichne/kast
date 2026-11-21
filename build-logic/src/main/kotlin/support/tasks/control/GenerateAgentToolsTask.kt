@@ -49,15 +49,11 @@ abstract class GenerateAgentToolsTask : DefaultTask() {
         check(manifest.name == "kast" && manifest.hooks == "./hooks/hooks.json" && manifest.mcpServers == null && manifest.skills == "./skills/") {
             "The default Kast plugin must select CLI guidance and the shared preparation hook"
         }
-        val copilot = agentToolsJson.decodeFromString<CopilotPluginManifest>(source.resolve(".github/plugin/plugin.json").readText())
-        check(copilot.name == "kast" && copilot.hooks == "./hooks/copilot.json" && copilot.mcpServers == null && copilot.skills == "./skills/") {
-            "The default Copilot plugin must select CLI guidance and the shared preparation hook"
-        }
         check(mcp.mcpServers.kast.command == "/bin/bash" && mcp.mcpServers.kast.args == listOf(
-            "-c", "I=\"\${KAST_INSTALL_ROOT:-\${HOME}/.local/share/kast}/installation\"; exec \"\$I/share/kast/private-python/bin/python3.12\" -I -S -B \"\$I/share/kast/mcp_environment.py\" serve --install-root \"\$I\"",
-        )) { "Kast plugin must use the installed repository-bound MCP launcher" }
+            "-c", "PATH=\"\${HOME}/.local/bin:\${PATH}\" exec kast --internal-entrypoint=mcp",
+        )) { "Kast plugin must launch the native MCP entry of the installed kast command" }
         check(mcp.mcpServers.kast.toolTimeoutSeconds == 3780 && mcp.mcpServers.kast.timeoutMillis == 3_780_000) {
-            "MCP host deadlines must cover the admitted task service allowance"
+            "MCP host deadlines must cover the admitted semantic request allowance"
         }
         check(marketplace.name == "kast" && marketplace.plugins.size == 1) { "expected one Kast marketplace entry" }
         val entry = marketplace.plugins.single()
@@ -75,10 +71,7 @@ abstract class GenerateAgentToolsTask : DefaultTask() {
         }
         check(paths.filter(Files::isRegularFile).sumOf(Files::size) <= 1_048_576) { "agent plugin source exceeds one MiB" }
         val required = listOf("references/onboarding.md", "references/query-schema.json", "references/query-examples.json",
-            "skills/kast/SKILL.md", "skills/kast/public-cli.md", "hooks/hooks.json", "hooks/copilot.json", "hooks/pi.ts",
-            "skills/kast/scripts/server.py", "skills/kast/scripts/server.py.lock",
-            "skills/kast/scripts/service.py", "skills/kast/scripts/tasks.py",
-            "skills/kast/scripts/access.py", "skills/kast/scripts/access.py.lock", "skills/kast/scripts/transport.py")
+            "skills/kast/SKILL.md", "skills/kast/public-cli.md", "hooks/hooks.json", "mcp.json")
         check(required.all { source.resolve(it).isFile }) { "shared session context and generated references are required" }
         check(source.resolve("references/query-examples.json").readBytes()
             .contentEquals(canonicalQueryExamplesFile.get().asFile.readBytes())) { "examples must match the canonical query projection" }
@@ -102,16 +95,9 @@ abstract class GenerateAgentToolsTask : DefaultTask() {
             plugin.resolve("hooks/session_start.py.lock").delete()
             plugin.resolve("mcp.json").delete()
             if (withMcp) source.resolve("mcp.json").copyTo(plugin.resolve(".mcp.json"))
-            if (!withMcp) {
-                plugin.resolve(".mcp.json").delete()
-                plugin.resolve("skills/kast/scripts").deleteRecursively()
-            }
+            if (!withMcp) plugin.resolve(".mcp.json").delete()
             plugin.resolve(".codex-plugin/plugin.json").writeText(
                 agentToolsJson.encodeToString(AgentPluginManifest.serializer(), manifest.copy(version = version,
-                    mcpServers = if (withMcp) "./.mcp.json" else null)) + "\n",
-            )
-            plugin.resolve(".github/plugin/plugin.json").writeText(
-                agentToolsJson.encodeToString(CopilotPluginManifest.serializer(), copilot.copy(version = version,
                     mcpServers = if (withMcp) "./.mcp.json" else null)) + "\n",
             )
             val destination = composition.resolve(".agents/plugins/marketplace.json")
@@ -121,10 +107,6 @@ abstract class GenerateAgentToolsTask : DefaultTask() {
                     entry.copy(source = entry.source.copy(path = "./plugins/kast")),
                 )),
             ) + "\n")
-            val copilotMarketplace = composition.resolve(".github/plugin/marketplace.json")
-            copilotMarketplace.parentFile.mkdirs()
-            copilotMarketplace.writeText(agentToolsJson.encodeToString(CopilotMarketplace.serializer(),
-                CopilotMarketplace("kast", AgentAuthor("Amichne"), listOf(CopilotMarketplaceEntry("kast", "./plugins/kast")))) + "\n")
         }
     }
 }
@@ -147,16 +129,6 @@ internal data class AgentPluginManifest(
 )
 
 @Serializable
-internal data class CopilotPluginManifest(
-    val name: String,
-    val version: String,
-    val description: String,
-    val hooks: String? = null,
-    val mcpServers: String? = null,
-    val skills: String,
-)
-
-@Serializable
 internal data class AgentPluginDisplay(
     val displayName: String,
     val shortDescription: String,
@@ -172,12 +144,6 @@ internal enum class AgentCapability { @SerialName("Read") READ, @SerialName("Wri
 
 @Serializable
 internal data class AgentAuthor(val name: String)
-
-@Serializable
-internal data class CopilotMarketplace(val name: String, val owner: AgentAuthor, val plugins: List<CopilotMarketplaceEntry>)
-
-@Serializable
-internal data class CopilotMarketplaceEntry(val name: String, val source: String)
 
 @Serializable
 internal data class AgentMcpDocument(val mcpServers: AgentMcpServers)

@@ -89,7 +89,7 @@ class OneShotObservationTest {
                 listOf(
                     "-cp",
                     installation.resolve("lib/kast.jar").toString(),
-                    "io.github.amichne.kast.cli.rpc.KastToolRpcMain",
+                    "io.github.amichne.kast.cli.mcp.KastMcpMain",
                 ),
             )
         Files.writeString(

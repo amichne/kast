@@ -11,8 +11,7 @@ import unittest
 class NativeLauncherTest(unittest.TestCase):
     def test_production_launchers_execute_the_canonical_target_through_an_aliased_installation(self):
         sources = Path(__file__).resolve().parents[2] / 'cli/src/main/control-launchers/bin'
-        modes = {'kast': 'installer', 'kast-codex': 'codex', 'kast-mcp': 'mcp',
-                 'kast-query': 'query', 'kast-tool-rpc': 'rpc'}
+        modes = {'kast': 'installer', 'kast-codex': 'codex', 'kast-mcp': 'mcp', 'kast-query': 'query'}
         with tempfile.TemporaryDirectory(prefix='kast-native-launchers-') as directory:
             root = Path(directory).resolve()
             product = root / 'product with spaces'

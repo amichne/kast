@@ -10,35 +10,12 @@ import subprocess
 import sys
 import tempfile
 import unittest
-from dataclasses import dataclass
 from pathlib import Path
-from typing import Literal, override
+from typing import override
 from unittest.mock import patch
 
 import generate_bootstrap as generator
 import managed_installation as install
-import managed_update_contract as contract
-import managed_update_journal as journal
-
-
-@dataclass(frozen=True)
-class LegacyRegistrationFixture:
-    connection: Literal["PI"]
-    destination: str
-    payloadSha256: str
-
-
-@dataclass(frozen=True)
-class ReceiptFixture:
-    schemaVersion: int
-    installationRoot: str
-    executable: str
-    executableSha256: str
-    channel: str
-    registrations: tuple[install.Registration | LegacyRegistrationFixture, ...]
-    updatePolicy: journal.TrackStable
-    installedBuild: journal.BuildIdentity
-    guidance: tuple[install.Guidance, ...] = ()
 
 
 class BootstrapImportTest(unittest.TestCase):
@@ -55,8 +32,7 @@ class BootstrapImportTest(unittest.TestCase):
                 "managed_product_removal.py",
                 "immutable_store.py",
                 "product_removal_recovery.py",
-                "product_mcp_removal.py",
-                "mcp_environment.py",
+                "product_state_removal.py",
                 "private_interpreter.py",
                 "bootstrap_entry.py",
                 "composed_bundle.py",
@@ -130,57 +106,6 @@ class BootstrapImportTest(unittest.TestCase):
                 if path.is_file()
             }
             self.assertEqual(before, after)
-
-
-class ManagementRegistrationTest(unittest.TestCase):
-    def receipt(self, registration: install.Registration | LegacyRegistrationFixture) -> bytes:
-        return install.encoded(
-            ReceiptFixture(
-                2,
-                "/fixture/kast",
-                "/fixture/bin/kast",
-                "a" * 64,
-                "STABLE",
-                (registration,),
-                journal.TrackStable(),
-                journal.BuildIdentity("v1.0.0", "1.0.0", "b" * 40, "c" * 40),
-            )
-        )
-
-    def test_legacy_registration_keeps_the_historical_mcp_composition(self):
-        raw = self.receipt(
-            LegacyRegistrationFixture("PI", "/fixture/pi/extensions/kast.ts", "d" * 64)
-        )
-        parsed = install.parse_management(raw)
-        self.assertEqual("CliWithMcp", parsed.registrations[0].composition)
-
-    def test_both_pi_compositions_survive_installer_receipt_admission_and_serialization(self):
-        registrations = (
-            install.Registration(
-                "PI", "/fixture/pi/extensions/kast.ts", "d" * 64, "/fixture/pi", "CliOnly"
-            ),
-            install.Registration(
-                "PI", "/fixture/pi/extensions/kast.ts", "d" * 64, "/fixture/pi", "CliWithMcp"
-            ),
-        )
-        for registration in registrations:
-            with self.subTest(composition=registration.composition):
-                parsed = install.parse_management(self.receipt(registration))
-                self.assertEqual((registration,), parsed.registrations)
-                encoded = json.loads(install.encoded(parsed))
-                self.assertEqual(
-                    registration.composition, encoded["registrations"][0]["composition"]
-                )
-
-    def test_unknown_pi_composition_rejects_before_installer_effects(self):
-        registration = install.Registration(
-            "PI", "/fixture/pi/extensions/kast.ts", "d" * 64, "/fixture/pi", "CliOnly"
-        )
-        raw = self.receipt(registration).replace(b'"CliOnly"', b'"UnknownComposition"')
-        with self.assertRaises(install.StageRejected) as rejected:
-            _ = install.parse_management(raw)
-        self.assertEqual(contract.Stage.RE_ADMISSION, rejected.exception.failure.stage)
-        self.assertEqual(contract.Failure.OWNERSHIP_UNPROVEN, rejected.exception.failure.reason)
 
 
 class UntrustedReleaseSource:

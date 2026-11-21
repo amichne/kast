@@ -5,17 +5,14 @@ It does not install personal shell configuration or change credentials.
 Runtime directories and evaluation receipts belong outside the repository.
 
 ```sh
-python3 packaging/cloud/bootstrap.py --root /workspace/pi-eval --with-idea --with-native-fixture --with-control
-source /workspace/pi-eval/activate.sh
-node packaging/cloud/smoke.mjs --refresh-catalog --kast-adapter "$PWD/pi/mcp-extension.ts"
-bash packaging/cloud/checks.sh
+python3 packaging/cloud/bootstrap.py --root /workspace/kast-cloud --with-idea --with-native-fixture --with-control
+source /workspace/kast-cloud/activate.sh
 ```
 
 Python 3.12+, curl, archive support, and Git are host prerequisites. The manifest pins
-vendor archives and their published SHA-256 digests. The package lock pins Pi and
-its transitive packages. Bootstrap runs no package lifecycle scripts and accepts no
-IDE license. Repeat the same command to validate the cached archive digests and
-reinstall the locked package tree. Use a new runtime directory for a clean setup.
+vendor archives and their published SHA-256 digests. Bootstrap installs no packages
+and accepts no IDE license. Repeat the same command to validate the cached archive
+digests. Use a new runtime directory for a clean setup.
 An optional `--download-cache` selects a read-only cache of public vendor archives.
 Every archive digest is still checked. Concurrent setup in one runtime is rejected.
 
@@ -63,7 +60,7 @@ The product gate supplies validation version `0.0.0`. For direct Gradle module
 checks, set `version`, `controlVersion`, and `hostedPluginVersion` to `0.0.0` so
 packaging tests receive valid version metadata.
 
-For source gates, use `umask 022`, as `checks.sh` does. Gradle TestKit uses a
+For source gates, use `umask 022`. Gradle TestKit uses a
 separate home. Pass the approved Java proxy and CA settings to its child JVMs as
 well as the main Gradle process.
 
@@ -74,7 +71,7 @@ Activation sets `GOTOOLCHAIN=local`, so Go never downloads another toolchain. Th
 Kast remains `GPL-3.0-only`; changing its build toolchain does not relicense the project.
 The wrapper owns the Gradle distribution checksum. The generated activation file
 configures only the owned Gradle directory through the current approved proxy.
-Set `PI_EVAL_JAVA_TRUSTSTORE` if the platform provides a different Java certificate store.
+Set `KAST_CLOUD_JAVA_TRUSTSTORE` if the platform provides a different Java certificate store.
 
 The Linux source path admits the standalone vendor layout, bundled JBR and exact
 per-user plugin profile. Control archives carry a Linux platform name. Fresh
@@ -84,53 +81,28 @@ reset, uninstall and the legacy broker service remain unqualified on Linux.
 Direct MCP uses its own client process. A virtual display is required for graphical
 lifecycle launch; a process start never establishes Host readiness.
 
-The authoritative shell configuration source is `amichne/dotfiles`; the legacy shell-config
-repository is not part of this profile. Portable Pi resources must be selected
-explicitly into the isolated agent directory. Keep authentication, models,
-sessions, extension registrations, and machine settings outside that copy.
-
-```sh
-python3 packaging/cloud/portable-profile.py --runtime "$PI_EVAL_ROOT" --dotfiles "$PI_EVAL_ROOT/sources/dotfiles"
-```
-
-This opt-in profile copies only `APPEND_SYSTEM.md`, `agents`, and `prompts` from
-the pinned public source. It refuses to replace files. It excludes personal shell
-startup, language-server paths, credentials, models, and package settings.
-
 ## Capability boundaries
 
 | Capability | Provisioning and validation boundary |
 | --- | --- |
-| Node, Pi, Python, uv | Node and uv archives are pinned; Pi 1.3.0 uses the package lock. Host Python needs 3.12 or 3.13 for the source checks. |
+| Node, Python, uv | Node and uv archives are pinned. Host Python needs 3.12 or 3.13 for the source checks. |
 | IntelliJ and Kotlin | Verify exact product, plugin and JBR identities from the pinned archives. A free distribution alone grants no Kast readiness. |
 | Gradle and Control | Use the checked wrapper and the pinned JDK. The Control executable also needs the optional pinned Go; it needs no C toolchain. |
-| Slopsentral | The released adapter and source revision are pinned separately. Source checks and native Pi loader tests prove different boundaries. |
-| Portable resources | Only the named public Pi files enter the owned agent directory. The full shell gate has separate OS dependencies. |
+| Slopsentral | The source revision is pinned. Its source checks prove only that source boundary. |
 | Kast Host/Control installation | Linux supports a fresh local pair at the canonical per-user installation. Actual product installation and imported-model readiness require separate qualification. |
 | True headless semantics | Native indexed fixture tests use headless platform APIs. The product Host lifecycle skips headless startup. These are separate execution modes. |
 | Virtual display | `Xvfb` supplies an X11 display for a graphical IDE. The Linux launcher preserves the real IDE and waits for the correlated Host handshake. Startup alone grants no semantic authority. |
-| Model runs | Need an approved cloud authentication mechanism, working native queries in the exact child environment, and the bounded evaluation plan. |
 
 ## Source checks and clean fixtures
 
 Run Slopsentral's actual gates in its pinned source checkout:
 
 ```sh
-cd "$PI_EVAL_ROOT/sources/slopsentral"
+cd "$KAST_CLOUD_ROOT/sources/slopsentral"
 npm ci --ignore-scripts --no-audit --no-fund
 node tools/validate-source-graph.mjs
-npm run check:pi
-TEST_VALE_ARCHIVE="$PI_EVAL_ROOT/downloads/vale_3.24.0_Linux_64-bit.tar.gz" uv run --locked tools/check.py
-SLOPSENTRAL_PI_PACKAGE="$PI_EVAL_ROOT/slopsentral" node --test tools/tests/pi-host.test.mjs
+TEST_VALE_ARCHIVE="$KAST_CLOUD_ROOT/downloads/vale_3.24.0_Linux_64-bit.tar.gz" uv run --locked tools/check.py
 ```
-
-The source lock pins its own Pi compatibility target. To check the evaluation
-runtime as well, install Pi 1.3.0 into that disposable dependency tree with
-`npm install --no-save --package-lock=false --ignore-scripts @earendil-works/pi-coding-agent@1.3.0`,
-then repeat the native loader tests. Preserve both results. The broader runtime
-tests include process-group cleanup and need separate evidence on each platform.
-The shell repository's full gate is `scripts/check.sh`; use its documented container
-when its shell, editor, and process-isolation prerequisites are needed.
 
 Prepare an independent fixture from Git bytes, with its receipt outside that workspace:
 
@@ -138,33 +110,11 @@ Prepare an independent fixture from Git bytes, with its receipt outside that wor
 python3 packaging/cloud/prepare-fixture.py --repository "$PWD" --revision <pinned-sha> \
   --fixture static-callback-fixture --destination /workspace/participant-fixture \
   --receipt /workspace/evidence/fixture.json
-python3 packaging/cloud/evaluate.py --plan /workspace/evidence/plan.json
 ```
 
 The exporter admits only the three named public fixtures and source files. It
-excludes evaluation reports, prior answers, and oracle files. The plan command
-performs no inference. Keep plan, output, authentication, and model storage outside
-the participant workspace. The exact eleven-sample evaluation plan is a separate
-input; this setup does not invent or replace it. `--execute` remains rejected on
-Linux until imported-model and native-query qualification is complete. Never copy
-personal `OAuth` files from a Mac.
-
-Before model work, preserve the real registry report, the exact native declaration,
-callers and qualified TRACE replies, imported-model readiness, and artifact identities.
-Run the existing SDK compatibility check separately from the pure tests:
-
-```sh
-node experiments/host-observation/pi_evaluation_sdk_check.mjs \
-  "$PI_EVAL_ROOT/npm/node_modules/@earendil-works/pi-coding-agent" \
-  /absolute/path/to/actual/extension.ts <adapter-sha256>
-```
-
-That check doubles provider transports and uses synthetic credentials. It proves
-SDK compatibility only. It performs no native semantic query or model inference.
-Any failure blocks claims about that boundary.
-The authored RPC extension requires the actual canonical installed command before
-loading. Session-admission failures must be reported before policy assertions;
-an extension-load failure does not establish an SDK budget defect.
+excludes evaluation reports, prior answers, and oracle files. Keep the receipt and
+any evaluation output outside the participant workspace.
 
 Build a Linux Control archive with `assembleKastControlDist` and an explicit numeric
 `-PcontrolVersion`. Build the matching Host release with `generateHostReleaseRecord`
@@ -196,9 +146,9 @@ A successful graphical startup alone does not prove import or Kast readiness.
 Use the bounded vendor launcher probe in an owned directory outside the checkout:
 
 ```sh
-python3 packaging/cloud/probe-idea.py --idea-home "$PI_EVAL_ROOT/idea-2026.2.2" \
+python3 packaging/cloud/probe-idea.py --idea-home "$KAST_CLOUD_ROOT/idea-2026.2.2" \
   --root /workspace/evidence/idea-headless --mode headless
-python3 packaging/cloud/probe-idea.py --idea-home "$PI_EVAL_ROOT/idea-2026.2.2" \
+python3 packaging/cloud/probe-idea.py --idea-home "$KAST_CLOUD_ROOT/idea-2026.2.2" \
   --root /workspace/evidence/idea-graphical --mode virtual-display
 ```
 

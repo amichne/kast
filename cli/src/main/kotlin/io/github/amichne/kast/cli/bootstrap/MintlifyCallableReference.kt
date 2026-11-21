@@ -4,7 +4,6 @@ import io.github.amichne.kast.appserver.query.PublicToolContract
 import io.github.amichne.kast.cli.mcp.McpCallResult
 import io.github.amichne.kast.cli.mcp.McpStructuredResults
 import io.github.amichne.kast.cli.mcp.healthInputSchema
-import io.github.amichne.kast.cli.rpc.ToolRpcReply
 import io.github.amichne.kast.protocol.registry.PUBLIC_TOOL_CONTRACT_VERSION
 import io.github.amichne.kast.protocol.registry.PublicToolIdentity
 import io.github.amichne.kast.protocol.registry.SupportToolHost
@@ -46,8 +45,6 @@ internal fun mintlifyCallableReference(): CanonicalJsonDocument {
                             ?: installedSemanticResultSchema(binding.operation))
                         .documentationComponents(binding.semanticResultComponentName())
             } +
-                generatedRequestSchema(ToolRpcReply.serializer())
-                    .documentationComponents(MintlifyCallableComponentName.named("ToolRpcReply")) +
                 generatedRequestSchema(McpCallResult.serializer())
                     .documentationComponents(MintlifyCallableComponentName.named("McpToolCallResult")) +
                 healthInputSchema()
@@ -119,9 +116,8 @@ private fun SupportToolIdentity.supportOperationDocument(): MintlifyCallableOper
                         title = toolName.replace('_', ' ').replaceFirstChar { it.uppercaseChar() },
                     ),
                 content =
-                    "This callable is not an HTTP endpoint. It is available through direct MCP and tool RPC. " +
-                        "See the [MCP contract](/reference/mcp-catalog) or " +
-                        "[tool RPC contract](/reference/rpc-catalog) for invocation envelopes. " +
+                    "This callable is not an HTTP endpoint. It is available through direct MCP. " +
+                        "See the [MCP contract](/reference/mcp-catalog) for invocation envelopes. " +
                         "Return to [Schemas and samples](/reference/schemas) for related contracts.",
             ),
     )
@@ -207,9 +203,8 @@ private fun InstalledHostedBinding.mintDocument() =
             ),
         content =
             "This callable is not an HTTP endpoint. Its schemas describe the hosted tool. " +
-                "Direct MCP and tool RPC wrap the same semantic document differently. " +
-                "See the [MCP contract](/reference/mcp-catalog) or " +
-                "[tool RPC contract](/reference/rpc-catalog). " +
+                "Direct MCP wraps the semantic document in its call result. " +
+                "See the [MCP contract](/reference/mcp-catalog). " +
                 "Return to [Schemas and samples](/reference/schemas) for related contracts.",
     )
 

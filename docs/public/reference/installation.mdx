@@ -39,7 +39,7 @@ The installation directory is `$HOME/.local/share/kast`.
 The command path is `$XDG_CONFIG_HOME/kast` when `XDG_CONFIG_HOME` is nonempty, or `$HOME/.local/bin/kast` otherwise.
 Add the printed command directory to `PATH` if needed. The installer does not edit shell profiles.
 
-Use [agent setup](/reference/integrations) after installation. No desktop plugin installation or restart is needed.
+After installation, [connect your agent](/reference/integrations). No desktop plugin installation or restart is needed.
 
 ### Install a local product globally
 
@@ -75,8 +75,6 @@ Do not combine `--local-artifact` with `--channel`, `--version`, or `--commit`.
   Use `install.sh` for managed product setup.
 </Note>
 
-Explicit MCP setup uses target-specific dependencies packaged with the selected Control build.
-It verifies the private interpreter and exact dependency inventory before preparation. It does not invoke pip, uv, or a dependency solver.
 Upgrade, recorded recovery, and product removal reuse admitted private support; missing or changed bytes reject without an ambient interpreter fallback.
 
 ## 1. Install the selected release

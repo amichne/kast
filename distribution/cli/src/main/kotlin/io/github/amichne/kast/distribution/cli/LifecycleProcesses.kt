@@ -166,8 +166,7 @@ internal sealed class OwnedLifecycleProcess private constructor(val snapshot: Li
                 (admitNativeControlProcessInvocation(arguments) as? Refinement.Refined)?.value ?: return false
             return when (invocation.entry) {
                 NativeControlEntry.QUERY,
-                NativeControlEntry.MCP,
-                NativeControlEntry.RPC -> true
+                NativeControlEntry.MCP -> true
                 NativeControlEntry.MANAGEMENT ->
                     isPublicQueryNamespace(invocation.arguments.firstOrNull()) &&
                         invocation.arguments.none { it.startsWith("--internal-entrypoint=") }
@@ -225,7 +224,6 @@ private const val CONTROL_MAIN_CLASS = "io.github.amichne.kast.cli.KastControlMa
 
 private val clientMainClasses =
     setOf(
-        "io.github.amichne.kast.cli.rpc.KastToolRpcMain",
         "io.github.amichne.kast.cli.publicshell.KastPublicCliMain",
         "io.github.amichne.kast.cli.mcp.KastMcpMain",
     )

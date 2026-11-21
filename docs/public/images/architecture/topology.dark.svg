@@ -35,9 +35,9 @@
   <rect x="138.81775000000005" y="24" width="196.819" height="36.900000000000006" rx="0" ry="0" fill="var(--_node-fill)" stroke="var(--_node-stroke)" stroke-width="0.75" />
   <text x="237.22725000000003" y="42.45" text-anchor="middle" font-size="13" font-weight="500" fill="var(--_text)" dy="4.55">Agent in selected worktree</text>
 </g>
-<g class="node" data-id="T" data-label="MCP or Tool RPC adapter" data-shape="rectangle">
-  <rect x="141.04075" y="96.9" width="192.373" height="36.900000000000006" rx="0" ry="0" fill="var(--_node-fill)" stroke="var(--_node-stroke)" stroke-width="0.75" />
-  <text x="237.22725" y="115.35000000000001" text-anchor="middle" font-size="13" font-weight="500" fill="var(--_text)" dy="4.55">MCP or Tool RPC adapter</text>
+<g class="node" data-id="T" data-label="Kast CLI or MCP server" data-shape="rectangle">
+  <rect x="146.22775000000001" y="96.9" width="181.999" height="36.900000000000006" rx="0" ry="0" fill="var(--_node-fill)" stroke="var(--_node-stroke)" stroke-width="0.75" />
+  <text x="237.22725000000003" y="115.35000000000001" text-anchor="middle" font-size="13" font-weight="500" fill="var(--_text)" dy="4.55">Kast CLI or MCP server</text>
 </g>
 <g class="node" data-id="H" data-label="IDEA Host for exact root" data-shape="rectangle">
   <rect x="147.33925000000005" y="169.8" width="179.77599999999998" height="36.900000000000006" rx="0" ry="0" fill="var(--_node-fill)" stroke="var(--_node-stroke)" stroke-width="0.75" />

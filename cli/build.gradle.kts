@@ -76,31 +76,11 @@ dependencies {
 }
 
 tasks.named<Test>("test") {
-    inputs
-        .files(File(repositoryRoot.asFile, "copilot/extension.mjs"), File(repositoryRoot.asFile, "pi/extension.ts"))
-        .withPathSensitivity(PathSensitivity.RELATIVE)
-    inputs.file(File(repositoryRoot.asFile, "pi/mcp-extension.ts")).withPathSensitivity(PathSensitivity.RELATIVE)
-    inputs.file(File(repositoryRoot.asFile, "agent-tools/hooks/pi.ts")).withPathSensitivity(PathSensitivity.RELATIVE)
     // PublicSkillCommandDriftTest parses every command that the bundled guidance teaches.
     inputs
         .files(
             File(repositoryRoot.asFile, "agent-tools/skills/kast/SKILL.md"),
             File(repositoryRoot.asFile, "agent-tools/skills/kast/public-cli.md"),
-        )
-        .withPathSensitivity(PathSensitivity.RELATIVE)
-    inputs.dir("src/test/js").withPathSensitivity(PathSensitivity.RELATIVE)
-    inputs
-        .dir(repositoryRoot.dir("experiments/host-observation/interface-replay/fixtures"))
-        .withPathSensitivity(PathSensitivity.RELATIVE)
-    inputs.file("src/main/js/query-session.mjs").withPathSensitivity(PathSensitivity.RELATIVE)
-    inputs.file("src/main/js/query-delivery.mjs").withPathSensitivity(PathSensitivity.RELATIVE)
-    inputs.file("src/main/js/query-delivery-contract.mjs").withPathSensitivity(PathSensitivity.RELATIVE)
-    inputs.file("src/main/resources/query-delivery.schema.json").withPathSensitivity(PathSensitivity.RELATIVE)
-    inputs
-        .files(
-            File(repositoryRoot.asFile, "experiments/host-observation/pi-fixtures/query-question.schema.json"),
-            File(repositoryRoot.asFile, "experiments/host-observation/pi-fixtures/query-qualification.schema.json"),
-            File(repositoryRoot.asFile, "experiments/host-observation/pi-fixtures/query-result.schema.json"),
         )
         .withPathSensitivity(PathSensitivity.RELATIVE)
     useJUnitPlatform {
@@ -139,44 +119,6 @@ configurations.consumable("publicLauncherTestRuntimeElements") {
     }
 }
 
-val queryDeliveryContractTest =
-    tasks.register<Exec>("queryDeliveryContractTest") {
-        group = "verification"
-        description = "Verifies the portable outer delivery contract independently of RPC effects."
-        inputs.files("src/main/js/query-delivery-contract.mjs", "src/test/js/query-delivery-contract.test.mjs")
-        inputs.file(File(repositoryRoot.asFile, "experiments/host-observation/pi_evaluation_delivery.mjs"))
-        inputs.file(File(repositoryRoot.asFile, "experiments/host-observation/pi-fixtures/query-delivery-cases.json"))
-        workingDir(repositoryRoot.asFile)
-        commandLine("node", "--test", "cli/src/test/js/query-delivery-contract.test.mjs")
-    }
-
-tasks.named("check") {
-    dependsOn(queryDeliveryContractTest)
-}
-
-val queryDeliverySchemaTest =
-    tasks.register<Exec>("queryDeliverySchemaTest") {
-        group = "verification"
-        description = "Verifies the outer delivery authority with an independent JSON Schema validator."
-        dependsOn(":preparePythonTestEnvironment")
-        inputs.files("src/main/resources/query-delivery.schema.json")
-        inputs.files(
-            File(repositoryRoot.asFile, "packaging/internal/query/query_delivery_contract.py"),
-            File(repositoryRoot.asFile, "packaging/tests/test-query-delivery-contract.py"),
-        )
-        inputs.file(File(repositoryRoot.asFile, "experiments/host-observation/pi-fixtures/query-delivery-cases.json"))
-        workingDir(repositoryRoot.asFile)
-        commandLine(
-            repositoryRoot.file("build/python-tests/env/bin/python3").asFile,
-            "packaging/tests/test-query-delivery-contract.py",
-        )
-        environment("PYTHONPATH", repositoryRoot.dir("packaging/internal/query").asFile.absolutePath)
-    }
-
-tasks.named("check") {
-    dependsOn(queryDeliverySchemaTest)
-}
-
 val codexIntegrationStartScripts =
     tasks.register<CreateStartScripts>("codexIntegrationStartScripts") {
         applicationName = "kast-codex"
@@ -191,15 +133,6 @@ val mcpStartScripts =
         applicationName = "kast-mcp"
         mainClass = "io.github.amichne.kast.cli.mcp.KastMcpMain"
         outputDir = layout.buildDirectory.dir("mcp-scripts").get().asFile
-        classpath = tasks.named<CreateStartScripts>("startScripts").get().classpath
-        dependsOn(tasks.named("jar"))
-    }
-
-val toolRpcStartScripts =
-    tasks.register<CreateStartScripts>("toolRpcStartScripts") {
-        applicationName = "kast-tool-rpc"
-        mainClass = "io.github.amichne.kast.cli.rpc.KastToolRpcMain"
-        outputDir = layout.buildDirectory.dir("tool-rpc-scripts").get().asFile
         classpath = tasks.named<CreateStartScripts>("startScripts").get().classpath
         dependsOn(tasks.named("jar"))
     }
@@ -247,19 +180,6 @@ distributions.main {
             into("bin")
             exclude("*.bat")
             filePermissions { unix("755") }
-        }
-        from(toolRpcStartScripts) {
-            into("bin")
-            exclude("*.bat")
-            filePermissions { unix("755") }
-        }
-        from(repositoryRoot.file("copilot/task-extension.mjs")) {
-            into("share/kast/adapters/copilot")
-            rename { "extension.mjs" }
-        }
-        from(repositoryRoot.file("pi/mcp-extension.ts")) {
-            into("share/kast/adapters/pi")
-            rename { "extension.ts" }
         }
     }
 }
@@ -358,58 +278,6 @@ configurations.consumable("controlLibraryElements") {
     outgoing.artifact(assembleControlLibraries.map { it.destinationDir })
 }
 
-val queryPresentationTest =
-    tasks.register<Exec>("queryPresentationTest") {
-        group = "verification"
-        description = "Verifies compact query text against pinned authoritative row and evidence oracles."
-        inputs.files("src/main/js/query-delivery.mjs", "src/test/js/query-presentation.test.mjs")
-        inputs.files("src/main/js/query-session.mjs", "src/test/js/query-session.test.mjs")
-        inputs.file("src/test/js/tool-rpc-rejection.test.mjs")
-        inputs.file(File(repositoryRoot.asFile, "copilot/extension.mjs"))
-        inputs.file("src/test/resources/query-presentation-native.json")
-        inputs.file("src/test/resources/query-compact-graph-pages.json")
-        inputs.file("src/test/resources/query-compact-symbol-graph-pages.json")
-        inputs.file(File(repositoryRoot.asFile, "experiments/host-observation/pi-fixtures/query-delivery-cases.json"))
-        workingDir(repositoryRoot.asFile)
-        commandLine(
-            "node",
-            "--experimental-vm-modules",
-            "--test",
-            "cli/src/test/js/query-presentation.test.mjs",
-            "cli/src/test/js/query-session.test.mjs",
-            "cli/src/test/js/tool-rpc-rejection.test.mjs",
-        )
-    }
-
-tasks.named("check") {
-    dependsOn(queryPresentationTest)
-}
-
-// The packaged host adapters share this Python task service over unchanged tool RPC.
-val taskAccessTest =
-    tasks.register<Exec>("taskAccessTest") {
-        group = "verification"
-        description = "Exercises task admission, MCP sessions, cancellation, and Copilot registration."
-        inputs
-            .files(
-                fileTree(repositoryRoot.dir("packaging/task-access")) {
-                    include("*.py", "*.mjs", "*.toml", "*.lock", ".python-version")
-                }
-            )
-            .withPathSensitivity(PathSensitivity.RELATIVE)
-        inputs.dir(repositoryRoot.dir("agent-tools/skills/kast/scripts")).withPathSensitivity(PathSensitivity.RELATIVE)
-        inputs
-            .file(repositoryRoot.file("agent-tools/references/query-schema.json"))
-            .withPathSensitivity(PathSensitivity.RELATIVE)
-        inputs.file(repositoryRoot.file("copilot/task-extension.mjs")).withPathSensitivity(PathSensitivity.RELATIVE)
-        inputs.file(repositoryRoot.file("pi/mcp-extension.ts")).withPathSensitivity(PathSensitivity.RELATIVE)
-        inputs.file(repositoryRoot.file("agent-tools/mcp.json")).withPathSensitivity(PathSensitivity.RELATIVE)
-        workingDir(repositoryRoot.dir("packaging/task-access"))
-        commandLine("uv", "run", "--locked", "pytest")
-    }
-
-tasks.named("check") { dependsOn(taskAccessTest) }
-
 configurations.consumable("configurationCatalogueElements") {
     outgoing.artifact(
         tasks.named<support.tasks.WriteJavaProcessOutputTask>("generateConfigurationCatalogue").flatMap {
@@ -437,29 +305,8 @@ val assembleControlLayout =
         into(layout.buildDirectory.dir("control-layout"))
         from("src/main/control-launchers") { filePermissions { unix("755") } }
         from("jvm-control-v1") { into("share/kast") }
-        from(repositoryRoot.file("copilot/task-extension.mjs")) {
-            into("share/kast/adapters/copilot")
-            rename { "extension.mjs" }
-        }
-        from(repositoryRoot.file("pi/mcp-extension.ts")) {
-            into("share/kast/adapters/pi")
-            rename { "extension.ts" }
-        }
     }
 
 configurations.consumable("controlLayoutElements") {
     outgoing.artifact(assembleControlLayout.map { it.destinationDir })
-}
-
-// Test-only replay artifact. No installed launcher or semantic service belongs to this classpath entry.
-tasks.register<support.tasks.WriteJavaProcessOutputTask>("prepareReplayAdapter") {
-    group = "verification"
-    description = "Pins the test-only production renderer and public-admission replay adapter."
-    dependsOn(tasks.named("testClasses"))
-    classpath.from(sourceSets.test.get().runtimeClasspath)
-    mainClass.set("io.github.amichne.kast.cli.publicshell.PublicReplayAdapter")
-    arguments.set(listOf("manifest"))
-    outputs.upToDateWhen { false }
-    outputs.cacheIf { false }
-    outputFile.set(layout.buildDirectory.file("replay-adapter/manifest.json"))
 }

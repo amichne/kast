@@ -10,7 +10,7 @@ import managed_installation as install
 import managed_product as product
 import managed_release as release
 import managed_update_journal as journal
-import product_mcp_removal
+import product_state_removal
 
 
 def location(root: Path) -> Path:
@@ -96,8 +96,6 @@ def execution(root: Path, proof: store.ProductRemoval) -> None:
     expected = {"control"}
     if proof.immutableRemovals:
         expected.add("evidence")
-    if proof.mcp is not None:
-        expected.add("mcp-receipt.json")
     if {child.name for child in bundle.iterdir()} != expected:
         raise ValueError("foreign retained execution state")
     control = bundle / "control"
@@ -139,7 +137,7 @@ def prepare(root: Path, path: Path) -> store.ProductRemoval:
     if proof is None:
         installation = install.LIFECYCLE.Installation.admit(str(payload))
         proofs, runtime_identity, base_identity = capture(root, record.product)
-        mcp = product_mcp_removal.capture(payload)
+        product_state_removal.admit(payload)
         if os.path.lexists(bundle):
             raise ValueError("foreign retained execution")
         # No payload is removed before this identity is durably reserved in the journal.
@@ -151,7 +149,6 @@ def prepare(root: Path, path: Path) -> store.ProductRemoval:
             proofs,
             runtime_identity,
             base_identity,
-            mcp=mcp,
         )
         kind = (
             install.LIFECYCLE.RetainedWorkspaceProductUninstallJournal
@@ -173,8 +170,7 @@ def prepare(root: Path, path: Path) -> store.ProductRemoval:
         raise ValueError("retained execution phase")
     if proof.phase == "PREPARING":
         installation = install.LIFECYCLE.Installation.admit(str(payload))
-        if product_mcp_removal.capture(payload) != proof.mcp:
-            raise ValueError("MCP ownership changed")
+        product_state_removal.admit(payload)
         manifest = install.read_record(payload / "installation.json", 67_108_864)
         if store.digest(manifest) != proof.installationManifestSha256:
             raise ValueError("original payload changed")
@@ -206,12 +202,6 @@ def prepare(root: Path, path: Path) -> store.ProductRemoval:
                     install.read_record(source / "provenance" / name, 1048576),
                     0o600,
                 )
-        if proof.mcp is not None:
-            copy_bytes(
-                bundle / "mcp-receipt.json",
-                install.read_record(payload / "state/mcp/receipt.json", 67_108_864),
-                0o600,
-            )
         execution(root, proof)
         _ = preflight(root, proof, partial=False)
         proof = replace(proof, phase="PREPARED")
@@ -237,7 +227,7 @@ def preflight(
     bundle = location(root)
     if journal.Identity.observe(bundle) != proof.executionIdentity:
         raise ValueError("retained execution replaced")
-    product_mcp_removal.verify(root, bundle, proof)
+    product_state_removal.admit(root / "installation")
     evidence_root = bundle / "evidence"
     expected_files = {
         f"{item.kind}/{item.archiveSha256}/{name}"

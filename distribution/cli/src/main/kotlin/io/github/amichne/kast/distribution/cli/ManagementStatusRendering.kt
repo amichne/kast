@@ -12,7 +12,6 @@ internal fun InstallationStatus.asText(): String = buildList {
     add("Update policy: ${updatePolicy.value ?: "unavailable"}")
     add("Unresolved transaction: ${unresolvedTransaction.value ?: "unavailable"}")
     addAll(hostedServices.value?.takeIf { it.isNotEmpty() }?.flatMap(::hostStatusLines) ?: unavailableHostLines())
-    add("Recorded integrations: ${registrations.value?.joinToString { it.connection.publicName } ?: "unavailable"}")
     add("Active workspaces: ${activeWorkspaces.value?.joinToString() ?: "unavailable"}")
     add("Live connections: ${liveConnections.value ?: "unavailable"}")
     add("One-shot requests in flight: ${oneShotRequestsInFlight.value ?: "unavailable"}")
