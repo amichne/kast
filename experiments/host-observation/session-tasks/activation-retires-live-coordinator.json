@@ -1,0 +1,40 @@
+{
+ "schema_version": 1,
+ "id": "activation-retires-live-coordinator",
+ "status": "DRAFT",
+ "kind": "edit",
+ "base_commit": "31335e1123991f35e54e71d79c27065b18d135f9",
+ "prompt": "Upgrading an installation fails while the prior installation's semantic coordinator is running. Activation finds the old coordinator's live socket and stops before replacing the installation, so the user has to retire the coordinator by hand and retry.\nChange product activation so the prior Control retires a live coordinator itself. Before retirement, admit only the coordinator's own endpoint and profile files. After retirement, keep the strict check that the prior installation is quiescent before the Control exchange. Reject an unrecognized coordinator profile before retirement, and reject a coordinator that survives a reported retirement.\nRegenerate install.sh for the changed embedded modules.",
+ "source": {"session_id": "4a2b991c-8768-4eec-b997-6cae6d541189",
+  "project": "-Users-amichne--worktrees-kast-feature-installer-improvements",
+  "observed_at": "2026-11-18T13:47:35Z",
+  "evidence": ["https://github.com/amichne/kast/commit/9931547a65d4ba74ecae7a2d1f3930aaf8c0c902"]},
+ "kast_relevance": "NOT_EXPECTED",
+ "allowed_changed_paths": [
+  "install.sh",
+  "packaging/internal/installation/installation-recovery.py",
+  "packaging/internal/product/managed_product_installation.py",
+  "packaging/internal/product/product_mcp_removal.py"
+ ],
+ "oracle": {
+  "type": "reference_commit",
+  "reference_commit": "9931547a65d4ba74ecae7a2d1f3930aaf8c0c902",
+  "hidden_paths": ["packaging/tests/test-managed-build-record.py"],
+  "commands": [
+   {"argv": ["python3", "packaging/tests/test-managed-build-record.py",
+     "ProductActivationTest.test_live_prior_coordinator_is_retired_by_the_prior_control_and_replaced",
+     "ProductActivationTest.test_coordinator_surviving_reported_retirement_rejects_before_exchange",
+     "ProductActivationTest.test_unrecognized_coordinator_profile_rejects_before_retirement"],
+    "pythonpath": ["packaging/internal/bootstrap", "packaging/internal/composition",
+     "packaging/internal/configuration", "packaging/internal/installation", "packaging/internal/mcp",
+     "packaging/internal/product", "packaging/internal/query", "packaging/internal/runtime",
+     "packaging/internal/verification", "packaging", "packaging/tests"]}
+  ]
+ },
+ "open_questions": [
+  "A Python change: it measures what Kast costs when it cannot help.",
+  "The session's request was underspecified. The prompt restates the reference commit's requirements, which the hidden tests check.",
+  "The reference commit sits on feature/installer-improvements and never merged; #1330 later landed a different fix on main.",
+  "The command and its module path are unexecuted against the reference commit; run them once before admission."
+ ]
+}

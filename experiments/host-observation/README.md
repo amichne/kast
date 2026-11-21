@@ -2,6 +2,7 @@
 
 For agent evaluations, source controls, and cost comparisons, use the [Promptfoo suites](promptfoo/README.md).
 For Pi plan admission and worker tests, use the [Pi evaluation guide](PI_EVALUATION.md).
+To turn recorded agent sessions into tasks with pinned answers, use [SESSION_TASKS.md](SESSION_TASKS.md).
 
 For the opt-in synthetic semantic-query matrix, use [SEMANTIC_REPRODUCTION.md](SEMANTIC_REPRODUCTION.md).
 
