@@ -129,19 +129,6 @@ internal fun connectHarness(
                 val executeSelected: (List<String>) -> ProcessObservation =
                     executeCodex ?: { arguments -> executeCodexAt(selectedDirectory.path, arguments) }
                 val force = ownership != RegistrationOwnership.REQUIRE_OWNED
-                val migration =
-                    if (
-                        connection == HarnessConnection.CODEX_MCP &&
-                            ownership != RegistrationOwnership.REPLACE_SELECTED_SLOT &&
-                            prior != null &&
-                            prior.destination != destination.toString()
-                    ) {
-                        when (val admitted = LegacyMcpMigration.admit(root, prior)) {
-                            is LegacyConnectionAdmission.Admitted -> admitted.migration
-                            is LegacyConnectionAdmission.Rejected ->
-                                throw ManagementRejected("connect-migration", admitted.failure.name.lowercase())
-                        }
-                    } else null
                 val selectedFile =
                     if (connection == HarnessConnection.CODEX_MCP) selectedDirectory.path.resolve("config.toml")
                     else destination
@@ -152,12 +139,7 @@ internal fun connectHarness(
                 val replace =
                     if (connection == HarnessConnection.CODEX_MCP) {
                         val observed = codexRegistration(executeSelected)
-                        if (migration != null && !ownsCodex(observed, migration.command))
-                            throw ManagementRejected(
-                                "connect-migration",
-                                LegacyConnectionRejection.LEGACY_REGISTRATION_UNVERIFIED.name.lowercase(),
-                            )
-                        if (!force && migration == null && observed != null && !ownsCodex(observed, destination))
+                        if (!force && observed != null && !ownsCodex(observed, destination))
                             throw ManagementRejected("connect", "Codex name belongs to another configuration")
                         !ownsCodex(observed, destination)
                     } else {
