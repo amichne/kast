@@ -1,8 +1,6 @@
 package io.github.amichne.kast.runtime.hosted.lifecycle
 
 import com.intellij.openapi.application.ApplicationInfo
-import io.github.amichne.kast.kernel.Refinement
-import io.github.amichne.kast.protocol.contract.HostAutoReload
 import io.github.amichne.kast.protocol.contract.IdeHostRuntimeIdentity
 import io.github.amichne.kast.protocol.contract.IdeLifecycleCapabilityName
 import io.github.amichne.kast.protocol.contract.IdeLifecycleResult
@@ -18,7 +16,6 @@ internal fun lifecycleHostModeSupported(): Boolean =
 internal fun inspectApplicationHost(
     identity: IdeHostRuntimeIdentity,
     projects: List<IdeProjectDescription>,
-    refresh: HostBundleRefreshAdapter,
 ): IdeLifecycleResult.Inspected {
     return IdeLifecycleResult.Inspected(
         identity.hostLifetime,
@@ -27,7 +24,7 @@ internal fun inspectApplicationHost(
         projects,
         HostedCompatibilityMetadata.document,
         capabilities =
-            applicationLifecycleCapabilities(identity, refresh).let { capabilities ->
+            applicationLifecycleCapabilities().let { capabilities ->
                 if (com.intellij.openapi.application.ApplicationManager.getApplication().isHeadlessEnvironment)
                     capabilities - IdeLifecycleCapabilityName.PRESENT
                 else capabilities
@@ -36,20 +33,8 @@ internal fun inspectApplicationHost(
     )
 }
 
-internal fun applicationLifecycleCapabilities(
-    identity: IdeHostRuntimeIdentity,
-    refresh: HostBundleRefreshAdapter,
-): Set<IdeLifecycleCapabilityName> {
-    val capabilities = IdeLifecycleCapabilityName.entries.toSet()
-    return if (identity.autoReload == HostAutoReload.ENABLED && refresh.admit(identity) is Refinement.Refined)
-        capabilities
-    else
-        capabilities -
-            setOf(
-                IdeLifecycleCapabilityName.HOST_RELOAD_REFRESH,
-                IdeLifecycleCapabilityName.HOST_PREPARED_RELOAD_REFRESH,
-            )
-}
+internal fun applicationLifecycleCapabilities(): Set<IdeLifecycleCapabilityName> =
+    IdeLifecycleCapabilityName.entries.toSet()
 
 /** One native capture supplies both application and project advertisements for this Host lifetime. */
 internal fun captureApplicationAdvertisement(

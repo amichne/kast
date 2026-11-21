@@ -17,12 +17,8 @@ internal fun manageInspectedInstallation(
     val (host, capability) =
         when (command) {
             is IdeLifecycleCommand.SettleHost -> command.host to IdeLifecycleCapabilityName.HOST_SETTLEMENT
-            is IdeLifecycleCommand.SettleHostForReload ->
-                command.host to IdeLifecycleCapabilityName.HOST_PREPARED_RELOAD_REFRESH
             is IdeLifecycleCommand.ResumeHost -> command.host to IdeLifecycleCapabilityName.HOST_SETTLEMENT
             is IdeLifecycleCommand.StopHost -> command.host to IdeLifecycleCapabilityName.HOST_NORMAL_STOP
-            is IdeLifecycleCommand.RefreshHostBundle ->
-                command.host to IdeLifecycleCapabilityName.HOST_PREPARED_RELOAD_REFRESH
             else -> return IdeLifecycleResult.Blocked(IdeLifecycleFailure.INVALID_REQUEST)
         }
     if (inspected.host != host) return IdeLifecycleResult.Blocked(IdeLifecycleFailure.WRONG_HOST)

@@ -5563,16 +5563,6 @@
     },
     {
       "fingerprint": {
-        "path": "cli/src/test/kotlin/io/github/amichne/kast/cli/installation/InstallationWorkflowTest.kt",
-        "scope": "type:InstallationWorkflowTest/fun:installation child logs bounded success and rejection outcomes()",
-        "kind": "JSON_LITERAL",
-        "sha256": "9610d32ca227f5c9a98da460b43dc7b145c491717a3770fa2a4060b2c794aba2"
-      },
-      "count": 1,
-      "justification": "Existing test or fixture syntax; migrate fixed valid shapes when this expression changes."
-    },
-    {
-      "fingerprint": {
         "path": "cli/src/test/kotlin/io/github/amichne/kast/cli/projection/GeneratedCliProjectionTest.kt",
         "scope": "type:GeneratedCliProjectionTest/fun:generated rejection serializer retains operation-specific reason()",
         "kind": "JSON_LITERAL",
