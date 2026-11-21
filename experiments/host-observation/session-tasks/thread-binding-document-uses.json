@@ -1,0 +1,26 @@
+{
+ "schema_version": 1,
+ "id": "thread-binding-document-uses",
+ "status": "DRAFT",
+ "kind": "answer",
+ "base_commit": "a2f810b705f9d68a365da3c40d89d6c9caee8e24",
+ "prompt": "I want to delete the data class LegacyThreadBindingDocument. List every Kotlin file in this repository, other than the file that declares it, that references it. Include test sources. Reply with only a JSON array of repository-relative paths.",
+ "source": {"session_id": "4f5b8ebe-7621-5379-acd7-027c905bd109", "project": "-Users-amichne-code-kast", "observed_at": "2026-11-21T06:37:22Z",
+  "evidence": ["https://github.com/amichne/kast/issues/1323"]},
+ "kast_relevance": "EXPECTED",
+ "oracle": {
+  "type": "exact_paths",
+  "expected_paths": [
+   "app-server/src/test/kotlin/io/github/amichne/kast/appserver/protocol/FileThreadCatalogStoreTest.kt",
+   "app-server/src/test/kotlin/io/github/amichne/kast/appserver/protocol/ThreadBindingMigrationTest.kt"
+  ],
+  "derivation": {
+   "pattern": "(^|[^A-Za-z0-9_])LegacyThreadBindingDocument([^A-Za-z0-9_]|$)",
+   "pathspecs": ["*.kt"],
+   "exclude_paths": ["app-server/src/main/kotlin/io/github/amichne/kast/appserver/protocol/ThreadBindingDocuments.kt"]
+  }
+ },
+ "open_questions": [
+  "Kast 0.0.4551 reported a complete, exhaustive result with only the declaring file's own use; this case reproduces that miss."
+ ]
+}
