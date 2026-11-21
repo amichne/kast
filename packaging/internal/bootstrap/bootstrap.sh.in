@@ -9,9 +9,8 @@ selection=0
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --help|-h)
-      printf '%s\n' 'Usage: install.sh [--channel stable|preview | --version X.Y.Z | --commit SHA | --local-artifact DIRECTORY] [--dry-run] [--purge-legacy] [--json]' \
+      printf '%s\n' 'Usage: install.sh [--channel stable|preview | --version X.Y.Z | --commit SHA | --local-artifact DIRECTORY] [--dry-run] [--json]' \
         'Installs one complete private-runtime product. No Python, uv, or IDEA installation is required.' \
-        '--purge-legacy removes a pre-product Kast (0.51.3 or older), its workspace state, and IDEs still running its plugin.' \
         'Local products contain build-record.json and payload/; private bootstrap inputs still download.'
       exit 0 ;;
     --developer-latest)
@@ -27,7 +26,7 @@ while [[ $# -gt 0 ]]; do
         *) fail 'unsupported channel' ;;
       esac
       selection=1; arguments+=("$1" "$2"); shift 2 ;;
-    --dry-run|--json|--recover-only|--purge-legacy) arguments+=("$1"); shift ;;
+    --dry-run|--json|--recover-only) arguments+=("$1"); shift ;;
     *) fail "unsupported product installation option: $1" ;;
   esac
 done
