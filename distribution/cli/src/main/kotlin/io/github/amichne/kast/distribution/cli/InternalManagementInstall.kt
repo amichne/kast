@@ -31,7 +31,6 @@ private fun internalInstall(arguments: List<String>, environment: Map<String, St
             return InternalInstallExit.COMPLETED
         }
         "managed-retire" -> return retireManagedInstallation(root, environment)
-        "resume-isolated" -> return resumeIsolatedInstallation(root, environment)
         "managed-publish" -> return publishManagedInstallation(root, environment)
         "refresh-guidance",
         "refresh-guidance-with-codex" ->
@@ -104,39 +103,18 @@ private enum class InternalInstallExit(val code: Int) {
 
 private fun retireManagedInstallation(root: Path, environment: Map<String, String>): InternalInstallExit {
     val home = managedRetirementHome(environment)
+    // Only managed products are retired here; an installation without a product selection is not owned.
     if (
-        !java.nio.file.Files.notExists(
+        java.nio.file.Files.notExists(
             root.resolve("installation/share/kast/product-selection.json"),
             java.nio.file.LinkOption.NOFOLLOW_LINKS,
         )
-    ) {
-        return when (val result = retireManagedProduct(root, home, environment)) {
-            is io.github.amichne.kast.kernel.Refinement.Refined -> InternalInstallExit.COMPLETED
-            is io.github.amichne.kast.kernel.Refinement.Rejected ->
-                throw ManagementRejected("managed-retirement", result.failure.name)
-        }
-    }
-    return retireLegacyInstallation(root, home, environment)
-}
-
-private fun retireLegacyInstallation(root: Path, home: Path, environment: Map<String, String>): InternalInstallExit {
-    val admitted = InstallationLifecycle.admit(root, home, environment, LifecycleExecution())
-    if (admitted !is LifecycleAdmission.Admitted) throw ManagementRejected("managed-retirement", "ownership unproven")
-    return when (val result = admitted.lifecycle.fenceAndRetire(LifecycleOperation.STOP_FORCE)) {
-        LifecycleEffect.Completed -> InternalInstallExit.COMPLETED
-        is LifecycleEffect.Rejected -> throw ManagementRejected("managed-retirement", result.failure.name)
-    }
-}
-
-private fun resumeIsolatedInstallation(root: Path, environment: Map<String, String>): InternalInstallExit {
-    val home = managedRetirementHome(environment)
-    return withRegistrationLock(root) {
-        val admitted = InstallationLifecycle.admit(root, home, environment, LifecycleExecution())
-        if (admitted !is LifecycleAdmission.Admitted) throw ManagementRejected("resume-isolated", "ownership unproven")
-        when (val result = admitted.lifecycle.resumePrivateHost()) {
-            LifecycleEffect.Completed -> InternalInstallExit.COMPLETED
-            is LifecycleEffect.Rejected -> throw ManagementRejected("resume-isolated", result.failure.name)
-        }
+    )
+        throw ManagementRejected("managed-retirement", "product selection is absent")
+    return when (val result = retireManagedProduct(root, home, environment)) {
+        is io.github.amichne.kast.kernel.Refinement.Refined -> InternalInstallExit.COMPLETED
+        is io.github.amichne.kast.kernel.Refinement.Rejected ->
+            throw ManagementRejected("managed-retirement", result.failure.name)
     }
 }
 
