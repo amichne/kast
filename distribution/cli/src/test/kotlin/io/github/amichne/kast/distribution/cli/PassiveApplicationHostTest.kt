@@ -47,18 +47,15 @@ class PassiveApplicationHostTest {
         val fixture = fixture()
         val original =
             managementJson.decodeFromString<Advertisement<LoadedApplicationHost>>(Files.readString(fixture.descriptor))
-        val identity =
-            fixture.loaded.runtimeIdentity.copy(
-                mode = ApplicationHostMode.MANAGED_HEADLESS,
-                autoReload = ApplicationAutoReload.DISABLED,
-            )
+        val identity = fixture.loaded.runtimeIdentity.copy(autoReload = ApplicationAutoReload.DISABLED)
         val loaded = fixture.loaded.copy(runtimeIdentity = identity)
         val encoded = managementJson.encodeToString(original.copy(application = loaded))
         Files.writeString(fixture.descriptor, encoded)
         val actual = readApplicationHost(fixture.root, fixture.home) { fixture.process }
         assertEquals(Observation.verified(loaded), actual)
-        assertEquals(ApplicationHostMode.MANAGED_HEADLESS, actual.value?.runtimeIdentity?.mode)
-        Files.writeString(fixture.descriptor, encoded.replace("MANAGED_HEADLESS", "UNPROVEN"))
+        val unknown = encoded.replace("\"autoReload\":\"DISABLED\"", "\"autoReload\":\"UNPROVEN\"")
+        assertTrue(unknown != encoded)
+        Files.writeString(fixture.descriptor, unknown)
         assertEquals(
             ObservationState.UNAVAILABLE,
             readApplicationHost(fixture.root, fixture.home) {
@@ -148,8 +145,7 @@ class PassiveApplicationHostTest {
             descriptor.application.copy(
                 runtimeIdentity =
                     descriptor.application.runtimeIdentity.copy(
-                        mode = io.github.amichne.kast.protocol.contract.IdeHostMode.MANAGED_HEADLESS,
-                        autoReload = io.github.amichne.kast.protocol.contract.HostAutoReload.DISABLED,
+                        autoReload = io.github.amichne.kast.protocol.contract.HostAutoReload.DISABLED
                     ),
                 gradleImportEnvironmentIdentity = "e".repeat(64),
             )
@@ -228,7 +224,7 @@ class PassiveApplicationHostTest {
                 100,
                 host,
                 ApplicationHostBuild("9.8.7", "a".repeat(40), "b".repeat(40)),
-                ApplicationAutoReload.ENABLED,
+                ApplicationAutoReload.DISABLED,
             ),
             ApplicationHostCompatibility(
                 "262.1.1",

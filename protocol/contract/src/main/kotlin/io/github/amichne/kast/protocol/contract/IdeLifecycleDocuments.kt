@@ -66,20 +66,12 @@ sealed interface IdeLifecycleCommand : OperationRequest {
     data class SettleHost(val host: String, val transaction: String) : IdeLifecycleCommand
 
     @Serializable
-    @SerialName("settle_host_for_reload")
-    data class SettleHostForReload(val host: String, val transaction: String) : IdeLifecycleCommand
-
-    @Serializable
     @SerialName("resume_host")
     data class ResumeHost(val host: String, val transaction: String) : IdeLifecycleCommand
 
     @Serializable
     @SerialName("stop_host")
     data class StopHost(val host: String, val transaction: String) : IdeLifecycleCommand
-
-    @Serializable
-    @SerialName("refresh_host_bundle")
-    data class RefreshHostBundle(val host: String, val transaction: String) : IdeLifecycleCommand
 }
 
 @Serializable
@@ -143,10 +135,6 @@ enum class IdeLifecycleFailure : OperationRejection {
     DEADLINE_EXCEEDED,
     HOST_FENCED,
     MUTATION_RECOVERY_REQUIRED,
-    HOST_REFRESH_ROOT_UNAVAILABLE,
-    HOST_REFRESH_SCOPE_MISMATCH,
-    HOST_REFRESH_FAILED,
-    HOST_REFRESH_MARKER_UNSIGNALED,
 }
 
 @Serializable
@@ -184,15 +172,6 @@ sealed interface IdeLifecycleResult : OperationResult {
     @SerialName("host_settled")
     data class HostSettled(val host: String, val transaction: String, val runtimeIdentity: IdeHostRuntimeIdentity) :
         IdeLifecycleResult
-
-    /** Admission and acknowledgment precede the scoped refresh. This result does not prove a loaded build. */
-    @Serializable
-    @SerialName("host_refresh_requested")
-    data class HostRefreshRequested(
-        val host: String,
-        val transaction: String,
-        val runtimeIdentity: IdeHostRuntimeIdentity,
-    ) : IdeLifecycleResult
 
     @Serializable
     @SerialName("host_resumed")
@@ -278,8 +257,6 @@ enum class IdeLifecycleCapabilityName {
     HOST_SETTLEMENT,
     HOST_RUNTIME_IDENTITY,
     HOST_NORMAL_STOP,
-    HOST_RELOAD_REFRESH,
-    HOST_PREPARED_RELOAD_REFRESH,
 }
 
 @Serializable data class IdeHostBuildIdentity(val version: String, val sourceRevision: String, val sourceTree: String)
@@ -294,19 +271,7 @@ data class IdeHostRuntimeIdentity(
     val hostLifetime: String,
     val buildIdentity: IdeHostBuildIdentity,
     val autoReload: HostAutoReload = HostAutoReload.DISABLED,
-    // Absent mode in 0.51.x advertisements must continue to mean DESKTOP.
-    @Suppress("DEPRECATION") @kotlinx.serialization.EncodeDefault val mode: IdeHostMode = IdeHostMode.DESKTOP,
 )
-
-@Serializable
-enum class IdeHostMode {
-    @Deprecated(
-        "Desktop IntelliJ IDEA Hosts are targeted for removal; use managed headless Hosts.",
-        level = DeprecationLevel.WARNING,
-    )
-    DESKTOP,
-    MANAGED_HEADLESS,
-}
 
 @Serializable
 enum class HostAutoReload {

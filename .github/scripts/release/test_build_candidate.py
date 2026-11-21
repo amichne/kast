@@ -154,7 +154,7 @@ class PayloadAdmissionTest(unittest.TestCase):
         payload.mkdir(parents=True)
         names = (f"kast-control-v{VERSION}-macos-aarch64.tar.gz", f"kast-ide-hosted-v{VERSION}-idea-262.zip",
                  *(f"kast-{name}-v{VERSION}.zip" for name in ("plugin", "marketplace")),
-                 f"kast-control-release-v{VERSION}.json", f"kast-host-release-v{VERSION}.json", "host-installation.py", f"kast-hosted-catalog-v{VERSION}.json",
+                 f"kast-control-release-v{VERSION}.json", f"kast-host-release-v{VERSION}.json", f"kast-hosted-catalog-v{VERSION}.json",
                  f"kast-module-knowledge-v{VERSION}.json", f"kast-sbom-v{VERSION}.cdx.json")
         for name in names[:-1]:
             (payload / name).write_bytes(name.encode())
@@ -230,7 +230,7 @@ class PayloadAdmissionTest(unittest.TestCase):
         self.assertFalse(source_destination.exists())
         self.assertFalse(source_promotion.exists())
 
-        (destination / "payload" / "host-installation.py").write_bytes(b"changed")
+        (destination / "payload" / f"kast-hosted-catalog-v{VERSION}.json").write_bytes(b"changed")
         with patch.object(candidate, "observe") as remote, self.assertRaises(candidate.Rejected) as rejected:
             candidate.verify_publication(REPOSITORY, BUILD, VERSION, destination, promotion)
         self.assertEqual(candidate.Failure.PAYLOAD_MISMATCH, rejected.exception.failure)
@@ -246,9 +246,9 @@ class PayloadAdmissionTest(unittest.TestCase):
 
     def test_manifest_digest_protects_even_a_rechecksummed_payload(self):
         payload = self.bundle / "payload"
-        asset = payload / "host-installation.py"
+        asset = payload / f"kast-hosted-catalog-v{VERSION}.json"
         asset.write_bytes(b"tampered")
-        (payload / "host-installation.py.sha256").write_text(f"{candidate.legacy.digest(asset)}  {asset.name}\n")
+        (payload / f"kast-hosted-catalog-v{VERSION}.json.sha256").write_text(f"{candidate.legacy.digest(asset)}  {asset.name}\n")
         with self.assertRaises(candidate.Rejected) as rejection:
             candidate.read(self.bundle)
         self.assertEqual(candidate.Failure.PAYLOAD_MISMATCH, rejection.exception.failure)

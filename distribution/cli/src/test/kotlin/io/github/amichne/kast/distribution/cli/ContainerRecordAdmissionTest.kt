@@ -187,10 +187,11 @@ class ContainerRecordAdmissionTest {
         assertEquals(container.id, (store.select(container.id.text) as Refinement.Refined).value.id)
         for ((key, digest, failure) in
             listOf(
+                // A versioned runtime directory name is not a digest identity.
                 Triple(
                     "9.9.9-${platform.publicName}",
                     container.runtime.archiveSha256,
-                    ContainerFailure.RUNTIME_UNAVAILABLE,
+                    ContainerFailure.INVALID_RECORD,
                 ),
                 Triple(container.runtime.key, "0".repeat(64), ContainerFailure.RUNTIME_MISMATCH),
             )) {
@@ -214,7 +215,7 @@ class ContainerRecordAdmissionTest {
     }
 
     @Test
-    fun `legacy records retain identity trust and stopped state without passive migration`() {
+    fun `a version 1 container record rejects without rewriting its bytes`() {
         val store =
             ContainerStore(
                 temporary.toRealPath().resolve("manager"),
@@ -223,35 +224,35 @@ class ContainerRecordAdmissionTest {
         val workspace = Files.createDirectory(temporary.resolve("workspace")).toRealPath()
         val creation =
             store.admitCreation(
-                ContainerCommand.Create("legacy", null, null, false),
+                ContainerCommand.Create("retired", null, null, false),
                 workspace,
                 io.github.amichne.kast.distribution.contract.configuration.WorkspaceDependencySharing.PRIVATE,
             ) as Refinement.Refined
         val container = (store.create(creation.value, containerRuntimeFixture(store)) as Refinement.Refined).value
         val record = container.directory.resolve("container.json")
-        val legacy =
-            LegacyContainerRecord(
-                container.id.text,
-                "legacy",
-                workspace.toString(),
-                container.runtime.key,
-                container.gradleHome.toString(),
+        val encoded =
+            containerJson.encodeToString(
+                RetiredContainerRecord(
+                    container.id.text,
+                    "retired",
+                    workspace.toString(),
+                    container.runtime.key,
+                    container.gradleHome.toString(),
+                )
             )
-        val encoded = containerJson.encodeToString(legacy)
         Files.writeString(record, encoded)
-        Files.delete(container.directory.resolve("generation.json"))
-        Files.delete(container.directory.resolve("trust.xml"))
-        writeContainerRecord(container.stopped, ContainerStopRecord(container.id.text))
-
-        val admitted = (store.select(container.id.text) as Refinement.Refined).value
-        assertEquals(container.id, admitted.id)
-        assertEquals(container.workspace, admitted.workspace)
-        assertEquals(container.runtime.archiveSha256, admitted.runtime.archiveSha256)
-        assertEquals(Refinement.Refined(ContainerState.STOPPED), containerDisposition(admitted))
-        assertEquals(encoded, Files.readString(record))
-        assertFalse(Files.exists(container.directory.resolve("generation.json")))
-        assertFalse(Files.exists(container.directory.resolve("trust.xml")))
-        Files.writeString(record, containerJson.encodeToString(legacy.copy(schemaVersion = 2)))
         assertEquals(Refinement.Rejected(ContainerFailure.INVALID_RECORD), store.select(container.id.text))
+        assertEquals(encoded, Files.readString(record))
     }
 }
+
+/** The retired version 1 shape, which carried its runtime selection in the workspace record. */
+@kotlinx.serialization.Serializable
+private data class RetiredContainerRecord(
+    val id: String,
+    val name: String,
+    val workspace: String,
+    val runtime: String,
+    val gradleHome: String,
+    @kotlinx.serialization.Required val schemaVersion: Int = 1,
+)

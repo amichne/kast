@@ -91,7 +91,7 @@
     "managedRuntimeIdentity": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["ideaHome", "profile", "pid", "processStartEpochMillis", "hostLifetime", "buildIdentity", "autoReload", "mode"],
+      "required": ["ideaHome", "profile", "pid", "processStartEpochMillis", "hostLifetime", "buildIdentity", "autoReload"],
       "properties": {
         "ideaHome": { "$ref": "#/$defs/root" },
         "profile": { "$ref": "#/$defs/root" },
@@ -99,7 +99,6 @@
         "processStartEpochMillis": { "type": "integer", "minimum": 1 },
         "hostLifetime": { "$ref": "#/$defs/hostLifetime" },
         "autoReload": { "const": "DISABLED" },
-        "mode": { "const": "MANAGED_HEADLESS" },
         "buildIdentity": {
           "type": "object",
           "additionalProperties": false,

@@ -4,7 +4,7 @@ title: "Kast cli"
 description: "Owns the public semantic CLI, private process modes, direct tool sessions, installation workflows, and typed output projections."
 resource: "repo://cli"
 tags: [kast, navigation]
-timestamp: "2026-11-05T06:19:25Z"
+timestamp: "2026-11-21T06:00:00Z"
 source_revision: f771eded1ebbeb5b283caa14442713cbc0a86345
 code_sources:
   - path: build.gradle.kts
@@ -37,17 +37,11 @@ code_sources:
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/bootstrap/InstalledServerProjectionDocuments.kt
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/bootstrap/KastCliMain.kt
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/direct/KastDirectToolSession.kt
-  - path: cli/src/main/kotlin/io/github/amichne/kast/cli/installation/InstallationWorkflow.kt
-  - path: cli/src/main/kotlin/io/github/amichne/kast/cli/installation/ManagedControlAdapter.kt
-  - path: cli/src/main/kotlin/io/github/amichne/kast/cli/installation/ManagedControlAdmission.kt
-  - path: cli/src/main/kotlin/io/github/amichne/kast/cli/installation/ManagedControlCli.kt
+  - path: cli/src/main/kotlin/io/github/amichne/kast/cli/installation/ManagedHeadlessShutdown.kt
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/installation/ManagedHostBridge.kt
-  - path: cli/src/main/kotlin/io/github/amichne/kast/cli/installation/ManagedHostCli.kt
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/installation/ManagedProcessCapture.kt
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/installation/ManagedProcessState.kt
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/installation/ManagedProcessObservation.kt
-  - path: cli/src/main/kotlin/io/github/amichne/kast/cli/installation/LegacyHostProfile.kt
-  - path: cli/src/main/kotlin/io/github/amichne/kast/cli/installation/LegacyProfileSelection.kt
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/mcp/KastMcpMain.kt
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/mcp/McpRunnerInvocationOwner.kt
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/mcp/McpStructuredResults.kt
@@ -86,7 +80,7 @@ Owns the public semantic CLI, private process modes, direct tool sessions, insta
 - [KastToolRpcQuerySession.kt](src/main/kotlin/io/github/amichne/kast/cli/rpc/KastToolRpcQuerySession.kt) - bounded query framing and output successors.
 - [query-delivery.mjs](src/main/js/query-delivery.mjs) - portable query delivery shared by generated harness extensions.
 - [McpStructuredResults.kt](src/main/kotlin/io/github/amichne/kast/cli/mcp/McpStructuredResults.kt) - schema-backed MCP result projection.
-- [InstallationWorkflow.kt](src/main/kotlin/io/github/amichne/kast/cli/installation/InstallationWorkflow.kt) - Control installation, prior retirement, activation, and recovery.
+- [ManagedHeadlessShutdown.kt](src/main/kotlin/io/github/amichne/kast/cli/installation/ManagedHeadlessShutdown.kt) - settle and stop the exact managed headless Host, then await its exit.
 - [KastCliMain.kt](src/main/kotlin/io/github/amichne/kast/cli/bootstrap/KastCliMain.kt) - the private installer version entry.
 - [KastServiceMain.kt](src/main/kotlin/io/github/amichne/kast/cli/KastServiceMain.kt) - private installed service control.
 - [KastDaemonMain.kt](src/main/kotlin/io/github/amichne/kast/cli/KastDaemonMain.kt) - the private managed daemon entry.
@@ -125,21 +119,14 @@ Owns the public semantic CLI, private process modes, direct tool sessions, insta
 ## Navigation Hints
 
 - The native `distribution/cli` module owns `versions`, `upgrade`, and `install` command admission.
-- The candidate installer coordinates one replacement through the existing journal. It uses private installer JVM adapters for bounded effects.
-- `ManagedControlCli` accepts `prepare`, `commit`, and `abort` with an exact transaction identifier.
-- `ManagedControlAdapter` reuses `InstallationWorkflow` staging, retention, replacement, and rollback owners.
-- Preparation keeps the active Control untouched. Commit needs the recorded settlement phase and exact staged bytes.
-- Abort accepts only an unchanged reservation without a managed composition. Unknown journal entries keep recovery evidence.
-- `ManagedHostCli` uses the existing application lifecycle endpoint. It inspects or settles the exact Host without a workspace import.
+- Product installation and upgrade run in the Python installer; the prior Control retires itself through `kast-management --internal-install managed-retire`.
+- `ManagedHeadlessShutdown` inspects, settles, and stops the managed headless Host through `ManagedHostBridge`, then awaits the same process's exit.
 - `ManagedHostBridge` binds the selected launcher, profile, process start, and Host lifetime before an effect.
 - Missing executable metadata needs a bounded native state probe. Only proven exit excludes a process whose executable remains unknown.
 - The shared process-state parser keeps zombie rules identical to native reset. Active or unavailable state remains unresolved.
 - Enumeration diagnostics record finite outcomes and bounded counts on stderr. They contain no process payloads.
-- `LegacyHostProfile` uses explicit installer-only attachment to prove an old Host profile. Dry runs must not request attachment.
-- `LegacyProfileSelection` preserves explicit configuration paths and derives supported macOS defaults from captured runtime properties.
-- Missing vendor, selector, or home facts reject. Configured `idea.paths.customizer` values and independent plugin overrides also reject.
-- Normal stop acknowledgment does not prove process exit. The outer installer separately proves exit and the selected Host after restart.
-- These installer JVM adapters do not change the native public-query path.
+- Normal stop acknowledgment does not prove process exit. Shutdown separately awaits the exit of the admitted process.
+- These JVM adapters do not change the native public-query path.
 - Read the [candidate evidence guide](../docs/reviews/managed-installation-cli.md) before release qualification.
 
 - Public shell commands default to `COMPLETE`. Keep explicit `COMMON` restrictions without promotion.

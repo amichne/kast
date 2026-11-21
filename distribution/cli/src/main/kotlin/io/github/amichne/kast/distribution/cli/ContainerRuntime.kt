@@ -117,9 +117,7 @@ private constructor(val root: Path, val manifest: RuntimeArchiveManifest, val ar
                     is Refinement.Refined -> parsed.value
                 }
             val key = root.fileName.toString()
-            val identityMatches =
-                (key == receipt.archiveSha256 || key == "${manifest.version}-${platform.publicName}") &&
-                    receipt.schemaVersion == 1
+            val identityMatches = key == receipt.archiveSha256 && receipt.schemaVersion == 1
             val digestsMatch =
                 runtimeDigest.matches(receipt.archiveSha256) &&
                     receipt.manifestSha256 == sha256(root.resolve("manifest.json"))

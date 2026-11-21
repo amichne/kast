@@ -22,7 +22,6 @@ app-server/src/test/kotlin/io/github/amichne/kast/appserver/runtime/BrokerSessio
 change/apply/src/main/kotlin/io/github/amichne/kast/change/apply/MutationAdmission.kt	511
 cli/src/main/kotlin/io/github/amichne/kast/cli/bootstrap/InstalledServerProjectionDocuments.kt	2009
 cli/src/main/kotlin/io/github/amichne/kast/cli/command/model/CliCommandGraph.kt	488
-cli/src/main/kotlin/io/github/amichne/kast/cli/installation/InstallationWorkflow.kt	1056
 distribution/contract/src/main/kotlin/io/github/amichne/kast/distribution/contract/configuration/KastConfigurationCatalogue.kt	691
 distribution/contract/src/main/kotlin/io/github/amichne/kast/distribution/contract/configuration/KastConfigurationResolution.kt	524
 protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/CanonicalQueryOperationModels.kt	509

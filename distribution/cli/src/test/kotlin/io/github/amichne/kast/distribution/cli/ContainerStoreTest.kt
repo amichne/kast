@@ -317,9 +317,9 @@ class ContainerStoreTest {
             store.containers,
             java.nio.file.attribute.PosixFilePermissions.asFileAttribute(containerDirectoryMode),
         )
-        Files.createSymbolicLink(store.containers.resolve("a".repeat(32)), workspace)
+        Files.createSymbolicLink(store.containers.resolve("a".repeat(64)), workspace)
         assertEquals(
-            ContainerStoreEntry.Rejected(store.containers.resolve("a".repeat(32)), ContainerFailure.FOREIGN_STATE),
+            ContainerStoreEntry.Rejected(store.containers.resolve("a".repeat(64)), ContainerFailure.FOREIGN_STATE),
             (store.enumerate() as Refinement.Refined).value.single(),
         )
         assertTrue(Files.isDirectory(workspace))

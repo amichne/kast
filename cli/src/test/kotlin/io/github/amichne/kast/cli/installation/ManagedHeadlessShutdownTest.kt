@@ -4,7 +4,6 @@ import io.github.amichne.kast.protocol.contract.HostAutoReload
 import io.github.amichne.kast.protocol.contract.HostedCompatibilityDocument
 import io.github.amichne.kast.protocol.contract.HostedContractDocument
 import io.github.amichne.kast.protocol.contract.IdeHostBuildIdentity
-import io.github.amichne.kast.protocol.contract.IdeHostMode
 import io.github.amichne.kast.protocol.contract.IdeHostRuntimeIdentity
 import io.github.amichne.kast.protocol.contract.IdeLifecycleResult
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -85,31 +84,12 @@ class ManagedHeadlessShutdownTest {
                 "/private/profile",
                 {
                     requests += it
-                    ManagedHostResponse.Rejected(ManagedHostFailure.PROFILE_MISMATCH)
+                    ManagedHostResponse.Rejected(ManagedHostFailure.HOST_IDENTITY_MISMATCH)
                 },
                 { error("Unowned processes must not be waited on") },
             )
         assertEquals(ManagedHeadlessShutdownOutcome.Rejected(ManagedHeadlessShutdownFailure.HOST_REJECTED), result)
         assertEquals(1, requests.size)
-    }
-
-    @Test
-    fun `desktop identity is rejected before settlement or stop`() {
-        val fixture = fixture()
-        val result =
-            stopManagedHeadlessHost(
-                "/idea",
-                "/private/profile",
-                { request ->
-                    assertEquals(ManagedHostRequest.Inspect("/idea", "/private/profile"), request)
-                    ManagedHostResponse.Inspected(
-                        listOf(fixture.process),
-                        fixture.inspected.copy(runtimeIdentity = fixture.identity.copy(mode = IdeHostMode.DESKTOP)),
-                    )
-                },
-                { error("Desktop process must remain untouched") },
-            )
-        assertEquals(ManagedHeadlessShutdownOutcome.Rejected(ManagedHeadlessShutdownFailure.ADMISSION_REJECTED), result)
     }
 
     @Test
@@ -156,7 +136,6 @@ class ManagedHeadlessShutdownTest {
                 "host",
                 IdeHostBuildIdentity("1.2.3", "a".repeat(40), "b".repeat(40)),
                 HostAutoReload.DISABLED,
-                IdeHostMode.MANAGED_HEADLESS,
             )
         val inspected =
             IdeLifecycleResult.Inspected(

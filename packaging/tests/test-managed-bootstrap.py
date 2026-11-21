@@ -54,7 +54,6 @@ class BootstrapTest(unittest.TestCase):
             "managed_update_journal.py": (
                 "packaging/internal/installation/managed_update_journal.py"
             ),
-            "reload_hosted.py": "packaging/internal/installation/reload_hosted.py",
             "host-installation.py": "packaging/internal/installation/host-installation.py",
             "installation-recovery.py": "packaging/internal/installation/installation-recovery.py",
             "installation-lifecycle.py": (
@@ -71,9 +70,6 @@ class BootstrapTest(unittest.TestCase):
             "install-candidate.sh": "packaging/internal/bootstrap/install-candidate.sh",
             "managed_installation.py.lock": (
                 "packaging/internal/installation/managed_installation.py.lock"
-            ),
-            "prune-prior-installations.py": (
-                "packaging/internal/installation/prune-prior-installations.py"
             ),
             "codex-mcp-registration.py": (
                 "packaging/internal/installation/codex-mcp-registration.py"
@@ -105,7 +101,6 @@ class BootstrapTest(unittest.TestCase):
             "mcp_environment.py",
             "managed_update_contract.py",
             "managed_update_journal.py",
-            "reload_hosted.py",
             "host-installation.py",
             "installation-recovery.py",
             "installation-lifecycle.py",
@@ -122,7 +117,6 @@ class BootstrapTest(unittest.TestCase):
             "mcp-requirements.txt.lock",
             "managed-install-v1",
             "install-completion-v1",
-            "prune-prior-installations.py",
             "codex-mcp-registration.py",
         }
         with tempfile.TemporaryDirectory() as temporary:

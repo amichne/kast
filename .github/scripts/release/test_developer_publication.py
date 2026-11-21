@@ -385,7 +385,6 @@ class CandidateFixture(unittest.TestCase):
             f"kast-control-release-v{VERSION}.json",
             f"kast-host-release-v{VERSION}.json",
             f"kast-host-release-v{VERSION}-idea-263.json",
-            "host-installation.py",
             f"kast-hosted-catalog-v{VERSION}.json",
             f"kast-module-knowledge-v{VERSION}.json",
         )

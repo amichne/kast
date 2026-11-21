@@ -56,8 +56,6 @@ SOURCE_PATHS = {
     "private_interpreter.py": "bootstrap/private_interpreter.py",
     "product_mcp_removal.py": "product/product_mcp_removal.py",
     "product_removal_recovery.py": "product/product_removal_recovery.py",
-    "prune-prior-installations.py": "installation/prune-prior-installations.py",
-    "reload_hosted.py": "installation/reload_hosted.py",
     "runtime_archive.py": "runtime/runtime_archive.py",
     "runtime_base.py": "runtime/runtime_base.py",
 }
@@ -76,7 +74,6 @@ SOURCES = (
     "mcp_environment.py",
     "managed_update_contract.py",
     "managed_update_journal.py",
-    "reload_hosted.py",
     "host-installation.py",
     "installation-recovery.py",
     "installation-lifecycle.py",
@@ -92,7 +89,6 @@ SOURCES = (
 RETAINED = (
     "install-candidate.sh",
     "managed_installation.py.lock",
-    "prune-prior-installations.py",
     "codex-mcp-registration.py",
 )
 FIXED = (

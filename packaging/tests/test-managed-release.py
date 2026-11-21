@@ -338,17 +338,20 @@ class ReleaseAdmissionTest(unittest.TestCase):
             }
         )
 
-    def main(self, source: Source, version: str = "0.0.123") -> release.MainEntry:
+    def main(
+        self, source: Source, version: str = "0.0.123", extra: tuple[str, ...] = ()
+    ) -> release.MainEntry:
         for name in (
             f"kast-plugin-v{version}.zip",
             f"kast-marketplace-v{version}.zip",
-            "host-installation.py",
             f"kast-hosted-catalog-v{version}.json",
             f"kast-module-knowledge-v{version}.json",
             f"kast-sbom-v{version}.cdx.json",
         ):
             source.assets[name] = name.encode()
             source.assets[name + ".sha256"] = f"{digest(name.encode())}  {name}\n".encode()
+        for name in extra:
+            source.assets[name] = name.encode()
         candidate = Candidate(
             version,
             tuple(
@@ -397,6 +400,25 @@ class ReleaseAdmissionTest(unittest.TestCase):
         self.assertEqual("kast-ide-hosted-v0.0.123-idea-263.zip", admitted.host_archive.name)
         self.assertEqual("kast-host-release-v0.0.123-idea-263.json", admitted.host_record.name)
         self.assertFalse((self.stage / "downloads/kast-ide-hosted-v0.0.123-idea-262.zip").exists())
+
+    def admit_main(self, extra: tuple[str, ...]) -> object:
+        source = self.source("0.0.123")
+        _ = self.main(source, extra=extra)
+        selected = release.resolve_selection("preview", None, None, source)
+        assert isinstance(selected, release.MainSelection)
+        return release.stage_component_archives(selected, "262", self.stage, source)
+
+    def test_main_release_without_the_retired_desktop_installer_is_admitted(self) -> None:
+        self.assertIsInstance(self.admit_main(()), release.AdmittedComposition)
+
+    def test_published_release_with_the_retired_desktop_installer_is_admitted(self) -> None:
+        retired = ("host-installation.py", "host-installation.py.sha256")
+        self.assertIsInstance(self.admit_main(retired), release.AdmittedComposition)
+
+    def test_retired_installer_checksum_without_its_asset_rejects(self) -> None:
+        self.assertIsInstance(
+            self.admit_main(("host-installation.py.sha256",)), release.Rejected
+        )
 
     def test_orphan_263_variant_rejects_even_for_262_selection(self) -> None:
         source = self.source("0.0.123", with_263=True)

@@ -272,7 +272,6 @@ tasks.register<GenerateComponentReleaseTask>("generateControlReleaseRecord") {
 tasks.register<GenerateComponentReleaseTask>("generateHostReleaseRecord") {
     dependsOn(":runtime:hosted:hostedPlugin", ":protocol:wire:generateHostedContract")
     component.set(ReleaseComponent.HOST)
-    companionArtifacts.from(layout.projectDirectory.file("packaging/internal/installation/host-installation.py"))
     releaseVersion.set(hostedPluginVersion)
     sourceRevision.set(releaseSourceRevision)
     archive.set(hostedPluginArchive)
@@ -370,7 +369,7 @@ tasks.named("check") { dependsOn(frontendTest) }
 val offlineInstallerChecks = setOf(
     "testCheckoutInstaller", "installerEntrypointTest", "installerFixtureTest", "installerRemovalTest",
     "installationSystemPythonTest", "installationRecoveryTest", "installationLifecycleTest",
-    "priorInstallationCleanupTest", "localInstallationTest",
+    "localInstallationTest",
 )
 
 val packagingTestModulePath = listOf(
@@ -399,16 +398,6 @@ tasks.withType<VerificationReportTask>().configureEach {
     }
 }
 
-val localPluginReloadTest = tasks.register<VerificationReportTask>("localPluginReloadTest") {
-    group = "verification"
-    description = "Examines local plugin replacement admission and atomic directory exchange."
-    environmentVariables.put("PYTHONPATH", packagingTestModulePath)
-    inputs.files("packaging/internal/installation/reload_hosted.py", "packaging/internal/installation/reload_hosted.py.lock", "packaging/tests/test_reload_hosted.py")
-    executableFile.set(validationExecutable("uv"))
-    arguments.set(listOf("run", "--locked", "--script", layout.projectDirectory.file("packaging/internal/installation/reload_hosted.py").asFile.absolutePath, "--self-test"))
-}
-tasks.named("check") { dependsOn(localPluginReloadTest) }
-
 val managedInstallationTest = tasks.register<VerificationReportTask>("managedInstallationTest") {
     group = "verification"
     description = "Proves immutable selection, managed replacement, and recorded recovery."
@@ -418,7 +407,7 @@ val managedInstallationTest = tasks.register<VerificationReportTask>("managedIns
     arguments.set(listOf("run", "--locked", "--project", "packaging", "pytest",
         "packaging/tests/test-managed-installation.py", "packaging/tests/test-managed-release.py",
         "packaging/tests/test-managed-build-record.py", "packaging/tests/test-managed-bootstrap.py",
-        "packaging/tests/test-managed-update-contract.py", "packaging/tests/test-managed-headless.py",
+        "packaging/tests/test-managed-headless.py",
         "packaging/tests/test_composition_graph.py", "packaging/tests/test_composition_index.py",
         "packaging/tests/test_composition_descriptors.py", "packaging/tests/test_composition_host.py",
         "packaging/tests/test_composition_bundle.py", "packaging/tests/test_composition_release.py",
@@ -502,15 +491,6 @@ val installationLifecycleTest = tasks.register<VerificationReportTask>("installa
     inputs.files("packaging/internal/installation/installation-lifecycle.py", "packaging/tests/test-installation-lifecycle.py")
     executableFile.set(validationExecutable("python3"))
     arguments.set(listOf(layout.projectDirectory.file("packaging/tests/test-installation-lifecycle.py").asFile.absolutePath))
-}
-
-val priorInstallationCleanupTest = tasks.register<VerificationReportTask>("priorInstallationCleanupTest") {
-    group = "verification"
-    description = "Proves exact user review and selected-installation protection for historical cleanup."
-    inputs.files("packaging/internal/installation/prune-prior-installations.py", "packaging/internal/installation/installation-lifecycle.py",
-        "packaging/internal/installation/installation-recovery.py", "packaging/internal/installation/managed_update_journal.py", "packaging/tests/test-prune-prior-installations.py")
-    executableFile.set(validationExecutable("python3"))
-    arguments.set(listOf(layout.projectDirectory.file("packaging/tests/test-prune-prior-installations.py").asFile.absolutePath))
 }
 
 val localInstallationTest = tasks.register<VerificationReportTask>("localInstallationTest") {
@@ -676,7 +656,6 @@ val productBuildGate = tasks.register("productBuildGate") {
         productGateVersionTest,
         installerFixtureTest,
         installationLifecycleTest,
-        priorInstallationCleanupTest,
         installationRecoveryTest,
         installationSystemPythonTest,
         localInstallationTest,
@@ -704,7 +683,6 @@ val sourceValidationGate = tasks.register("sourceValidationGate") {
         productGateVersionTest,
         installerFixtureTest,
         installationLifecycleTest,
-        priorInstallationCleanupTest,
         installationRecoveryTest,
         installationSystemPythonTest,
         localInstallationTest,

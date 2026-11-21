@@ -116,7 +116,6 @@ class LifecycleProjectionTest {
                 "hostLifetime",
                 "buildIdentity",
                 "autoReload",
-                "mode",
             ),
             runtime.keys,
         )
@@ -126,7 +125,6 @@ class LifecycleProjectionTest {
         assertEquals("100", runtime.getValue("processStartEpochMillis").jsonPrimitive.content)
         assertEquals("host", runtime.getValue("hostLifetime").jsonPrimitive.content)
         assertEquals("ENABLED", runtime.getValue("autoReload").jsonPrimitive.content)
-        assertEquals("DESKTOP", runtime.getValue("mode").jsonPrimitive.content)
         val build = runtime.getValue("buildIdentity").jsonObject
         assertEquals(setOf("version", "sourceRevision", "sourceTree"), build.keys)
         assertEquals("0.49.0", build.getValue("version").jsonPrimitive.content)
@@ -175,7 +173,7 @@ class LifecycleProjectionTest {
                 IdeLifecycleFailure.HOST_UNAVAILABLE,
                 exchange =
                     IdeLifecycleExchangeFailure(
-                        IdeLifecycleExchangeCommand.SETTLE_HOST_FOR_RELOAD,
+                        IdeLifecycleExchangeCommand.SETTLE_HOST,
                         IdeLifecycleExchangeStage.READ_BODY,
                         IdeLifecycleExchangeCause.TRUNCATED_RESPONSE,
                         elapsedMillis = 10,
@@ -184,7 +182,7 @@ class LifecycleProjectionTest {
             )
         for (encoded in listOf(json.encodeToString(Completed(blocked)), json.encodeToString(Rejected(blocked)))) {
             assertTrue(validator.validate(encoded, InputFormat.JSON).isEmpty(), encoded)
-            for (field in listOf("SETTLE_HOST_FOR_RELOAD", "READ_BODY", "TRUNCATED_RESPONSE")) {
+            for (field in listOf("SETTLE_HOST", "READ_BODY", "TRUNCATED_RESPONSE")) {
                 val invalid = encoded.replace(field, "UNKNOWN_VALUE")
                 assertNotEquals(encoded, invalid)
                 assertTrue(validator.validate(invalid, InputFormat.JSON).isNotEmpty(), invalid)

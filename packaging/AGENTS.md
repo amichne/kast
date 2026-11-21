@@ -27,8 +27,6 @@ code_sources:
   - path: packaging/internal/verification/run-installed-product.py
   - path: packaging/internal/verification/run-portable-tests.py
   - path: packaging/tests/test-host-installation.py
-  - path: packaging/internal/installation/reload_hosted.py
-  - path: packaging/tests/test_reload_hosted.py
   - path: packaging/internal/bootstrap/install-candidate.sh
   - path: packaging/internal/installation/managed_installation.py
   - path: packaging/internal/installation/managed_release.py
@@ -61,7 +59,7 @@ Owns installer adapters, isolated runtime archives, offline lifecycle helpers, c
 - [composition_recipe.py](internal/composition/composition_recipe.py) - pinned roots and plugin provider candidates.
 - [composed_host_probe.py](internal/verification/composed_host_probe.py) - native callers, Java references, and result rejection.
 - [installation-lifecycle.py](internal/installation/installation-lifecycle.py) - selected-installation retirement and removal.
-- [installation-recovery.py](internal/installation/installation-recovery.py) - Control recovery and update sealing.
+- [installation-recovery.py](internal/installation/installation-recovery.py) - exact tree, move and fence proofs for the product replacement journal.
 - [generate-public-query.py](internal/query/generate-public-query.py) - Kotlin and harness projections from the authored public schema.
 - [run-installed-product.py](internal/verification/run-installed-product.py) - complete-product native lifecycle acceptance with explicit qualified inputs.
 - [run-portable-tests.py](internal/verification/run-portable-tests.py) - the offline packaging test inventory.

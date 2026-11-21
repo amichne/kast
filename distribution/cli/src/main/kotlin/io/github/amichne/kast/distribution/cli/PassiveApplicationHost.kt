@@ -32,21 +32,7 @@ internal data class ApplicationRuntimeIdentity(
     val hostLifetime: String,
     val buildIdentity: ApplicationHostBuild,
     val autoReload: ApplicationAutoReload,
-    // Keep the 0.51.x compatibility default when an advertisement omits mode.
-    @Suppress("DEPRECATION")
-    @kotlinx.serialization.EncodeDefault
-    val mode: ApplicationHostMode = ApplicationHostMode.DESKTOP,
 )
-
-@Serializable
-internal enum class ApplicationHostMode {
-    @Deprecated(
-        "Desktop IntelliJ IDEA Hosts are targeted for removal; use managed headless Hosts.",
-        level = DeprecationLevel.WARNING,
-    )
-    DESKTOP,
-    MANAGED_HEADLESS,
-}
 
 @Serializable
 internal enum class ApplicationAutoReload {
@@ -136,16 +122,14 @@ internal fun inspectApplicationHost(
         readApplicationSelection(selectedInstallation(root).resolve("config/selected-ide.json"), home)
     }
 
-// This compatibility read rejects desktop advertisements; it does not select a desktop Host.
 internal fun readWorkspaceApplicationHost(container: AdmittedContainer): PassiveHostInspection =
-    observeSelectedApplication(container.home, ::observeApplicationProcess, managedOnly = true) {
+    observeSelectedApplication(container.home, ::observeApplicationProcess) {
         readApplicationSelection(container.profile.resolve("config/selected-ide.json"), container.home)
     }
 
 private fun observeSelectedApplication(
     home: Path,
     observeProcess: (Long) -> ApplicationProcessObservation,
-    managedOnly: Boolean = false,
     readSelection: () -> ApplicationSelection,
 ): PassiveHostInspection {
     return try {
@@ -160,8 +144,7 @@ private fun observeSelectedApplication(
                 return unavailable(ApplicationHostFailure.SELECTION_UNAVAILABLE)
             }
         when (val selection = selected) {
-            is ApplicationSelection.Admitted ->
-                readApplicationAdvertisement(selection, home, observeProcess, managedOnly)
+            is ApplicationSelection.Admitted -> readApplicationAdvertisement(selection, home, observeProcess)
             is ApplicationSelection.Rejected -> unavailable(selection.reason)
         }
     } catch (_: ManagementRejected) {
@@ -225,7 +208,6 @@ private fun readApplicationAdvertisement(
     selection: ApplicationSelection.Admitted,
     home: Path,
     observeProcess: (Long) -> ApplicationProcessObservation,
-    managedOnly: Boolean,
 ): PassiveHostInspection {
     val descriptor = selection.directory.resolve("endpoint.json")
     if (!physicalFile(descriptor)) return unavailable(ApplicationHostFailure.DESCRIPTOR_UNAVAILABLE)
@@ -245,8 +227,6 @@ private fun readApplicationAdvertisement(
         } catch (_: IllegalArgumentException) {
             return unavailable(ApplicationHostFailure.DESCRIPTOR_REJECTED, PassiveHostStep.DESCRIPTOR_DECODE)
         }
-    if (managedOnly && document.application.runtimeIdentity.mode != ApplicationHostMode.MANAGED_HEADLESS)
-        return unavailable(ApplicationHostFailure.DESCRIPTOR_REJECTED)
     if (!validApplicationDescriptor(document, selection)) return unavailable(ApplicationHostFailure.DESCRIPTOR_REJECTED)
     val inspection = inspectApplicationProcess(document.application, selection.launch.executable, observeProcess)
     if (inspection is PassiveHostInspection.Rejected) return inspection
@@ -324,8 +304,7 @@ private fun validApplicationIdentity(
     val identity = document.application.runtimeIdentity
     if (document.hostPid != identity.pid || document.host != identity.hostLifetime) return false
     if (identity.ideaHome != selection.launch.home || identity.profile != selection.profile.toString()) return false
-    if (identity.mode == ApplicationHostMode.MANAGED_HEADLESS && identity.autoReload != ApplicationAutoReload.DISABLED)
-        return false
+    if (identity.autoReload != ApplicationAutoReload.DISABLED) return false
     if (identity.pid <= 0 || identity.processStartEpochMillis <= 0) return false
     return UUID.fromString(identity.hostLifetime).toString() == identity.hostLifetime
 }

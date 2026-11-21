@@ -90,7 +90,6 @@ class ComponentReleaseTest(unittest.TestCase):
                     with warnings.catch_warnings():
                         warnings.simplefilter("ignore", UserWarning)
                         stream.writestr("kast-ide-hosted/lib/" + main_jar, jar.getvalue())
-            (self.root / "host-installation.py").write_text("host installer")
             record = HostRelease(Artifact(archive.name, "sha256:" + release.digest(archive), archive.stat().st_size), supportedIntellijReleaseLine=line)
         suffix = "-idea-263" if component is release.Component.HOST and line == "263" else ""
         path = self.root / f"{component.record_prefix}-v2.1.0{suffix}.json"
@@ -135,19 +134,19 @@ class ComponentReleaseTest(unittest.TestCase):
     def test_host_release_needs_no_control_archive(self) -> None:
         self.fixture(release.Component.HOST)
         admitted = release.admit(self.root, release.Component.HOST, "2.1.0", "a" * 40)
-        self.assertEqual(len(admitted.assets), 6)
+        self.assertEqual(len(admitted.assets), 4)
         self.assertFalse(any("control" in asset.name for asset in admitted.assets))
 
     def test_host_release_admits_both_independently_qualified_lines(self) -> None:
         self.fixture(release.Component.HOST)
         self.fixture(release.Component.HOST, line="263")
         admitted = release.admit(self.root, release.Component.HOST, "2.1.0", "a" * 40)
-        self.assertEqual(10, len(admitted.assets))
+        self.assertEqual(8, len(admitted.assets))
 
     def test_selected_263_local_release_needs_no_262_archive(self) -> None:
         self.fixture(release.Component.HOST, line="263")
         admitted = release.admit(self.root, release.Component.HOST, "2.1.0", "a" * 40)
-        self.assertEqual(6, len(admitted.assets))
+        self.assertEqual(4, len(admitted.assets))
 
     def test_variant_descriptor_must_match_its_recorded_line(self) -> None:
         self.fixture(release.Component.HOST, line="263", descriptor_line="262")
@@ -192,7 +191,7 @@ class ComponentReleaseTest(unittest.TestCase):
 
     def test_post_checksum_payload_mutation_is_rejected(self) -> None:
         self.fixture(release.Component.HOST)
-        (self.root / "host-installation.py").write_text("different bytes")
+        (self.root / "kast-ide-hosted-v2.1.0-idea-262.zip").write_bytes(b"different bytes")
         self.assertRejected(release.Component.HOST, release.ReleaseFailure.CHECKSUM_MISMATCH)
 
     def test_unexpected_other_component_artifact_is_rejected(self) -> None:

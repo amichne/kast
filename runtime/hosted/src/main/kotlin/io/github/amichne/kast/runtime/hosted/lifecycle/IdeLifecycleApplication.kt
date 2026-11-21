@@ -64,28 +64,14 @@ class IdeLifecycleApplication(private val scope: CoroutineScope) : Disposable {
     private val home = Path.of(PathManager.getHomePath()).toRealPath()
     internal val advertisement = captureApplicationAdvertisement(home, state.host.toString())
     private val runtimeIdentity = advertisement.runtimeIdentity
-    private val hostRefresh = HostBundleRefreshAdapter(this)
     private val settlement =
         HostedApplicationSettlement(
             admission,
             runtimeIdentity,
             native::settlement,
             native::hasActivePreparation,
-            prepareRefresh = { hostRefresh.admit(runtimeIdentity) },
-            observe = ::recordHostRefresh,
         )
     private val logger = Logger.getInstance(IdeLifecycleApplication::class.java)
-
-    init {
-        // One warning per application service lifetime, not per request or project.
-        @Suppress("DEPRECATION") // Identify legacy mode without changing its admission.
-        if (runtimeIdentity.mode == io.github.amichne.kast.protocol.contract.IdeHostMode.DESKTOP) {
-            logger.warn(
-                "kast_desktop_host_deprecated: Desktop IntelliJ IDEA Hosts are targeted for removal; " +
-                    "use managed headless Hosts with automatic workspace creation."
-            )
-        }
-    }
 
     private val job =
         scope.launch(Dispatchers.IO) {
@@ -218,8 +204,6 @@ class IdeLifecycleApplication(private val scope: CoroutineScope) : Disposable {
             connection.dispatch(command)
             if (!lifecycleHostModeSupported()) {
                 LifecycleReply.immediate(IdeLifecycleResult.Blocked(IdeLifecycleFailure.UNSUPPORTED_HOST_MODE))
-            } else if (command is IdeLifecycleCommand.RefreshHostBundle) {
-                applicationHostRefreshReply(command, settlement, scope)
             } else {
                 val result = submit(command)
                 if (result is IdeLifecycleResult.HostStopRequested) exit.stopReply(result)
@@ -228,11 +212,9 @@ class IdeLifecycleApplication(private val scope: CoroutineScope) : Disposable {
         }
 
     private fun submit(received: IdeLifecycleCommand): IdeLifecycleResult {
-        observeApplicationProjects(runtimeIdentity.mode, native::observeProjects)
         if (received is IdeLifecycleCommand.Inspect)
-            return inspectApplicationHost(runtimeIdentity, native.inspectProjects(), hostRefresh)
+            return inspectApplicationHost(runtimeIdentity, native.inspectProjects())
         if (received is IdeLifecycleCommand.SettleHost) return settlement.settle(received)
-        if (received is IdeLifecycleCommand.SettleHostForReload) return settlement.settleForReload(received)
         if (received is IdeLifecycleCommand.ResumeHost) return exit.resumed(settlement.resume(received))
         if (received is IdeLifecycleCommand.StopHost) return settlement.stop(received)
         if (received is IdeLifecycleCommand.Status) {

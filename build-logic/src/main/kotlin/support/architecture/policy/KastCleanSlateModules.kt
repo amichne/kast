@@ -40,7 +40,6 @@ internal object KastCleanSlateModules {
                 JvmClassName("io/github/amichne/kast/distribution/cli/ContainerStore"),
                 JvmClassName("io/github/amichne/kast/distribution/cli/WorkspaceSeedingKt"),
                 JvmClassName("io/github/amichne/kast/distribution/cli/WorkspaceSeedCloneKt"),
-                JvmClassName("io/github/amichne/kast/distribution/cli/ContainerMigrationKt"),
                 JvmClassName("io/github/amichne/kast/distribution/cli/ManagedWorkspaceRemovalKt"),
                 JvmClassName("io/github/amichne/kast/distribution/cli/WorkspaceReclamationKt"),
                 JvmClassName("io/github/amichne/kast/distribution/cli/WorkspaceOverlayFile"),
@@ -397,19 +396,6 @@ internal object KastCleanSlateModules {
                 ForbiddenEffect.FILESYSTEM_WRITE to setOf(
                     JvmClassName("io/github/amichne/kast/cli/rpc/OneShotInvocationRecord"),
                     JvmClassName("io/github/amichne/kast/cli/rpc/OneShotInvocationRecord\$Companion"),
-                    JvmClassName("io/github/amichne/kast/cli/installation/ManagedControlAdapter"),
-                    JvmClassName(
-                        "io/github/amichne/kast/cli/installation/InstallationWorkflow",
-                    ),
-                    JvmClassName(
-                        "io/github/amichne/kast/cli/installation/InstallationWorkflow\$copyControl\$1",
-                    ),
-                    JvmClassName(
-                        "io/github/amichne/kast/cli/installation/InstallationWorkflowKt",
-                    ),
-                    JvmClassName(
-                        "io/github/amichne/kast/cli/installation/InstallationWorkflowKt\$deleteTree\$1",
-                    ),
                 ),
             ),
         ),
