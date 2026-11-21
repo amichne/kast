@@ -2555,7 +2555,7 @@ def main(
 ) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     group = parser.add_mutually_exclusive_group()
-    _ = group.add_argument("--channel", choices=("stable", "preview", "main"))
+    _ = group.add_argument("--channel", choices=("stable", "preview"))
     _ = group.add_argument("--version")
     _ = group.add_argument("--commit")
     _ = group.add_argument("--resolved-selection", type=Path)

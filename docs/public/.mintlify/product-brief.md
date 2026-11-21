@@ -11,8 +11,8 @@ The native `kast` command is the primary interface.
 
 Kotlin developers who already use Codex, Copilot, or Pi are the primary readers.
 The setup path supports a first installation without a checkout or an existing Kast CLI.
-The remote installer selects the latest qualified development build with `--developer-latest --skip-codex-plugin`.
-An existing installation uses `kast upgrade --channel main --restart-ide`.
+The remote installer selects the latest qualified development build with `--channel preview`.
+An existing installation uses `kast upgrade --channel preview`.
 
 ## Source authority
 

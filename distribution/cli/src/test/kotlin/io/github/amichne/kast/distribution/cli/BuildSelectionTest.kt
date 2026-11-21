@@ -48,7 +48,7 @@ class BuildSelectionTest {
     fun `selector parsing rejects conflicts and noncanonical revisions`() {
         assertEquals(
             SelectionAdmission.Rejected(BuildSelectionFailure.SELECTORS_CONFLICT),
-            admitBuildRequest("main", "1.2.3", null),
+            admitBuildRequest("preview", "1.2.3", null),
         )
         for (raw in listOf("abc", "A".repeat(40), "a".repeat(13), "../revision")) assertEquals(
             SelectionAdmission.Rejected(BuildSelectionFailure.SELECTOR_INVALID),
@@ -102,8 +102,16 @@ class BuildSelectionTest {
     }
 
     @Test
-    fun `preview and main alias select the captured product without consulting main head`() {
-        assertEquals(admitBuildRequest("preview", null, null), admitBuildRequest("main", null, null))
+    fun `main is not a channel selector`() {
+        assertEquals(
+            SelectionAdmission.Rejected(BuildSelectionFailure.SELECTOR_INVALID),
+            admitBuildRequest("main", null, null),
+        )
+    }
+
+    @Test
+    fun `preview selects the captured product without consulting main head`() {
+        assertEquals(SelectionAdmission.Admitted(BuildRequest.Main), admitBuildRequest("preview", null, null))
         val entry = productEntry()
         val catalog = managementJson.encodeToString(ProductBuildCatalog(2, listOf(entry)))
         val reads = mutableListOf<String>()

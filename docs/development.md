@@ -379,7 +379,7 @@ A separate promotion record binds the build commit to the merged commit and succ
 The immutable developer release contains both records.
 If main advances before publication, the publisher retains the existing latest pointer.
 `kast versions` lists qualified main builds from the published catalog.
-`kast upgrade --channel main` selects the latest qualified development build.
+`kast upgrade --channel preview` selects the latest qualified development build.
 
 If current main has no qualified product candidate, start full CI manually:
 

@@ -941,7 +941,7 @@ class TransferRejectionPresentationTest(unittest.TestCase):
         )
 
     def test_human_rejection_names_the_certificate_bundle_remedy(self) -> None:
-        code, stdout, stderr, _ = self.run_install(["--channel", "main"])
+        code, stdout, stderr, _ = self.run_install(["--channel", "preview"])
         self.assertNotEqual(0, code)
         self.assertEqual("REJECTED\n", stdout)
         self.assertIn('"cause":"TLS_CERTIFICATE_UNTRUSTED"', stderr)

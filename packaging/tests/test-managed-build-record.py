@@ -239,15 +239,14 @@ class ProductRecordTest(unittest.TestCase):
                     release.Failure.ARTIFACT_INVALID, release.decode_product_record(invalid)
                 )
 
-    def test_preview_can_lag_main_and_main_is_only_an_alias(self) -> None:
+    def test_preview_can_lag_main(self) -> None:
         record = product()
         entry = Entry("a" * 40, "developer-v0.0.123", record, "d" * 64)
         source = Source({release.CATALOG_URL: json.dumps(asdict(Catalog((entry,)))).encode()})
         preview = release.resolve_selection("preview", None, None, source)
-        self.assertEqual(preview, release.resolve_selection("main", None, None, source))
         assert isinstance(preview, release.ProductSelection)
         self.assertEqual("a" * 40, preview.mainRevision)
-        self.assertEqual([release.CATALOG_URL, release.CATALOG_URL], source.calls)
+        self.assertEqual([release.CATALOG_URL], source.calls)
         pinned = release.resolve_selection(None, None, "a" * 12, source)
         assert isinstance(pinned, release.ProductSelection)
         self.assertEqual("PinnedBuild", pinned.policy)

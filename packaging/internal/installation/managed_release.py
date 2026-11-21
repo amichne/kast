@@ -1090,7 +1090,7 @@ def resolve_selection(
         len(commit) not in (12, 40) or not re.fullmatch(r"[0-9a-f]+", commit)
     ):
         return Rejected(Failure.SELECTOR_INVALID, Stage.SELECTION, requested)
-    if channel not in (None, "stable", "main", "preview"):
+    if channel not in (None, "stable", "preview"):
         return Rejected(Failure.SELECTOR_INVALID, Stage.SELECTION, requested)
     if commit is None and channel in (None, "stable"):
         raw = source.read(STABLE_URL, MAXIMUM_RECORD_BYTES)

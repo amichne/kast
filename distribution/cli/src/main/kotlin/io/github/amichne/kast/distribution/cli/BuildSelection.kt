@@ -82,7 +82,7 @@ internal fun admitBuildRequest(
     return when {
         repair -> SelectionAdmission.Admitted(BuildRequest.Repair)
         channel == "stable" -> SelectionAdmission.Admitted(BuildRequest.Stable)
-        channel == "preview" || channel == "main" -> SelectionAdmission.Admitted(BuildRequest.Main)
+        channel == "preview" -> SelectionAdmission.Admitted(BuildRequest.Main)
         channel != null -> SelectionAdmission.Rejected(BuildSelectionFailure.SELECTOR_INVALID)
         version != null ->
             when (val parsed = StableVersion.parse(version)) {
