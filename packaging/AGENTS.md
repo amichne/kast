@@ -27,8 +27,6 @@ code_sources:
   - path: packaging/internal/verification/run-installed-product.py
   - path: packaging/internal/verification/run-portable-tests.py
   - path: packaging/tests/test-host-installation.py
-  - path: packaging/internal/installation/reload_hosted.py
-  - path: packaging/tests/test_reload_hosted.py
   - path: packaging/internal/bootstrap/install-candidate.sh
   - path: packaging/internal/installation/managed_installation.py
   - path: packaging/internal/installation/managed_release.py

@@ -734,7 +734,6 @@ class ProductActivationTest(unittest.TestCase):
         )
         with (
             patch.object(install, "run_child", side_effect=AssertionError("no process")),
-            patch.object(install, "select_idea", side_effect=AssertionError("no IDEA")),
         ):
             result = activation.activate(self.root, self.home, admitted)
         self.assertIsInstance(result, activation.ProductInstalled, result)
@@ -2511,7 +2510,6 @@ class ProductActivationTest(unittest.TestCase):
             patch.dict(os.environ, {"HOME": str(self.home)}),
             patch.object(staging.platform, "system", return_value="Darwin"),
             patch.object(staging.platform, "machine", return_value="arm64"),
-            patch.object(install, "select_idea", side_effect=AssertionError("no IDEA")),
             patch.object(install.subprocess, "run", side_effect=AssertionError("no process")),
         ):
             output = io.StringIO()

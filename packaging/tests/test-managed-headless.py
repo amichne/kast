@@ -6,10 +6,9 @@ import json
 import tempfile
 import unittest
 import zipfile
-from dataclasses import asdict, dataclass, replace
+from dataclasses import asdict, replace
 from pathlib import Path
 
-import managed_update_contract as contract
 from managed_headless import (
     AssemblyRecord,
     Component,
@@ -42,18 +41,6 @@ def inputs(root: Path) -> Input:
         "0.0.0",
         "262.10315.125",
     )
-
-
-@dataclass(frozen=True, slots=True)
-class RuntimeModeFixture:
-    ideaHome: str
-    profile: str
-    pid: int
-    processStartEpochMillis: int
-    hostLifetime: str
-    buildIdentity: contract.RuntimeBuild
-    autoReload: str
-    mode: str
 
 
 class ManagedHeadlessTest(unittest.TestCase):
@@ -297,41 +284,6 @@ class ManagedHeadlessTest(unittest.TestCase):
                 "kotlinPluginBuild",
             }
             assert record["schemaVersion"] == 1
-
-    def test_runtime_identity_admits_only_a_managed_or_absent_mode(self) -> None:
-        wire = RuntimeModeFixture(
-            "/owned/idea",
-            "/owned/state/home/profile",
-            42,
-            100,
-            "host",
-            contract.RuntimeBuild("0.0.0", "a" * 40, "b" * 40),
-            "DISABLED",
-            "MANAGED_HEADLESS",
-        )
-        parsed = contract.parse_runtime(asdict(wire))
-        assert not isinstance(parsed, contract.Failure)
-        assert not hasattr(parsed, "mode")
-        absent = {key: value for key, value in asdict(wire).items() if key != "mode"}
-        assert not isinstance(contract.parse_runtime(absent), contract.Failure)
-        for mode in ("DESKTOP", "UNPROVEN"):
-            assert (
-                contract.parse_runtime(asdict(replace(wire, mode=mode)))
-                == contract.Failure.HOST_RESPONSE_INVALID
-            )
-
-    def test_headless_auto_reload_never_grants_an_installer_strategy(self) -> None:
-        wire = RuntimeModeFixture(
-            "/owned/idea",
-            "/owned/state/home/profile",
-            42,
-            100,
-            "host",
-            contract.RuntimeBuild("0.0.0", "a" * 40, "b" * 40),
-            "ENABLED",
-            "MANAGED_HEADLESS",
-        )
-        assert contract.parse_runtime(asdict(wire)) == contract.Failure.HOST_RESPONSE_INVALID
 
     def test_runtime_seal_preserves_bytes_execute_bits_and_external_symlinks(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
