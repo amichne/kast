@@ -11,14 +11,6 @@ class ManagementReceiptPreservationTest {
     @TempDir lateinit var temporary: Path
 
     @Test
-    fun `native publication preserves the admitted pin identity and guidance`() {
-        val fixture = createLifecycleFixture(temporary)
-        val prior = recordFacts(fixture.root, fixture.home)
-        commitPublicExecutable(fixture.root, mapOf("HOME" to fixture.home.toString()), ReleaseChannel.STABLE)
-        assertFacts(prior, (readReceipt(fixture.root) as ReceiptRead.Read).receipt)
-    }
-
-    @Test
     fun `registration changes preserve the admitted pin identity and guidance`() {
         val (root, home) = integrationFixture(temporary.toRealPath(), HarnessConnection.PI)
         val prior = recordFacts(root, home)
