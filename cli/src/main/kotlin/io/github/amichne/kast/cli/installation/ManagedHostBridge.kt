@@ -3,9 +3,10 @@ package io.github.amichne.kast.cli.installation
 import io.github.amichne.kast.appserver.ide.IdeLifecycleClient
 import io.github.amichne.kast.appserver.ide.IdeLifecycleDeployment
 import io.github.amichne.kast.distribution.contract.configuration.ConfigurationPathSelection
+import io.github.amichne.kast.distribution.contract.configuration.HostHeapPolicy
+import io.github.amichne.kast.distribution.contract.configuration.HostIdleShutdown
 import io.github.amichne.kast.distribution.managed.SelectedIdeInstallation
 import io.github.amichne.kast.distribution.managed.SelectedIdeLaunch
-import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.protocol.contract.IdeLifecycleCommand
 import io.github.amichne.kast.protocol.contract.IdeLifecycleFailure
 import io.github.amichne.kast.protocol.contract.IdeLifecycleResult
@@ -20,50 +21,43 @@ private sealed interface ManagedHostTarget {
     data class Rejected(val reason: ManagedHostFailure) : ManagedHostTarget
 }
 
+/** The adapter proves profile/process identity on every exchange; no effect targets an unadmitted process. */
 internal fun executeManagedHost(
     request: ManagedHostRequest,
     home: Path,
-    managedHeadlessState: io.github.amichne.kast.distribution.contract.configuration.ConfigurationPathSelection =
-        io.github.amichne.kast.distribution.contract.configuration.ConfigurationPathSelection.OwnerDefault,
-    idleShutdown: io.github.amichne.kast.distribution.contract.configuration.HostIdleShutdown =
-        io.github.amichne.kast.distribution.contract.configuration.HostIdleShutdown.Disabled,
-    maxHeap: io.github.amichne.kast.distribution.contract.configuration.HostHeapPolicy =
-        io.github.amichne.kast.distribution.contract.configuration.HostHeapPolicy.Inherit,
+    managedHeadlessState: ConfigurationPathSelection = ConfigurationPathSelection.OwnerDefault,
     processes: (SelectedIdeLaunch.Resolved) -> ManagedProcessInventory = ::observeManagedIdeProcesses,
     exchange: (Path, IdeLifecycleCommand) -> IdeLifecycleResult = { idea, command ->
         exchangeSelectedHost(home, idea, managedHeadlessState, command)
     },
-    start: (SelectedIdeLaunch.Resolved) -> ManagedIdeLaunchOutcome = { launch ->
-        startSelectedManagedHost(launch, home, managedHeadlessState, idleShutdown, maxHeap)
-    },
-    inspectLegacy: (SelectedIdeLaunch.Resolved, ManagedIdeProcess) -> LegacyProfileRead = ::inspectLegacyHostProfile,
-    stopLegacy: (SelectedIdeLaunch.Resolved, ManagedIdeProcess) -> LegacyQuitOutcome = ::stopLegacyHostNormally,
 ): ManagedHostResponse =
-    if (request is ManagedHostRequest.Start && managedHeadlessState == ConfigurationPathSelection.OwnerDefault)
-        ManagedHostResponse.Rejected(ManagedHostFailure.LAUNCH_REJECTED)
-    else
-        when (val target = selectManagedHostTarget(request, processes)) {
-            is ManagedHostTarget.Rejected -> ManagedHostResponse.Rejected(target.reason)
-            is ManagedHostTarget.Stopped ->
-                when (request) {
-                    is ManagedHostRequest.Start -> startStoppedHost(target, home, start)
-                    is ManagedHostRequest.Inspect -> ManagedHostResponse.Inspected(emptyList())
-                    else -> ManagedHostResponse.Rejected(ManagedHostFailure.CONCURRENT_CHANGE)
-                }
-            is ManagedHostTarget.Running ->
-                when (request) {
-                    is ManagedHostRequest.Start -> ManagedHostResponse.Rejected(ManagedHostFailure.CONCURRENT_CHANGE)
-                    is ManagedHostRequest.LegacyStop ->
-                        stopPriorHost(target, request, processes, inspectLegacy, stopLegacy)
-                    is ManagedHostRequest.Inspect ->
-                        inspectRunningHost(target, request, processes, exchange, inspectLegacy)
-                    is ManagedHostRequest.Settle,
-                    is ManagedHostRequest.SettleReload,
-                    is ManagedHostRequest.Resume,
-                    is ManagedHostRequest.Stop,
-                    is ManagedHostRequest.Refresh -> changeRunningHost(target, request, processes, exchange)
-                }
-        }
+    when (val target = selectManagedHostTarget(request, processes)) {
+        is ManagedHostTarget.Rejected -> ManagedHostResponse.Rejected(target.reason)
+        is ManagedHostTarget.Stopped ->
+            when (request) {
+                is ManagedHostRequest.Inspect -> ManagedHostResponse.Inspected(emptyList())
+                is ManagedHostRequest.Settle,
+                is ManagedHostRequest.Stop -> ManagedHostResponse.Rejected(ManagedHostFailure.CONCURRENT_CHANGE)
+            }
+        is ManagedHostTarget.Running ->
+            when (request) {
+                is ManagedHostRequest.Inspect -> inspectRunningHost(target, exchange)
+                is ManagedHostRequest.Settle ->
+                    changeRunningHost(
+                        target,
+                        IdeLifecycleCommand.SettleHost(request.host, request.transaction),
+                        processes,
+                        exchange,
+                    )
+                is ManagedHostRequest.Stop ->
+                    changeRunningHost(
+                        target,
+                        IdeLifecycleCommand.StopHost(request.host, request.transaction),
+                        processes,
+                        exchange,
+                    )
+            }
+    }
 
 private fun selectManagedHostTarget(
     request: ManagedHostRequest,
@@ -92,101 +86,21 @@ private fun selectManagedHostTarget(
     }
 }
 
-private fun startStoppedHost(
-    target: ManagedHostTarget.Stopped,
-    home: Path,
-    start: (SelectedIdeLaunch.Resolved) -> ManagedIdeLaunchOutcome,
-): ManagedHostResponse {
-    val profile =
-        when (val selected = SelectedIdeInstallation.pluginRoot(target.launch, home)) {
-            is Refinement.Refined -> selected.value.value.parent
-            is Refinement.Rejected -> return ManagedHostResponse.Rejected(ManagedHostFailure.PROFILE_MISMATCH)
-        }
-    if (profile != target.profile) return ManagedHostResponse.Rejected(ManagedHostFailure.PROFILE_MISMATCH)
-    return when (start(target.launch)) {
-        ManagedIdeLaunchOutcome.REQUESTED -> ManagedHostResponse.StartRequested
-        ManagedIdeLaunchOutcome.REJECTED -> ManagedHostResponse.Rejected(ManagedHostFailure.LAUNCH_REJECTED)
-    }
-}
-
-private fun stopPriorHost(
-    target: ManagedHostTarget.Running,
-    request: ManagedHostRequest.LegacyStop,
-    processes: (SelectedIdeLaunch.Resolved) -> ManagedProcessInventory,
-    inspect: (SelectedIdeLaunch.Resolved, ManagedIdeProcess) -> LegacyProfileRead,
-    stop: (SelectedIdeLaunch.Resolved, ManagedIdeProcess) -> LegacyQuitOutcome,
-): ManagedHostResponse {
-    if (request.process != target.process || !Regex("[A-Za-z0-9._:-]{1,128}").matches(request.transaction))
-        return ManagedHostResponse.Rejected(ManagedHostFailure.CONCURRENT_CHANGE)
-    val prior =
-        when (val captured = inspect(target.launch, target.process)) {
-            is LegacyProfileRead.Captured -> captured.profile
-            LegacyProfileRead.Unavailable -> return ManagedHostResponse.Rejected(ManagedHostFailure.PROFILE_UNPROVEN)
-        }
-    if (!matchesLegacyProfile(target, prior)) return ManagedHostResponse.Rejected(ManagedHostFailure.PROFILE_MISMATCH)
-    when (val current = readmitTarget(target, processes)) {
-        TargetReadmission.Current -> Unit
-        is TargetReadmission.Rejected -> return ManagedHostResponse.Rejected(current.reason)
-    }
-    return legacyQuitResponse(stop(target.launch, target.process), target.process, request)
-}
-
-private fun legacyQuitResponse(
-    outcome: LegacyQuitOutcome,
-    process: ManagedIdeProcess,
-    request: ManagedHostRequest.LegacyStop,
-): ManagedHostResponse {
-    return when (outcome) {
-        LegacyQuitOutcome.REQUESTED -> ManagedHostResponse.LegacyStopRequested(process, request.transaction)
-        LegacyQuitOutcome.REJECTED -> ManagedHostResponse.Rejected(ManagedHostFailure.HOST_REJECTED)
-        LegacyQuitOutcome.PROCESS_IDENTITY_CHANGED -> ManagedHostResponse.Rejected(ManagedHostFailure.CONCURRENT_CHANGE)
-        LegacyQuitOutcome.HELPER_START_FAILED ->
-            ManagedHostResponse.Rejected(ManagedHostFailure.LEGACY_QUIT_START_FAILED)
-        LegacyQuitOutcome.HELPER_TIMED_OUT -> ManagedHostResponse.Rejected(ManagedHostFailure.LEGACY_QUIT_TIMED_OUT)
-        LegacyQuitOutcome.HELPER_CAPTURE_FAILED ->
-            ManagedHostResponse.Rejected(ManagedHostFailure.LEGACY_QUIT_CAPTURE_FAILED)
-        LegacyQuitOutcome.HELPER_OUTPUT_LIMIT_EXCEEDED ->
-            ManagedHostResponse.Rejected(ManagedHostFailure.LEGACY_QUIT_OUTPUT_LIMIT_EXCEEDED)
-        LegacyQuitOutcome.HELPER_INTERRUPTED -> ManagedHostResponse.Rejected(ManagedHostFailure.LEGACY_QUIT_INTERRUPTED)
-        LegacyQuitOutcome.HELPER_EXIT_FAILED -> ManagedHostResponse.Rejected(ManagedHostFailure.LEGACY_QUIT_EXIT_FAILED)
-        LegacyQuitOutcome.HELPER_RESPONSE_INVALID ->
-            ManagedHostResponse.Rejected(ManagedHostFailure.LEGACY_QUIT_RESPONSE_INVALID)
-    }
-}
-
+/** Without runtime identity the caller receives the unqualified result and must reject before any effect. */
 private fun inspectRunningHost(
     target: ManagedHostTarget.Running,
-    request: ManagedHostRequest.Inspect,
-    processes: (SelectedIdeLaunch.Resolved) -> ManagedProcessInventory,
     exchange: (Path, IdeLifecycleCommand) -> IdeLifecycleResult,
-    inspectLegacy: (SelectedIdeLaunch.Resolved, ManagedIdeProcess) -> LegacyProfileRead,
 ): ManagedHostResponse {
     val inspected = exchange(Path.of(target.launch.home), IdeLifecycleCommand.Inspect)
-    if (inspected is IdeLifecycleResult.Inspected && inspected.runtimeIdentity != null) {
-        return if (matchesRuntimeTarget(target, inspected))
-            ManagedHostResponse.Inspected(listOf(target.process), inspected)
-        else ManagedHostResponse.Rejected(ManagedHostFailure.HOST_IDENTITY_MISMATCH, inspected)
-    }
-    if (request.legacyProfileInspection == LegacyProfileInspection.REJECT_UNPROVEN)
+    if (inspected !is IdeLifecycleResult.Inspected || inspected.runtimeIdentity == null)
         return ManagedHostResponse.Inspected(listOf(target.process), inspected)
-    val legacy =
-        when (val captured = inspectLegacy(target.launch, target.process)) {
-            is LegacyProfileRead.Captured -> captured.profile
-            LegacyProfileRead.Unavailable ->
-                return ManagedHostResponse.Rejected(ManagedHostFailure.PROFILE_UNPROVEN, inspected)
-        }
-    if (!matchesLegacyProfile(target, legacy))
-        return ManagedHostResponse.Rejected(ManagedHostFailure.PROFILE_MISMATCH, inspected)
-    when (val current = readmitTarget(target, processes)) {
-        TargetReadmission.Current -> Unit
-        is TargetReadmission.Rejected -> return ManagedHostResponse.Rejected(current.reason, inspected)
-    }
-    return ManagedHostResponse.Inspected(listOf(target.process), inspected, legacy)
+    return if (matchesRuntimeTarget(target, inspected)) ManagedHostResponse.Inspected(listOf(target.process), inspected)
+    else ManagedHostResponse.Rejected(ManagedHostFailure.HOST_IDENTITY_MISMATCH, inspected)
 }
 
 private fun changeRunningHost(
     target: ManagedHostTarget.Running,
-    request: ManagedHostRequest,
+    command: IdeLifecycleCommand,
     processes: (SelectedIdeLaunch.Resolved) -> ManagedProcessInventory,
     exchange: (Path, IdeLifecycleCommand) -> IdeLifecycleResult,
 ): ManagedHostResponse {
@@ -196,16 +110,6 @@ private fun changeRunningHost(
         return ManagedHostResponse.Rejected(ManagedHostFailure.HOST_REJECTED, inspected)
     if (!matchesRuntimeTarget(target, inspected))
         return ManagedHostResponse.Rejected(ManagedHostFailure.HOST_IDENTITY_MISMATCH, inspected)
-    val command =
-        when (request) {
-            is ManagedHostRequest.Settle -> IdeLifecycleCommand.SettleHost(request.host, request.transaction)
-            is ManagedHostRequest.SettleReload ->
-                IdeLifecycleCommand.SettleHostForReload(request.host, request.transaction)
-            is ManagedHostRequest.Resume -> IdeLifecycleCommand.ResumeHost(request.host, request.transaction)
-            is ManagedHostRequest.Stop -> IdeLifecycleCommand.StopHost(request.host, request.transaction)
-            is ManagedHostRequest.Refresh -> IdeLifecycleCommand.RefreshHostBundle(request.host, request.transaction)
-            else -> return ManagedHostResponse.Rejected(ManagedHostFailure.INVALID_REQUEST)
-        }
     when (val current = readmitTarget(target, processes)) {
         TargetReadmission.Current -> Unit
         is TargetReadmission.Rejected -> return ManagedHostResponse.Rejected(current.reason)
@@ -218,9 +122,6 @@ private fun changeRunningHost(
             if (result.runtimeIdentity != inspected.runtimeIdentity)
                 return ManagedHostResponse.Rejected(ManagedHostFailure.HOST_IDENTITY_MISMATCH, result)
         is IdeLifecycleResult.HostStopRequested ->
-            if (result.runtimeIdentity != inspected.runtimeIdentity)
-                return ManagedHostResponse.Rejected(ManagedHostFailure.HOST_IDENTITY_MISMATCH, result)
-        is IdeLifecycleResult.HostRefreshRequested ->
             if (result.runtimeIdentity != inspected.runtimeIdentity)
                 return ManagedHostResponse.Rejected(ManagedHostFailure.HOST_IDENTITY_MISMATCH, result)
         else -> Unit
@@ -239,11 +140,6 @@ private fun matchesRuntimeTarget(target: ManagedHostTarget.Running, inspected: I
     return identity.pid == target.process.pid &&
         identity.processStartEpochMillis == target.process.processStartEpochMillis
 }
-
-private fun matchesLegacyProfile(target: ManagedHostTarget.Running, profile: LegacyHostProfile): Boolean =
-    profile.ideaHome == target.launch.home &&
-        profile.profile == target.profile.toString() &&
-        profile.process == target.process
 
 private sealed interface TargetReadmission {
     data object Current : TargetReadmission
@@ -265,41 +161,32 @@ private fun readmitTarget(
 
 private fun matchesManagedHostResult(command: IdeLifecycleCommand, result: IdeLifecycleResult): Boolean =
     when (command) {
-        is IdeLifecycleCommand.SettleHost -> matchesSettlementResult(command.host, command.transaction, result)
-        is IdeLifecycleCommand.SettleHostForReload -> matchesSettlementResult(command.host, command.transaction, result)
-        is IdeLifecycleCommand.ResumeHost ->
-            result is IdeLifecycleResult.HostResumed &&
-                result.host == command.host &&
-                result.transaction == command.transaction
+        is IdeLifecycleCommand.SettleHost ->
+            when (result) {
+                is IdeLifecycleResult.HostSettled ->
+                    result.host == command.host && result.transaction == command.transaction
+                is IdeLifecycleResult.HostSettling ->
+                    result.host == command.host && result.transaction == command.transaction
+                else -> false
+            }
         is IdeLifecycleCommand.StopHost ->
             result is IdeLifecycleResult.HostStopRequested &&
                 result.host == command.host &&
                 result.transaction == command.transaction
-        is IdeLifecycleCommand.RefreshHostBundle ->
-            result is IdeLifecycleResult.HostRefreshRequested &&
-                result.host == command.host &&
-                result.transaction == command.transaction
-        else -> false
-    }
-
-private fun matchesSettlementResult(host: String, transaction: String, result: IdeLifecycleResult): Boolean =
-    when (result) {
-        is IdeLifecycleResult.HostSettled -> result.host == host && result.transaction == transaction
-        is IdeLifecycleResult.HostSettling -> result.host == host && result.transaction == transaction
         else -> false
     }
 
 private fun exchangeSelectedHost(
     home: Path,
     idea: Path,
-    selection: io.github.amichne.kast.distribution.contract.configuration.ConfigurationPathSelection,
+    selection: ConfigurationPathSelection,
     command: IdeLifecycleCommand,
 ): IdeLifecycleResult =
     when (selection) {
-        // Only a selected managed Host is managed; a default desktop IDEA is never a Kast Host.
-        io.github.amichne.kast.distribution.contract.configuration.ConfigurationPathSelection.OwnerDefault ->
+        // Only a selected managed Host is managed; a default IDEA is never a Kast Host.
+        ConfigurationPathSelection.OwnerDefault ->
             IdeLifecycleResult.Blocked(IdeLifecycleFailure.SELECTED_IDE_UNAVAILABLE)
-        is io.github.amichne.kast.distribution.contract.configuration.ConfigurationPathSelection.Selected ->
+        is ConfigurationPathSelection.Selected ->
             // Management exchanges inspect, settle and stop; they never launch a Host.
             IdeLifecycleClient(
                     home,
@@ -307,32 +194,9 @@ private fun exchangeSelectedHost(
                     deployment =
                         IdeLifecycleDeployment.Headless(
                             selection.path,
-                            io.github.amichne.kast.distribution.contract.configuration.HostIdleShutdown.Disabled,
-                            io.github.amichne.kast.distribution.contract.configuration.HostHeapPolicy.Inherit,
+                            HostIdleShutdown.Disabled,
+                            HostHeapPolicy.Inherit,
                         ),
                 )
                 .manageInstallation(command)
-    }
-
-private fun startSelectedManagedHost(
-    launch: SelectedIdeLaunch.Resolved,
-    home: Path,
-    selection: io.github.amichne.kast.distribution.contract.configuration.ConfigurationPathSelection,
-    idleShutdown: io.github.amichne.kast.distribution.contract.configuration.HostIdleShutdown,
-    maxHeap: io.github.amichne.kast.distribution.contract.configuration.HostHeapPolicy,
-): ManagedIdeLaunchOutcome =
-    when (selection) {
-        io.github.amichne.kast.distribution.contract.configuration.ConfigurationPathSelection.OwnerDefault ->
-            ManagedIdeLaunchOutcome.REJECTED
-        is io.github.amichne.kast.distribution.contract.configuration.ConfigurationPathSelection.Selected -> {
-            val result =
-                IdeLifecycleClient(
-                        home,
-                        Path.of(launch.home),
-                        IdeLifecycleDeployment.Headless(selection.path, idleShutdown, maxHeap),
-                    )
-                    .startInstallation()
-            if (result is IdeLifecycleResult.Inspected) ManagedIdeLaunchOutcome.REQUESTED
-            else ManagedIdeLaunchOutcome.REJECTED
-        }
     }

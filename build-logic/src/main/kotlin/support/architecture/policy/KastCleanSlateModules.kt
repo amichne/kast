@@ -396,19 +396,6 @@ internal object KastCleanSlateModules {
                 ForbiddenEffect.FILESYSTEM_WRITE to setOf(
                     JvmClassName("io/github/amichne/kast/cli/rpc/OneShotInvocationRecord"),
                     JvmClassName("io/github/amichne/kast/cli/rpc/OneShotInvocationRecord\$Companion"),
-                    JvmClassName("io/github/amichne/kast/cli/installation/ManagedControlAdapter"),
-                    JvmClassName(
-                        "io/github/amichne/kast/cli/installation/InstallationWorkflow",
-                    ),
-                    JvmClassName(
-                        "io/github/amichne/kast/cli/installation/InstallationWorkflow\$copyControl\$1",
-                    ),
-                    JvmClassName(
-                        "io/github/amichne/kast/cli/installation/InstallationWorkflowKt",
-                    ),
-                    JvmClassName(
-                        "io/github/amichne/kast/cli/installation/InstallationWorkflowKt\$deleteTree\$1",
-                    ),
                 ),
             ),
         ),

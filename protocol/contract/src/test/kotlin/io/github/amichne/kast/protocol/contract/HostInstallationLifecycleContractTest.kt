@@ -9,6 +9,7 @@ import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.assertThrows
 
 class HostInstallationLifecycleContractTest {
     private val json = Json { encodeDefaults = true }
@@ -23,27 +24,18 @@ class HostInstallationLifecycleContractTest {
         )
 
     @Test
-    fun `old refresh capability decodes without granting prepared refresh`() {
-        val encoded = json.encodeToString(IdeLifecycleCapabilityName.HOST_RELOAD_REFRESH)
-        assertEquals("HOST_RELOAD_REFRESH", json.parseToJsonElement(encoded).jsonPrimitive.content)
-        assertEquals(
-            IdeLifecycleCapabilityName.HOST_RELOAD_REFRESH,
-            json.decodeFromString<IdeLifecycleCapabilityName>(encoded),
-        )
-        assertEquals(
-            "HOST_PREPARED_RELOAD_REFRESH",
-            json
-                .parseToJsonElement(json.encodeToString(IdeLifecycleCapabilityName.HOST_PREPARED_RELOAD_REFRESH))
-                .jsonPrimitive
-                .content,
-        )
-        assertEquals(
-            "HOST_REFRESH_MARKER_UNSIGNALED",
-            json
-                .parseToJsonElement(json.encodeToString(IdeLifecycleFailure.HOST_REFRESH_MARKER_UNSIGNALED))
-                .jsonPrimitive
-                .content,
-        )
+    fun `removed reload capabilities and commands reject at decoding`() {
+        for (capability in listOf("HOST_RELOAD_REFRESH", "HOST_PREPARED_RELOAD_REFRESH")) {
+            assertThrows<SerializationException> {
+                json.decodeFromString<IdeLifecycleCapabilityName>(json.encodeToString(capability))
+            }
+        }
+        for (type in listOf("settle_host_for_reload", "refresh_host_bundle")) {
+            val retired = json.encodeToString(RetiredHostCommand(type, "host", "update"))
+            assertThrows<SerializationException> { json.decodeFromString<IdeLifecycleCommand>(retired) }
+        }
+        val retired = json.encodeToString(RetiredHostCommand("host_refresh_requested", "host", "update"))
+        assertThrows<SerializationException> { json.decodeFromString<IdeLifecycleResult>(retired) }
     }
 
     @Test
@@ -51,10 +43,8 @@ class HostInstallationLifecycleContractTest {
         val commands =
             listOf(
                 "settle_host" to IdeLifecycleCommand.SettleHost("host", "update"),
-                "settle_host_for_reload" to IdeLifecycleCommand.SettleHostForReload("host", "update"),
                 "resume_host" to IdeLifecycleCommand.ResumeHost("host", "update"),
                 "stop_host" to IdeLifecycleCommand.StopHost("host", "update"),
-                "refresh_host_bundle" to IdeLifecycleCommand.RefreshHostBundle("host", "update"),
             )
         for ((name, command) in commands) {
             val encoded = json.parseToJsonElement(json.encodeToString<IdeLifecycleCommand>(command)).jsonObject
@@ -79,7 +69,6 @@ class HostInstallationLifecycleContractTest {
             listOf(
                 "host_settled" to IdeLifecycleResult.HostSettled("host", "update", identity),
                 "host_stop_requested" to IdeLifecycleResult.HostStopRequested("host", "update", identity),
-                "host_refresh_requested" to IdeLifecycleResult.HostRefreshRequested("host", "update", identity),
             )) {
             val encoded = json.parseToJsonElement(json.encodeToString<IdeLifecycleResult>(result)).jsonObject
             assertEquals(type, encoded.getValue("type").jsonPrimitive.content)
@@ -105,3 +94,7 @@ class HostInstallationLifecycleContractTest {
         assertThrows(SerializationException::class.java) { json.decodeFromString<IdeHostRuntimeIdentity>(invalid) }
     }
 }
+
+/** The wire shape the removed reload commands and refresh acknowledgment used. */
+@kotlinx.serialization.Serializable
+private data class RetiredHostCommand(val type: String, val host: String, val transaction: String)

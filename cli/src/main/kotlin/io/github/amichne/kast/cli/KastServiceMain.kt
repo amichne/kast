@@ -26,12 +26,6 @@ import kotlinx.serialization.json.JsonObject
 object KastServiceMain {
     @JvmStatic
     fun main(arguments: Array<String>) {
-        if (arguments.firstOrNull() == "managed-control")
-            exitProcess(
-                io.github.amichne.kast.cli.installation.ManagedControlCli.run(arguments.drop(1), System.getenv())
-            )
-        if (arguments.firstOrNull() == "managed-host")
-            exitProcess(io.github.amichne.kast.cli.installation.ManagedHostCli.run(arguments.drop(1), System.getenv()))
         if (arguments.toList() == listOf("host-admission")) {
             when (val observed = observeConfiguredHosts(Path.of(System.getProperty("user.home")), System.getenv())) {
                 is io.github.amichne.kast.appserver.ide.HostedServicesObservation.Admitted -> exitProcess(0)

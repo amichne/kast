@@ -84,7 +84,7 @@ class ManagedHeadlessShutdownTest {
                 "/private/profile",
                 {
                     requests += it
-                    ManagedHostResponse.Rejected(ManagedHostFailure.PROFILE_MISMATCH)
+                    ManagedHostResponse.Rejected(ManagedHostFailure.HOST_IDENTITY_MISMATCH)
                 },
                 { error("Unowned processes must not be waited on") },
             )

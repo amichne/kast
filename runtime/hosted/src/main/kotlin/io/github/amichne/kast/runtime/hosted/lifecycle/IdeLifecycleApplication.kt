@@ -64,15 +64,12 @@ class IdeLifecycleApplication(private val scope: CoroutineScope) : Disposable {
     private val home = Path.of(PathManager.getHomePath()).toRealPath()
     internal val advertisement = captureApplicationAdvertisement(home, state.host.toString())
     private val runtimeIdentity = advertisement.runtimeIdentity
-    private val hostRefresh = HostBundleRefreshAdapter(this)
     private val settlement =
         HostedApplicationSettlement(
             admission,
             runtimeIdentity,
             native::settlement,
             native::hasActivePreparation,
-            prepareRefresh = { hostRefresh.admit(runtimeIdentity) },
-            observe = ::recordHostRefresh,
         )
     private val logger = Logger.getInstance(IdeLifecycleApplication::class.java)
 
@@ -207,8 +204,6 @@ class IdeLifecycleApplication(private val scope: CoroutineScope) : Disposable {
             connection.dispatch(command)
             if (!lifecycleHostModeSupported()) {
                 LifecycleReply.immediate(IdeLifecycleResult.Blocked(IdeLifecycleFailure.UNSUPPORTED_HOST_MODE))
-            } else if (command is IdeLifecycleCommand.RefreshHostBundle) {
-                applicationHostRefreshReply(command, settlement, scope)
             } else {
                 val result = submit(command)
                 if (result is IdeLifecycleResult.HostStopRequested) exit.stopReply(result)
@@ -218,9 +213,8 @@ class IdeLifecycleApplication(private val scope: CoroutineScope) : Disposable {
 
     private fun submit(received: IdeLifecycleCommand): IdeLifecycleResult {
         if (received is IdeLifecycleCommand.Inspect)
-            return inspectApplicationHost(runtimeIdentity, native.inspectProjects(), hostRefresh)
+            return inspectApplicationHost(runtimeIdentity, native.inspectProjects())
         if (received is IdeLifecycleCommand.SettleHost) return settlement.settle(received)
-        if (received is IdeLifecycleCommand.SettleHostForReload) return settlement.settleForReload(received)
         if (received is IdeLifecycleCommand.ResumeHost) return exit.resumed(settlement.resume(received))
         if (received is IdeLifecycleCommand.StopHost) return settlement.stop(received)
         if (received is IdeLifecycleCommand.Status) {

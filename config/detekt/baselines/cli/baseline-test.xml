@@ -8,7 +8,6 @@
     <ID>ImplicitDefaultLocale:ConfigurationInspectionTest.kt:ConfigurationInspectionTest$"%02x".format(it)</ID>
     <ID>ImplicitDefaultLocale:ExistingIdeCliTest.kt:ExistingIdeCliTest$"%02x".format(it)</ID>
     <ID>ImplicitDefaultLocale:ExistingIdeSocketTest.kt:ExistingIdeSocketTest$"%02x".format(it)</ID>
-    <ID>ImplicitDefaultLocale:InstallationWorkflowTest.kt:InstallationWorkflowTest$"%02x".format(byte)</ID>
     <ID>InvalidPackageDeclaration:CliNativeTransportTest.kt:package io.github.amichne.kast.cli</ID>
     <ID>InvalidPackageDeclaration:CoordinatedRootRuntimeDemanderTest.kt:package io.github.amichne.kast.cli</ID>
     <ID>InvalidPackageDeclaration:IndexSeedActivityTest.kt:package io.github.amichne.kast.cli</ID>
@@ -46,7 +45,6 @@
     <ID>LongMethod:ExistingIdeSocketTest.kt:ExistingIdeSocketTest$@Test fun `native framed client accepts the exact host and rejects oversized and invalid UTF8 responses`</ID>
     <ID>LongMethod:GeneratedCliProjectionTest.kt:GeneratedCliProjectionTest$@Test fun `qualified read outputs retain structured proof instead of one reason label`</ID>
     <ID>LongMethod:GeneratedCliProjectionTest.kt:GeneratedCliProjectionTest$@Test fun `traversal graph normalizes repeated nodes and retains compact proof references`</ID>
-    <ID>LongMethod:InstallationWorkflowTest.kt:InstallationWorkflowTest$private fun releaseRequest: InstallationRequest</ID>
     <ID>LongMethod:InstalledServerProjectionTest.kt:InstalledServerProjectionTest$@Test fun `installed schema owns broker tool shapes and exact whole document cli invocations`</ID>
     <ID>LongMethod:InstalledSidecarRuntimeDemanderTest.kt:InstalledSidecarRuntimeDemanderTest$private fun demanderFixture: DemanderFixture</ID>
     <ID>LongMethod:LiveReadOutputSchemaTest.kt:LiveReadOutputSchemaTest$private fun qualifiedDocuments: List&lt;Pair&lt;CanonicalOperation, JsonObject>></ID>
@@ -60,7 +58,6 @@
     <ID>LongMethod:SidecarCacheLifecycleTest.kt:SidecarCacheLifecycleTest$@Test fun `project-specific seed requires current identity proof after restart`</ID>
     <ID>LongMethod:SidecarStartupProtocolTest.kt:SidecarStartupProtocolTest$@Test fun `launch command retains every installed runtime and private cache proof`</ID>
     <ID>LongMethod:TopologyBuildCliProjectorTest.kt:TopologyBuildCliProjectorTest$@Test fun `coverage rejection retains all exact mismatch evidence`</ID>
-    <ID>LongParameterList:InstallationWorkflowTest.kt:InstallationWorkflowTest$private fun releaseRequest: InstallationRequest</ID>
     <ID>LongParameterList:SavedConfigurationAdmissionTest.kt:SavedConfigurationAdmissionTest$private fun launch: ProcessEvidence</ID>
     <ID>MaxLineLength:CliBoundaryContractTest.kt:CliBoundaryContractTest$"""{"anchor":{"type":"symbol","selector":"$selector"},"region":{"type":"anchor"},"entities":{"type":"none"},"text":{"type":"complete"},"entityLimit":250,"textByteLimit":65536,"page":{"type":"first"}}"""</ID>
     <ID>MaxLineLength:CliBoundaryContractTest.kt:CliBoundaryContractTest$"""{"exactSelector":"selector","relation":"callees","maximumDepth":2,"maximumResults":10,"position":{"type":"resume","continuation":"${traversalContinuationToken()}"}}"""</ID>
@@ -72,7 +69,6 @@
     <ID>MaxLineLength:ExistingIdeSemanticReadTest.kt:ExistingIdeSemanticReadTest$"""{"exactSelector":"exact:v2:e30:44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a","relation":"references","limit":10}"""</ID>
     <ID>MaxLineLength:ExistingIdeSemanticReadTest.kt:ExistingIdeSemanticReadTest$"""{"exactSelector":"exact:v2:e30:44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a","relation":"references","maximumDepth":1,"maximumResults":10}"""</ID>
     <ID>MaxLineLength:ExistingIdeSemanticReadTest.kt:ExistingIdeSemanticReadTest$"""{"target":{"type":"exact","selector":"exact:v2:e30:44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a"}}"""</ID>
-    <ID>MaxLineLength:InstallationWorkflowTest.kt:InstallationWorkflowTest$"""{"schemaVersion":1,"runtimeId":"sha256:$runtimeIdentity","productVersion":"$version","platform":"macos","architecture":"aarch64","ideaBuild":"261.1","kotlinPluginBuild":"2.4.10","kastPluginSha256":"$pluginDigest","wireSchemaId":"kast-wire-v1","archive":{"fileName":"${runtime.fileName}","url":"https://example.invalid/${runtime.fileName}","sha256":"$archiveDigest","bytes":${Files.size(runtime)}},"layout":{"executable":"kast-indexer","requiredEntries":["kast-indexer"],"executableEntries":["kast-indexer"]}}"""</ID>
     <ID>MaxLineLength:InstalledServerProjectionTest.kt:InstalledServerProjectionTest$"""{"source":{"type":"all_declarations","declaration_kinds":null,"scope":null},"steps":[{"type":"check_diagnostics"}],"return_fields":null}"""</ID>
     <ID>MaxLineLength:InstalledServerProjectionTest.kt:InstalledServerProjectionTest$"""{"source":{"type":"all_declarations","declaration_kinds":null,"scope":null},"steps":null,"return_fields":[]}"""</ID>
     <ID>MaxLineLength:InstalledServerProjectionTest.kt:InstalledServerProjectionTest$"""{"source":{"type":"search_declarations","declaration_name":"OrderService","name_match":null,"declaration_kinds":null,"scope":null},"steps":null,"return_fields":null}"""</ID>
@@ -94,7 +90,6 @@
     <ID>MaxLineLength:SourceReadCliContractTest.kt:SourceReadCliContractTest$"""{"anchor":{"type":"candidate","selector":"$token"},"region":{"type":"anchor"},"entities":{"type":"none"},"text":{"type":"window","beforeLines":-1,"afterLines":0},"entityLimit":10,"textByteLimit":4096,"page":{"type":"first"}}"""</ID>
     <ID>MaxLineLength:SourceReadCliContractTest.kt:SourceReadCliContractTest$"""{"anchor":{"type":"candidate","selector":"unknown:selector"},"region":{"type":"anchor"},"entities":{"type":"none"},"text":{"type":"complete"},"entityLimit":10,"textByteLimit":4096,"page":{"type":"first"}}"""</ID>
     <ID>MultilineLambdaItParameter:ExistingIdeCliTest.kt:ExistingIdeCliTest${ assertEquals(root.path, it) CanonicalRootDiscovery.Discovered(root) }</ID>
-    <ID>MultilineLambdaItParameter:InstallationWorkflowTest.kt:InstallationWorkflowTest${ val hash = MessageDigest.getInstance("SHA-256") val buffer = ByteArray(DEFAULT_BUFFER_SIZE) while (true) { val count = it.read(buffer) if (count &lt; 0) break hash.update(buffer, 0, count) } hash.digest().joinToString("") { byte -> "%02x".format(byte) } }</ID>
     <ID>MultilineLambdaItParameter:InstalledServerProjectionTest.kt:InstalledServerProjectionTest${ it.getValue("approvalPolicy").jsonPrimitive.content == HostedApprovalPolicy.EXPLICIT.name.lowercase() }</ID>
     <ID>NamedArguments:CliBoundaryDocumentsTest.kt:CliBoundaryDocumentsTest$lifecycleComplete( CliLifecycleCommand.STOP, endpoint, RuntimeLifecycleState.STOPPED, setOf(RuntimePersistentState, RuntimeEndpointMarker.SOCKET), )</ID>
     <ID>NamedArguments:CoordinatedRootRuntimeDemanderTest.kt:CoordinatedRootRuntimeDemanderTest$admit( "installation", "00000000-0000-0000-0000-000000000001", "00000000-0000-0000-0000-000000000002", "a".repeat(64), 1, )</ID>
@@ -148,10 +143,6 @@
     <ID>NamedArguments:IndexSeedProtocolTest.kt:IndexSeedProtocolTest$create( cache, source, IndexSeedConsent.GRANTED, IndexSeedFilesystem.UNSUPPORTED, )</ID>
     <ID>NamedArguments:IndexSeedProtocolTest.kt:IndexSeedProtocolTest$derive( root, runtime, semanticRuntimeId(), GradleImportEnvironmentIdentity.digest("changed"), )</ID>
     <ID>NamedArguments:IndexSeedProtocolTest.kt:IndexSeedProtocolTest$derive( root, runtime, semanticRuntimeId(), GradleImportEnvironmentIdentity.digest("first"), )</ID>
-    <ID>NamedArguments:InstallationWorkflowTest.kt:InstallationWorkflowTest$executeInstallationChild( InstallationChildStage.PRIOR_RETIREMENT, listOf(executable), mapOf("PRIVATE_SETTING" to "secret-input"), observations::add, )</ID>
-    <ID>NamedArguments:InstallationWorkflowTest.kt:InstallationWorkflowTest$releaseRequest( root, installation, root.resolve("commands"), Files.createDirectory(root.resolve("home")), Files.createDirectory(root.resolve("codex-home")), "1.2.3", )</ID>
-    <ID>NamedArguments:InstallationWorkflowTest.kt:InstallationWorkflowTest$releaseRequest(root, installation, commands, home, codexHome, "1.2.3")</ID>
-    <ID>NamedArguments:InstallationWorkflowTest.kt:InstallationWorkflowTest$releaseRequest(root, installation, commands, home, codexHome, "1.2.4")</ID>
     <ID>NamedArguments:InstalledSidecarRuntimeDemanderTest.kt:InstalledSidecarRuntimeDemanderTest$DemanderFixture( demander, root, ideaRuntime, cacheRoot, payload.executable, endpoint, selections, intents, launches, endpoints, )</ID>
     <ID>NamedArguments:InstalledSidecarRuntimeDemanderTest.kt:InstalledSidecarRuntimeDemanderTest$IdeRuntimeIdentityCandidate( pair.ideaBuild, pair.kotlinPluginBuild, "jbr-25.0.3+9-b508.16-aarch64", "sha256:${"a".repeat(64)}", )</ID>
     <ID>NamedArguments:InstalledSidecarRuntimeDemanderTest.kt:InstalledSidecarRuntimeDemanderTest$RootSidecarCacheStatus( launch.cache.identity.key, endpoint.runtimeId, launch.cache.root, launch.cacheState, ideaRuntime.home, ideaRuntime.identity.supportedPair.ideaBuild, ideaRuntime.identity.supportedPair.kotlinPluginBuild, ideaRuntime.identity.jbrIdentity, ideaRuntime.identity.kastPayloadDigest, )</ID>
