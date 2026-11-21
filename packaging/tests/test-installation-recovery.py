@@ -8,6 +8,7 @@ import hashlib
 import importlib.util
 import plistlib
 import shutil
+import socket
 from unittest.mock import patch
 import os
 import subprocess
@@ -940,6 +941,37 @@ class ManagedControlRecoveryTest(unittest.TestCase):
             (PayloadFileFixture('bin/kast-complete', 'sha256:' + hashlib.sha256(executable.read_bytes()).hexdigest(), 420),),
             semanticVersion=version, payloadIdentity='sha256:' + control_digest, controlSha256='sha256:' + control_digest)
         (path / 'installation.json').write_text(json.dumps(asdict(manifest)))
+
+    def bind_socket(self, directory):
+        """A relative bind keeps the Unix socket path within the platform sun_path limit."""
+        listener = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+        self.addCleanup(listener.close)
+        working = Path.cwd()
+        os.chdir(directory)
+        try:
+            listener.bind('c.sock')
+        finally:
+            os.chdir(working)
+
+    def test_live_coordinator_socket_is_admitted_only_at_its_exact_path_before_retirement(self):
+        r = self.recovery
+        run = self.root / 'state/run'
+        run.mkdir(parents=True)
+        (run / 'c.sock.lock').write_bytes(b'')
+        self.bind_socket(run)
+        with self.assertRaises(r.Rejected) as retired:
+            r.managed_tree(self.root)
+        self.assertEqual(r.Failure.OWNERSHIP, retired.exception.failure)
+        live = r.managed_tree(self.root, live_coordinator=True)
+        self.assertEqual(live, r.managed_tree(self.root, live_coordinator=True))
+        (run / 'c.sock').unlink()
+        self.assertNotEqual(live, r.managed_tree(self.root))
+        foreign = self.root / 'state/broker'
+        foreign.mkdir()
+        self.bind_socket(foreign)
+        with self.assertRaises(r.Rejected) as misplaced:
+            r.managed_tree(self.root, live_coordinator=True)
+        self.assertEqual(r.Failure.OWNERSHIP, misplaced.exception.failure)
 
     def test_installed_inventory_limit_retains_typed_failure_and_bounded_evidence(self):
         r = self.recovery

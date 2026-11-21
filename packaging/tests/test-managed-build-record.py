@@ -8,6 +8,7 @@ import json
 import os
 import shlex
 import shutil
+import socket
 import stat
 import subprocess
 import sys
@@ -1167,6 +1168,15 @@ class ProductActivationTest(unittest.TestCase):
         (run / "one-shot").mkdir(parents=True, mode=0o700, exist_ok=True)
         _ = (run / "c.sock.lock").write_bytes(b"")
         (run / "c.sock.lock").chmod(0o600)
+        # Bind the coordinator's real Unix socket; a relative bind avoids the sun_path limit.
+        listener = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+        self.addCleanup(listener.close)
+        working = Path.cwd()
+        os.chdir(run)
+        try:
+            listener.bind("c.sock")
+        finally:
+            os.chdir(working)
         return profile, run
 
     def test_live_semantic_coordinator_state_is_retired_before_replacement(self) -> None:
@@ -1182,6 +1192,7 @@ class ProductActivationTest(unittest.TestCase):
             completed = self.retire(arguments, environment, timeout)
             # The prior Control's managed-retire removes the coordinator profile and socket state.
             shutil.rmtree(profile.parent)
+            (run / "c.sock").unlink()
             (run / "c.sock.lock").unlink()
             return completed
 
