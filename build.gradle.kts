@@ -404,7 +404,7 @@ val managedInstallationTest = tasks.register<VerificationReportTask>("managedIns
     arguments.set(listOf("run", "--locked", "--project", "packaging", "pytest",
         "packaging/tests/test-managed-installation.py", "packaging/tests/test-managed-release.py",
         "packaging/tests/test-managed-build-record.py", "packaging/tests/test-managed-bootstrap.py",
-        "packaging/tests/test-managed-headless.py",
+        "packaging/tests/test-managed-headless.py", "packaging/tests/test-managed-invocation-state.py",
         "packaging/tests/test_composition_graph.py", "packaging/tests/test_composition_index.py",
         "packaging/tests/test_composition_descriptors.py", "packaging/tests/test_composition_host.py",
         "packaging/tests/test_composition_bundle.py", "packaging/tests/test_composition_release.py",
@@ -433,8 +433,7 @@ tasks.named("check") { dependsOn(managedInstallationTest, developerPublicationTe
 val testCheckoutInstaller = tasks.register<VerificationReportTask>("testCheckoutInstaller") {
     group = "verification"
     description = "Verifies retired entrypoints and canonical product admission boundaries."
-    inputs.files("install.sh", "packaging/internal/bootstrap/generate_bootstrap.py",
-        "packaging/internal/installation/host-installation.py", "packaging/tests/test-install-checkout.py")
+    inputs.files("install.sh", "packaging/internal/bootstrap/generate_bootstrap.py", "packaging/tests/test-install-checkout.py")
     executableFile.set(validationExecutable("python3"))
     arguments.set(listOf(layout.projectDirectory.file("packaging/tests/test-install-checkout.py").asFile.absolutePath))
 }

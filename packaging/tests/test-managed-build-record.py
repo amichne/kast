@@ -1183,6 +1183,7 @@ class ProductActivationTest(unittest.TestCase):
             {
                 "outcome": "REJECTED",
                 "reason": "UNSETTLED_INVOCATIONS",
+                "entries": ["one-shot"],
                 "component": "kast-invocation-state",
             },
             [json.loads(line) for line in observations.getvalue().splitlines()],

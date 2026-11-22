@@ -17,14 +17,12 @@ code_sources:
   - path: packaging/managed_headless.py
   - path: packaging/pyproject.toml
   - path: packaging/internal/query/generate-public-query.py
-  - path: packaging/internal/installation/host-installation.py
   - path: packaging/internal/bootstrap/generate_bootstrap.py
   - path: packaging/internal/product/local_product_install.py
   - path: packaging/internal/installation/installation-lifecycle.py
   - path: packaging/internal/installation/installation-recovery.py
   - path: packaging/internal/verification/run-installed-product.py
   - path: packaging/internal/verification/run-portable-tests.py
-  - path: packaging/tests/test-host-installation.py
   - path: packaging/internal/bootstrap/install-candidate.sh
   - path: packaging/internal/installation/managed_installation.py
   - path: packaging/internal/installation/managed_release.py
@@ -47,7 +45,6 @@ Owns installer adapters, isolated runtime archives, offline lifecycle helpers, c
 
 - [generate_bootstrap.py](internal/bootstrap/generate_bootstrap.py) - canonical bootstrap and retained support membership.
 - [local_product_install.py](internal/product/local_product_install.py) - contributor assembly, qualification, and canonical product activation.
-- [host-installation.py](internal/installation/host-installation.py) - Host plugin installation and receipts.
 - [managed_headless.py](managed_headless.py) - archive assembly without product installation.
 - [composed_host.py](internal/composition/composed_host.py) - module-based assembly from a pinned donor inventory.
 - [composed_bundle.py](composed_bundle.py) - authenticated product input archives.
@@ -78,7 +75,6 @@ Owns installer adapters, isolated runtime archives, offline lifecycle helpers, c
 - Read the [composition review](../docs/reviews/composed-analysis-host.md) for donor inputs, assembly commands, and native evidence limits.
 - The Gradle task `installedProductTest` needs complete candidate and different qualified baseline products, pinned interpreter inputs, and new evidence paths.
 - Native reset scripts need the disposable installation setup stated in their own arguments and documentation.
-- [test-host-installation.py](tests/test-host-installation.py) - Host target and receipt protection.
 - [test-installer-entrypoint.py](tests/test-installer-entrypoint.py) - canonical bootstrap ingress and complete-product acceptance input rejection.
 - For hook envelopes and workspace preparation commands, run `mise exec -- uv run --locked --project packaging pytest packaging/tests/test-agent-onboarding.py`.
 - These cases examine configured commands and host envelopes. They do not establish live IntelliJ preparation.
@@ -100,7 +96,6 @@ Owns installer adapters, isolated runtime archives, offline lifecycle helpers, c
 - Source entrypoints add only their named family paths. Isolated product probes use the delivered flat coordinator modules without a source fallback.
 - Keep source moves in the generator's explicit mapping. Unknown source names must fail rather than select a directory by convention.
 
-- Managed Host replacement uses `prepare_managed`, `commit_managed`, `rollback_managed`, and `seal_managed` from `host-installation.py`.
 - `prepare_managed` stages and validates complete bytes before publishing its Host record paths.
 - A synchronous preparation failure removes only re-admitted artifacts from that call. Ambiguous changes keep recovery evidence.
 - The installation coordinator stores the returned Host record in its existing replacement receipt and owns its lock.

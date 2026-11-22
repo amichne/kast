@@ -74,17 +74,11 @@ class PortableSkipInventoryTest(unittest.TestCase):
     def test_darwin_x86_64_permits_no_skips(self) -> None:
         self.assertEqual({}, self.admitted_skips("Darwin", "x86_64"))
 
-    def test_linux_arm64_permits_both_exact_platform_counts(self) -> None:
-        self.assertEqual(
-            {"test-host-installation.py": 2},
-            self.admitted_skips("Linux", "arm64"),
-        )
+    def test_linux_arm64_permits_no_skips(self) -> None:
+        self.assertEqual({}, self.admitted_skips("Linux", "arm64"))
 
-    def test_linux_x86_64_permits_both_exact_platform_counts(self) -> None:
-        self.assertEqual(
-            {"test-host-installation.py": 2},
-            self.admitted_skips("Linux", "x86_64"),
-        )
+    def test_linux_x86_64_permits_no_skips(self) -> None:
+        self.assertEqual({}, self.admitted_skips("Linux", "x86_64"))
 
 
 if __name__ == "__main__":

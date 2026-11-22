@@ -42,7 +42,6 @@ class BootstrapImportTest(unittest.TestCase):
                 "runtime_base.py",
                 "managed_update_contract.py",
                 "managed_update_journal.py",
-                "host-installation.py",
                 "installation-recovery.py",
                 "installation-lifecycle.py",
                 "host_directory_exchange.py",

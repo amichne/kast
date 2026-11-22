@@ -51,7 +51,6 @@ class BootstrapTest(unittest.TestCase):
             "managed_update_journal.py": (
                 "packaging/internal/installation/managed_update_journal.py"
             ),
-            "host-installation.py": "packaging/internal/installation/host-installation.py",
             "installation-recovery.py": "packaging/internal/installation/installation-recovery.py",
             "installation-lifecycle.py": (
                 "packaging/internal/installation/installation-lifecycle.py"
@@ -95,7 +94,6 @@ class BootstrapTest(unittest.TestCase):
             "product_state_removal.py",
             "managed_update_contract.py",
             "managed_update_journal.py",
-            "host-installation.py",
             "installation-recovery.py",
             "installation-lifecycle.py",
             "host_directory_exchange.py",
