@@ -248,9 +248,8 @@ def code_sources(
                 continue
             symbols = raw_symbols
         if not source_path.is_file():
-            (issues if resolution is None else resolution).append(
-                f"code_sources path does not exist: {normalized}"
-            )
+            # Blocking in every mode: a source move must update or retire its citation (#1316).
+            issues.append(f"code_sources path does not exist: {normalized}")
             continue
         if symbols and kotlin is not None:
             try:

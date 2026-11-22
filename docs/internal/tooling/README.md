@@ -129,6 +129,7 @@ Fetch `origin/main` with full history before source qualification if the local c
 The report preserves `failed`, `stale`, `unresolved`, `not-assessed`, and `mismatched` obligations separately.
 
 Routine source checks use `code_kb.py check-source-integrity --strict` to separate malformed references from current declaration drift.
+A missing `code_sources` path is a malformed reference in every mode.
 The legacy `check --strict` command still needs current declarations.
 `check-documentation-inputs` alone does not establish either result.
 
@@ -138,6 +139,8 @@ Changed canonical explanations still need matching Claims and generated output.
 Current source assessments remain outside tracked projection bytes.
 `okf_public.py --check --current` examines the candidate against current source for publication admission.
 Generation does not promote or qualify a snapshot.
+Both `--check` and `--write` reject `OKF_REPOSITORY_LINK` before any write when a page under `docs/public` links to an untracked repository path.
+The failure names the page and the missing `target`.
 
 ```shell
 mise exec -- uv run --locked --project docs/internal/tooling python docs/internal/tooling/reader_contracts.py --report build/reports/documentation/reader-contracts.json

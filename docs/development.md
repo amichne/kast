@@ -672,6 +672,16 @@ Declaration presence proves syntax, not compiler resolution or native execution.
 Full publication qualification needs a completed current bundle and input-bound prose and rendered receipts.
 An incomplete maintenance run keeps the accepted public snapshot unchanged.
 
+`verifyKnowledgeBase` rejects a `code_sources` path that no longer exists.
+A change that moves or removes a cited source must update or retire that citation in the same change.
+`code_sources` is repository-owned metadata, so that change can correct it directly.
+Two route findings stay advisory: a missing `sources` resource, and a link to a cited or previously recorded source file that no longer exists.
+OpenWiki derives `sources` from Claim evidence, and generated pages are not edited by hand.
+Those findings therefore appear in the assessment and request a native refresh.
+`verifyPublicKnowledge` rejects any page under `docs/public` that links to a repository path that the main branch does not serve.
+A `blob` link must name a tracked file, and a `tree` link must name a directory of tracked files.
+The check reads the pages as they will be published, so a projected explanation cannot introduce a broken link.
+
 The GitHub workflow uses manual dispatch and one maintenance concurrency group.
 It needs its own API credential and selects its configured native model.
 `--readiness` reports credential presence without secret values. It does not prove authentication or model access.
