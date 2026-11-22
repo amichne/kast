@@ -281,7 +281,9 @@ def preflight(
         if os.path.lexists(source):
             if journal.Identity.observe(source) != item.identity:
                 raise ValueError("immutable entry replaced")
-            store.verify(source, evidence, partial=partial)
+            # prepare() proved this entry's content once when it captured the evidence; the
+            # checks before deletion prove its identity and exact published structure.
+            store.verify(source, evidence, partial=partial, proof=store.Proof.STRUCTURE)
         elif not partial:
             raise ValueError("immutable entry disappeared")
         result.append((item, evidence))
