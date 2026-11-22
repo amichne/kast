@@ -2,6 +2,7 @@ import support.consumeProjectOutput
 import org.gradle.process.CommandLineArgumentProvider
 import org.gradle.api.tasks.testing.Test
 import support.tasks.idea.selectedIdeaProductInfo
+import support.tasks.nativefixtures.SharedNativeFixtureIdea
 import conventions.registerJsonContractVerification
 import conventions.jsoncontracts.JsonContractScanRequest
 import org.gradle.api.tasks.bundling.Compression
@@ -420,6 +421,7 @@ val developerPublicationTest = tasks.register<VerificationReportTask>("developer
     executableFile.set(validationExecutable("uv"))
     arguments.set(listOf("run", "--locked", "--project", ".github/scripts/release", "pytest",
         ".github/scripts/release/test_build_candidate.py",
+        ".github/scripts/release/test_candidate_admission.py",
         ".github/scripts/release/test_developer_catalog.py",
         ".github/scripts/release/test_product_candidate.py",
         ".github/scripts/release/test_product_producer.py",
@@ -860,15 +862,14 @@ val semanticInputGate = tasks.register<Exec>("verifyKotlinSemanticInputs") {
         "--reviewed-carriers", semanticCoverageDirectory.file("reviewed-fixture-carriers.tsv"))
 }
 
+val nativeFixtureIdea = SharedNativeFixtureIdea.select(project, libs.versions.idea.platform.build.get())
 // Inventory accounting and successful traces remain separate admission obligations.
 val semanticInventoryGate = tasks.register<Exec>("verifyKotlinSemanticInventory") {
     group = "verification"
     description = "Examines the pinned FIR population and classified evidence without claiming trace completion."
-    dependsOn(":relation:intellij:extractNativeTestIdea", ":runtime:hosted:semanticCoverageFixtureTest")
+    dependsOn(nativeFixtureIdea.contents, ":runtime:hosted:semanticCoverageFixtureTest")
     workingDir(semanticCoverageDirectory.dir("tooling"))
-    val fixtureHome = providers.gradleProperty("nativeFixtureIdeaHome")
-        .map { file(it) }.getOrElse(layout.projectDirectory.dir("relation/intellij/build/native-test/idea").asFile)
-    val pluginRoot = fixtureHome.resolve("plugins/Kotlin/lib")
+    val pluginRoot = nativeFixtureIdea.home.get().asFile.resolve("plugins/Kotlin/lib")
     commandLine("uv", "run", "--locked", "--script", "inventory.py", "audit", "--require-element-correspondence",
         "--plugin-jar", pluginRoot.resolve("kotlin-plugin.jar"),
         "--compiler-common-jar", pluginRoot.resolve("kotlinc.kotlin-compiler-common.jar"),

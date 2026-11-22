@@ -23,8 +23,16 @@ An already extracted distribution of exactly the pinned build can be used read-o
 ./gradlew :relation:intellij:nativeFixtureTest -PnativeFixtureIdeaHome=/path/to/pinned/distribution
 ```
 
-The home must retain `product-info.json`, Platform libraries and bundled plugin
-layout. It is not a daily IDE project or an installed Kast plugin. Java, Kotlin and
+The home must keep `product-info.json`, Platform libraries and bundled plugin
+layout. Each consuming project's `admitNativeFixtureIdea` task checks the home
+before any compile, fixture or test task reads it. The build fails if the
+directory is missing, if `product-info.json` is missing or unreadable, or if its
+`buildNumber` differs from `idea-platform-build`. The failure names the property,
+the supplied path and the observed problem. To recover, remove the override or
+point it at the pinned distribution. A persistent override in
+`~/.gradle/gradle.properties` is subject to the same check, so an outdated home
+fails at once instead of yielding an empty classpath.
+The home is not a daily IDE project or an installed Kast plugin. Java, Kotlin and
 TOML libraries are included; only Java, Kotlin and TOML plugins are enabled.
 Kotlin's enabled TOML reference-search extension
 requires the latter when using the core classloader. Official transitive test

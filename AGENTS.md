@@ -65,6 +65,7 @@ This guide owns repository rules and routes source investigation.
 
 - Build and tests: `./gradlew build`.
 - Scoped edit loop: `mise exec -- ./gradlew :distribution:cli:scopedCheck --continue`. Select each module with its fully qualified task path.
+- Local CI: `mise run ci:pr` runs the pull-request checks with the exact commands CI uses. Every check workflow step is a `mise run` task; see `.github/scripts/ci/README.md#run-a-ci-check-locally`. A CI failure names its task, which is the local reproduction command.
 - Cheap local checks: `mise exec -- uv run --locked --script .github/scripts/ci/fast_checks.py`. This command accepts an uncommitted tree.
 - Scoped prose: add `verifyDocumentationGlossary verifyScopedProse -PkastProsePaths=docs/development.md`.
 - Complete source gate: `mise exec -- python3 .github/scripts/ci/source_validation.py`. This command needs a clean committed tree and uses stable version `0.0.0`.

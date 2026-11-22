@@ -27,7 +27,7 @@ default = true
 pythonVersion = "3.12"
 typeCheckingMode = "strict"
 extraPaths = [".."]
-include = ["../navigation.py", "../tests/test_navigation.py", "../../../bin/kast-repo", "claim_evidence.py", "test_claim_evidence.py", "knowledge_check.py", "test_knowledge_check.py", "knowledge_refresh.py", "test_knowledge_refresh.py", "glossary_json.py", "check_glossary.py", "markdown_parser.py", "okf_public.py", "reader_contracts.py", "test_reader_contracts.py", "prose_assessment.py", "test_prose_assessment.py", "publication.py", "test_publication.py", "test_okf_public.py", "test_glossary.py", "test_markdown_parser.py", "rendered/run.py", "rendered/test_run.py", "rendered/schema_scope.py", "rendered/test_schema_scope.py", "callables/build.py", "callables/test_build.py"]
+include = ["../navigation.py", "../tests/test_navigation.py", "../../../bin/kast-repo", "claim_evidence.py", "test_claim_evidence.py", "knowledge_check.py", "test_knowledge_check.py", "knowledge_refresh.py", "test_knowledge_refresh.py", "glossary_json.py", "check_glossary.py", "markdown_parser.py", "okf_public.py", "reader_contracts.py", "test_reader_contracts.py", "prose_assessment.py", "test_prose_assessment.py", "publication.py", "test_publication.py", "test_okf_public.py", "test_glossary.py", "test_markdown_parser.py", "rendered/run.py", "rendered/test_run.py", "rendered/schema_scope.py", "rendered/test_schema_scope.py", "rendered/reader_path.py", "rendered/test_reader_path.py", "callables/build.py", "callables/test_build.py"]
 reportMatchNotExhaustive = "error"
 reportUnnecessaryTypeIgnoreComment = "error"
 

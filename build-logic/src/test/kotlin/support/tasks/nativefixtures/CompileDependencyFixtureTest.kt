@@ -67,6 +67,25 @@ class CompileDependencyFixtureTest {
         assertFalse(Files.exists(root.resolve("build/fixture/effects.jar")))
         assertFalse(Files.exists(root.resolve("build/tmp/compileFixture/effects.jar")))
         assertTrue(failed.tasks.none { it.path == ":first" || it.path == ":second" })
+        val entries = System.getProperty("kast.jsonContractParserClasspath").split(File.pathSeparator).size + 1
+        assertTrue(entries > 10) { "the bounded summary needs more than ten compiler entries, found $entries" }
+        val summary = Regex("""compiler classpath has (\d+) entries \[([^\]]*), and (\d+) more]""").find(failed.output)
+        assertEquals(listOf("$entries", "${entries - 10}"), summary?.groupValues?.let { listOf(it[1], it[3]) }) {
+            failed.output.takeLast(8_192)
+        }
+        assertEquals(10, summary!!.groupValues[2].split(", ").size)
+    }
+
+    @Test
+    fun `compiler launch without a compiler names the bounded classpath`() {
+        fixture()
+        val failed = runner("-PwithoutCompiler=true").buildAndFail()
+        assertEquals(TaskOutcome.FAILED, failed.task(":compileFixture")?.outcome)
+        assertTrue(failed.output.contains("compiler classpath has 1 entries [compiler-marker.jar]")) {
+            failed.output.takeLast(8_192)
+        }
+        assertTrue(failed.output.contains("org.jetbrains.kotlin.cli.jvm.K2JVMCompiler")) { failed.output.takeLast(8_192) }
+        assertFalse(Files.exists(root.resolve("build/fixture/effects.jar")))
     }
 
     @Test
@@ -104,7 +123,11 @@ class CompileDependencyFixtureTest {
                 if (providers.gradleProperty('equivalent').isPresent()) {
                     equivalentSources.from(providers.gradleProperty('equivalent'))
                 }
-                compilerClasspath.from(${compiler.joinToString(",", transform = ::quote)}, 'compiler-marker.jar')
+                if (providers.gradleProperty('withoutCompiler').isPresent()) {
+                    compilerClasspath.from('compiler-marker.jar')
+                } else {
+                    compilerClasspath.from(${compiler.joinToString(",", transform = ::quote)}, 'compiler-marker.jar')
+                }
                 dependencies.from(${quote(stdlib)}, 'dependency-marker.jar')
                 compilerArguments.addAll(providers.gradleProperty('extraOption').map { [it] }.orElse([]))
                 javaLauncher.set(javaToolchains.launcherFor { languageVersion = JavaLanguageVersion.of(25) })

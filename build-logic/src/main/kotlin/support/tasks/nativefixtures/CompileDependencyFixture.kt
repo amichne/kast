@@ -70,7 +70,10 @@ abstract class CompileDependencyFixture @Inject constructor(private val executio
             }
             if (result.exitValue != 0) {
                 val detail = transcript.inputStream().use { it.readNBytes(65_536).toString(Charsets.UTF_8) }
-                throw GradleException("Dependency fixture compiler failed with exit=${result.exitValue}: $detail")
+                throw GradleException(
+                    "Dependency fixture compiler failed with exit=${result.exitValue}; " +
+                        "${compilerClasspathSummary(compilerClasspath.files.map { it.name })}: $detail",
+                )
             }
             ZipFile(staged.toFile()).use { zip ->
                 if (zip.size() == 0) throw GradleException("Dependency fixture compiler produced an empty archive")
@@ -81,4 +84,14 @@ abstract class CompileDependencyFixture @Inject constructor(private val executio
             Files.deleteIfExists(staged)
         }
     }
+}
+
+private const val SUMMARIZED_CLASSPATH_ENTRIES = 10
+
+/** A launch failure names the classpath shape without unbounded paths: an empty SDK home shows as few entries. */
+internal fun compilerClasspathSummary(names: List<String>): String {
+    val shown = names.take(SUMMARIZED_CLASSPATH_ENTRIES).joinToString(", ")
+    val omitted = names.size - SUMMARIZED_CLASSPATH_ENTRIES
+    val remainder = if (omitted > 0) ", and $omitted more" else ""
+    return "compiler classpath has ${names.size} entries [$shown$remainder]"
 }

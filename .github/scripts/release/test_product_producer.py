@@ -9,15 +9,29 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import tomllib
 import unittest
 from dataclasses import asdict, dataclass, field, replace
 from pathlib import Path
+from typing import cast
 
 import product_candidate as candidate
 import product_producer as producer
 from test_product_candidate import Run, accepted_fixture, fixture, split_fixture
 
 product = producer.product
+
+
+def task_run(name: str) -> str:
+    """The command a CI task runs; workflow steps call the task, and the task owns the command."""
+    declared: dict[str, dict[str, object]] = {}
+    for path in sorted((Path(__file__).resolve().parents[3] / "config/ci/tasks").glob("*.toml")):
+        declared.update(tomllib.loads(path.read_text()))
+    run = declared[name]["run"]
+    if isinstance(run, str):
+        return run
+    assert isinstance(run, list), name
+    return " && ".join(str(command) for command in cast(list[object], run))
 
 
 @dataclass(frozen=True)
@@ -579,33 +593,41 @@ class ProductProducerTest(unittest.TestCase):
         self.assertIn("name: ci-product-sealed-${{ github.sha }}-${{ github.run_attempt }}", join)
         accepted = jobs["complete-product"]
         self.assertIn("needs: [sealed-product, installed-product]", accepted)
-        self.assertIn("product_producer.py accept", accepted)
+        self.assertIn("run: mise run ci:join", accepted)
+        self.assertIn("product_producer.py accept", task_run("ci:join"))
         self.assertIn("name: ci-product-candidate-", accepted)
         self.assertNotIn("ci-product-candidate-", join)
         self.assertIn("needs: sealed-product", jobs["installed-product"])
-        self.assertIn("product_lifecycle_probe.py", jobs["installed-product"])
+        self.assertIn("run: mise run ci:acceptance ", jobs["installed-product"])
+        self.assertIn("product_lifecycle_probe.py", task_run("ci:acceptance"))
         self.assertIn("kotlin, complete-product]", jobs["required"])
         self.assertLess(
             jobs["required"].index('test "$COMPLETE_PRODUCT_RESULT" = success'),
-            jobs["required"].index("validation_outcome.py"),
+            jobs["required"].index("run: mise run ci:outcome"),
         )
+        self.assertIn("validation_outcome.py", task_run("ci:outcome"))
         composed = (workflows / "composed-linux.yml").read_text()
-        self.assertNotIn("nativeComponentQualification", composed)
-        self.assertNotIn("--harness", composed)
+        qualify = 'run: mise run composed:qualify --target "$TARGET"'
+        seal = 'run: mise run composed:seal-target --target "$TARGET"'
+        composed_tasks = (task_run("composed:qualify"), task_run("composed:seal-target"))
+        for surface in (composed, *composed_tasks):
+            self.assertNotIn("nativeComponentQualification", surface)
+            self.assertNotIn("--harness", surface)
         self.assertIn(
-            "--control /tmp/kc/components/control/share/kast/libexec/kast-management", composed
+            "--control /tmp/kc/components/control/share/kast/libexec/kast-management",
+            task_run("composed:seal-target"),
         )
-        self.assertLess(
-            composed.index("packaging/internal/composition/composed_release.py qualify"),
-            composed.index("product_producer.py target"),
-        )
-        self.assertLess(
-            composed.index("product_producer.py target"),
-            composed.index("name: kast-qualified-product-"),
-        )
+        self.assertIn("product_producer.py target ", task_run("composed:seal-target"))
+        # composed_ci.py qualify runs composed_release.py qualify; test_composition_ci.py
+        # proves that plan.
+        self.assertIn("composed_ci.py qualify ", task_run("composed:qualify"))
+        self.assertLess(composed.index(qualify), composed.index(seal))
+        self.assertLess(composed.index(seal), composed.index("name: kast-qualified-product-"))
         for consumer in (
             join,
             accepted,
+            task_run("ci:seal"),
+            task_run("ci:join"),
             (workflows / "release.yml").read_text(),
             (workflows / "developer-release.yml").read_text(),
         ):

@@ -8,3 +8,6 @@ go = "1.27.4"
 
 [env]
 _.path = ["{{config_root}}/bin"]
+
+[task_config]
+includes = ["config/ci/tasks/ci.toml", "config/ci/tasks/docs.toml", "config/ci/tasks/composed.toml"]

@@ -1,7 +1,7 @@
 #!/usr/bin/env -S uv run --locked --script
 # /// script
 # requires-python = ">=3.12,<3.13"
-# dependencies = ["pytest==9.0.3", "jsonschema==4.26.0", "defusedxml==0.7.1"]
+# dependencies = ["pytest==9.0.3", "jsonschema==4.26.0", "defusedxml==0.7.1", "pyyaml==6.0.3"]
 # [tool.uv]
 # no-build = true
 # required-version = ">=0.12.9"

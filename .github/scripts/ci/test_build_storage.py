@@ -5,6 +5,8 @@ import sys
 import tempfile
 import unittest
 
+import workflow_contract
+
 SCRIPT = Path(__file__).with_name("build_storage.py")
 
 
@@ -47,7 +49,17 @@ class BuildStorageTest(unittest.TestCase):
             self.assertTrue((build / "artifact").is_file())
 
     def test_composed_workflow_prepares_signed_support_before_gradle_assembly(self):
+        # The workflow orders the steps; the tasks own the commands. test_composition_ci.py
+        # proves that the linux-support plan runs `composed_release.py linux-support` and the
+        # release plan runs `assembleRelease`.
         workflow = SCRIPT.parents[2] / "workflows/composed-linux.yml"
         text = workflow.read_text()
-        self.assertLess(text.index("composed_release.py linux-support"), text.index("assembleRelease"))
-        self.assertEqual(1, text.count("composed_release.py linux-support"))
+        support = 'run: mise run composed:linux-support --target "$TARGET"'
+        self.assertEqual(1, text.count("mise run composed:linux-support"))
+        self.assertLess(text.index(support), text.index("run: mise run composed:release "))
+        tasks = workflow_contract.tasks()
+        self.assertEqual(
+            "python3 packaging/internal/composition/composed_ci.py linux-support",
+            tasks["composed:linux-support"]["run"],
+        )
+        self.assertIn("composed_ci.py release ", tasks["composed:release"]["run"])

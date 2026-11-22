@@ -18,6 +18,11 @@ Use an already extracted, exactly pinned distribution read-only:
 ./gradlew :runtime:hosted:nativeFixtureTest -PnativeFixtureIdeaHome=/path/to/pinned/distribution
 ```
 
+This project admits the supplied home with its own `admitNativeFixtureIdea` task,
+as described in the [relation fixture guide](../../relation/intellij/NATIVE_FIXTURES.md).
+A missing directory, missing `product-info.json` or different build fails before
+compilation. The failure names the property and the remedy.
+
 `NativeSmartModeWaitTest` requires the real `DumbServiceImpl`, with always-smart mode
 disabled. Its loaded class must match the pinned distribution's class bytes.
 Each case enforces the SDK's read-access contract and restores that setting.
