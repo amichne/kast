@@ -30,8 +30,10 @@ sources:
     resource: repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/runtime/WorkspacePreparations.kt
   - id: openwiki-source-83d816c0e2c999ea4834606d
     resource: repo://app-server/src/test/kotlin/io/github/amichne/kast/appserver/runtime/WorkspacePreparationExchangeTest.kt
-  - id: openwiki-source-d49b78c58a23da108be9efe5
-    resource: repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagementShutdown.kt
+  - id: openwiki-source-a566d74d2962e0f1901a1d38
+    resource: repo://cli/src/main/kotlin/io/github/amichne/kast/cli/publicshell/KastPublicCliMain.kt
+  - id: openwiki-source-4a775e59f7cd3b1cc2d7cc10
+    resource: repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/InstallationLifecycle.kt
   - id: openwiki-source-681368e4942d2fb35f298a68
     resource: repo://distribution/contract/src/main/kotlin/io/github/amichne/kast/distribution/contract/configuration/KastConfigurationCatalogue.kt
   - id: openwiki-source-0a4449d30536714453de301f
@@ -56,10 +58,10 @@ sources:
     resource: repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/workspace/WorkspaceRefreshService.kt
   - id: openwiki-source-f8ef45edcf8c31a32e77dc9b
     resource: repo://runtime/hosted/src/test/kotlin/io/github/amichne/kast/runtime/hosted/lifecycle/LifecycleProjectReadinessObservationTest.kt
-generated: { by: "codex", at: "2026-11-06T05:26:56.646Z" }
+generated: { by: "codex", at: "2026-11-21T22:16:17.145Z" }
 verified:
   - by: openwiki/0.9.0
-    at: 2026-11-14T23:43:30.219Z
+    at: 2026-11-21T22:16:17.145Z
 ---
 
 # IDEA lifecycle and explicit refresh
@@ -128,7 +130,7 @@ An uncertain read does not create that write fence.
 These hosted lane rules do not impose identical concurrency on every transport.
 
 MCP starts a stdio session and exposes tools through tools/list.
-Tool RPC supplies its installed catalog before a one-shot call and can admit a bounded `querySession`.
+The public CLI admits its installed catalog before each one-shot call.
 Hosted dynamic calls also need client protocol, thread ownership, and workspace binding.
 Disconnect removes the recorded client connection without automatically retiring the shared daemon or IDEA project.
 Upgrades need new catalogs and the selected Host loaded before semantic admission.

@@ -152,9 +152,7 @@ lambda suppliers, the forwarding component, and a terminal parameter invocation.
 The component includes a self cycle, self recursion with a direct parameter
 invocation, and mutual recursion with a terminal route into the invocation module.
 This preserves acyclic Gradle module dependencies while exercising recursive
-formal edges. `static_callback_oracle.py` authors exact declarations, UTF-16 source
-sites, supplier bindings, forwarding sites, and invocation sites independently of
-semantic responses. Changed or additional Kotlin sources reject the fixture.
+formal edges.
 
 Alpha and the self-recursive invocation case each supply two distinct lambda
 bodies at two wrapper call sites in one relation request. Each summary reuse must
@@ -168,20 +166,6 @@ These additions require a new source-matched native receipt; earlier receipts
 cannot qualify them.
 
 ### Candidate admission and rejection controls
-
-`qualify_callback_tracing.py --static-cross-module` reuses the existing installed
-schema admission, public MCP session, and retained-result drainer. It requires an
-exact candidate build receipt, loaded-class and artifact hashes, a current native
-model pin, and an explicitly selected fixture. It runs semantic result allowances
-of 32 and 128 and retained presentation grants of 1,
-checks the complete supplier-rooted `CALLEES` derivations, and checks that callback
-body calls do not become named `CALLERS` edges.
-The recursive cases must retain
-their exhaustive formal and edge inventories, including closing edges. The
-closed self cycle must have no terminal invocation evidence. External escape
-routes must retain their typed rejection and original evidence. The legacy formal-rooted parameter invocation has a mutable supplier route and
-must preserve its exact `STORED_CALLBACK` supplier-inventory rejection. The separate
-immutable fixture proves complete empty and nonempty formal supplier inventories.
 
 The matched complete allowances are 32 and 128 results. Atomic selected-supply
 inventories retain evidence in addition to lexical callback observations. A cold
@@ -285,18 +269,9 @@ factories are exact typed rejection controls. Returned nonlocal getters and
 implicit operator calls are additional unsupported-body controls. These are acceptance expectations;
 native support requires a receipt for the selected source and case.
 
-`immutable_callback_qualification.py` checks the authored callback target and
-supplier inventory separately from public schema admission. A `complete` response
-with only direct named-call rows cannot establish a callback answer. The reader
-requires callback observations, exhaustive unqualified flows, connected immutable
-transfers, both finite branch targets, the correct default/explicit selection, and
-the exact empty or two-supplier inventory for the isolated formal fixtures. These
-checks supplement the existing exact source-site and graph oracle; they are not a
-standalone qualification of the wider native model.
-
 ### Factory results and capture evidence
 
-`immutable_factory_qualification.py` independently anchors the factory producer,
+Factory acceptance independently anchors the factory producer,
 call site, formal, selected argument, returned value, and captured invocation to
 the authored source. Two calls to the same factory must preserve their distinct
 alpha/beta captured targets. Captured local aliases retain both binding and read
@@ -319,14 +294,6 @@ The selected-supply reader requires every declared
 function formal and counts a supplied target only when its summary proves an
 invocation; supplying a value alone does not establish activation.
 
-`qualify_immutable_callbacks.py` runs that matrix against a pinned candidate via
-public MCP. Its receipt names the selected cases and the narrower
-`CALLBACK_TARGETS_AND_SUPPLIER_INVENTORIES` scope, preserves source/build/harness
-hashes, and checks the native host, fixture, model, and limits again at the end.
-Positive cases retain correlated semantic-fact counters; rejected controls retain
-their exact completion failure and evidence handle. A selected subset never
-stands in for the full matrix or the mutation and reuse qualification.
-
 ### Source changes and reuse
 
 The mutation matrix starts from the original fixture for each case. It changes a
@@ -339,7 +306,7 @@ A changed answer is not necessary for invalidation: adding an override must
 revalidate the relevant static dispatch evidence even when the compiler-resolved
 base declaration is unchanged.
 
-`immutable_reuse_qualification.py` compares the complete semantic answer,
+Reuse acceptance compares the complete semantic answer,
 including relation observations, supplier inventories, factory contexts and
 transfers. Target-set equality alone cannot pass. It admits each nested live
 basis against its response before normalizing host/epoch identifiers, and
@@ -347,27 +314,6 @@ normalizes handles only when companion identity evidence exists. Paths, ranges,
 compiler identities and qualifications remain part of equality. Its work gates
 require explicit positive store activity; they do not themselves run a mutation
 or establish native reuse.
-
-### Owned document edits
-
-`immutable_document_edit.py` creates a new owned copy and prepares a native
-ideScript without launching a host. The script requires the selected host PID,
-creator token, exact fixture source path, and document preimage before applying
-an unsaved edit. It commits PSI without saving the document and records only
-before/after/saved hashes in its result. Its separately prepared rollback restores
-the exact document preimage. A rejected native operation retains a finite cause;
-a missing or malformed receipt never establishes an edit. Preparation and Python
-receipt tests establish the ownership boundary only. A native receipt is still
-required for the PSI edit and fresh-query outcome.
-
-The separate `SAVED` mode also requires the exact saved file preimage, commits the
-owned document, saves it through the IDE, and checks the resulting disk hash.
-Its receipt is `APPLIED_SAVED`; an unsaved receipt cannot satisfy it. This mode
-supports positive cross-edit reuse trials. Dirty-document rejection belongs to
-the dependency-capture boundary. The public MCP readiness path can save selected
-project documents before semantic execution, even with IDE autosave disabled. An
-`APPLIED_UNSAVED` edit receipt alone therefore cannot qualify dirty-document cache
-rejection: the trial must also prove the document remained dirty at capture. Saved and unsaved trials each restore their exact preimages.
 
 ### Fact eligibility
 

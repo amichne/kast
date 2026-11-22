@@ -30,10 +30,10 @@ sources:
     resource: repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/runtime/InvocationRecords.kt
   - id: openwiki-source-fdd04d06dee30d192ed4f4da
     resource: repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/storage/PrivateRecordFiles.kt
-generated: { by: "codex", at: "2026-10-15T00:33:05.932Z" }
+generated: { by: "codex", at: "2026-11-21T22:16:17.145Z" }
 verified:
   - by: openwiki/0.9.0
-    at: 2026-11-11T06:28:10.019Z
+    at: 2026-11-21T22:16:17.145Z
 ---
 
 # Invocation fences and durable thread records
@@ -61,7 +61,7 @@ Cancellation and recovery use explicit outcomes instead of inferred success.
 `FileInvocationRecords` reads only the addressed hash shard.
 Historical records do not populate the daemon's active cache.
 Each operation locks the admitted store, reads a bounded typed record, applies the pure transition, and writes the admitted result.
-Layout versions and migrations remain explicit finite outcomes.
+Layout versions remain explicit finite outcomes. Invocation records use format v2 and are not migrated from older formats.
 
 `PrivateRecordFiles` admits canonical paths, ownership, private modes, and regular file identity before effects.
 It rejects noncanonical serialization and oversized records.
@@ -74,12 +74,12 @@ These mechanisms protect record identity without a claim of successful semantic 
 Thread records preserve thread identity, catalog digest, working directory, workspace identity, and installation owner.
 Historical shape admission does not treat an old path as current filesystem authority.
 Current binding admission reconstructs the constrained values and checks workspace identity.
-Legacy migrated bindings remain `new_conversation_required` instead of automatically regaining current ownership.
+Thread records use format v3 with a layout marker; an older record version rejects with `VERSION_UNSUPPORTED`, and a store without a layout marker may hold only its lock.
 
 `FileThreadCatalogStore` owns durable thread records and bounded addressed reads.
 Protocol admission still compares the current catalog and owner before reuse.
 A valid stored JSON shape alone cannot authorize a tool invocation.
-Focused tests exercise duplicate identity, conflicts, interrupted history, migration, private file rejection, and thread admission.
+Focused tests exercise duplicate identity, conflicts, interrupted history, version rejection, private file rejection, and thread admission.
 
 ## Focused tests
 

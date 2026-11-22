@@ -166,18 +166,18 @@ def test_cli_distinguishes_real_nested_mdx_prose_from_code(
     data = json.loads((ROOT / "docs/glossary.json").read_text())
     data["scope"] = {"root": ".", "include": ["docs/public/**/*.mdx"], "exclude": []}
     source.write_text(json.dumps(data))
-    text = (ROOT / "docs/public/reference/integrations.mdx").read_text()
+    text = (ROOT / "docs/public/tutorials/first-query.mdx").read_text()
     match placement:
         case "prose":
-            original = "    The bundled plugin supplies the Kast skill and CLI guidance"
+            original = "    If that file already exists, stop before this step. Use a project without this example."
             replacement = "    A saved result supplies MCP tools"
         case "fence":
-            original = "    kast install codex"
+            original = "    package tutorial"
             replacement = "    saved result"
     assert text.count(original) == 1
     expected_line = text[: text.index(original)].count("\n") + 1
     text = text.replace(original, replacement)
-    document = tmp_path / "docs/public/reference/integrations.mdx"
+    document = tmp_path / "docs/public/tutorials/first-query.mdx"
     document.parent.mkdir(parents=True)
     document.write_text(text)
     result = run(str(source), str(document))

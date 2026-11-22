@@ -4,7 +4,7 @@ Use [the token POC](AGENT_EFFICIENCY_TOKEN_POC.md) for the current ten-task comp
 Use [the reference experiment](AGENT_EFFICIENCY_REFERENCES.md) for later chain instructions and provider timing.
 
 This local experiment compares native Pi sessions with and without Kast.
-The existing host-observation controller owns process cancellation and cleanup.
+`owned_worker.mjs` owns process cancellation and cleanup.
 Pi owns MCP discovery, tool execution, permissions, and session shutdown.
 The experiment does not publish a plugin or install a discoverable skill.
 

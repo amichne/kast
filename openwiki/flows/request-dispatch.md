@@ -90,10 +90,10 @@ sources:
     resource: repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryCompletionEvidenceRead.kt
   - id: openwiki-source-6fc4d1c9f6659b50cecc0294
     resource: repo://workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedReadTransaction.kt
-generated: { by: "codex", at: "2026-11-03T06:09:31.584Z" }
+generated: { by: "codex", at: "2026-11-21T22:16:17.145Z" }
 verified:
   - by: openwiki/0.9.0
-    at: 2026-11-12T22:38:11.044Z
+    at: 2026-11-21T22:16:17.145Z
 ---
 
 # Request dispatch
@@ -103,7 +103,7 @@ host request
   -> canonical operation lookup
   -> typed wire decoding
   -> necessary response-byte admission
-  -> existing-IDE handler selection
+  -> managed Host handler selection
   -> domain operation
   -> typed complete / qualified / rejected outcome
   -> host projection
@@ -146,7 +146,7 @@ The host remains responsible for current workspace or live IDE authority and
 budgets. Shared protocol code does not launch workers or admit projects.
 
 The default hosted dispatch has a closed request case and canonical wire binding
-for each of the three public semantic reads. The existing-IDE client uses the same
+for each of the three public semantic reads. The project socket client uses the same
 operation-specific decoders, rejects published evidence, and checks a successful
 live envelope against the requested root and admitted descriptor host. A typed host
 rejection can be returned before read authority exists; it does not become a
@@ -167,7 +167,7 @@ resolve to the selected preferred tool route; omitted tools and incompatible
 catalog bindings reject before provider invocation. Provider invocation uses the App Server-owned
 IDEA socket client directly, with canonical admission and admitted output and elapsed-time settings. The installed coordinator first prepares the exact root, validates the live application/project identity, and retains that project through descriptor admission. Preparation failures are known pre-execution rejections with typed causes and operation IDs.
 The public `add_declaration` route sends the exact stored plan identity through canonical apply on that same direct client. The native owner admits fresh source and durable recovery before any write.
-Pure request preparation and outcome projection are shared from `protocol:wire`. `selectCliRuntimePath` selects the three existing-IDE reads before
+Pure request preparation and outcome projection are shared from `protocol:wire`. `selectCliRuntimePath` selects the three managed Host reads before
 installed bootstrap in `KastCliMain`; saved read settings are admitted before the socket is opened. Invalid settings and missing hosts remain distinct rejections. The
 [native acceptance review](../../docs/reviews/live-semantic-read-acceptance.md)
 records the final distribution's complete/qualified native matrix and a successful
@@ -183,9 +183,9 @@ raw content remains intact, and the final Kast JSON envelope additionally
 uses the supported structured-result field. The `add_declaration` tool keeps the native plan, apply, and recovery documents in
 one caller-visible completion or finite failure. No source-change approval item
 is sent to a controller. Native schema admission and module tests establish the
-protocol shapes, while desktop rendering remains unqualified.
+protocol shapes, while Codex Desktop rendering remains unqualified.
 
-The entire `change` CLI family routes to the existing-IDE path before installed
+The entire `change` CLI family routes to the managed Host path before installed
 bootstrap. Hosted ingress admits `AddDeclaration` planning; the one-call coordinator
 retains exact plan identity through private canonical apply/recovery operations. The endpoint protocol is version
 3. Its added change routes keep canonical complete/qualified/rejected envelopes;
@@ -227,7 +227,7 @@ Search and diagnostic presentation can precede it with a bounded human summary;
 compact source presentation can precede it with unchanged returned source text.
 Terminal broker admission,
 capacity and cancellation paths also keep typed JSON rejection or cancellation
-data; uncertainty is not converted into success. A supported native desktop
+data; uncertainty is not converted into success. A supported Codex Desktop
 display receives the same bounded result as structured content. Display parsing
 cannot alter execution authority or the broker's recovery settlement.
 

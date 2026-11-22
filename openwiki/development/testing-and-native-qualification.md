@@ -10,36 +10,38 @@ code_sources:
 - path: docs/development.md
 - path: runtime/hosted/NATIVE_FIXTURES.md
 - path: relation/intellij/NATIVE_FIXTURES.md
-- path: runtime/hosted/native/README.md
-- path: packaging/run-portable-tests.py
-- path: packaging/run-portable-tests-container.sh
-- path: packaging/run-installed-product.py
-- path: packaging/local_product_probe.py
 - path: .github/workflows/ci.yml
-- path: experiments/host-observation/ACCEPTANCE.md
+- path: packaging/internal/verification/run-portable-tests.py
+- path: packaging/internal/verification/run-portable-tests-container.sh
+- path: packaging/internal/verification/run-installed-product.py
+- path: packaging/internal/verification/local_product_probe.py
+- path: experiments/host-observation/promptfoo/README.md
+- path: experiments/host-observation/mcp_replay.py
 sources:
   - id: openwiki-source-70991026f1538e8215a8789e
     resource: repo://docs/development.md
-  - id: openwiki-source-553a1d23cddbdd6ecdb69f5d
-    resource: repo://experiments/host-observation/ACCEPTANCE.md
-  - id: openwiki-source-3deebc58c79bb1db9c1f934e
-    resource: repo://packaging/local_product_probe.py
-  - id: openwiki-source-72a2e0c4bf1e54eeb4c8db6c
-    resource: repo://packaging/product_lifecycle_probe.py
-  - id: openwiki-source-8faf23d69764b95242de5e09
-    resource: repo://packaging/run-installed-product.py
-  - id: openwiki-source-af8d30969eca7e840eedf039
-    resource: repo://packaging/run-portable-tests.py
-  - id: openwiki-source-13056895a4583d99c7a53a3e
-    resource: repo://packaging/test-portable-tests.py
+  - id: openwiki-source-91a187e8f9b4ae08c1ab931b
+    resource: repo://experiments/host-observation/mcp_replay.py
+  - id: openwiki-source-10bd98a55172871e1d97ee95
+    resource: repo://experiments/host-observation/promptfoo/README.md
+  - id: openwiki-source-afb4001831005bbe57e5aab3
+    resource: repo://packaging/internal/verification/local_product_probe.py
+  - id: openwiki-source-6904899612d0ede016a5965a
+    resource: repo://packaging/internal/verification/product_lifecycle_probe.py
+  - id: openwiki-source-27b11dfabcb3ca89e348f52d
+    resource: repo://packaging/internal/verification/run-installed-product.py
+  - id: openwiki-source-cfdb04a9f90792f97961517a
+    resource: repo://packaging/internal/verification/run-portable-tests.py
+  - id: openwiki-source-e7530ede87bdaaf6e72b0180
+    resource: repo://packaging/tests/test-portable-tests.py
+  - id: openwiki-source-2862ccb68106d6b3d73cdd3b
+    resource: repo://relation/intellij/NATIVE_FIXTURES.md
   - id: openwiki-source-a1bf1d8cd4e32016c6593087
     resource: repo://runtime/hosted/NATIVE_FIXTURES.md
-  - id: openwiki-source-af72e3368d1f0c22109e4ecf
-    resource: repo://runtime/hosted/native/README.md
-generated: { by: "amp", at: "2026-11-15T18:33:44.464Z" }
+generated: { by: "codex", at: "2026-11-21T22:16:17.145Z" }
 verified:
   - by: openwiki/0.9.0
-    at: 2026-11-15T18:33:44.464Z
+    at: 2026-11-21T22:16:17.145Z
 ---
 
 # Tests and native qualification
@@ -72,14 +74,17 @@ Do not use sleep or a race to manufacture a timeout.
 
 ## Native and installed evidence
 
-The desktop IDEA mixed-version check is deprecated and retained for compatibility, including existing 0.51.x Hosts.
-It does not qualify managed headless Hosts or the contributor installer, `packaging/local_product_install.py`, which installs a checkout as an isolated managed product.
-New qualification uses private workspace containers and automatic workspace creation through the managed product.
+Kast qualifies only the managed headless Host. No desktop IDEA path remains.
+Qualification uses private workspace containers and automatic workspace creation through the managed product.
+The contributor installer, `packaging/internal/product/local_product_install.py`, installs a checkout as an isolated managed product.
 
 The relation and hosted native fixture guides define separate IDEA entry conditions and selectors.
 They cover platform-owned semantics that scripted service inputs cannot establish.
-The installed-host harness adds component identity, loaded plugin identity, exact workspace enrollment, and fresh invocation evidence.
 A successful installation or handshake alone does not establish a usable semantic workspace.
+
+The [Promptfoo campaign](../../experiments/host-observation/promptfoo/README.md) evaluates agents that receive the skill and Kast access against source-only controls.
+Its MCP replay, `mcp_replay.py`, admits each MCP wire reply and records it as a receipt.
+Campaign results measure agent outcomes; they do not qualify a product release.
 
 The portable packaging runner enumerates the checked-in offline Python suites under owned state.
 Its container form adds a read-only checkout and disabled network access.
@@ -90,7 +95,7 @@ A Linux container pass does not qualify macOS IDEA or launchd behavior.
 
 `run-installed-product.py` delegates native acceptance to `product_lifecycle_probe.py`.
 It requires complete qualified candidate and baseline inputs, pinned interpreter inputs, and explicit evidence destinations.
-Missing prerequisites reject rather than skipping or substituting a staged Control/desktop Host pair.
+Missing prerequisites reject rather than skipping or substituting a staged component pair.
 
 ## Disposable local installed acceptance
 
@@ -123,11 +128,12 @@ Repeat a broader suite only when a changed consumer or a named remaining risk ne
 - [development.md](../../docs/development.md)
 - [NATIVE_FIXTURES.md](../../runtime/hosted/NATIVE_FIXTURES.md)
 - [NATIVE_FIXTURES.md](../../relation/intellij/NATIVE_FIXTURES.md)
-- [README.md](../../runtime/hosted/native/README.md)
-- [run-portable-tests.py](../../packaging/run-portable-tests.py)
-- [run-portable-tests-container.sh](../../packaging/run-portable-tests-container.sh)
+- [run-portable-tests.py](../../packaging/internal/verification/run-portable-tests.py)
+- [run-portable-tests-container.sh](../../packaging/internal/verification/run-portable-tests-container.sh)
+- [local_product_probe.py](../../packaging/internal/verification/local_product_probe.py)
 - [ci.yml](../../.github/workflows/ci.yml)
-- [ACCEPTANCE.md](../../experiments/host-observation/ACCEPTANCE.md)
+- [Promptfoo README.md](../../experiments/host-observation/promptfoo/README.md)
+- [mcp_replay.py](../../experiments/host-observation/mcp_replay.py)
 
 ## Read next
 

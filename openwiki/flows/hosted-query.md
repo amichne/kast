@@ -1,8 +1,7 @@
 ---
 type: Runtime Flow
-title: Existing-IDE semantic query
-description: An existing IDEA project owns five canonical read operations, with bounded
-  live authority and scoped native CLI/provider acceptance.
+title: Managed Host semantic query
+description: The managed headless Host's project endpoint owns the canonical read operations, with bounded transport, retained results, and refresh before reads.
 resource: file://workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted
 tags:
 - intellij
@@ -90,7 +89,6 @@ code_sources:
 - path: symbol/intellij/src/main/kotlin/io/github/amichne/kast/symbol/intellij/IntellijScopedDeclarationEnumeration.kt
 - path: kernel/src/main/kotlin/io/github/amichne/kast/kernel/ReadLimits.kt
 - path: docs/hosted-read-configuration.md
-- path: experiments/host-observation/reproduce_semantic_queries.py
 - path: workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedReadDiagnostics.kt
 - path: workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/IntellijReadGauge.kt
 - path: workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/IntellijReadObservation.kt
@@ -161,17 +159,11 @@ code_sources:
 - path: workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/LiveSelectedGradleModuleRoots.kt
 - path: workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/IdeRootMappingFailure.kt
 - path: workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/NamedSourceScopeFailureDocument.kt
-- path: experiments/host-observation/run_hosted_query.py
-- path: experiments/host-observation/hosted-query.kts.template
-- path: experiments/host-observation/hosted-plugin-unload.kts.template
-- path: experiments/host-observation/hosted-project-restoration.kts.template
 - path: protocol/contract/src/main/resources/ide-hosted/hosted-query.schema.json
 - path: protocol/contract/src/main/resources/ide-hosted/hosted-endpoint.schema.json
 - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedEndpointService.kt
 - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/IndexingWait.kt
 - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedConnection.kt
-- path: experiments/host-observation/kast_ide.py
-- path: experiments/host-observation/qualify_hosted_index.py
 - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedChangeApply.kt
 - path: workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedPreWriteObservation.kt
 - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedChangeFailure.kt
@@ -293,13 +285,13 @@ sources:
     resource: repo://workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/IntellijReadObservation.kt
   - id: openwiki-source-63abd5c24e7d947c619c1a6e
     resource: repo://workspace/intellij-read/src/test/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedReadValueSiteCounterTest.kt
-generated: { by: "amp", at: "2026-11-14T06:28:38.719Z" }
+generated: { by: "codex", at: "2026-11-21T22:16:17.145Z" }
 verified:
   - by: openwiki/0.9.0
-    at: 2026-11-14T21:34:35.265Z
+    at: 2026-11-21T22:16:17.145Z
 ---
 
-# Existing-IDE semantic query
+# Managed Host semantic query
 
 ## Default canonical read path
 
@@ -311,7 +303,7 @@ This path uses the same hosted semantic services.
 It does not start a retired sidecar or a second analyzer.
 
 Managed headless selection also admits the application advertisement attached to the project descriptor.
-Its selected distribution, private profile, process owner, mode, and disabled auto reload must match before semantic dispatch.
+Its selected distribution, private profile, process owner, and Gradle import environment must match before semantic dispatch.
 Existing references use this same selection rule.
 
 The ordinary-query scope gate has a separate project-bound capture for exact
@@ -415,7 +407,7 @@ before the request leaves its scope. The semantic executor separately drains its
 work before releasing the permit, so cancellation cannot leave an earlier request
 running beside its replacement.
 
-The existing-IDE client decodes each response through its canonical
+The project socket client, `ExistingIdeSocketClient`, decodes each response through its canonical
 operation binding, preserves complete, qualified, and rejected outcomes, and
 requires successful live evidence to match the requested root and descriptor host.
 Source snapshots must repeat the exact enclosing live evidence or published
@@ -424,7 +416,7 @@ decoding reject contradictory evidence before CLI projection.
 It rejects a publication envelope on this path. Typed host rejection remains
 available when admission fails before operation authority exists.
 
-With debug configuration enabled, private existing-IDE response activity records the announced frame size and
+With debug configuration enabled, private socket-client response activity records the announced frame size and
 configured limit, body drain outcome, and finite decoding/admission stage and
 cause. An over-limit frame is rejected before body reading or decoding. These
 bounded stderr records keep the host process and operation, without recording
@@ -467,20 +459,7 @@ The public installer admits archive checksums, plugin identity, version, and rel
 Separate archives target IDEA `262.*` and `263.*`.
 Runtime admission accepts reviewed IDEA and bundled Kotlin builds from the same release line and keeps their full observed identities.
 This policy does not expand the recorded native acceptance evidence.
-The earlier manual proof archive still targets its exact build. The [manual runner](../../experiments/host-observation/HOSTED_QUERY.md)
-loads that artifact into an existing native IDEA process and records project,
-model, read-lock, result, and retirement evidence. Ordinary library builds have
-no plugin descriptor. Opt-in checkpoints after semantic detachment qualify
-restored edits, cancellation, and original-owner disposal before publication.
-The project-close case explicitly restores the selected project after the old
-request retires. The plugin-manager case uses the actual injected project
-service and verifies dynamic unload. Full restart startup and upgrades between
-different plugin versions remain unqualified.
-
-The controller refines acceptance evidence into typed verification or rejection
-outcomes even under Python optimization. It records bounded carrier outcomes
-separately from semantic results, so a script that never enters the host cannot
-be mistaken for query completion or owner retirement.
+Ordinary library builds have no plugin descriptor.
 
 Exact class-name discovery reads the existing Kotlin short-name stub index in
 the same admitted project. Candidate collection ends before K2 resolves each
@@ -494,13 +473,12 @@ existing full-class-name index. A bounded, complete collection must contain
 exactly one declaration before PSI and K2 resolution begin. Missing or duplicate
 declarations are closed failures; the detached compiler identity must match the
 requested class identity. Index selection and semantic proof share the same
-admitted read and final content/epoch checks. The explicit file/offset selector
-remains available for the manual acceptance harness.
+admitted read and final content/epoch checks.
 
-The [persistent endpoint](../../experiments/host-observation/HOSTED_ENDPOINT.md)
+The persistent endpoint
 is owned by the separate `runtime:hosted` plugin. Normal requests use a framed
 Unix socket and keep the same packaged compatibility policy and admitted epoch
-authority across requests. The native acceptance client rejects missing hosts
+authority across requests. The socket client rejects missing hosts
 without opening an isolated workspace. Public semantic discovery uses the
 canonical provider operations; the duplicate `kast ide classes` and
 `kast ide supertype` commands have been retired.
@@ -533,16 +511,15 @@ epoch revisions or changing retained-reference invalidation.
 
 Incremental creation, class renaming, and deletion were qualified against the
 same original IDE index. The current CLI-to-daemon route has local contract and
-socket evidence; native desktop composition and stronger workspace publication
-remain separate integration boundaries.
+socket evidence; stronger workspace publication remains a separate integration
+boundary.
 
 The qualified supertype selector remains in the hosted endpoint contract for
 native and compatibility tests. Index maintenance remains with IDEA.
 The shared schemas and operation registry live in `protocol:contract`; the CLI
-loads those resources directly from its dependency. Production packaging no
-longer reads protocol assets or host properties from the acceptance experiment.
+loads those resources directly from its dependency.
 
-The opt-in [semantic reproduction runner](../../experiments/host-observation/SEMANTIC_REPRODUCTION.md) separates fixture creation/import, runtime pinning, and read-only public CLI/provider replay. Its public requests use the shared `type` discriminator and `CAPS_CASE` enum values, and validate against the installed full tool schema before replay. The hosted service publishes one bounded native diagnostic receipt by default after a request drains, including effective configuration/provenance, stage durations, remaining outer deadline, contributor counts and precise termination reasons. Diagnostics carry only finite categories and bounded counts; they do not alter budgets or strengthen qualified coverage. An epoch change invalidates cross-request reference evidence.
+The hosted service publishes one bounded native diagnostic receipt by default after a request drains, including effective configuration/provenance, stage durations, remaining outer deadline, contributor counts and precise termination reasons. Diagnostics carry only finite categories and bounded counts; they do not alter budgets or strengthen qualified coverage. An epoch change invalidates cross-request reference evidence.
 
 ## Hosted change admission
 
@@ -566,7 +543,7 @@ The subsequent [semantic reproduction review](../../docs/reviews/hosted-semantic
 The read policy is immutable per host service and rejects invalid settings. CLI/provider transport capacities use the same typed parameter catalogue. See [read configuration](../../docs/hosted-read-configuration.md).
 
 
-The new `tool` CLI family lowers the five [public intent tools](../contracts/public-tools.md) into the existing canonical operations before taking this same existing-IDE path. Native semantics and reference authority remain here; tool syntax is not compiler evidence.
+The new `tool` CLI family lowers the five [public intent tools](../contracts/public-tools.md) into the existing canonical operations before taking this same managed Host path. Native semantics and reference authority remain here; tool syntax is not compiler evidence.
 
 The plugin-only runtime retirement removes isolated composition/import from the active build and topology publication from the shipped runtime graph. Topology modules remain available to compile for upcoming graph work. Earlier acceptance records above remain historical. The shared `HostedSemanticServices` factory now supplies canonical reads, planning and verification inside each admitted read context. Diagnostic schema 5 distinguishes transaction evaluation from complete, qualified and rejected semantic results, retaining bounded stage and termination evidence. It records the first entry to each native phase before an opaque call, plus cumulative phase durations after drainage: source-partition preparation, declaration scan, exact refinement, reference inventory/partition/confirmation, diagnostic scope admission/enumeration/K2 analysis, freshness validation, retention, encoding, and cancellation drainage. Counters distinguish candidate and semantic work from retained-state accounting; the latter is a quota estimate rather than process heap measurement.
 
@@ -753,29 +730,10 @@ and progress, never PSI, K2 sessions, native iterators, or a live project.
 
 ### Installed transport and authority qualification
 
-The installed concurrent-read harness separates 156 semantic first attempts from
-four peer probes: disconnect, malformed input, admission saturation, and fresh
-listener health. Saturation uses the staged configuration catalog and actual
-request-read observations, then requires the finite capacity rejection. The
-endpoint emits `CONNECTION_RELEASE` after releasing the admitted connection's
-permit; the macOS native harness waits on log-change notifications for those
-correlated release records before its single health request. Reports keep
-bounded stage/outcome duration and byte totals, first attempts, and finite witness
-failures without source, responses, descriptors, or connection identities. The
-peer checks establish exact rejection shapes and host authority fields; the full
-hosted socket-envelope schema matrix remains separate from the exact frame checks.
-
-After the base and concurrency reads, an ordinary edit to the private fixture
-passes through native refresh/readiness and a single fresh search must observe
-an increased epoch. Both CLI and provider reject an old symbol reference and a
-fresh anchor paired with the old upstream continuation, then acquire fresh read
-authority. Exact byte restoration repeats readiness and requires another epoch
-increase and fresh acquisition. A separate unenrolled owned root refuses issued
-references and continuations before selecting an alternate IDE; it does not
-qualify two enrolled IDE owners. The receipt retains source digests, epoch
-numbers and finite outcomes without tokens or source. The provider's actual outer
-completed/document envelope is checked with its qualified same-build output
-schema; CLI payloads are checked through the canonical wrapper projection.
+The endpoint emits `CONNECTION_RELEASE` after releasing the admitted connection's
+permit. `HostedConnectionAdmissionTest` checks admission saturation and that
+release ordering with controlled peers. The earlier installed concurrent-read
+harness is removed; an installed concurrency claim needs a new native run.
 
 The hosted owner identity checks independently increase elapsed-time, work,
 result and byte allowances for the exercised output stores. Each change restores
@@ -833,13 +791,9 @@ Application-requested project closure fences the existing project endpoint befor
 
 Retention telemetry distinguishes the latest accounted bytes and entry count from the maximum accounted byte high-water mark. Gauges observe the existing state owner after allocation, final publication, and cancellation release; they do not sum snapshots or claim a process heap measurement.
 
-Local complete-workload comparison extends the existing semantic reproduction runner
-through installed Tool RPC. It pins artifacts and fixture content, reacquires
-handles per trial, and drains unchanged grants to terminal completion before
-comparing answer evidence. Native receipt schema 6 adds returned discovery and
-relation page counts with explicit request-local zeros; missing older counters
-remain unavailable. The [runbook](../../experiments/host-observation/SEMANTIC_REPRODUCTION.md#compare-complete-workloads-locally)
-keeps counter, byte and overlapping phase-duration units distinct.
+Native receipt schema 6 adds returned discovery and relation page counts with
+explicit request-local zeros; missing older counters remain unavailable.
+Counter, byte and overlapping phase-duration units remain distinct.
 
 The project socket client first requests the existing live describe document and
 admits its required hosted contract before dispatching any hosted operation.

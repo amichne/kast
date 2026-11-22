@@ -8,7 +8,7 @@ import unittest
 from unittest.mock import patch
 
 import hosted_timing as h
-import reproduce_semantic_queries as replay
+import mcp_replay as replay
 
 
 CONNECTION = '11111111-1111-4111-8111-111111111111'
@@ -240,7 +240,7 @@ class HostedTimingTest(unittest.TestCase):
             wanted, arguments, result = expected.pop(0)
             self.assertEqual((wanted, arguments), (kind, args))
             return result
-        with patch.object(replay, 'capture', side_effect=AssertionError('Capture reinvoked query')) as query:
+        with patch.object(replay.McpReplaySession, 'call', side_effect=AssertionError('Collector reinvoked query')) as query:
             captured = h.collect_observations(path, before, observe=lambda *args: step('observe', *args),
                 clock=lambda: step('clock'), pause=lambda *args: step('pause', *args))
             query.assert_not_called()
@@ -249,7 +249,7 @@ class HostedTimingTest(unittest.TestCase):
 
     def test_collector_original_250ms_deadline_retains_unfinished_release(self):
         original = replace(window(), transport=transport()[:-1])
-        with patch.object(replay, 'capture', side_effect=AssertionError('Capture reinvoked query')) as query:
+        with patch.object(replay.McpReplaySession, 'call', side_effect=AssertionError('Collector reinvoked query')) as query:
             captured = h.collect_observations(None, None, observe=lambda *_: original,
                 clock=iter((5.0, 5.25)).__next__, pause=lambda _: self.fail('No pause after deadline'))
             query.assert_not_called()

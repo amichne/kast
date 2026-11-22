@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:23121f588d2b7040038cf81a1117e16c9fd5ea0e7e2844e56e3ad98c4cb83515",
+  "pageVersion": "sha256:7c1d90a47ce773feab7622687738674a634483a7bebe4733d7475e80fa4ef4fb",
   "claims": [
     {
       "id": "claim_1c2e0b7673bd4f38bdb1b7ebfc49034b",
@@ -40,10 +40,10 @@
       "evidence": [
         {
           "resource": "repo://relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/IntellijCallbackDependencyContract.kt",
-          "version": "repo-file-v1:sha256:cf7d133ef3f8d5c5a530a53d553af661ac560cae904616e31a796d8c1fa56ef7"
+          "version": "repo-file-v1:sha256:1482841ff44989b173053027ad9a1b751604cb1a527a80051ac86d99db3a102b"
         },
         {
-          "resource": "repo://relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/IntellijCallbackDependencyContract.kt#L32-L32",
+          "resource": "repo://relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/IntellijCallbackDependencyContract.kt#L31-L31",
           "version": "repo-lines-v1:sha256:82bf603c0ee23772e924a79185b54ed2cea11e7d67da84c3d371e9b56fbf4ae5:eyJzZWxlY3RlZExpbmVDb3VudCI6MSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiODJiZjYwM2MwZWUyMzc3MmU5MjRhNzkxODViNTRlZDJjZWExMWU3ZDY3ZGE4NGMzZDM3MWU5YjU2ZmJmNGFlNSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiODJiZjYwM2MwZWUyMzc3MmU5MjRhNzkxODViNTRlZDJjZWExMWU3ZDY3ZGE4NGMzZDM3MWU5YjU2ZmJmNGFlNSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiMmIwNjZjNmUzMzA5ODc2NzBiYTJhMGY3YzlmM2NlNWNiZWFkMGNkNjllZjZmZjU3ZWQwZWRmNTkwNzAyYjYwZCIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiNjc0ZDcwZDNjOGI4OWUxYWZjZWM3YWY4MTg1MDFlZDUxMmI0MGIxZGFiMDQ0YmQyOWRmNmE1NmNlYWQxNjgwOCJ9"
         }
       ]
@@ -54,7 +54,7 @@
       "evidence": [
         {
           "resource": "repo://protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/QueryCallbackObservationDocument.kt",
-          "version": "repo-file-v1:sha256:28b0e080216b0ec1110d2d36d98f3371b1fe5f8abce255ee76b8a38c86d54672"
+          "version": "repo-file-v1:sha256:55c9297791d9daa7e455f0c6f8b006d3ec6efac072bf5085d780adb9d3bd5418"
         },
         {
           "resource": "repo://protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/QueryCallbackObservationDocument.kt#L70-L70",
@@ -68,10 +68,10 @@
       "evidence": [
         {
           "resource": "repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryCallbackNavigationProjection.kt",
-          "version": "repo-file-v1:sha256:e2d8ec0a9545439d26810872a3ab430612eea097b186116ffe4d98eeaa3800ef"
+          "version": "repo-file-v1:sha256:3cb04b440c7db56f42d719ab3160acd2416d897f8fc4b99186897b4968ece289"
         },
         {
-          "resource": "repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryCallbackNavigationProjection.kt#L159-L159",
+          "resource": "repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryCallbackNavigationProjection.kt#L169-L169",
           "version": "repo-lines-v1:sha256:dac1c1f2d29879fbd19908fef6acc8054dad258810b61463d4d3044a0da18f07:eyJzZWxlY3RlZExpbmVDb3VudCI6MSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiZGFjMWMxZjJkMjk4NzlmYmQxOTkwOGZlZjZhY2M4MDU0ZGFkMjU4ODEwYjYxNDYzZDRkMzA0NGEwZGExOGYwNyIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiZGFjMWMxZjJkMjk4NzlmYmQxOTkwOGZlZjZhY2M4MDU0ZGFkMjU4ODEwYjYxNDYzZDRkMzA0NGEwZGExOGYwNyIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiOWY4YTlmOGRlYjE3MTlmZjJmYzI2M2NkZmQ2MmVjYzRkNjY4Y2NiNzIxYzY2NWM4OTRiZTYwNGE4OWFkNzRjMiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZTk1MjM1MGVhN2M1MWRiMzg0NWVmOTRiNzc0ZWFlOTY0Mjc3ZjlhYzZmNGQyMzcwZmM2NzA1NjA1YzkzZGIyMSJ9"
         }
       ]
@@ -82,11 +82,11 @@
       "evidence": [
         {
           "resource": "repo://protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/QueryCallbackDocumentAdmission.kt",
-          "version": "repo-file-v1:sha256:a2fe09224072c8d075f6910e02d69b65ddfb26bfaf2c58835d6b91ad1deb51da"
+          "version": "repo-file-v1:sha256:786bca4342160378c836ae87ea68cda5731030c6ff122e6239ddd72ebd45f938"
         },
         {
           "resource": "repo://protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/QueryCallbackObservationDocument.kt",
-          "version": "repo-file-v1:sha256:28b0e080216b0ec1110d2d36d98f3371b1fe5f8abce255ee76b8a38c86d54672"
+          "version": "repo-file-v1:sha256:55c9297791d9daa7e455f0c6f8b006d3ec6efac072bf5085d780adb9d3bd5418"
         },
         {
           "resource": "repo://protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/QueryCallbackObservationDocument.kt#L70-L70",
@@ -97,6 +97,6 @@
   ],
   "verification": {
     "by": "openwiki/0.9.0",
-    "at": "2026-11-11T06:28:10.019Z"
+    "at": "2026-11-21T22:16:17.145Z"
   }
 }

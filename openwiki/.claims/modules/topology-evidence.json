@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:e8f4085f4a33a6487fdca5a81969fb9f705dc4f6037cae4ee16115922d761fcd",
+  "pageVersion": "sha256:6a522d1baa968cfa5bf8424bb12e4d312df6c297fc70f831d1b962abd39c9d75",
   "claims": [
     {
       "id": "claim_95d6c0f876d6489f9f8f62bd3a5a5ae0",
@@ -28,7 +28,7 @@
       "evidence": [
         {
           "resource": "repo://runtime/hosted/build.gradle.kts",
-          "version": "repo-file-v1:sha256:02f2bf0731dd328357ce3ac96ad7011fa928764c9797990bf3c2ff7d0e2e91fd"
+          "version": "repo-file-v1:sha256:b9e11a4ce440b3c30df1f9a0cda1a935263a5b2c67c7214f0495f9dfd7b58dd7"
         },
         {
           "resource": "repo://topology/build/src/main/kotlin/io/github/amichne/kast/topology/build/SemanticCallbackFactStore.kt",
@@ -43,6 +43,6 @@
   ],
   "verification": {
     "by": "openwiki/0.9.0",
-    "at": "2026-11-15T15:35:00.856Z"
+    "at": "2026-11-21T22:16:17.145Z"
   }
 }

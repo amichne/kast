@@ -1,22 +1,18 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:962096d393fedc8a3c295f5dcea83737af8f4b1259e63900b9d1b7666b2afd87",
+  "pageVersion": "sha256:d1fbdfde724c2c393a008a392b01cbf418f9e5918a4a7618c8034212d4b07553",
   "claims": [
     {
       "id": "claim_cef6aa14cee14d75b0fedd02c53e9033",
-      "statement": "HostedEndpointService owns the existing IDEA project's endpoint, explicit lifecycle composition, and retirement under the plugin service registration.",
+      "statement": "HostedEndpointService owns the IDEA project's endpoint, explicit lifecycle composition, and retirement under the plugin service registration.",
       "evidence": [
         {
           "resource": "repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedEndpointService.kt",
           "version": "repo-file-v1:sha256:96b790802da4eb83a8d35d4cd4dc09b03ffac12b7f1adca61c0495428bb9a8bc"
         },
         {
-          "resource": "repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedEndpointService.kt#L78-L78",
-          "version": "repo-lines-v1:sha256:935524399913b909c28acedf3db3db7af7fe3a594ef7d688943e941e57e0c33b:eyJzZWxlY3RlZExpbmVDb3VudCI6MSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiOTM1NTI0Mzk5OTEzYjkwOWMyOGFjZWRmM2RiM2RiN2FmN2ZlM2E1OTRlZjdkNjg4OTQzZTk0MWU1N2UwYzMzYiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiOTM1NTI0Mzk5OTEzYjkwOWMyOGFjZWRmM2RiM2RiN2FmN2ZlM2E1OTRlZjdkNjg4OTQzZTk0MWU1N2UwYzMzYiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZjE4NmY3ZGY3YjcwMWYyY2UwOWMyN2FkNGU1YjQ2NDM0NjE3MmFlMGQ2MWNkN2YwMjcyOTgyNGU0OTNlNjFlYiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiMjBlYjVjZTQxZmRlOWQ1OGNkZmE5NzZlYTY0Y2UwNDQ1MGQ4Y2QyZTU1NTQyN2NmZjRiYzZlMWVjZWMyYWRlMCJ9"
-        },
-        {
           "resource": "repo://runtime/hosted/src/main/resources/META-INF/plugin.xml",
-          "version": "repo-file-v1:sha256:728d88993295067868e794a71d67300debb243026c56e7e9f3ab40ac425d78db"
+          "version": "repo-file-v1:sha256:bfefa8f2020ae284fb407e21ce3930fad0fbd260a739e73eaaa73cef36adc59a"
         }
       ]
     },
@@ -69,10 +65,20 @@
           "version": "repo-file-v1:sha256:b90d591d4e865d8bfbea8ba2b2db4334b6734ca072536a44075efffbcfcacb77"
         }
       ]
+    },
+    {
+      "id": "claim_3681a2f7439b4d7e90ee9f5a4a8a5e6a",
+      "statement": "Semantic deployment admission rejects a project descriptor without the managed application advertisement.",
+      "evidence": [
+        {
+          "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/ide/ManagedSemanticDeployment.kt",
+          "version": "repo-file-v1:sha256:b68398fdb8f1d66523ea19d63198566a1bbe40b857780679b5e03299d9edec72"
+        }
+      ]
     }
   ],
   "verification": {
     "by": "openwiki/0.9.0",
-    "at": "2026-11-11T14:25:07.841Z"
+    "at": "2026-11-21T22:16:17.145Z"
   }
 }

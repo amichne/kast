@@ -1,92 +1,22 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:0341ea2c29222b85b5b6fea0e2c0215e20b42034c12e96404085bc6d3b3549c4",
+  "pageVersion": "sha256:bc9e1a485cf41a0e58c6a878d8944643a0f0364acaf52948af97288d219158f3",
   "claims": [
     {
-      "id": "claim_a5aabd0ac08b46be89a2eef490220d68",
-      "statement": "The optional Copilot and Pi RPC adapters admit the shared tool RPC catalog and preserve generated contract and delivery owners.",
-      "evidence": [
-        {
-          "resource": "repo://copilot/extension.mjs",
-          "version": "repo-file-v1:sha256:d63fb1863b8a38ed682afc0bf484364626f7245d865b3dee7ac74428b57db8b7"
-        },
-        {
-          "resource": "repo://copilot/extension.mjs#L2-L2",
-          "version": "repo-lines-v1:sha256:8d282a4481a4853e0ca03e0833936bae791333973df395ca23026087cf98f06d:eyJzZWxlY3RlZExpbmVDb3VudCI6MSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiOGQyODJhNDQ4MWE0ODUzZTBjYTAzZTA4MzM5MzZiYWU3OTEzMzM5NzNkZjM5NWNhMjMwMjYwODdjZjk4ZjA2ZCIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiOGQyODJhNDQ4MWE0ODUzZTBjYTAzZTA4MzM5MzZiYWU3OTEzMzM5NzNkZjM5NWNhMjMwMjYwODdjZjk4ZjA2ZCIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjEsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiNTUwMzVmMGQ4MzdmZGQ5MjdhZWUxNjUwYjgxMWJjZWU1OGY1ZTdiZTkyYTU2NDU1ZDAwMzAwNjI3Y2NkNTU0NSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZjViMjJkNDdjZGRkNjg0ZGYyYWVjOWVmOGU2ZmUwOTlhNzBiNTFiNGVkZjRmYzQ5MTQ5NmM3M2I0MDVmMzlmMyJ9"
-        },
-        {
-          "resource": "repo://pi/extension.ts",
-          "version": "repo-file-v1:sha256:8daf138e431a0853a36462c1f4ed3c655fdda64da544407fef1f453a3c5541eb"
-        }
-      ]
-    },
-    {
-      "id": "claim_beaf777103fa404bbc0ecd3138f871de",
-      "statement": "Portable query delivery invokes once, uses issued presentation authority, and preserves canonical outcomes under aggregate output limits.",
-      "evidence": [
-        {
-          "resource": "repo://cli/src/main/js/query-delivery-contract.mjs",
-          "version": "repo-file-v1:sha256:e2a6a42e6405b1469130faeaae6452e40ceb7eb94dc3c699d2481b3ae0f287e1"
-        },
-        {
-          "resource": "repo://cli/src/main/js/query-delivery.mjs",
-          "version": "repo-file-v1:sha256:74f73592d32c1c1ce6dbedf3f1cd55ff98f930cd3b358c50e3f0fe2cfe01e2da"
-        },
-        {
-          "resource": "repo://cli/src/main/js/query-delivery.mjs#L123-L123",
-          "version": "repo-lines-v1:sha256:3194bc7c1dd03d6ef2cfb2a1a54b04d6b284156f91a0ab3ecdc11965288eea8a:eyJzZWxlY3RlZExpbmVDb3VudCI6MSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiMzE5NGJjN2MxZGQwM2Q2ZWYyY2ZiMmExYTU0YjA0ZDZiMjg0MTU2ZjkxYTBhYjNlY2RjMTE5NjUyODhlZWE4YSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiMzE5NGJjN2MxZGQwM2Q2ZWYyY2ZiMmExYTU0YjA0ZDZiMjg0MTU2ZjkxYTBhYjNlY2RjMTE5NjUyODhlZWE4YSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiM2M1NzQ3NjFiNzk5ZDI5ZjRhMzM0NjNmNTk5YWYwZThmMGM4MzIwMTkyMjQzZWRhOGY3NTZjMmVhYjU0YTQ4MiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiNjNjYzNkZWUzZGFiMTIwM2QzOGVlZTk5YzlmZGUwNGY3ODQ4M2Y3MDk3MjkzYjYzNWQzZDU4YWIwZWQzMWJjNiJ9"
-        }
-      ]
-    },
-    {
-      "id": "claim_78a64609716545669cc9c59323266ccd",
-      "statement": "The outer delivery schema distinguishes client output delivery from canonical semantic completion.",
-      "evidence": [
-        {
-          "resource": "repo://cli/src/main/js/query-delivery-contract.mjs#L38-L38",
-          "version": "repo-lines-v1:sha256:0daa43b12c753fd6d1981458d595237dba40aa00d2c22631e21b67ae7077c410:eyJzZWxlY3RlZExpbmVDb3VudCI6MSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiMGRhYTQzYjEyYzc1M2ZkNmQxOTgxNDU4ZDU5NTIzN2RiYTQwYWEwMGQyYzIyNjMxZTIxYjY3YWU3MDc3YzQxMCIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiMGRhYTQzYjEyYzc1M2ZkNmQxOTgxNDU4ZDU5NTIzN2RiYTQwYWEwMGQyYzIyNjMxZTIxYjY3YWU3MDc3YzQxMCIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiMGVmMDRlYWE2OWIyYmE4OGJjYjY2ZWJmYmYwZjgzYmIzZTk4MWRkZjBjNzhjMDAxNmQxYjM0MzZlNzJhMjFhYyIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiOTVlMmYyOTQ3Y2E3YWZkMTRhMWY0NDczMjQwOWI0ZjU1YmZkNzI4MGFmZDEwOGM0YjJhMDNmYTNlYmU2Y2NhMSJ9"
-        },
-        {
-          "resource": "repo://cli/src/main/resources/query-delivery.schema.json",
-          "version": "repo-file-v1:sha256:5110de30a7a5e73c03db0a5c53809aa188cc958818559bd5df57f0220af88b1b"
-        }
-      ]
-    },
-    {
-      "id": "claim_75e753fdf35a4d0484644740c3c9541c",
-      "statement": "Query presentation counts only received evidence and keeps refinement locations as NOT_ISSUED source-read authority without automatic semantic retries.",
-      "evidence": [
-        {
-          "resource": "repo://cli/src/main/js/query-presentation.mjs",
-          "version": "repo-file-v1:sha256:8824ba2e86912e19f3a6c58b1c316fc9a831233601a795eb6daa54e2065a69c1"
-        },
-        {
-          "resource": "repo://cli/src/main/js/query-presentation.mjs#L300-L300",
-          "version": "repo-lines-v1:sha256:88805261ab92e0a4b25b5c572ca400d44c2543838a2124c8eee1b8da961e7007:eyJzZWxlY3RlZExpbmVDb3VudCI6MSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiODg4MDUyNjFhYjkyZTBhNGIyNWI1YzU3MmNhNDAwZDQ0YzI1NDM4MzhhMjEyNGM4ZWVlMWI4ZGE5NjFlNzAwNyIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiODg4MDUyNjFhYjkyZTBhNGIyNWI1YzU3MmNhNDAwZDQ0YzI1NDM4MzhhMjEyNGM4ZWVlMWI4ZGE5NjFlNzAwNyIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiY2QzMGY0YTAwYjAxMGQ3ZjEwMGM1ZjIyM2E0MTJjMGZhYmUyOWMzMzgzYjY2ZDg3OTQ0NTkzY2QxYTRmMThkMSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiYTA3ZTFhZDgwZDRiMTQ0Njk1ZTdjYTU1NjFlZGJkZTEwNWY1OTRlODAyMWVkYTk1NzZmYTk2YmYxMTE2NzAxOSJ9"
-        }
-      ]
-    },
-    {
       "id": "claim_62e9689fb94d439cb56fc70a8129fcb6",
-      "statement": "Generated default Codex and Copilot compositions select CLI guidance and passive native session hooks without automatic MCP; explicit MCP uses the separate complete transport composition.",
+      "statement": "The default generated agent plugin carries CLI guidance and the passive session hook without an MCP transport entry; distribution verification rejects an MCP entry or an undeclared hook in that plugin.",
       "evidence": [
+        {
+          "resource": "repo://agent-tools/hooks/hooks.json",
+          "version": "repo-file-v1:sha256:bb817a995e8eb9831007916766d54db148fd0a95a05ced1e5ae733e89ed42e13"
+        },
         {
           "resource": "repo://build-logic/src/main/kotlin/support/tasks/control/GenerateAgentToolsTask.kt",
-          "version": "repo-file-v1:sha256:05cbca22244ba9287dcc097e0f5df3c1011630f6f962a1e8abe2e1e742767089"
+          "version": "repo-file-v1:sha256:a2c0d8be9d2192be22082638e0d6f30e37abef187b80531f72603ae0e427fc75"
         },
         {
-          "resource": "repo://cli/src/main/kotlin/io/github/amichne/kast/cli/publicshell/PublicHook.kt#L100-L134",
-          "version": "repo-lines-v1:sha256:0f6eee9ac8cefb404d5156389f1a79d496b71dcc32f2e157135bf9062c65596c:eyJzZWxlY3RlZExpbmVDb3VudCI6MzUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjM4YjBhZTFkZGFlYmNkOGRlOTc5ZTFmN2M1MGFiMzhkYWVmNTAwZjRlYzBkNWQzNzcxM2E1NTlmYzQ1ZmE3NmUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjIwOGY3YjlkN2NjNDMxMmIwN2VkNmVlNzMzMTVlMjdhMjA4NTZmZTI3YmE3ZTRkMDFmMTBjZDdkYjExN2YzZDMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjAxZDA0ZTgzZTIyMzQyZTIzZjlmMjUyN2MyYjkzYWVjMWMxYmUzZGM2MGE2MzAzOTJkMGQ2OGU5NTE2NTNkMjgifQ"
-        }
-      ]
-    },
-    {
-      "id": "claim_5564e7cf80574a1b8c498fe560f82e2c",
-      "statement": "The Pi MCP extension registers the installed private interpreter, invokes passive internal session context asynchronously, ignores stale-session replies, and keeps context warnings separate from MCP availability.",
-      "evidence": [
-        {
-          "resource": "repo://pi/mcp-extension.ts#L52-L104",
-          "version": "repo-lines-v1:sha256:917f06115146100712fd9b95b25ffd1bacca785abc5ef2a639eed39c7e648f71:eyJzZWxlY3RlZExpbmVDb3VudCI6NTMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImYxOThhMjdlODczYWI0NTljMTFhNDhhNjcyNDYyM2YzYTAwN2ExODQ5ZGFlMTc0ODdmYWEzZDEzZDMyYzllZTMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijk0ZDdiOWFkMmRmZDdkYWFmZjAyYmM2ZDEyYzY1ZmJiZDE0Mzg1ZjA1N2Y5YjQ5NzZmMDMyMTg5N2ZlYTI1YjEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+          "resource": "repo://build-logic/src/main/kotlin/support/tasks/verification/VerifyDistributionTasks.kt",
+          "version": "repo-file-v1:sha256:a3cc2cb7ffafb609ff6cb850ac191ce5f4e6ff2397f4e06bc76171a4d82701ff"
         }
       ]
     },
@@ -96,15 +26,11 @@
       "evidence": [
         {
           "resource": "repo://agent-tools/onboarding.template.md",
-          "version": "repo-file-v1:sha256:4d09a8028db25c63aa02069d9094289203ca99b2fbf1e492d351a626e5867ce7"
+          "version": "repo-file-v1:sha256:a1bb79f4acf41bf34516e46a6477ff5bddd150caeeef51daeecdc8a07bd4fa2e"
         },
         {
-          "resource": "repo://packaging/generate-public-query.py",
-          "version": "repo-file-v1:sha256:d2e9125cf6e2e862eca9b7a8a83818de38ef694c06491d69099e2be4ef02d1f1"
-        },
-        {
-          "resource": "repo://packaging/generate-public-query.py#L881-L881",
-          "version": "repo-lines-v1:sha256:27764d7b7fb2ed9e97f4b90b3e6763f50c55a83b827df29c05aa9ef5e00d0c7d:eyJzZWxlY3RlZExpbmVDb3VudCI6MSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiMjc3NjRkN2I3ZmIyZWQ5ZTk3ZjRiOTBiM2U2NzYzZjUwYzU1YTgzYjgyN2RmMjljMDVhYTllZjVlMDBkMGM3ZCIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiMjc3NjRkN2I3ZmIyZWQ5ZTk3ZjRiOTBiM2U2NzYzZjUwYzU1YTgzYjgyN2RmMjljMDVhYTllZjVlMDBkMGM3ZCIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiOTE4ZTM1NGNkYWQ0OTA1YTExYmU0MzE2ZDA1MWRjZjQ4ZDQ0M2Q2YmNlMDA5NjlhY2Y2NmZlZjM2M2ZmMjU3ZiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZTBmYWZhMGEzMTQ2MTU4YmVlNzVlZDcwMDEwNjkyMjVkZTQ0ZDkxMzEyODcyZjc2ZGEzMGRiZTNhMWVkZWU1YSJ9"
+          "resource": "repo://packaging/internal/query/generate-public-query.py",
+          "version": "repo-file-v1:sha256:7bb62ad282cca610c34acdaa222cf9d89db00bccd1ea575618727567a4226685"
         }
       ]
     },
@@ -114,7 +40,7 @@
       "evidence": [
         {
           "resource": "repo://cli/src/main/kotlin/io/github/amichne/kast/cli/direct/ManagedToolInvocation.kt",
-          "version": "repo-file-v1:sha256:088c978c8a45415e16a5cdb1c78c7495e0c9730f76eacfc793ceb872a09cc196"
+          "version": "repo-file-v1:sha256:151cf774c0c31b8c1d8fbce7c52e2b0b546f60d2619f4e269add275b485c3679"
         },
         {
           "resource": "repo://cli/src/main/kotlin/io/github/amichne/kast/cli/publicshell/PublicHook.kt",
@@ -122,69 +48,63 @@
         },
         {
           "resource": "repo://cli/src/main/kotlin/io/github/amichne/kast/cli/publicshell/PublicHookPreparation.kt",
-          "version": "repo-file-v1:sha256:ea56f739af557d0d001289a2208e751805a15b9f487823b326bdd870330c63b5"
+          "version": "repo-file-v1:sha256:f747656c6f8683eef9e74b2e1b0dcb8457e98a3f5251dbef9dc16d139adb5d65"
         },
         {
           "resource": "repo://cli/src/test/kotlin/io/github/amichne/kast/cli/publicshell/PublicHookManagedPreparationTest.kt",
-          "version": "repo-file-v1:sha256:630fda427f32fc5c3116a8990beff1bae432377ab83a6d07443a2463f9bd7259"
-        }
-      ]
-    },
-    {
-      "id": "claim_f78c160dfeb8442c82ea31e9d635b548",
-      "statement": "Ordinary uninstall removes recorded provider resources before Host retirement and receipted Pi guidance during cleanup. Provider inventories prove ownership; conflicts preserve the Host. The registration lock protects a final empty-record check through payload removal. Harness uninstall forgets only the selected route after verified cleanup. These source paths do not establish native qualification.",
-      "evidence": [
-        {
-          "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/HarnessUninstall.kt",
-          "version": "repo-file-v1:sha256:61b4605982dae9b60e869c133f26e884d75e01f125bd41473141f8bc86512c98"
-        },
-        {
-          "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/IntegrationDisconnection.kt",
-          "version": "repo-file-v1:sha256:5086b5ad1d6f8a9172db2e23808028345b1a7a776b74ed2b7db62927e7707b17"
-        },
-        {
-          "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagementUninstall.kt",
-          "version": "repo-file-v1:sha256:715b68d1babd943b78c7978f5a5fececd16c6ef970e4234ae727a71645a07309"
-        },
-        {
-          "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ProviderRegistration.kt",
-          "version": "repo-file-v1:sha256:7d2057b06673aaa3faa3446cb1ab6b8fa4b27295c8e283de7963ea7af852aafc"
+          "version": "repo-file-v1:sha256:024da3f2c40cefc9a6330a58cf4c99a013698f17b384998f976b162a232e7eba"
         }
       ]
     },
     {
       "id": "claim_5051de4bcab947749ef09ffd0892f786",
-      "statement": "Control assembly stamps both skill compositions with the Control version. Managed ProductInstalled and legacy installation results enter capability-marked guidance refresh after activation or recovery. Failure or interruption retains HARNESS_REFRESH_REQUIRED; success clears that notice without discarding other notices. Source integration does not establish live provider loading.",
+      "statement": "Control assembly stamps the exported skill metadata with the product version and requires a semantic version; Kast performs no harness guidance refresh.",
       "evidence": [
         {
-          "resource": "repo://build-logic/src/main/kotlin/support/tasks/control/GenerateAgentToolsTask.kt#L86-L100",
-          "version": "repo-lines-v1:sha256:ac104e5e6a20cee2a96085c1cbbbc2d85a65b07d63720d2e238c3afdd3563741:eyJzZWxlY3RlZExpbmVDb3VudCI6MTUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjJiMjc5NjkzNzc2Y2YxN2MyOGQ5YWM5NDE4ZjVhYjg1YWJmMzlkNDc0MDM1ZTQ4NzFkYzNlN2Q0NmIwNDllN2MiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImQ2OGI5MjM1NGUzZWZjOTk4MzNkOGEyZGU2ZGU3NDA5MzFiZjg2OGExNmUxZGJlMzg4MjBhYzg1OGQwYjk3MDkiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImY2ZDA5ZjdkMjUyMDU5Mjg0NTg2YjkwZGM1NTkwZDM2NDhlN2EzYjZkN2M5MTNlNTJlNjcyNjAwMTFkMzBjMzgiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjBmMzVhZTg0YThhZWY3ZTJiMTM3ZDM2ZmQ3MDQ2NWNjYzE4YjBlNzgxZTYyNWNiZGNiMzU3MDlkZGQ2ZTFjZGQifQ"
+          "resource": "repo://agent-tools/README.md",
+          "version": "repo-file-v1:sha256:755fd674a9b0d564df35e0be364c004b9d3616ef64ac4ba27ad119f05caa6e22"
         },
         {
-          "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/InstalledGuidanceRefresh.kt#L46-L71",
-          "version": "repo-lines-v1:sha256:d20480c52d14b060a00a51267685f4163d9dbd1dd60efc346b9d3230242e9e40:eyJzZWxlY3RlZExpbmVDb3VudCI6MjYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijk0MDg1Y2FhYWYxNTU5MDhhYTAyZmZmZjIzOTZkNWRhMzk0MjU0MmMwM2Q2YWMyMmNjYzgwNjU0NmU0MmIyYWYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImM0NzlkZGFjNjg4MWU2MDY2NzIxNGMxM2I5ZjRlNjVkZDM2OTc0ZTQ5ZmNkNDA0ZjllNzExNGQxMDQ4MzU2OTMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjI2ZjNiODIxODA0ZTQ1NWM0NmQzMzg5ZWEwMzU1MTQ3Y2Y2ZjJiYjkwMWQ1YjUwM2I5MjZlNzM2OTY5YTNjYjEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjFlYTc1MGNhNWVlMTQ0MWVmYWE4MTIzZTc1N2QzYmQ2MzlmOGUxNWFlZmEwOTgyZWUxMGU3MWE3ZmZlNDIyZjAifQ"
+          "resource": "repo://build-logic/src/main/kotlin/support/tasks/control/GenerateAgentToolsTask.kt",
+          "version": "repo-file-v1:sha256:a2c0d8be9d2192be22082638e0d6f30e37abef187b80531f72603ae0e427fc75"
+        }
+      ]
+    },
+    {
+      "id": "claim_a2b0b9cf7e254b66a0cf3233ac04e28f",
+      "statement": "kast install skill exports the canonical skill directory, defaulting to ./.agents/skills, and agents receive the skill and an MCP server running kast --internal-entrypoint=mcp through agents.toml entries applied by dotagents; Kast writes no agent configuration.",
+      "evidence": [
+        {
+          "resource": "repo://agent-tools/README.md",
+          "version": "repo-file-v1:sha256:755fd674a9b0d564df35e0be364c004b9d3616ef64ac4ba27ad119f05caa6e22"
         },
         {
-          "resource": "repo://packaging/managed_installation.py#L2494-L2526",
-          "version": "repo-lines-v1:sha256:92d1b05dc68dfb812b73443fbaaf75308b7dd0c6b0f6adf9726793ac57912a7d:eyJzZWxlY3RlZExpbmVDb3VudCI6MzMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjBmNWNiY2JlNjlhYjRlNWJjN2I5YTg5ODc0Y2NhOTIyNTQzZTg0ZDhiZTFiOTY3OGY4YmZkNDFjNzAyZGJmMTAiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjJjNjdjNzgyNmY2MWJhYzM5ZGViZjE3YjJjZDNmMDlhOTdmYzZjNzgzNWQ4YWEzMGJhNTY0OTRhNWJhYWMxY2EiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImM3MGRhYTgxNjVlNDgyZmFmYzM0ZDQ4NTM4ZDQ3YTQyZDU2ZmQzMTQ0ZWRiNDhkODFmODkxYjA2NmFmMGJmYzIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImZiMDBkODA0ZGUzOWRkMGYxMWYwNDNhMWE4YWE1MmM5NmEzMmE4NjM1ZTg1OTVjOTRkYWE1MDhhM2Y0NjgyNWYifQ"
+          "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/KastManagementMain.kt",
+          "version": "repo-file-v1:sha256:d4ca374448e54e0ad11a44fc71d91bf4aa3a71aa1e6e4135cdef4c51212ecfb1"
         },
         {
-          "resource": "repo://packaging/managed_installation.py#L2580-L2599",
-          "version": "repo-lines-v1:sha256:98832aa38a321935ef9a02718e102f042c206674d37aaa2cdfb6f0d1d268287d:eyJzZWxlY3RlZExpbmVDb3VudCI6MjAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjFiMjY2NDA2OWVmYTE1M2Q2ZjQ1ZTFiZDUwMGRkMDBjNWQ4Y2VhMzUwYTBmMTQwN2I5MGYxMTE2ZWY2MDQ5OTQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjI0YmQwZTY3NTkxNTJiZjM4YWVlNTQ5YzkwZTVjY2FmMWUxNjQ4MGJiMzYxNzViYzFhZTYyOGZlNzllMWFlNjQiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjA5MjY4Nzg4NjcyODFlOGM3MmNjZjA5ODQ5M2Y5NTExNGI2YzdlYTgyMWQ5OTYzNjI0MTIyOGNjZGZjMDNiYjEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjYxYTkyZjgxOWMxMzcyZmY3MGNhMmQ0MzI4YjgwMjIwMTc5ZWQ1ZTM3MTI0MjNmYmFjM2Q0ZTk2NzUwZmVjNTkifQ"
+          "resource": "repo://docs/public/reference/integrations.mdx",
+          "version": "repo-file-v1:sha256:352164cb56343e41f32d7ae8c16e89a3d36543b17d2da6b346b2087641ecd9f0"
+        }
+      ]
+    },
+    {
+      "id": "claim_e019fcfe36f8426fb14c2c5fb045fcd0",
+      "statement": "The session-start hook runs kast --internal-entrypoint=query hook session-start and returns context only, deferring workspace preparation to the first semantic query without granting trust or starting a Host.",
+      "evidence": [
+        {
+          "resource": "repo://agent-tools/hooks/hooks.json",
+          "version": "repo-file-v1:sha256:bb817a995e8eb9831007916766d54db148fd0a95a05ced1e5ae733e89ed42e13"
         },
         {
-          "resource": "repo://packaging/managed_installation.py#L2669-L2700",
-          "version": "repo-lines-v1:sha256:6b80ad3ad5d9341f4d32a9d5cb292f8087892fa713d362f3e28b16969908f39f:eyJzZWxlY3RlZExpbmVDb3VudCI6MzIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjRjZDdiMGYzODFjYTE2NzY5NGUwNDI2NTY3MGU2NjY3MjNmZTQ0MTBlZGFmZjIxMTE2YjY3ZGExOWExYzkyZmQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImM5MGU1ODg5NjlmNzE4MGEyNDhlYzRlMzBiNTczNTAzYmRmZjhjNDFhMmYyOTRkM2Y0MDA0ZWNlMzQxZmUwZTQiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijc3NWJhMzExY2MzYTVmMzI4NTI0MzhiMmNmMzY5MTg3NGFhY2M5MGU5ODFlZjE0NDYyNmUzMTNjNTkxOTViYzciLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImVlZGI2NGY5MDllYzVkZTU5YTNhNDkwYjQ3Y2JlNjkwNjFjNThjZDJlOGEwY2U0YzQ1MGE2ODFmNDM1M2ZkOTIifQ"
-        },
-        {
-          "resource": "repo://packaging/managed_product_installation.py#L65-L73",
-          "version": "repo-lines-v1:sha256:7269e9a38b04b3e63615294d9ef5f1be403444247b8e52c769738b2bec62cff2:eyJzZWxlY3RlZExpbmVDb3VudCI6OSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiZjY5YTEzOTc1YzI1NmVjODMyMGUyMDE2MDgzYzk2ZGY2MzdjYTNkMzViZWJkZTIzMTRiZWUzYTQ3MTFiNTZjYSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiMDFiYTQ3MTljODBiNmZlOTExYjA5MWE3YzA1MTI0YjY0ZWVlY2U5NjRlMDljMDU4ZWY4Zjk4MDVkYWNhNTQ2YiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZjQ5NTkyM2UwZTljMDAyNDhiZTViYzVkNWJmNWZiZmYxODlkNGNmMTQ5OWFlMjcxMmZiNTdiOTQ0YmI4NmI5ZiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZWVkN2QxZDUwMTNjODkxMzYwNGY2MDRmZGFkYzQ2OTc3MGQxNmJlNjRlZDFhYTIxNTk4Y2NjMzc4ZWU2OGZiNCJ9"
+          "resource": "repo://cli/src/main/kotlin/io/github/amichne/kast/cli/publicshell/PublicHook.kt",
+          "version": "repo-file-v1:sha256:145176431cf37286bb0a8788a99fc3415e423d9f17f2ad5cd7b5f72bebf9e524"
         }
       ]
     }
   ],
   "verification": {
     "by": "openwiki/0.9.0",
-    "at": "2026-11-15T18:33:44.464Z"
+    "at": "2026-11-21T22:16:17.145Z"
   }
 }

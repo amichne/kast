@@ -43,26 +43,31 @@ class PassiveApplicationHostTest {
     }
 
     @Test
-    fun `passive status keeps managed ownership and rejects an unknown mode`() {
+    fun `passive status keeps managed ownership and rejects retired desktop members`() {
         val fixture = fixture()
         val original =
             managementJson.decodeFromString<Advertisement<LoadedApplicationHost>>(Files.readString(fixture.descriptor))
-        val identity = fixture.loaded.runtimeIdentity.copy(autoReload = ApplicationAutoReload.DISABLED)
-        val loaded = fixture.loaded.copy(runtimeIdentity = identity)
-        val encoded = managementJson.encodeToString(original.copy(application = loaded))
+        val encoded = managementJson.encodeToString(original.copy(application = fixture.loaded))
         Files.writeString(fixture.descriptor, encoded)
         val actual = readApplicationHost(fixture.root, fixture.home) { fixture.process }
-        assertEquals(Observation.verified(loaded), actual)
-        val unknown = encoded.replace("\"autoReload\":\"DISABLED\"", "\"autoReload\":\"UNPROVEN\"")
-        assertTrue(unknown != encoded)
-        Files.writeString(fixture.descriptor, unknown)
-        assertEquals(
-            ObservationState.UNAVAILABLE,
-            readApplicationHost(fixture.root, fixture.home) {
+        assertEquals(Observation.verified(fixture.loaded), actual)
+        // A Host identity has no mode or automatic plugin reload switch; each retired member rejects at decoding.
+        for (retired in listOf("\"autoReload\":\"ENABLED\"", "\"autoReload\":\"DISABLED\"", "\"mode\":\"DESKTOP\"")) {
+            val unknown = encoded.replace("\"runtimeIdentity\":{", "\"runtimeIdentity\":{$retired,")
+            assertTrue(unknown != encoded)
+            Files.writeString(fixture.descriptor, unknown)
+            val rejected =
+                inspectApplicationHost(fixture.root, fixture.home) {
                     error("unknown ownership precedes process inspection")
                 }
-                .state,
-        )
+            assertTrue(rejected is PassiveHostInspection.Rejected, retired)
+            assertEquals(
+                Observation.unavailable<LoadedApplicationHost>("DESCRIPTOR_REJECTED"),
+                rejected.observation,
+                retired,
+            )
+            assertEquals(PassiveHostStep.DESCRIPTOR_DECODE, rejected.stage, retired)
+        }
     }
 
     @Test
@@ -141,14 +146,7 @@ class PassiveApplicationHostTest {
             >(
                 Files.readString(fixture.descriptor)
             )
-        val application =
-            descriptor.application.copy(
-                runtimeIdentity =
-                    descriptor.application.runtimeIdentity.copy(
-                        autoReload = io.github.amichne.kast.protocol.contract.HostAutoReload.DISABLED
-                    ),
-                gradleImportEnvironmentIdentity = "e".repeat(64),
-            )
+        val application = descriptor.application.copy(gradleImportEnvironmentIdentity = "e".repeat(64))
         Files.writeString(fixture.descriptor, managementJson.encodeToString(descriptor.copy(application = application)))
         val admitted = inspectApplicationHost(fixture.root, fixture.home) { fixture.process }
         assertEquals(ObservationState.VERIFIED, admitted.observation.state)
@@ -224,7 +222,6 @@ class PassiveApplicationHostTest {
                 100,
                 host,
                 ApplicationHostBuild("9.8.7", "a".repeat(40), "b".repeat(40)),
-                ApplicationAutoReload.DISABLED,
             ),
             ApplicationHostCompatibility(
                 "262.1.1",

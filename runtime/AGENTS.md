@@ -60,7 +60,7 @@ Composes semantic services inside IntelliJ IDEA and owns hosted transport, query
 
 - Gradle project: `:runtime:hosted`.
 - Run `mise exec -- ./gradlew :runtime:hosted:headlessBootstrapPlugin` to package the bundled descriptor archive. This archive supplies no Host classes.
-- Read `hosted/NATIVE_FIXTURES.md` and `hosted/native/README.md` before native qualification.
+- Read `hosted/NATIVE_FIXTURES.md` before native qualification.
 - Hosted declared-effect fixtures consume the relation-owned `compileDeclaredEffectFixture` archive. Each case keeps its own archive copy and project state.
 - `check` and `scopedCheck` include `dependencyFixtureTest` for archive isolation.
 - [HostedQueryPublicationProjectionTest.kt](hosted/src/test/kotlin/io/github/amichne/kast/runtime/hosted/HostedQueryPublicationProjectionTest.kt) - publication and projection cases.
@@ -73,7 +73,7 @@ Composes semantic services inside IntelliJ IDEA and owns hosted transport, query
 - `ManagedHeadlessProjectStore` keeps IDEA metadata under private state and preserves the repository identity. Keep project trust necessary.
 - Reject test mode and a forced core classloader before the headless application endpoint starts.
 
-- The application service captures its build identity, profile, process incarnation, and loaded `idea.auto.reload.plugins` option at startup.
+- The application service captures its build identity, profile, and process incarnation at startup. Managed headless admission rejects a Host with `idea.auto.reload.plugins` enabled.
 - Its existing endpoint descriptor publishes those facts without a project or Gradle import.
 - Build identity, compatibility, and Host lifetime remain separate facts. Replaced plugin files do not change the loaded identity.
 - `SettleHost` fences new semantic calls and preparation requests before it examines native work and durable mutation records.

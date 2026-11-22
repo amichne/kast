@@ -1,14 +1,18 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:ec2da2d74aaf384e83d2007472eb60337e64dfb7f3cc171f16050380c72f2b53",
+  "pageVersion": "sha256:9ddcc508e1055cba560b13f821deb7d79e2922e20ef8432c09349f3fcb2ecb87",
   "claims": [
     {
       "id": "claim_33e6522130644483961b71cc571e663b",
-      "statement": "Public query compilation depends on generator parity and generator regression rules for the authored schema and its Kotlin and harness projections.",
+      "statement": "Public query compilation depends on generator parity and generator regression rules for the authored schema and its Kotlin and agent reference projections.",
       "evidence": [
         {
           "resource": "repo://build-logic/src/main/kotlin/kast.public-query-contract.gradle.kts",
-          "version": "repo-file-v1:sha256:1d54a1123da47b31f8feef85b2f1dcadb4a67743f9db79ed529af9fe593682ed"
+          "version": "repo-file-v1:sha256:d5b1f6efee828bc268ccdf724c2a6a587843cc254fb6dde763ef8988ec8a0ede"
+        },
+        {
+          "resource": "repo://packaging/internal/query/generate-public-query.py",
+          "version": "repo-file-v1:sha256:7bb62ad282cca610c34acdaa222cf9d89db00bccd1ea575618727567a4226685"
         }
       ]
     },
@@ -17,7 +21,7 @@
       "statement": "Installed CLI query schemas and callable documentation project canonical serializer contracts through the existing CLI generators.",
       "evidence": [
         {
-          "resource": "repo://cli/build.gradle.kts#L403-L440",
+          "resource": "repo://cli/build.gradle.kts#L197-L234",
           "version": "repo-lines-v1:sha256:2cf0ebec36ffe03764724099217a87c7d63b63e580099a85d2248f0547fabea8:eyJzZWxlY3RlZExpbmVDb3VudCI6MzgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjYzNmZkOTU4MzM5Y2RhNjQ3Njg4MGFiYTAyYWFiNjkwNjk1YjllZGI4ZTYzMWU4NjRjNGEyZjA2MDg0ZGU2YjgiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ4OTNmNDBlMzc4MWViODk2YzgyZDA0NmEwODA2N2ExMWUzNWNkZjJmMWRmYWYyNmZlYTkwYjhkYjY2NzY0MTMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImM3NGVhNTYwODRmMzc0NjEwMjM4ZTU2Y2YxYmViYTI3OGMyNjc1MmUwNWYyOWRlMjkwODk3ZTQyZjhmMmE1MDIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6Ijk0ZGViMGVhOWMwZjhkN2E4MWIyMGZlYzM5Y2NmMmVkMDQ0MGRmYTM4NzFmZjFlNjUzYWIwZjYxZGMxNTY0ZWEifQ"
         },
         {
@@ -43,10 +47,20 @@
           "version": "repo-file-v1:sha256:308d467fc4b0e205a6f3dbb339b3ed95425f49a01561d044c1dc948bdb7df8e1"
         }
       ]
+    },
+    {
+      "id": "claim_2e9c3447daf849df8439ae7074550ff3",
+      "statement": "QuerySessionRejectionDetail serializes typed output-allowance, detail-selector and authority rejection details, while the semantic owner decides source freshness.",
+      "evidence": [
+        {
+          "resource": "repo://cli/src/main/kotlin/io/github/amichne/kast/cli/rpc/QuerySessionRejectionDetail.kt",
+          "version": "repo-file-v1:sha256:bb5ebd4931bbe814498390133e1eaa81450d8e192a5afce7a2feb0224afe5613"
+        }
+      ]
     }
   ],
   "verification": {
     "by": "openwiki/0.9.0",
-    "at": "2026-11-12T22:37:51.261Z"
+    "at": "2026-11-21T22:16:17.145Z"
   }
 }

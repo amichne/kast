@@ -11,8 +11,7 @@
     "channel",
     "managedRootIdentity",
     "recoveryProof",
-    "controlIdentity",
-    "homeConfiguration"
+    "controlIdentity"
   ],
   "additionalProperties": false,
   "properties": {
@@ -55,9 +54,6 @@
     },
     "controlIdentity": {
       "$ref": "#/$defs/FilesystemIdentity"
-    },
-    "homeConfiguration": {
-      "$ref": "#/$defs/HomeConfigurationProof"
     }
   },
   "examples": [
@@ -79,9 +75,6 @@
         "device": 1,
         "inode": 3,
         "owner": 501
-      },
-      "homeConfiguration": {
-        "type": "ABSENT_CONFIGURATION"
       }
     },
     {
@@ -102,9 +95,6 @@
         "device": 1,
         "inode": 3,
         "owner": 501
-      },
-      "homeConfiguration": {
-        "type": "ABSENT_CONFIGURATION"
       }
     },
     {
@@ -125,9 +115,6 @@
         "device": 1,
         "inode": 3,
         "owner": 501
-      },
-      "homeConfiguration": {
-        "type": "ABSENT_CONFIGURATION"
       }
     }
   ],
@@ -235,8 +222,12 @@
             },
             "journalScript": {
               "oneOf": [
-                {"$ref": "#/$defs/CapturedRecoveryFile"},
-                {"type": "null"}
+                {
+                  "$ref": "#/$defs/CapturedRecoveryFile"
+                },
+                {
+                  "type": "null"
+                }
               ]
             }
           }
@@ -264,84 +255,6 @@
           }
         }
       ]
-    },
-    "HomeConfigurationProof": {
-      "oneOf": [
-        {
-          "type": "object",
-          "required": [
-            "type"
-          ],
-          "additionalProperties": false,
-          "properties": {
-            "type": {
-              "const": "ABSENT_CONFIGURATION"
-            }
-          }
-        },
-        {
-          "type": "object",
-          "required": [
-            "type",
-            "home",
-            "directoryIdentity",
-            "directoryMode",
-            "files"
-          ],
-          "additionalProperties": false,
-          "properties": {
-            "type": {
-              "const": "ADMITTED_CONFIGURATION"
-            },
-            "home": {
-              "type": "string",
-              "pattern": "^/",
-              "maxLength": 4096
-            },
-            "directoryIdentity": {
-              "$ref": "#/$defs/FilesystemIdentity"
-            },
-            "directoryMode": {
-              "enum": [
-                "PRIVATE",
-                "READABLE"
-              ]
-            },
-            "files": {
-              "type": "array",
-              "maxItems": 2,
-              "uniqueItems": true,
-              "items": {
-                "$ref": "#/$defs/HomeConfigurationFile"
-              }
-            }
-          }
-        }
-      ]
-    },
-    "HomeConfigurationFile": {
-      "type": "object",
-      "required": [
-        "artifact",
-        "identity",
-        "digest"
-      ],
-      "additionalProperties": false,
-      "properties": {
-        "artifact": {
-          "enum": [
-            "CONFIGURATION",
-            "CHECKPOINT"
-          ]
-        },
-        "identity": {
-          "$ref": "#/$defs/FilesystemIdentity"
-        },
-        "digest": {
-          "type": "string",
-          "pattern": "^[0-9a-f]{64}$"
-        }
-      }
     }
   }
 }

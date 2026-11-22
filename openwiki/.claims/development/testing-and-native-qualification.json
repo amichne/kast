@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:0388c425f0541f9954930ed51533a60102fe853ac452c2afc50df98fae42689c",
+  "pageVersion": "sha256:5b66ee475e8784d59168aca5c398c2fc0541bb4930057c0190997ef6ef301ce9",
   "claims": [
     {
       "id": "claim_b360f4c00a974d9fa3febbb40e81500c",
@@ -8,7 +8,7 @@
       "evidence": [
         {
           "resource": "repo://docs/development.md",
-          "version": "repo-file-v1:sha256:51606904bba5b419b8d75a1fa2790b1e420b1ccb797b3989875d0a7c13a38c3e"
+          "version": "repo-file-v1:sha256:3676914d69fef7f93195e257b580a342b6f1cc6a2a1b746d407059c3ba8b26e1"
         }
       ]
     },
@@ -17,30 +17,26 @@
       "statement": "The portable packaging runner uses owned process state, enumerates offline suites, requires one nonempty test summary per suite, and rejects unexpected skips. It scans summary lines throughout the log so buffered output cannot hide the test count.",
       "evidence": [
         {
-          "resource": "repo://packaging/run-portable-tests.py#L23-L71",
-          "version": "repo-lines-v1:sha256:3446cffb0d600a3a537b6c09121222b716c90479b648314f8190317dd90c782c:eyJzZWxlY3RlZExpbmVDb3VudCI6NDksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjdhMjUwMjlmOTY0YzIxOTBmZGUyNWIxYTViYTEyYTZhYTA0YzExNGRiZDIxYTUwNzFmNTc5MmVkNTM2Y2MxOTYiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjU0ODI2MGJjMGYxZWI0OTFkYzAxNGUxNzk1MjdiNWY0M2ZhOWMxMzk0OGM1MGIwMDZlZTk5M2VkY2Q5ODJhM2QiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjA1NzIyYjhjNGYyODMxYTA4YTZmZjE2OGQxNjUxMTRiNmZkYmFjZjk4NDIxNTM2NjI3NzY5M2JkY2IzYmQwMjAifQ"
+          "resource": "repo://packaging/internal/verification/run-portable-tests.py",
+          "version": "repo-file-v1:sha256:7fa8b4804e7f6b4456a774654a521950935dafcc43ff5514afa35a720bbecfb1"
         },
         {
-          "resource": "repo://packaging/test-portable-tests.py#L34-L61",
-          "version": "repo-lines-v1:sha256:0e2bcebb8fd491a85de01ca6ab73892a0098c36f24ef8852565f0cb32cb78a4e:eyJzZWxlY3RlZExpbmVDb3VudCI6MjgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImU3NGJhMTE4ZjJkMmYyM2Q0Y2Y4YjNhMDAzMWQxMDlkMGQzNmU4ZTAyZGQyOGNlNjExYWRmM2M3NzMwZjUzOGMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjU4NTk2MDhkZWMyOGQ2ZDQ5ZTVhZmZjZTM1ZGFmMGRjODFhNjdkNWVjNzRiNGU3OWRlODIxOTRjMjk1YmJhZjQiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjAyYzIzZWJkN2JmN2E0NzIyYjc3OTFhMzgyZDQ4NDVlYWViY2E4M2FhYWNkNWNiNzM0YmNiODM2ZTlmYTdmMzciLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6Ijc1NTc3MzM4NjYzYTA1ZTExNWM5ZTMwNzVmZjgxZjc1M2JjM2Q1YzBkOGQ5MjVjYmVjZmNjZjIxMTU4MDJhYjYifQ"
+          "resource": "repo://packaging/tests/test-portable-tests.py",
+          "version": "repo-file-v1:sha256:637f70cbe86bc07bb67e4190d12fc0b91c82458ab4a9e46e933a713b89873408"
         }
       ]
     },
     {
       "id": "claim_a8dc48f0b8fe46ef8f27477e0af2d1ae",
-      "statement": "Native fixture and installed-host procedures require separate environment and identity evidence beyond source and scripted adapter tests.",
+      "statement": "Native fixture procedures require separate environment and identity evidence beyond source and scripted adapter tests.",
       "evidence": [
         {
-          "resource": "repo://experiments/host-observation/ACCEPTANCE.md",
-          "version": "repo-file-v1:sha256:2df0a519ae6dd2d44a7030285c8abc8165d2ea772d6862e99e488e8e610ef9f3"
+          "resource": "repo://relation/intellij/NATIVE_FIXTURES.md",
+          "version": "repo-file-v1:sha256:0ad89f7d3f631963201a867236078336c8750e0c2c3e19ec7b7b7619e1979e9d"
         },
         {
           "resource": "repo://runtime/hosted/NATIVE_FIXTURES.md",
           "version": "repo-file-v1:sha256:76b683121f0bfe035c2314368318a5d3245a2a2a7feed54145658f1309fce323"
-        },
-        {
-          "resource": "repo://runtime/hosted/native/README.md",
-          "version": "repo-file-v1:sha256:1c7415fce34c581393d1e9fc2f55b3ba8ac86a7ce73f8f4546197d4a9e378571"
         }
       ]
     },
@@ -49,12 +45,12 @@
       "statement": "The local macOS installed probe requires exact component-native qualification, pinned private interpreter inputs and an explicit isolation sandbox. Its acquisition-only schema fixture is not a complete two-target candidate, and the report explicitly withholds release qualification.",
       "evidence": [
         {
-          "resource": "repo://docs/development.md#L276-L312",
-          "version": "repo-lines-v1:sha256:fa9c3e32ffa150c108b055cf58e476174fcc56f9113b30e76256d349deb88a28:eyJzZWxlY3RlZExpbmVDb3VudCI6MzcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjJhZTE3OTZiZWUyNDVlODg5MGVjNGIyZjE0NDhmZmJiZGIxOTRiNGU0NDUwYTdhNDQ4ZmQ0YzQ5Njc3M2ZjYzYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAyNjM1NWE3MTJhNmZlZDNmNWI1OGQ3ZGVjYTFmYTE2N2UwMzIwZDZlMjNkYTZhNThjYmJhOTFkYTcwYTI1YmUiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImRkYWI3YzEwMGU2NmE2YzU2MzI4NGUwOWI5YmE5NGY3OThkNTNhOWE3MjRmYWJlYjNhNGM1NGJiODU2ZTVmZTciLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImEzMTkyM2M3MjExYjJkY2Y5NDFlZWFkMzI0YzVhMTdiYzZlNzE3NGNiNTM4ODI1MmQwNDI2N2JhNmNhNTRlODEifQ"
+          "resource": "repo://docs/development.md",
+          "version": "repo-file-v1:sha256:3676914d69fef7f93195e257b580a342b6f1cc6a2a1b746d407059c3ba8b26e1"
         },
         {
-          "resource": "repo://packaging/local_product_probe.py",
-          "version": "repo-file-v1:sha256:1e1118ea1b21e8958825d560f434a2312df98005571bfc14397bc47f0dc49255"
+          "resource": "repo://packaging/internal/verification/local_product_probe.py",
+          "version": "repo-file-v1:sha256:700ef9f066925c98c3d7e7aa953f44d10c9302a23a46c62a830611c9eba702d9"
         }
       ]
     },
@@ -63,12 +59,12 @@
       "statement": "Each local installed trial releases three shipped public cold queries concurrently and compares their shared compiler lifetime with a warm query. Uninstall separates the trials, and a repeated Host lifetime rejects the run.",
       "evidence": [
         {
-          "resource": "repo://packaging/local_product_probe.py#L433-L461",
-          "version": "repo-lines-v1:sha256:e2bfb2654edbc89b8e922af519854832516bf5eaeed5fb7c8ed5a867ae3e0f68:eyJzZWxlY3RlZExpbmVDb3VudCI6MjksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjdkM2Y0NjI3MGFmNGI4YzI2ZTYwODVmZDc3MmUyZTNlZTRjMjczZjdlMjFmMjdhMzFhMjA1OGQxYmI1ZGMyYTgiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjlmZjA2MzFjNWJlYzM0YWM2ZDA4NTJiYzQ1YmY4N2M3N2RlMjgxYTFhZWNmZmI1MmY3OGQxNTQwNDA3NDcxZWQiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjQzMTIxYTI4YjRlMDczZDAyMjRjYTk5MDgyNDc3YzAzMjk5ODc3MTdjNTAzMGQ3OTgxYzViMTZkODJiMTk5NDciLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjJmZTBhZDFmYzkwOGIzMDQxYzYwMzEwMmM5ZjkxZmFhYzA1ODdkMTQ1MDIyMDViZWEwYjViZjg2MWQ1ZmY2MDIifQ"
+          "resource": "repo://packaging/internal/verification/local_product_probe.py",
+          "version": "repo-file-v1:sha256:700ef9f066925c98c3d7e7aa953f44d10c9302a23a46c62a830611c9eba702d9"
         },
         {
-          "resource": "repo://packaging/product_lifecycle_probe.py#L249-L268",
-          "version": "repo-lines-v1:sha256:e98bf230fbabee88faec7617600079ad35634f0fdcb074afdf9bb7adbc62e213:eyJzZWxlY3RlZExpbmVDb3VudCI6MjAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijg1MWZhZDI1YjgxMzJlNzAyYzIyNGEwOGMxNGY0Y2Q0OTQ5YmVmYjQwZjk0ZTRlMTBmMmZjZjJhNDQwNmRjMjQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjJjMDRkNjNlNTU5N2QwNDlhZGYyZDdhZmE4MjRmYWE5ZTk3MzE4MGFjZDQzNWEzODYyMDVjOWYwOWI5YTc2N2QiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjYwZmJhYTg2ZWU2MmEzNjlmMjBiOWI0NWJhMTJiNDVmMDFkODc4ODM3ZGQ2YTkyZTA1YTI2ZThlZDdlZDZlMjEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjBlNmQ0YTY2ZGM3MmU5OTY1MjIxYTg1MTYwNjU4ZjVhNDVkZjBkYWMzNTRjZDhkN2E4MzcyYzA1OWEzYjMxMzMifQ"
+          "resource": "repo://packaging/internal/verification/product_lifecycle_probe.py",
+          "version": "repo-file-v1:sha256:ef2f0407a4e29c52f582836c9492121dcfc407d4e222e5679e1ef74a8a33262b"
         }
       ]
     },
@@ -77,12 +73,8 @@
       "statement": "The local repair scenario damages an owned runtime file under a live Host, verifies unchanged damaged bytes through actual native retirement, then requires the original digest and a fresh compiler Host. It checks protected files and final uninstall, not public network repair selection.",
       "evidence": [
         {
-          "resource": "repo://packaging/local_product_probe.py#L256-L310",
-          "version": "repo-lines-v1:sha256:0f474e84073413cc0f12e79dff10444f9c02864be15e297c396d45ffbef627a6:eyJzZWxlY3RlZExpbmVDb3VudCI6NTUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjJlM2U3YjRlZTg2YTY5NzQyM2FmYTRkZjBlMTNkYTQ1Zjk1MTg0ZTk0Yjg4N2U3ZDllOWVhN2JiODBiMTcyYzMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjU1MjQ2MzY1ZWRhZmUzODA1MDljZjNkZWUyOTQzNDIzNWY0N2VmNDYwMzM2NjFmOTBjOTY1NDYyMzlkYzVhYjYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImZlMGVmMmU0NTdkZThmN2I4MDAyN2NhZDhjYzQ3OGYzYWExZGZhZWEzMzBjNmNkNzFkYmE1OTYwOTU5NDQwMWUifQ"
-        },
-        {
-          "resource": "repo://packaging/local_product_probe.py#L462-L520",
-          "version": "repo-lines-v1:sha256:47f476ece8ab7492812d989aefd1dd0a8f43d7fcd258e213911debed4a2f411c:eyJzZWxlY3RlZExpbmVDb3VudCI6NTksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImYwOTY2MGEwMzQwNWVkMmI0YjQwZjQ3YTJmOWM5ZDZlMjk4YjAwZTdmOWVjYWMxODNiYmU4NjNhMTI3M2Y4ZWYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImZhYWE3ZTAzYTM5OGZjNGMzZjMxNTQ5OWFiNWEwMjcxYzk1YzQyNDg3ZjQ5ZjEzNmM5OTRhOGY5ZTk0NjMyZTMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjYyNjIxODhmYTMxYzUyNzYxMTk3OGEzMmNmMzMwYTcwNTU0ZDJlNzhiMzZkYTAxYzcwMDNhNTk3N2Q4NTA0M2YiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjRjZTE2NDZjYzY3OWU4ZDc2MmE2NDUyM2JhOTMwYjVhMzkxNzNiMDA3YzJmZmY0NmNhMTdjYzA1N2I2MzA1MzAifQ"
+          "resource": "repo://packaging/internal/verification/local_product_probe.py",
+          "version": "repo-file-v1:sha256:700ef9f066925c98c3d7e7aa953f44d10c9302a23a46c62a830611c9eba702d9"
         }
       ]
     },
@@ -91,18 +83,8 @@
       "statement": "The local installed probe invokes the packaged coordinator with isolated Python and disabled bytecode writes. It records interpreter identity, shipped module paths and both interpreter settings, rejecting an invocation that lacks isolation or permits bytecode writes before product admission.",
       "evidence": [
         {
-          "resource": "repo://packaging/local_product_probe.py",
-          "version": "repo-file-v1:sha256:1e1118ea1b21e8958825d560f434a2312df98005571bfc14397bc47f0dc49255"
-        }
-      ]
-    },
-    {
-      "id": "claim_2385e2ead70f47d5accef8670d3d868b",
-      "statement": "Desktop IDEA mixed-version acceptance remains a deprecated compatibility check for existing 0.51.x Hosts, not qualification of the managed headless replacement or the contributor installer that installs a checkout as an isolated managed product.",
-      "evidence": [
-        {
-          "resource": "repo://runtime/hosted/native/README.md#L1-L9",
-          "version": "repo-lines-v1:sha256:4a0c87e7b623beb5beaa56e584f9a892746435765950ab2f2ea9110b761ca3f4:eyJzZWxlY3RlZExpbmVDb3VudCI6OSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiYjEzNzllMjRlNDE4MzRkNzBiYTY3NjMyM2EyYWNiYjNiYzJmODRlMmM5MDZjMTdkMTZhZDQ4YWRmMTAzM2JmZSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiZTY3ODc4MGU1ZjI1MzdmMWU4MGI4ZDlkNzI5MGFkZTA3MWY1YThiM2JlNWU3NjlkYTliMThhZWZjMTZiMzYzZiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjAsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZTNiMGM0NDI5OGZjMWMxNDlhZmJmNGM4OTk2ZmI5MjQyN2FlNDFlNDY0OWI5MzRjYTQ5NTk5MWI3ODUyYjg1NSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiMTc3ZDQxMmMyNjlhZjcxMzMxOTYzNDgzYTNlMGU5OGVkN2RlNGQyMjc0ZjRhZGE3Yjc4ZmY5MjI5NjViYTE5NCJ9"
+          "resource": "repo://packaging/internal/verification/local_product_probe.py",
+          "version": "repo-file-v1:sha256:700ef9f066925c98c3d7e7aa953f44d10c9302a23a46c62a830611c9eba702d9"
         }
       ]
     },
@@ -111,18 +93,32 @@
       "statement": "Installed-product acceptance delegates to the complete-product lifecycle probe with qualified candidate and baseline artifacts and explicit interpreter and evidence inputs; missing prerequisites reject rather than skipping or substituting a staged component pair.",
       "evidence": [
         {
-          "resource": "repo://docs/development.md#L520-L533",
-          "version": "repo-lines-v1:sha256:efa7abe0170285442edfb19324e19a7ec5cd3269dbc82f23b4113e3e1041c25b:eyJzZWxlY3RlZExpbmVDb3VudCI6MTQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjU5ZmVjNDRiNTc5ZjM3NjE5MjhmNzBhODQ1OGRhNDFmNWIyNWMyMTkzMjk0MzYwZmVjNTMwYWFkOTQwZTgxMzciLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImMyN2Q4YmRjMjRiMmI1YTRjMGQ2OWViNzEwMmYyZDJhODhhMDhhZjFjZmE5NGY3ZjVhOTJiNDQyNGQ2MTJiMTkiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImJiYTQ1ZGFmMmIwZjNkY2M1N2FhMmNkNGRjZmQ1YjE0ZWNjY2Q4ODc4MTAwYzlhZDJkYjA2ZTgwMmIyYmRmNjkiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6Ijk4M2QwNTJlZmIyZTBiZTNlZjIwY2MxNmQ2NmFlMGQxYzBjODUxYzY5NTYyZjA4YzQ0NGJmZDgzZjM5ZjJhMmYifQ"
+          "resource": "repo://docs/development.md",
+          "version": "repo-file-v1:sha256:3676914d69fef7f93195e257b580a342b6f1cc6a2a1b746d407059c3ba8b26e1"
         },
         {
-          "resource": "repo://packaging/run-installed-product.py#L55-L61",
-          "version": "repo-lines-v1:sha256:2b159533caef9458be60a01e9e7c831114906aef168bd9d465b7b0dccab2af54:eyJzZWxlY3RlZExpbmVDb3VudCI6NywiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiM2IwMGY1ZGIzMzJkOTM5MTI2OTAyZDk1ODA3NDFlNWMzYzlkMmNkMDg3ODQ0NjI3M2Y3ODYxMjNmMDVmNTEzZiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiZjQ4NmZmNWNmOTM2M2I0NDI5MzM2ODAzYjJjOTYwZTczZGE4YzQ3ZmEwYzZmNjc2NThkMTRiMzIzY2QyMmQzNCIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiMjJmNDhhNGU2NTAyMGEwMmMzMGUzZmZhNTVmZWE0ODI5MGU2ZDgyNzMzNWI5ZjVkMmI2MjYxMGQzYjQ5MGJkZiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjEsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZmI2NGU5MjAwMGExOWNhMzg1OTNhNGU2YTBiYWM3NzA5NmQxZTk4Njk0OWEzYjYyODI2YjdjZWE0ZjczZDllOSJ9"
+          "resource": "repo://packaging/internal/verification/run-installed-product.py",
+          "version": "repo-file-v1:sha256:608ab077cd2df15e442ead5809ccfc0da65a0dc078422b6ac190d1990b1e392b"
+        }
+      ]
+    },
+    {
+      "id": "claim_49320725b65f40ba93c1b3139aee36c9",
+      "statement": "The Promptfoo campaign compares agents that receive the Kast skill and Kast access with source-only controls, and its MCP replay admits each MCP wire reply before recording a receipt.",
+      "evidence": [
+        {
+          "resource": "repo://experiments/host-observation/mcp_replay.py",
+          "version": "repo-file-v1:sha256:2af4708a7520c5cafb601e02faf95eabdb926012135462e6e693d0915b5c273b"
+        },
+        {
+          "resource": "repo://experiments/host-observation/promptfoo/README.md",
+          "version": "repo-file-v1:sha256:9a81c0d3700941a0e5e1cc2c06cef9fce26ee4123d6e2bfa7909647b436facbd"
         }
       ]
     }
   ],
   "verification": {
     "by": "openwiki/0.9.0",
-    "at": "2026-11-15T18:33:44.464Z"
+    "at": "2026-11-21T22:16:17.145Z"
   }
 }

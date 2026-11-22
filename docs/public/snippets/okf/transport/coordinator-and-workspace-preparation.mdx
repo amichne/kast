@@ -16,11 +16,11 @@ Recorded evidence differs from current source or needs further assessment. This 
 
 `distribution/managed` owns `CanonicalRoot` and nearest Gradle-settings root discovery.
 Discovery resolves the physical directory and stops at a nested checkout boundary rather than borrowing another repository's settings.
-CLI, MCP, and tool RPC use `ManagedWorkspaceQuery` to select the installed product and private workspace generation before semantic execution.
+The CLI and MCP use `ManagedWorkspaceQuery` to select the installed product and private workspace generation before semantic execution.
 The first explicit preparation request grants trust only to that exact root. Retained-reference access requires an existing record.
 The request owns the query lease and private HOME; MCP initialization and session-start context remain passive.
 Saved installation and workspace configuration are admitted by the shared managed configuration owner.
-Queries do not acquire release assets or discover desktop IDEA installations.
+Queries do not acquire release assets or discover other IDEA installations.
 
 <a id="okf-transport-coordinator-and-workspace-preparation-admit-one-installed-coordinator" />
 

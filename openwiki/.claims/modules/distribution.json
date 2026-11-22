@@ -1,21 +1,7 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:c595953222c05592e797ec5315345869d5b4e906368237750faab655f6d9b242",
+  "pageVersion": "sha256:4901f4b5bcfc0079ae626306df0cfe9290689522ca9f96390f36175fc9e61efb",
   "claims": [
-    {
-      "id": "claim_6e162d0003544cefbaac0dcbf07fab32",
-      "statement": "Kast admits selected guidance and provider resources under its setup lock. CLI-only is the default; explicit MCP adds transport dependencies. Session hooks are passive, and exact legacy registration cleanup follows successful provider setup.",
-      "evidence": [
-        {
-          "resource": "repo://build-logic/src/main/kotlin/support/tasks/control/GenerateAgentToolsTask.kt",
-          "version": "repo-file-v1:sha256:05cbca22244ba9287dcc097e0f5df3c1011630f6f962a1e8abe2e1e742767089"
-        },
-        {
-          "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/PluginInstallation.kt",
-          "version": "repo-file-v1:sha256:c79760eacad6955ec729d5da371a3e15d1014014a053ccb50ad7ca9609974c2b"
-        }
-      ]
-    },
     {
       "id": "claim_1a8f3f1aad9047d2b79590402921e2dd",
       "statement": "Destructive recovery is restricted to an exact named tree beneath an absolute physically canonical installation directory, rejecting symlinked installation roots and paths outside that ownership.",
@@ -23,20 +9,6 @@
         {
           "resource": "repo://distribution/managed/src/main/kotlin/io/github/amichne/kast/distribution/managed/ManagedInstallationOwnedTree.kt#L11-L43",
           "version": "repo-lines-v1:sha256:23660d2d6953fc1c1240ab3ad520f1f956e4119b2e2226350b92080ad6d89403:eyJzZWxlY3RlZExpbmVDb3VudCI6MzMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAzOGMyYTc2N2E1MTg0NmVlM2NjNDQ2N2U5OTM5MjUzZmYxYmE0NmE1YmI2Zjc0Njg2MWUzZWY3MGNhODNlMTQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImU2YjA0NDkxNDY5NzIyZTgzNjNhOTRlNDA0NDUzOGUwMTNhMmEyMTdlMzZiMWU1NjhiYTYwYWNiN2I0YzhmMmUiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImM4NjI2Njg2YmM4OWExNzE4ZTk3MTAwYzA2MzU5NDhlYjkzOWZjZmNhNDY4MTY1MjBmYWNiMTdhOTI3OGEzMDEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImFiOTVjYzk3MDJjMWI1NmY1NzQ0YWNhOTA1ZjI2MWFiMGFkMGRlNDVlNDBiYjk4ZDRiMmRhY2VmYjNjMDdlOGQifQ"
-        }
-      ]
-    },
-    {
-      "id": "claim_1114e59973ab4e4ab3a712483fb15c67",
-      "statement": "Legacy installation shutdown fences work, disables the coordinator and retires requests before the selected Host. Managed product fencing is distinct from temporary scoped stop.",
-      "evidence": [
-        {
-          "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/InstallationLifecycle.kt",
-          "version": "repo-file-v1:sha256:41105cd3654fdcf641a2575ba65891e835a8c0de6f5a4e45dde60f1c9a6bc5d9"
-        },
-        {
-          "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagedWorkspaceRetirement.kt",
-          "version": "repo-file-v1:sha256:595a6c7767f474d048da354e6b01efdf1f11702f63d037a57f6db580bee32953"
         }
       ]
     },
@@ -60,25 +32,11 @@
         },
         {
           "resource": "repo://build.gradle.kts",
-          "version": "repo-file-v1:sha256:fbc6a2cdac2149c23a72e5cebbe73c1c818e462bb631c7636d109ccc87ebd469"
+          "version": "repo-file-v1:sha256:aaac0674d99471e186c80d15874f2421a620789f28c033e5e2ba8176e9a8b6af"
         },
         {
           "resource": "repo://packaging/internal/installation/host-installation.py",
           "version": "repo-file-v1:sha256:d9a8a14a4595fb5989b2bd278fe5a61a13d1082bf639253e27c14b4d7843e2a0"
-        }
-      ]
-    },
-    {
-      "id": "claim_acf440b51fcb4a90a652aaca679121f1",
-      "statement": "Control-only upgrade admits the running Host before retiring Control and repeats Host admission after replacement without broker startup. Failure after retirement uses Control recovery and preserves original and recovery failures.",
-      "evidence": [
-        {
-          "resource": "repo://cli/src/main/kotlin/io/github/amichne/kast/cli/installation/ControlInstallationRecovery.kt",
-          "version": "repo-file-v1:sha256:25e7407842832f2d1b4502db826de7ca180f590cf53292e88b830fd47b85cbac"
-        },
-        {
-          "resource": "repo://cli/src/main/kotlin/io/github/amichne/kast/cli/installation/InstallationWorkflow.kt",
-          "version": "repo-file-v1:sha256:de9b9061f387a3681b8afc4dc707801820e7011740d4cc8503dff41d28335206"
         }
       ]
     },
@@ -88,173 +46,97 @@
       "evidence": [
         {
           "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagementExecution.kt",
-          "version": "repo-file-v1:sha256:18d2cadf036d9552e9e5d27f5ed2515a53048be99a7cb77cec277febddec2e13"
+          "version": "repo-file-v1:sha256:a5a24e2d4261371926195ec237a1dbc0ecf47476a477d5b6c1e7d6c0623aa832"
         },
         {
           "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagementInstallation.kt",
-          "version": "repo-file-v1:sha256:bac9e23462792851991482c8ab32639fa2660e302a58205c3d0d5d593e70dcfd"
+          "version": "repo-file-v1:sha256:b1b9823f8269050d3285cdefbc153d0e054d49421a8c3d29ebf630210891c923"
         },
         {
           "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagementUninstall.kt",
-          "version": "repo-file-v1:sha256:715b68d1babd943b78c7978f5a5fececd16c6ef970e4234ae727a71645a07309"
+          "version": "repo-file-v1:sha256:519f5b8e97ec064ed8eec75d349b79f9924fd699b4cc1e4bb0996e3fdbce68fa"
         },
         {
           "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/UninstallManagedRoot.kt",
-          "version": "repo-file-v1:sha256:eeec92a3a3cbbc3428cfc6d2f0969354f346887d646576b9b08658ba88c8b9f7"
+          "version": "repo-file-v1:sha256:c3b89341d96a228c3a4f3e08ee88d893f7a586ec2f870f2355ea25919e1d7e93"
         },
         {
           "resource": "repo://packaging/internal/installation/managed_installation.py",
-          "version": "repo-file-v1:sha256:809457a3e1c42fa78e3b88077e51e2ff5ed19af07921820a4f440bc860b97884"
+          "version": "repo-file-v1:sha256:17c4c50b8c594a8f8d1079829b2a5ceec26b12e84b46626d9b40ddca02a523d2"
         }
       ]
     },
     {
       "id": "claim_cd889a0325d545bfa9bf4d60f007e9f3",
-      "statement": "The existing installation and reset effect owners reject symlinked ancestors before directory creation or root detachment; public executable publication separately rejects aliased destination parents before writing.",
+      "statement": "The reset effect owner rejects symlinked ancestors before root detachment, and public executable publication separately rejects aliased destination parents before writing.",
       "evidence": [
-        {
-          "resource": "repo://cli/src/main/kotlin/io/github/amichne/kast/cli/installation/InstallationWorkflow.kt",
-          "version": "repo-file-v1:sha256:de9b9061f387a3681b8afc4dc707801820e7011740d4cc8503dff41d28335206"
-        },
         {
           "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ForceInstallationReset.kt",
           "version": "repo-file-v1:sha256:970d11ab6c5d8aa17a2d9ae468c840377769ffa91ecf2a261f79f8569a7cf882"
         },
         {
           "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagementInstallation.kt",
-          "version": "repo-file-v1:sha256:bac9e23462792851991482c8ab32639fa2660e302a58205c3d0d5d593e70dcfd"
-        }
-      ]
-    },
-    {
-      "id": "claim_ec5c6e800e0f45c096154e3a39378815",
-      "statement": "The opt-in native check uses the sole normal user installation and IDEA profile, requires real compiler queries for C1/P1, C2/P1 and C2/P2, verifies unchanged host identities through Control replacement and unchanged Control through Host installation, then requires original-byte restoration with a fresh Control generation.",
-      "evidence": [
-        {
-          "resource": "repo://runtime/hosted/native/README.md",
-          "version": "repo-file-v1:sha256:1c7415fce34c581393d1e9fc2f55b3ba8ac86a7ce73f8f4546197d4a9e378571"
-        },
-        {
-          "resource": "repo://runtime/hosted/native/mixed_version_acceptance.py#L850-L924",
-          "version": "repo-lines-v1:sha256:92bba4369a86926022aae055322b1f0c5f317247e3b57bf941d72c7906f61701:eyJzZWxlY3RlZExpbmVDb3VudCI6NzUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjY2NmYwY2Y1MDE3N2NhNDljNzQ4MTdkYWFmN2NmYjJmNTVmNmNkYjA3N2YwMTQ0OGRlZDk2YTg5NmQwYjY3NDUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAzNTU3MWUzMTk5NmQ1YzI3MjNjYTIzOWZmZDZmN2UzMWY4NGUxMDNhNTkzNjcxMTFkM2RlNDAwYWFkMTY1YTAiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjNiNGUzMzM4ZjZhMzQ3ZWI0YzJhYjg1MTRmZTRhYjAxNTQwOGE1ZGY4MDY5NjYxN2FiNDc3YTRkZmJmMjc0MzUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjAwOGYwYjMyMjZkOTBkZmYxYTYzOTBmNjlkZTc3NzkyNjdlOGIyOGQwYTNkYWZmNWZkZjkyMDEwYWRiMmEyMzYifQ"
-        },
-        {
-          "resource": "repo://runtime/hosted/native/mixed_version_acceptance.py#L984-L1040",
-          "version": "repo-lines-v1:sha256:4076f604807ddf4f3a2d2d04456e571b6f578349dda4c58138d645639a271dff:eyJzZWxlY3RlZExpbmVDb3VudCI6NTcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjcxOTdlOWYxM2RiMjMyMDM0MTBhYTk4ZTY4MzE2YzA5Y2U2MDM1MTA4YTVlZTg2ZjAyNzEyN2IyZjg1NDUyODgiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImE1MDEzODA5NDc5N2I0OTA5N2QyMGQ3MDA1ZWU2ZmQyMTc5MjZlZDViYzhjM2U4MGM3NTEyNzE5MWQ4NjZlOWIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjY1OGYxNWI5YmQxMmQ0MmZjNWMyODQzZjEwYTAxYzk4NGJhNjlhYjhiM2ZlZTJjNzIzMjA2MTk2MzMxYWJlMWIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImFmMTdhN2MxZTBjOTdkYWEzZDU0OGJiODJjYTU3MzVjODM4YmU2MGFlMjU1NTQ5NmQ4OGNiOGI3OTAzYTZiOTkifQ"
-        }
-      ]
-    },
-    {
-      "id": "claim_544980d0a0334dabb64aeaf53a5909ae",
-      "statement": "The native inventory rejects bounded entry and byte overflow before hashing the crossing input, while runtime installation identity derives from the physical root and ordered immutable payload bytes rather than the archive checksum.",
-      "evidence": [
-        {
-          "resource": "repo://runtime/hosted/native/mixed_version_acceptance.py#L364-L390",
-          "version": "repo-lines-v1:sha256:c2c798392ce48614495fbb5a3625e5d602e7b02ba3956c25a3a7c85d4d2ac7b7:eyJzZWxlY3RlZExpbmVDb3VudCI6MjcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjgzMGM1MTFhZDRhODUxZjQzYmY5NTUxMjQ5MGFjZDRjMjM2NGRhZTFmMzA0MmFlMGU0ZTQyNTZkZjJiODM2YTgiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjI2OTc0MTY3MWY4NmQyYjliNGEzMzJlMDhlZGNlYjJmN2Y3ZDk3ZmZjNmM2NWM1MGVkYjA3YWIyNjEyZjIwMzIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjllMmJiOTQ3YWYwMWE5ZDMxYzEyMjU3ODM5N2IyY2VhN2I1MTZkMzFiNTFjYzY1ODk0MmM2YzU1Y2YyYTEyZDgiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjcwY2UzZjI0YWI0N2MyZjVhOWQzMzdmMzc3ZWQ4NTczZmE1NjU4NDA3NjQwMmYxYWYwNTRhM2RlZDYxOTQ2MmYifQ"
-        },
-        {
-          "resource": "repo://runtime/hosted/native/mixed_version_acceptance.py#L435-L451",
-          "version": "repo-lines-v1:sha256:6432c8d4cc35d8e5df6503ccbe4c266606bb7d98bfaf380d9a4a5f52ee37fd35:eyJzZWxlY3RlZExpbmVDb3VudCI6MTcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImYxZGVjYWVkOTM2YjEwMTgyZTJjNDdmNTRiYTY0MmYyYjNjYWExN2U1OGYxZDI1YmIyYTNlY2E0MDAwMzU4ZDIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijk1ZWE5N2VmNDdlMmJlZWZjZGMyMjhkMWVlMDE1OTVkYjJkYzBhMjg1MDMxMjY2MzhlM2ZhMGE0ZTM0ODM4MGQiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImZiNDNmMjliODlhMjJkNDljMGNmYmEzYTBlY2E5OWIzN2VmZGI4NTMyZmE2OTMzMWM0ODNhNzFmODI3ZWUwMDciLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjA3NmQ2NjUyNzRhYWExNjllYmM1ZWIyMTRhNDA1NDk3ZWVlYjViYzA0MTgyNjkwODM0MjJmNzI3NDQzNDFkN2UifQ"
-        }
-      ]
-    },
-    {
-      "id": "claim_a4b0a4026e7b46378e1a8ee51e5a71b2",
-      "statement": "Native restoration retains a possibly unavailable legacy original loaded-version projection but requires private production readiness, matching runtime identity and epoch, and a fresh Control generation; candidate Control status requires verified versions and an admitted live host.",
-      "evidence": [
-        {
-          "resource": "repo://runtime/hosted/native/mixed_version_acceptance.py#L669-L677",
-          "version": "repo-lines-v1:sha256:c4494bd31446ea97529ec4f043120745761183bb6bc0a59678b50f75425bc045:eyJzZWxlY3RlZExpbmVDb3VudCI6OSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiMjMzZTdhYjAzZGQ2ZTczNjE4ZGIxM2E1Y2U4MzAyNTMwZGQ3ZmE4MTU2ZWM2OGVhN2U2OWRhNzMxNzI4MzU5ZCIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNWQ5NzdhZjA2ZjNkMWEyY2UxNzVkOWNlMWIzOWI5MDhmNmY4M2NjYjg5OWVmYTcxYTcxZjEwOGYzMDU5M2Y5YiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiMjMxMTQ2ZjE0ZWVmMDM5MmNlNDY0ZGNkYzAwZGFmNjRlYzU4MzQ0ZjY3ZDY2N2YzNTBmZDMzMjAzMjM2MmEyYSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiMmM5YWFlMjRiN2VhYTg2NjNkYjZmZDA3ZmY0NTUxMzZiOGNkZjNjYjRmYTg0YTM5ZGU0NzAwNmZiNmIzMDhhMSJ9"
-        },
-        {
-          "resource": "repo://runtime/hosted/native/mixed_version_acceptance.py#L870-L919",
-          "version": "repo-lines-v1:sha256:cef38c5a26bfb492c5b51feeb96e70cc542d74d845e39232ea18809e4db7d629:eyJzZWxlY3RlZExpbmVDb3VudCI6NTAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjczNjBiYmRhOTc0MTJkMWZjZDA1YWZiYWYxYzkxNTRmMmRkYmRlYWVlODViMGQxMTZjMzY0OTRlMzUyNGZjMjMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImI4OTAwYTg0NmZmNDkyYjhjY2I2Y2U2ODdkYmM0NjBjMmUwMjVlOWU3Y2UzZGZkNDFhNzI4OTliYzg3Y2FjZDMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjUzNDg0NmRhNDY2OWI1MmRkZjU0M2E2M2YyMjNhMjNmMTM1ZDRiYjI1NmY1ZGUyNDcxYTE4YjRjZTYyY2ZkNDkiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjdhYTA5YWQyZmFlZmU5ODY3M2FjOWM4YjQzZmM3ZmVjYjVhYWE4YmJiZjM3ZjVhZWE4NjViZmUyMGJhY2RmNDgifQ"
-        }
-      ]
-    },
-    {
-      "id": "claim_f71d9abaa3904b0290de156ea949a951",
-      "statement": "Native evidence preserves each component source revision independently and permits at most three fresh semantic RUNs only for the exact typed MOVED freshness rejection at MODEL_CAPTURE or CONTENT_REVALIDATION with the declared restart_read instruction, retaining every rejection; helper tests cannot establish the live mixed-version proof.",
-      "evidence": [
-        {
-          "resource": "repo://runtime/hosted/native/README.md",
-          "version": "repo-file-v1:sha256:1c7415fce34c581393d1e9fc2f55b3ba8ac86a7ce73f8f4546197d4a9e378571"
-        },
-        {
-          "resource": "repo://runtime/hosted/native/mixed_version_acceptance.py#L1064-L1110",
-          "version": "repo-lines-v1:sha256:74667a7b4da2de6fa5b8ce06738ff71edebe13f390e3a14e777babe0a830042b:eyJzZWxlY3RlZExpbmVDb3VudCI6NDcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjEzZGFjYzQzODJlNmQxZWI5ZWJkODY3ODhhMGYxNTlhMzhhN2MwYjE2ZDA0YmY3YTlhYTc4MmZmY2U3MWFmMGEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImM3MWMzNTAzYmIzM2ExMGVjYTc1ODdiY2E0Y2Q2MjljMzhmZjBiY2Q1ODM0MDM2YjlhNzkyNTk4MjI1ZDU3NGUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjFjMDRlZGIxMmVmMmI1Yzc3MzY0ODI1NWJhOTA1YzA4YWQ5NTRlMjA3ODUzYmMxNzE1MzkzNzVhYmNiZDA1ODQifQ"
-        },
-        {
-          "resource": "repo://runtime/hosted/native/mixed_version_acceptance.py#L164-L174",
-          "version": "repo-lines-v1:sha256:a743eb997863631cdd1fa54935f6a480d7f88ee6bee644c70c56d0574204edc0:eyJzZWxlY3RlZExpbmVDb3VudCI6MTEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjIwZjE1NWViNmU5YmMwYzYxZjA3YzEyNWM2MjQ0NWEwNTMzNzZmYmQ5NjE4N2I4MGJhMjBjODdmMzgyODlmOWUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjRmNDMyYzM2ZjJlNzY2ZTJiYzA5NWM1YjQ2NTc4NjE4NTljNTczZTc5ZjM4YzYzYTEwMTliZGFjYzU4MDkyYTQifQ"
-        },
-        {
-          "resource": "repo://runtime/hosted/native/mixed_version_acceptance.py#L625-L667",
-          "version": "repo-lines-v1:sha256:6be3d9ba98a1d559ddc67c5bfae38c81d8d2dcf712b530b31af6c2e81b61d766:eyJzZWxlY3RlZExpbmVDb3VudCI6NDMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjBiMjY4YzllYTNlNjJhYzY4ZmRjNjViNWU1MTE5NDFlNmMxNGIwZTM0MDlhMDNiNjAwNjAxZjM0MDcxNWUxZmIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjA0Y2RlMWJhYTU3YTc1MTI0OGRjYjZiOGM4OGE2MTY4YjhhZTFjMmU0ODUzOWNlM2U2OTg1NDc3NzMxNGJiODIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjQ5YWVjMzQwMTg3MDQyMTU2NGI1OWJkOTBjZjRhNTY4OGI4ZmM3YjYzZmE2NWFkODA2Y2NjMjE4NmVhODc5NGQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjExNzY0MzNiMzA3MTNmMDRkYjI3YjM1NTMxMTI3MGI4NDc5YWYxYjg4NWY4YmU0YTkzMmQxNTc3ZDI4OWZiYzYifQ"
-        },
-        {
-          "resource": "repo://workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedQueryExecutor.kt#L281-L290",
-          "version": "repo-lines-v1:sha256:d811038e2cba936aa0ecce9441c55f0d5f33324348177499340e667efd462fcd:eyJzZWxlY3RlZExpbmVDb3VudCI6MTAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjYxMTg2Y2JkMGYyZTFlNzJhYzBjYjdiMDBmODJiYzhjMTk0ODdiYjRiZjgxZmFkMzJhMjQxZDQ3MTc2NzBlMWIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ4OTNmNDBlMzc4MWViODk2YzgyZDA0NmEwODA2N2ExMWUzNWNkZjJmMWRmYWYyNmZlYTkwYjhkYjY2NzY0MTMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImYxYzgxZmE5YzQxMjAzNTI4ZTBhODdmY2UzM2I1Yjg5ZWM0ZGIxMTFmMTQzMDBkNDRjNjRmNDJjNjhhMjA1MmUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6Ijk1NDEyYzc0OTRlMDgxYmQzZDg4N2QzNWU5ZTE3NzJjYTFmZWFhNWZhZGQ2MTc4MWY5MDQwOWE1MzJkZmJhMjgifQ"
+          "version": "repo-file-v1:sha256:b1b9823f8269050d3285cdefbc153d0e054d49421a8c3d29ebf630210891c923"
         }
       ]
     },
     {
       "id": "claim_fc2e6da4c90e48b38aef801aa45c09fd",
-      "statement": "Installed Control launchers select modes in the shared native executable without JVM setup and pass nonempty HOME and TMPDIR as explicit system properties.",
+      "statement": "Installed Control launchers select an internal entry of the Control executable through --internal-entrypoint and pass nonempty HOME and TMPDIR as explicit system properties.",
       "evidence": [
         {
-          "resource": "repo://cli/src/main/native-launchers/bin/kast",
-          "version": "repo-file-v1:sha256:b2710696b1c843e7f10c9f1cd3d80dc226d9844dd87fbc128fa7355c6b1b2c0c"
+          "resource": "repo://cli/src/main/control-launchers/bin/kast-mcp",
+          "version": "repo-file-v1:sha256:ea3dd9e6c71446bb58a226d26fa83e8016ad373c8fa094397d395db0cb8cf1f8"
+        },
+        {
+          "resource": "repo://cli/src/main/kotlin/io/github/amichne/kast/cli/KastControlMain.kt",
+          "version": "repo-file-v1:sha256:88cf4100b9ef11e24962af0599e172239d5caebc9d3027a895c308bd84f32f0a"
         }
       ]
     },
     {
       "id": "claim_f5e05cda61794cb68880d63ee3163ae2",
-      "statement": "Full uninstall retains its exterior journal and recovery interpreter/import inventory through cleanup. Provider resources are removed before Host retirement using current provider ownership evidence; conflicts preserve the Host. A registration-lock recheck protects payload removal. Receipt-owned guidance cleanup preserves foreign siblings, and unknown or unsettled state remains protected.",
+      "statement": "Full uninstall retains its exterior journal and recovery interpreter/import inventory through cleanup, keeps unknown or unsettled state protected, and changes no agent configuration.",
       "evidence": [
         {
-          "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/IntegrationDisconnection.kt",
-          "version": "repo-file-v1:sha256:5086b5ad1d6f8a9172db2e23808028345b1a7a776b74ed2b7db62927e7707b17"
-        },
-        {
           "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagementUninstall.kt",
-          "version": "repo-file-v1:sha256:715b68d1babd943b78c7978f5a5fececd16c6ef970e4234ae727a71645a07309"
-        },
-        {
-          "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ProviderRegistration.kt",
-          "version": "repo-file-v1:sha256:7d2057b06673aaa3faa3446cb1ab6b8fa4b27295c8e283de7963ea7af852aafc"
+          "version": "repo-file-v1:sha256:519f5b8e97ec064ed8eec75d349b79f9924fd699b4cc1e4bb0996e3fdbce68fa"
         },
         {
           "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/UninstallManagedRoot.kt",
-          "version": "repo-file-v1:sha256:eeec92a3a3cbbc3428cfc6d2f0969354f346887d646576b9b08658ba88c8b9f7"
+          "version": "repo-file-v1:sha256:c3b89341d96a228c3a4f3e08ee88d893f7a586ec2f870f2355ea25919e1d7e93"
         },
         {
           "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/UserStateInventory.kt",
-          "version": "repo-file-v1:sha256:0b851a71bef50a4a3c147890b84695dc25ff588dc0d41cf1c4d49f0233c5022c"
+          "version": "repo-file-v1:sha256:3307ad42c0500cfa09b1dec67092dd95c703ec1d1b50900c283a63fa8cfb8c4f"
         }
       ]
     },
     {
       "id": "claim_447f107d597641368d051439eee9c019",
-      "statement": "Legacy component candidates retain source-tree reuse proof but are not complete products. The complete-product CI join requires both retained native target inputs from the exact producer attempt without rebuilding; documentation-only validation needs no product candidate.",
+      "statement": "Legacy component candidates retain source-tree reuse proof but are not complete products. The complete-product CI join requires the retained native inputs of each recorded target from the exact producer attempt without rebuilding; documentation-only validation needs no product candidate.",
       "evidence": [
         {
           "resource": "repo://.github/scripts/release/build_candidate.py",
-          "version": "repo-file-v1:sha256:325c61b445685a491febae59b6f30615a0cef2cf501b396cbd1f5a71b684ccee"
+          "version": "repo-file-v1:sha256:be13f11eafcd0536e600c08c019e47653f559d28136b711821e21a8a99bd330e"
+        },
+        {
+          "resource": "repo://.github/scripts/release/product_producer.py",
+          "version": "repo-file-v1:sha256:442435a5160da4e8b62538e34fb5fdbac8a89b7189d883d7901228b45bfb57bf"
         },
         {
           "resource": "repo://.github/workflows/ci.yml",
-          "version": "repo-file-v1:sha256:683eca41513f99d00cbb8c5eb4e21686a8bb281401a3d8b274b03e318ea9eccd"
+          "version": "repo-file-v1:sha256:a2e41be5dec3363779c75bf38061f2bc4aa1cd510c3a92e72681560926de717f"
         }
       ]
     },
     {
       "id": "claim_d407483e65e045288fecd3b152e7e6a3",
-      "statement": "Developer publication admits the complete retained product and both native target qualifications before promotion. Documentation-only validation publishes nothing. Stable promotion selects exact preview bytes by source tag and record digest without rebuilding.",
+      "statement": "Developer publication admits the complete retained product and the native qualification of each recorded target before promotion. Documentation-only validation publishes nothing. Stable promotion selects exact preview bytes by source tag and record digest without rebuilding.",
       "evidence": [
         {
           "resource": "repo://.github/workflows/developer-release.yml",
-          "version": "repo-file-v1:sha256:db0aaac561c719a36b04dec856358f2a8bde291d3f1e884500f8dfcbbc27cc4c"
+          "version": "repo-file-v1:sha256:3bd676de2d06dc634fb823fc6c475ce707f8fb7ff899ba186480c082421437fa"
         },
         {
           "resource": "repo://.github/workflows/release.yml",
@@ -263,42 +145,16 @@
       ]
     },
     {
-      "id": "claim_5f7d796cedca49cca3847f961bb82235",
-      "statement": "CI pins BellSoft Liberica NIK 25.0.2+13. The Linux source job and macOS native job configure Gradle cache transport. Pull requests have read-only access, and main push and dispatch runs can write shared entries. Native handoff keeps metrics and finite build outcomes. It produces one unified executable with -Os and transfers its exact bytes. Cache transport alone does not establish a cache hit.",
-      "evidence": [
-        {
-          "resource": "repo://.github/scripts/ci/build_execution.py",
-          "version": "repo-file-v1:sha256:0a03e166df92557b9de822f5a682334b5bbec1d1582aba64314f694ddf96fe93"
-        },
-        {
-          "resource": "repo://.github/scripts/ci/native_handoff.py",
-          "version": "repo-file-v1:sha256:cb09802851a9752088e6b418cbc305d0c766b324bda37e4a248badcd5b1e8b4e"
-        },
-        {
-          "resource": "repo://.github/workflows/ci.yml",
-          "version": "repo-file-v1:sha256:683eca41513f99d00cbb8c5eb4e21686a8bb281401a3d8b274b03e318ea9eccd"
-        },
-        {
-          "resource": "repo://cli/native-image.args",
-          "version": "repo-file-v1:sha256:6759f4e2e88bfa5575c180d4c267113d3794329f2d7d7b58781b0c5919903b1a"
-        }
-      ]
-    },
-    {
       "id": "claim_16c134706f9f4a4ea8d586c503ce1f0d",
-      "statement": "Candidate versions use the CI run number within the installer's 32-bit semantic-version range, while the identity record retains the full run ID and producer attempt.",
+      "statement": "Candidate versions use the CI run number, bounded to a positive 32-bit signed value, while the identity record retains the full run ID and producer attempt.",
       "evidence": [
         {
           "resource": "repo://.github/scripts/release/build_candidate.py",
-          "version": "repo-file-v1:sha256:325c61b445685a491febae59b6f30615a0cef2cf501b396cbd1f5a71b684ccee"
+          "version": "repo-file-v1:sha256:be13f11eafcd0536e600c08c019e47653f559d28136b711821e21a8a99bd330e"
         },
         {
           "resource": "repo://.github/workflows/ci.yml",
-          "version": "repo-file-v1:sha256:683eca41513f99d00cbb8c5eb4e21686a8bb281401a3d8b274b03e318ea9eccd"
-        },
-        {
-          "resource": "repo://cli/src/main/kotlin/io/github/amichne/kast/cli/installation/InstallationRequest.kt",
-          "version": "repo-file-v1:sha256:77adc2a8db820519452a4d4c34d3fe87fe5ec16d26177231d33f6b030d547d2a"
+          "version": "repo-file-v1:sha256:a2e41be5dec3363779c75bf38061f2bc4aa1cd510c3a92e72681560926de717f"
         }
       ]
     },
@@ -322,55 +178,51 @@
         },
         {
           "resource": "repo://packaging/internal/installation/managed_installation.py",
-          "version": "repo-file-v1:sha256:809457a3e1c42fa78e3b88077e51e2ff5ed19af07921820a4f440bc860b97884"
+          "version": "repo-file-v1:sha256:17c4c50b8c594a8f8d1079829b2a5ceec26b12e84b46626d9b40ddca02a523d2"
         },
         {
           "resource": "repo://packaging/internal/product/managed_product_installation.py",
-          "version": "repo-file-v1:sha256:151e2bb915ac3e38bdfb1f0bb50cc2c894be6f67b559c768fe1014bdccd74373"
+          "version": "repo-file-v1:sha256:fc8fada835ab693aacf4d03da320dbc510c89ae94b298bb5771529d42fac508e"
         }
       ]
     },
     {
       "id": "claim_af8fe2699eb44e06a3d75ecd84d5eec2",
-      "statement": "Force retirement admits native worker modes through the shared process adapter, which skips only leading consumed runtime-option families. Management and installer modes remain excluded. Bare -Dfoo, unsupported -X forms, and misplaced selectors remain application data. Unknown modes or unavailable arguments reject before erasure. PID and start identity stay necessary. The native composition case proves retirement of an MCP client with -Xmx256m and removal of disposable Control.",
+      "statement": "Force retirement admits native worker entries through the shared NativeControlInvocation contract, excludes management and installer entries, rejects unknown entries or unavailable process arguments before erasure, and keeps PID and start identity necessary.",
       "evidence": [
         {
           "resource": "repo://cli/src/test/kotlin/io/github/amichne/kast/cli/publicshell/NativeForceResetCompositionTest.kt",
-          "version": "repo-file-v1:sha256:0c0cb68a4ced0d94f2feab25678f5b595695aa2a5e2f0f0760e601c258f6b380"
+          "version": "repo-file-v1:sha256:36659d81366741c7951ece401e0ac73e78893a448f212b63488a48c8438f5751"
         },
         {
           "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ForceDaemonRuntime.kt",
-          "version": "repo-file-v1:sha256:aea0bc438814f988e0a80636fea05eb3b13fa737252c153f8ed1daaa1e1b0265"
+          "version": "repo-file-v1:sha256:c95da223b3d48cde43193a9af0ddc4ef4ac30b151ffc445d992de5c11db23661"
         },
         {
           "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/NativeForceDaemonRuntime.kt",
           "version": "repo-file-v1:sha256:7b3789e90cdf091cfc5c65ba5cc28670c26a96428b85153e3cf6b28f3ad2123c"
         },
         {
-          "resource": "repo://distribution/cli/src/test/kotlin/io/github/amichne/kast/distribution/cli/NativeControlResetSelectionTest.kt",
-          "version": "repo-file-v1:sha256:d7e079a09677648cb242ea217ac6eaa1d9ac88e5ea04e1f6a5f19c32b9b9595c"
-        },
-        {
           "resource": "repo://distribution/contract/src/main/kotlin/io/github/amichne/kast/distribution/contract/NativeControlInvocation.kt",
-          "version": "repo-file-v1:sha256:ed31c7f56720d26b66625d79ed0c38b31d107798c35cb80335d54de6ec8464f5"
+          "version": "repo-file-v1:sha256:29ef0d5289642f4548a68df2d65ad23dceec109b0fc8a6e7de8db076b609f132"
         }
       ]
     },
     {
       "id": "claim_c17f927dc53b494e8601ed1439016475",
-      "statement": "Mac qualification imports the assembled Control archive's executable into the existing publicLauncherTest suite before candidate sealing. The workflow initializes the existing Gradle cache owner before qualification and retains the suite's XML and HTML reports.",
+      "statement": "Mac qualification restores the exact assembled release and runs the existing publicLauncherTest suite against its Control product before sealing, retaining the suite's XML and HTML reports.",
       "evidence": [
         {
-          "resource": "repo://.github/scripts/ci/native_handoff.py",
-          "version": "repo-file-v1:sha256:cb09802851a9752088e6b418cbc305d0c766b324bda37e4a248badcd5b1e8b4e"
+          "resource": "repo://.github/scripts/ci/release_handoff.py",
+          "version": "repo-file-v1:sha256:9583f5c710c07bdbdb2eda3d2721f8da266bd1de07d99ff872e953a7b758b58c"
         },
         {
           "resource": "repo://.github/workflows/ci.yml",
-          "version": "repo-file-v1:sha256:683eca41513f99d00cbb8c5eb4e21686a8bb281401a3d8b274b03e318ea9eccd"
+          "version": "repo-file-v1:sha256:a2e41be5dec3363779c75bf38061f2bc4aa1cd510c3a92e72681560926de717f"
         },
         {
           "resource": "repo://build.gradle.kts",
-          "version": "repo-file-v1:sha256:fbc6a2cdac2149c23a72e5cebbe73c1c818e462bb631c7636d109ccc87ebd469"
+          "version": "repo-file-v1:sha256:aaac0674d99471e186c80d15874f2421a620789f28c033e5e2ba8176e9a8b6af"
         }
       ]
     },
@@ -430,7 +282,7 @@
         },
         {
           "resource": "repo://packaging/tests/test-managed-build-record.py",
-          "version": "repo-file-v1:sha256:676b62e3c9e7bac3116556d91e3324a64bd037af4933559a57b62426acb1af35"
+          "version": "repo-file-v1:sha256:d247c5e000fb1332b11d49a26a37d2111764bfcf744c054b31ea04cb4a45ff35"
         }
       ]
     },
@@ -464,15 +316,15 @@
       "evidence": [
         {
           "resource": "repo://distribution/release/plugin-release.gradle.kts",
-          "version": "repo-file-v1:sha256:e0450779103c7a063371e765a16529a61e6f4fa7775987f8bc693319a5d4ade1"
+          "version": "repo-file-v1:sha256:579c1c5156c77bc34b5f4b2a90155f33bbe3346d98823ff83f6bcf82fd489459"
         },
         {
           "resource": "repo://gradle/libs.versions.toml",
-          "version": "repo-file-v1:sha256:8ddf6942326a714f185fe7c92b3a33cba95613c8cd5ef3d781f6c716b19d5b71"
+          "version": "repo-file-v1:sha256:162ec4beaaa70a33da44cc4dee0144cafe44774aa47e3b9505dc6672b412c652"
         },
         {
           "resource": "repo://runtime/hosted/build.gradle.kts",
-          "version": "repo-file-v1:sha256:02f2bf0731dd328357ce3ac96ad7011fa928764c9797990bf3c2ff7d0e2e91fd"
+          "version": "repo-file-v1:sha256:b9e11a4ce440b3c30df1f9a0cda1a935263a5b2c67c7214f0495f9dfd7b58dd7"
         }
       ]
     },
@@ -522,7 +374,7 @@
         },
         {
           "resource": "repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/lifecycle/IdeLifecycleApplication.kt",
-          "version": "repo-file-v1:sha256:7a8c338d40ca2fd487a1985d77e5fbe0afe3b5daaa6c9067c7b6a347c5f9fb5e"
+          "version": "repo-file-v1:sha256:7ead585ccb804769e0884f0fc06b87fb68c694ec1842329cdf95de7bc1196320"
         }
       ]
     },
@@ -532,7 +384,7 @@
       "evidence": [
         {
           "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ContainerRuntime.kt",
-          "version": "repo-file-v1:sha256:b6217cdaa4817f401f2d8daa54c0d35bbf155bd967d57bd75f4dd09ea5ad9aec"
+          "version": "repo-file-v1:sha256:b53c2f889a2a6097661dcf6c6aac470934c07984b63c4899fd303828aefba69a"
         },
         {
           "resource": "repo://packaging/internal/runtime/runtime_archive.py",
@@ -546,7 +398,7 @@
       "evidence": [
         {
           "resource": "repo://packaging/internal/product/managed_product_installation.py",
-          "version": "repo-file-v1:sha256:151e2bb915ac3e38bdfb1f0bb50cc2c894be6f67b559c768fe1014bdccd74373"
+          "version": "repo-file-v1:sha256:fc8fada835ab693aacf4d03da320dbc510c89ae94b298bb5771529d42fac508e"
         },
         {
           "resource": "repo://packaging/internal/runtime/runtime_base.py",
@@ -560,14 +412,14 @@
       "evidence": [
         {
           "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/InstalledProductRuntime.kt",
-          "version": "repo-file-v1:sha256:047cbefaf8691004a8c454f53bc68093b2e79881690e12be7eb247ad94f5b478"
+          "version": "repo-file-v1:sha256:769ac0b1d026b85212380f1cf803de9c52471da5d10744dc35a4ca648816875c"
         },
         {
           "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagedUpgrade.kt#L83-L103",
           "version": "repo-lines-v1:sha256:4ba2480ac50df77350fef8006f0c11b94424346844f1a796a7faea141229de6a:eyJzZWxlY3RlZExpbmVDb3VudCI6MjEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImY5ZGI4ZDJkZTRiZWQ3MThmODhiNGUzZGI5ODM1NTI0ZTIxNmU0ZjQ4NmI2MmJiYzI4MzQ5NGNkZDI1OTI4MGIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImI1ODFiNzkzOTg3ZWNjMjExNGE5Yjg1ZTI1NDczYmQyZGQ4ZjQ4ZTM4ZWE5NGNhMjhjYzU0NTk3NGVlYjVkZTYiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijk4YTc0NDZkOTIxMDFjYmQwZjYxMTI3NWExNmY0MjFjMzQ2OWM1MTA2MjBiZTk1YWMyOTcwMGUyOGM0NTBjNWMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjY5MDIyODRjYmEzNGExNjg0NDc1ZTIwNDE5OWVhYzMxNTQxYTk4ODMxZDQxODIyODkyMWRiZTgxZDMwMzE2YzUifQ"
         },
         {
-          "resource": "repo://distribution/cli/src/test/kotlin/io/github/amichne/kast/distribution/cli/BuildSelectionTest.kt#L319-L355",
+          "resource": "repo://distribution/cli/src/test/kotlin/io/github/amichne/kast/distribution/cli/BuildSelectionTest.kt#L327-L363",
           "version": "repo-lines-v1:sha256:b77b333b493fdff4ed5d51eb6b271d8227c41e11597b3f503ffb1179d1f5e1ac:eyJzZWxlY3RlZExpbmVDb3VudCI6MzcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjRjZjA5ZWIwYzU3NDRmYjk3MzMxYjk4ZmYzZmJmMDVhNjAyYmEzZjdmNjdlNWRhNWJlOTA5NTAzM2Y2MjU4MjUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ4OTNmNDBlMzc4MWViODk2YzgyZDA0NmEwODA2N2ExMWUzNWNkZjJmMWRmYWYyNmZlYTkwYjhkYjY2NzY0MTMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijk5OWJkZWZlZWFjYTYzNDBlMDI5MGRjODZlODg5Yzg5ZDVlMTg5YWE1YmE0NGI1ODViM2I3MDczNGY0YTYyZDgiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImYxODVkN2M3OWYwOWEyYzEwYjc4MjQyMjcwZmUzOGMwZjRmYTlmOTA3YjBlNjNjZDM5NzFiOTM5N2JmYTUxMzUifQ"
         }
       ]
@@ -578,55 +430,21 @@
       "evidence": [
         {
           "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/KastManagementMain.kt",
-          "version": "repo-file-v1:sha256:34f51ddfb7f9468cb8cdc45177aa6cd024664f0451ed85e46def2b0d192c2bfc"
+          "version": "repo-file-v1:sha256:d4ca374448e54e0ad11a44fc71d91bf4aa3a71aa1e6e4135cdef4c51212ecfb1"
         },
         {
           "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/PublicInstallationReset.kt",
-          "version": "repo-file-v1:sha256:0873a18f09137dd9a9fcabb16e140c56e84f6f80542da229b60fa8e329216ff5"
-        }
-      ]
-    },
-    {
-      "id": "claim_b075e9a912e04acb9ad327107cbc92c6",
-      "statement": "ProviderRegistration stores only CODEX/COPILOT routing intent before provider mutation. Harness removal forgets only its selected route after verified cleanup. Kotlin schema-2/schema-3 receipts and Python replacement preserve those records without treating them as resource ownership proof.",
-      "evidence": [
-        {
-          "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/HarnessUninstall.kt",
-          "version": "repo-file-v1:sha256:61b4605982dae9b60e869c133f26e884d75e01f125bd41473141f8bc86512c98"
-        },
-        {
-          "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ProductManagementReceipt.kt",
-          "version": "repo-file-v1:sha256:6d72f305fe242a735fc9ab222bef5f1136ef562f9a6902c01d77ced9fafd3979"
-        },
-        {
-          "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ProviderRegistration.kt",
-          "version": "repo-file-v1:sha256:7d2057b06673aaa3faa3446cb1ab6b8fa4b27295c8e283de7963ea7af852aafc"
-        },
-        {
-          "resource": "repo://packaging/internal/installation/managed_installation.py",
-          "version": "repo-file-v1:sha256:809457a3e1c42fa78e3b88077e51e2ff5ed19af07921820a4f440bc860b97884"
-        },
-        {
-          "resource": "repo://packaging/internal/product/managed_product_installation.py",
-          "version": "repo-file-v1:sha256:151e2bb915ac3e38bdfb1f0bb50cc2c894be6f67b559c768fe1014bdccd74373"
+          "version": "repo-file-v1:sha256:65b2693c31a9dc2af0ad64a29a5b03e00aea4bedae7d57a9103af142bbaab297"
         }
       ]
     },
     {
       "id": "claim_002a641468474ebcb96e4972c2af95be",
-      "statement": "Control assembly stamps the skill version. Managed ProductInstalled and legacy installation results enter capability-marked guidance refresh; failure or interruption retains HARNESS_REFRESH_REQUIRED, while success clears that notice without discarding other notices. This source contract does not establish live provider success.",
+      "statement": "Control assembly projects the canonical CLI skill into a versioned agent plugin and stamps the product version, requiring a semantic version.",
       "evidence": [
         {
           "resource": "repo://build-logic/src/main/kotlin/support/tasks/control/GenerateAgentToolsTask.kt",
-          "version": "repo-file-v1:sha256:05cbca22244ba9287dcc097e0f5df3c1011630f6f962a1e8abe2e1e742767089"
-        },
-        {
-          "resource": "repo://packaging/internal/installation/managed_installation.py",
-          "version": "repo-file-v1:sha256:809457a3e1c42fa78e3b88077e51e2ff5ed19af07921820a4f440bc860b97884"
-        },
-        {
-          "resource": "repo://packaging/internal/product/managed_product_installation.py",
-          "version": "repo-file-v1:sha256:151e2bb915ac3e38bdfb1f0bb50cc2c894be6f67b559c768fe1014bdccd74373"
+          "version": "repo-file-v1:sha256:a2c0d8be9d2192be22082638e0d6f30e37abef187b80531f72603ae0e427fc75"
         }
       ]
     },
@@ -636,55 +454,59 @@
       "evidence": [
         {
           "resource": "repo://.github/scripts/release/product_producer.py",
-          "version": "repo-file-v1:sha256:e989707edabe43e9c9908127e57460493093df65049cdca2a5b2a864a4ef57db"
+          "version": "repo-file-v1:sha256:442435a5160da4e8b62538e34fb5fdbac8a89b7189d883d7901228b45bfb57bf"
         },
         {
           "resource": "repo://packaging/internal/composition/composed_release.py",
-          "version": "repo-file-v1:sha256:4c234a329309389144bb2b637bac66ee1a858272a67e4f5f69998a076695c79c"
+          "version": "repo-file-v1:sha256:89fac07b383ce65bccc69cee95901fa776e72d8e82909962fa7ab4fc4fba8ba0"
         },
         {
           "resource": "repo://packaging/internal/installation/managed_release.py",
-          "version": "repo-file-v1:sha256:c669bd96c14cab328dc42ed8d2695bdba485dda8a9a8993f0249fd77febdac90"
+          "version": "repo-file-v1:sha256:471e28f5edf60d29744193ab64442f586628070bd2b01f9290d307bba12c03c7"
         },
         {
           "resource": "repo://packaging/internal/verification/product_lifecycle_probe.py",
-          "version": "repo-file-v1:sha256:ee5555a6ce5be1bfd716c6fef7139966a378cb29bbdcab775692e6192c458258"
+          "version": "repo-file-v1:sha256:ef2f0407a4e29c52f582836c9492121dcfc407d4e222e5679e1ef74a8a33262b"
         }
       ]
     },
     {
       "id": "claim_83eab0ed9c8f461d96dc28138216a272",
-      "statement": "The CI producer records each component-qualified target, seals both exact producer-attempt inputs into an immutable build record, then joins detached installed acceptance receipts without rewriting it. Preview publication and stable promotion require both receipts and retain record and payload bytes.",
+      "statement": "The CI producer records each component-qualified target and seals the exact producer-attempt inputs into an immutable build record, which current CI seals as a Mac-only schema 5 record; it then joins one detached acceptance receipt per recorded target without rewriting it. Preview publication and stable promotion require those receipts and retain record and payload bytes.",
       "evidence": [
         {
           "resource": "repo://.github/scripts/release/product_candidate.py",
-          "version": "repo-file-v1:sha256:03cbb37a9ba42048c030405397da37270fa262cd2d4f9c083ffcfd0d132461de"
+          "version": "repo-file-v1:sha256:188b5b71cfd5d066ee40a5e1660739b98edaaea483bc411c8b2ececd9091bc0a"
         },
         {
           "resource": "repo://.github/scripts/release/product_producer.py",
-          "version": "repo-file-v1:sha256:e989707edabe43e9c9908127e57460493093df65049cdca2a5b2a864a4ef57db"
+          "version": "repo-file-v1:sha256:442435a5160da4e8b62538e34fb5fdbac8a89b7189d883d7901228b45bfb57bf"
         },
         {
           "resource": "repo://.github/scripts/release/publish_developer.py",
-          "version": "repo-file-v1:sha256:edc1fbf6e445d6fd92f00ef19fa134c7a0b203c878f17d1ff7c503a8c9028e85"
+          "version": "repo-file-v1:sha256:6d32e10f71f465f1a6fa8988e9b3d9d1c8b102f21fae81c1454e312564d967ec"
+        },
+        {
+          "resource": "repo://.github/workflows/ci.yml",
+          "version": "repo-file-v1:sha256:a2e41be5dec3363779c75bf38061f2bc4aa1cd510c3a92e72681560926de717f"
         }
       ]
     },
     {
       "id": "claim_85a1ae21345546f39a95cfc33381880d",
-      "statement": "Published schema 2/3 product records require both supported CI targets and COMPLETE component qualification; local schema 4 records instead retain one supported LOCAL-provenance target. Python published decoding and Kotlin validProductRecord reject local records, while installed decoding and validInstalledProductRecord admit both. Record admission alone establishes neither installed acceptance nor native Host success.",
+      "statement": "Published schema 2/3 product records require both supported CI targets and schema 5 records require only macOS ARM64; local schema 4 records retain one supported LOCAL-provenance target. Python published decoding and Kotlin validProductRecord reject local records, while installed decoding and validInstalledProductRecord admit both. Record admission alone establishes neither installed acceptance nor native Host success.",
       "evidence": [
         {
           "resource": "repo://.github/scripts/release/product_candidate.py",
-          "version": "repo-file-v1:sha256:03cbb37a9ba42048c030405397da37270fa262cd2d4f9c083ffcfd0d132461de"
+          "version": "repo-file-v1:sha256:188b5b71cfd5d066ee40a5e1660739b98edaaea483bc411c8b2ececd9091bc0a"
         },
         {
           "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/BuildCatalog.kt",
-          "version": "repo-file-v1:sha256:da39f03331085cf330c80f8e8c5c5ae56e59cf23b58d387e9a00eea7fd468d3e"
+          "version": "repo-file-v1:sha256:deb5d5af0747eafa764383ceed4e609b16e45c791ebd773939a2dcdfe4c27f0a"
         },
         {
           "resource": "repo://packaging/internal/installation/managed_release.py",
-          "version": "repo-file-v1:sha256:c669bd96c14cab328dc42ed8d2695bdba485dda8a9a8993f0249fd77febdac90"
+          "version": "repo-file-v1:sha256:471e28f5edf60d29744193ab64442f586628070bd2b01f9290d307bba12c03c7"
         }
       ]
     },
@@ -694,47 +516,43 @@
       "evidence": [
         {
           "resource": "repo://.github/scripts/release/product_candidate.py",
-          "version": "repo-file-v1:sha256:03cbb37a9ba42048c030405397da37270fa262cd2d4f9c083ffcfd0d132461de"
+          "version": "repo-file-v1:sha256:188b5b71cfd5d066ee40a5e1660739b98edaaea483bc411c8b2ececd9091bc0a"
         },
         {
           "resource": "repo://packaging/internal/verification/product_acceptance.py",
-          "version": "repo-file-v1:sha256:bfb749008e7194d86f3c458417aa3447157c33606193bab650bc8152be0e1584"
+          "version": "repo-file-v1:sha256:67993fbe2bb9746c3c67499c08a65e8988afab83422c737a5be0ae0b8ad21b0d"
         },
         {
           "resource": "repo://packaging/internal/verification/product_lifecycle_probe.py",
-          "version": "repo-file-v1:sha256:ee5555a6ce5be1bfd716c6fef7139966a378cb29bbdcab775692e6192c458258"
+          "version": "repo-file-v1:sha256:ef2f0407a4e29c52f582836c9492121dcfc407d4e222e5679e1ef74a8a33262b"
         }
       ]
     },
     {
       "id": "claim_b86fe5ac2622451f982224685c68209c",
-      "statement": "Installed acceptance uses shipped Control for CLI, MCP, RPC, restart, concurrent roots, edits, upgrade and uninstall, plus exact caller provenance, Java references, unknown-result rejection, Linux runtime libraries and answering-Host identity, stop endpoint/socket cleanup, and existing-file re-analysis. Schema 2 receipts require all 18 cases; v1 retains its 12 cases only with component-native evidence. Receipts bind record, target, Control, producer and baseline composition. Source checks do not prove native execution.",
+      "statement": "Installed acceptance uses shipped Control for CLI, MCP, restart, concurrent roots, edits, upgrade and uninstall, plus exact caller provenance, Java references, unknown-result rejection, answering-Host identity, stop endpoint/socket cleanup, and existing-file re-analysis. Schema 3 receipts require all 17 cases in order and bind record, target, Control, producer and baseline composition. Source checks do not prove native execution.",
       "evidence": [
         {
           "resource": "repo://packaging/internal/verification/product_acceptance.py",
-          "version": "repo-file-v1:sha256:bfb749008e7194d86f3c458417aa3447157c33606193bab650bc8152be0e1584"
+          "version": "repo-file-v1:sha256:67993fbe2bb9746c3c67499c08a65e8988afab83422c737a5be0ae0b8ad21b0d"
         },
         {
           "resource": "repo://packaging/internal/verification/product_lifecycle_probe.py",
-          "version": "repo-file-v1:sha256:ee5555a6ce5be1bfd716c6fef7139966a378cb29bbdcab775692e6192c458258"
+          "version": "repo-file-v1:sha256:ef2f0407a4e29c52f582836c9492121dcfc407d4e222e5679e1ef74a8a33262b"
         }
       ]
     },
     {
       "id": "claim_f47952e0bcc1479c9dacaeb9ba987134",
-      "statement": "CI seals both component-qualified native targets before the installed-product matrix, runs acceptance on Linux x86-64 and macOS ARM64, then joins both detached receipts into the retained publication candidate without rewriting the sealed record.",
+      "statement": "CI seals the qualified Mac product before installed acceptance on macOS ARM64, then joins its detached receipt into the retained publication candidate without rewriting the sealed record.",
       "evidence": [
         {
-          "resource": "repo://.github/scripts/release/product_producer.py#L317-L343",
-          "version": "repo-lines-v1:sha256:0d29e28feb5defa37afc99368b16b11ec8203ab10bc0154b9bd4315d8a1f4539:eyJzZWxlY3RlZExpbmVDb3VudCI6MjcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjM2NTQwOTAxNzY1MWFjYzA2YjQzOWU0Mzg1ZmQwOWU3YWZjY2NmYzI3N2Q5M2FmYTk2ZTExOGMxNjA5ZWRmOTgiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImQ4ZWNlNTQ2NGYxZDc3ZjJkYzFiNGYxNDQ1NDY0YmE2OTIxOGQwNjkyZjU0ZjY5ZjA4ZWQ1MTU1NTQ4ZDI3ZjgiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjczYzY0ZTQxOGM0MmVkNzhlYmJiY2JlNzJkMTgwNzhkN2EwYWNhMjk4NmFhOWUxYTQ0NmFhM2ZmZTE4YjM2NTMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjU0OGQ3NDgzZDA2MGYxNzIyZTI0NTM2ODg4MzM0MjU2YjU0OTBlOGJiZTg2OTgyMDY3NmNhOWVhZjM1MDljYzkifQ"
+          "resource": "repo://.github/scripts/release/product_producer.py",
+          "version": "repo-file-v1:sha256:442435a5160da4e8b62538e34fb5fdbac8a89b7189d883d7901228b45bfb57bf"
         },
         {
-          "resource": "repo://.github/workflows/ci.yml#L363-L407",
-          "version": "repo-lines-v1:sha256:df02ac31d84eddc6704bbec0409528d5ba24aecd6ffb2711b45874bc69b284ba:eyJzZWxlY3RlZExpbmVDb3VudCI6NDUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAwYWVmMmM1MmI0MmFjZmVlZjM3NDQ0MTA3YTBlODQ1MDA0NTY4YmE0NGM3MTg0ZDAyYTlhOThjNTcxZDllMGMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjgwNDRlOTk3NGMzMjc5OGIzODg3YWYwNzJiMjQ3OGQzYTMzMDIwOWI3YWM4NzJlZGU3ZTVhZmJjMWRiNTljOGMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImI3NjBhMjJlMmMzOTBhOTBmNzEwNmExOTAyMTNkMzkwNTFkYmUwYzRlNTc2ZjYzYmI1YWI5ZDY2ZDM4ZDg5YzEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImE3YTA2NzNjOGIwNWMzNDA4NzVhZmVmNmRhOGZjNjVjNDA3YzQxODgzOTU2NjNiZTg0YjhhYjNjODkwZjljZTgifQ"
-        },
-        {
-          "resource": "repo://.github/workflows/ci.yml#L489-L520",
-          "version": "repo-lines-v1:sha256:293230c1879a4f4d36f5efd6c89bf0a722fbd5d469ba55c99f53d816f3bb4aa0:eyJzZWxlY3RlZExpbmVDb3VudCI6MzIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjhjNmQ2ZDExMDg3ZjdhYmVmZWFlOTgzZGE0ZmQyODVhYWViZTJkOTQ5ZDYzZTIyMjhjMWJmNDM2MTAyYjllOGUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjhkMzJhYzIwODBhMTM0NWM2NDY4ZDBlMGUwOWE0OTMyMDE1MTc2NzQzZjkyYTUyNTM1NWNmZGZkNTg5N2NmZDMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjA5NDQ5NDlkZTc3NGZiZTgyNWI4Y2ViODNmNjFmYzlkODZhMTcyYTQyOGNkODc1MWQ3MmNmMGVhOWRjZTQ4ODQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjhkYjgxYjg3ZjlkZDVhNTIwOTZkNTliMDkzZGY3N2MyMTY5NWNiMGQ1YjI3ZmY5YWRmYjYzNDc1MDM5NTAxNTcifQ"
+          "resource": "repo://.github/workflows/ci.yml",
+          "version": "repo-file-v1:sha256:a2e41be5dec3363779c75bf38061f2bc4aa1cd510c3a92e72681560926de717f"
         }
       ]
     },
@@ -744,15 +562,15 @@
       "evidence": [
         {
           "resource": "repo://packaging/internal/verification/product_acceptance.py",
-          "version": "repo-file-v1:sha256:bfb749008e7194d86f3c458417aa3447157c33606193bab650bc8152be0e1584"
+          "version": "repo-file-v1:sha256:67993fbe2bb9746c3c67499c08a65e8988afab83422c737a5be0ae0b8ad21b0d"
         },
         {
           "resource": "repo://packaging/internal/verification/product_lifecycle_probe.py",
-          "version": "repo-file-v1:sha256:ee5555a6ce5be1bfd716c6fef7139966a378cb29bbdcab775692e6192c458258"
+          "version": "repo-file-v1:sha256:ef2f0407a4e29c52f582836c9492121dcfc407d4e222e5679e1ef74a8a33262b"
         },
         {
           "resource": "repo://packaging/tests/test_product_acceptance.py",
-          "version": "repo-file-v1:sha256:f76bce763ac33ea654c81223c34384f966d1256e9198217977c35ed01ff97705"
+          "version": "repo-file-v1:sha256:3b1ba9238e8e37fcac834c564f9413863d3a355b4436151a39fd3ba1c77cd951"
         }
       ]
     },
@@ -762,7 +580,7 @@
       "evidence": [
         {
           "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/InstallationLifecycle.kt",
-          "version": "repo-file-v1:sha256:41105cd3654fdcf641a2575ba65891e835a8c0de6f5a4e45dde60f1c9a6bc5d9"
+          "version": "repo-file-v1:sha256:1da4adce07a0f42cb25d16c907c6b3c606c77978d87cd1b889b38e5a2df58932"
         },
         {
           "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/RejectedWorkspaceRemoval.kt",
@@ -770,29 +588,25 @@
         },
         {
           "resource": "repo://packaging/internal/installation/immutable_store.py",
-          "version": "repo-file-v1:sha256:ab5302564c2a6f50b79218e2f85b004eb88f23e33e64e79eba4ce56382e0c39c"
+          "version": "repo-file-v1:sha256:74118e12dd9d19350571cdef529854caa15485455278a73c8ddd4d5c0c7cdad5"
         },
         {
           "resource": "repo://packaging/internal/product/managed_product_installation.py",
-          "version": "repo-file-v1:sha256:151e2bb915ac3e38bdfb1f0bb50cc2c894be6f67b559c768fe1014bdccd74373"
+          "version": "repo-file-v1:sha256:fc8fada835ab693aacf4d03da320dbc510c89ae94b298bb5771529d42fac508e"
         }
       ]
     },
     {
       "id": "claim_535f84f7dc6d455da996308020453c90",
-      "statement": "Fresh Mac complete-product composition restores the same-attempt native release with source, tree, version, digest, platform, and toolchain admission instead of compiling Control twice. The reused PR candidate path explicitly keeps independent compilation, and source success plus both qualified targets remain prerequisites of sealing.",
+      "statement": "Linux assembles the release once and release_handoff binds it to source revision, tree, version and digest; the Mac job restores that exact record instead of compiling Control twice, and sealing requires source success and the qualified Mac product.",
       "evidence": [
         {
-          "resource": "repo://.github/scripts/ci/native_handoff.py",
-          "version": "repo-file-v1:sha256:cb09802851a9752088e6b418cbc305d0c766b324bda37e4a248badcd5b1e8b4e"
+          "resource": "repo://.github/scripts/ci/release_handoff.py",
+          "version": "repo-file-v1:sha256:9583f5c710c07bdbdb2eda3d2721f8da266bd1de07d99ff872e953a7b758b58c"
         },
         {
           "resource": "repo://.github/workflows/ci.yml",
-          "version": "repo-file-v1:sha256:683eca41513f99d00cbb8c5eb4e21686a8bb281401a3d8b274b03e318ea9eccd"
-        },
-        {
-          "resource": "repo://.github/workflows/composed-linux.yml",
-          "version": "repo-file-v1:sha256:a830df2203d9f1304a4d493a5b4d962bbcd7567d12029dfd18c211588a513138"
+          "version": "repo-file-v1:sha256:a2e41be5dec3363779c75bf38061f2bc4aa1cd510c3a92e72681560926de717f"
         }
       ]
     },
@@ -802,7 +616,7 @@
       "evidence": [
         {
           "resource": "repo://build.gradle.kts",
-          "version": "repo-file-v1:sha256:fbc6a2cdac2149c23a72e5cebbe73c1c818e462bb631c7636d109ccc87ebd469"
+          "version": "repo-file-v1:sha256:aaac0674d99471e186c80d15874f2421a620789f28c033e5e2ba8176e9a8b6af"
         },
         {
           "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagedUpgrade.kt",
@@ -810,11 +624,11 @@
         },
         {
           "resource": "repo://packaging/internal/bootstrap/generate_bootstrap.py",
-          "version": "repo-file-v1:sha256:65905c296f7f77864e40af4d7c61ebbbed4ef7bba29b9d0a16633fa0147cf7f8"
+          "version": "repo-file-v1:sha256:387bf112fd63a823cbecc399677100d311c73aecb92456fe521135906113f475"
         },
         {
           "resource": "repo://packaging/internal/product/local_product_install.py",
-          "version": "repo-file-v1:sha256:bfdafd2bf58447836da32c2085f2519c99dfa514d285529010d8aacf08b3965f"
+          "version": "repo-file-v1:sha256:c9073793bace5ed86bbf711c558c6969c8e4c11b0358529878e9e8c3b217ec97"
         },
         {
           "resource": "repo://packaging/tests/test-install-checkout.py",
@@ -828,41 +642,15 @@
       "evidence": [
         {
           "resource": "repo://packaging/internal/bootstrap/bootstrap.sh.in",
-          "version": "repo-file-v1:sha256:0c96db3e537c321b5ede935e529e22892816ded7cff9c724ab12c195d19523d1"
+          "version": "repo-file-v1:sha256:2496b219bbd6ad4b9e7a3045813f6647a31acfc055b04ba247d0ef69ecb1688d"
         },
         {
           "resource": "repo://packaging/internal/installation/managed_installation.py",
-          "version": "repo-file-v1:sha256:809457a3e1c42fa78e3b88077e51e2ff5ed19af07921820a4f440bc860b97884"
+          "version": "repo-file-v1:sha256:17c4c50b8c594a8f8d1079829b2a5ceec26b12e84b46626d9b40ddca02a523d2"
         },
         {
           "resource": "repo://packaging/internal/installation/managed_release.py",
-          "version": "repo-file-v1:sha256:c669bd96c14cab328dc42ed8d2695bdba485dda8a9a8993f0249fd77febdac90"
-        }
-      ]
-    },
-    {
-      "id": "claim_62212ccffd1049e9a3aadcbe5130d948",
-      "statement": "Production admits target-specific MCP dependency files including native extensions and license records, normalizes regular import-data files to 0644 and re-observes the inventory before recording artifact.json. Generated-support reuse rejects files outside 0644 even when cached records match their 0755 modes. Installed preparation retains strict inventory bytes and modes, target and requirement identities, ownership and finite failure checks, then copies that inventory and checks imports with the private interpreter without pip, uv, a solver or downloads.",
-      "evidence": [
-        {
-          "resource": "repo://packaging/internal/bootstrap/generate_bootstrap.py",
-          "version": "repo-file-v1:sha256:65905c296f7f77864e40af4d7c61ebbbed4ef7bba29b9d0a16633fa0147cf7f8"
-        },
-        {
-          "resource": "repo://packaging/internal/mcp/mcp_dependency_artifact.py",
-          "version": "repo-file-v1:sha256:82b9c08687b01c682e1db54297b074dfed5edd1a9fc557902702d727be916e86"
-        },
-        {
-          "resource": "repo://packaging/internal/mcp/mcp_environment.py",
-          "version": "repo-file-v1:sha256:a2abad332b18479ec93495af6bf3ca4da8ccd866a8a244ebb70faa2ad92503cf"
-        },
-        {
-          "resource": "repo://packaging/tests/test-managed-bootstrap.py",
-          "version": "repo-file-v1:sha256:83e49df8b9ae8a4e9c0b4783d3dab928b0334e2b7fcce48d6e2e95a681a10a9b"
-        },
-        {
-          "resource": "repo://packaging/tests/test_mcp_dependency_artifact.py",
-          "version": "repo-file-v1:sha256:325482b8ab6b486ae953bd8c2c7a04ad4346767aea410ee8cd3416808b912c58"
+          "version": "repo-file-v1:sha256:471e28f5edf60d29744193ab64442f586628070bd2b01f9290d307bba12c03c7"
         }
       ]
     },
@@ -872,7 +660,7 @@
       "evidence": [
         {
           "resource": "repo://build.gradle.kts",
-          "version": "repo-file-v1:sha256:fbc6a2cdac2149c23a72e5cebbe73c1c818e462bb631c7636d109ccc87ebd469"
+          "version": "repo-file-v1:sha256:aaac0674d99471e186c80d15874f2421a620789f28c033e5e2ba8176e9a8b6af"
         },
         {
           "resource": "repo://packaging/internal/verification/run-installed-product.py",
@@ -886,11 +674,11 @@
       "evidence": [
         {
           "resource": "repo://.github/scripts/release/product_producer.py",
-          "version": "repo-file-v1:sha256:e989707edabe43e9c9908127e57460493093df65049cdca2a5b2a864a4ef57db"
+          "version": "repo-file-v1:sha256:442435a5160da4e8b62538e34fb5fdbac8a89b7189d883d7901228b45bfb57bf"
         },
         {
           "resource": "repo://packaging/internal/product/local_product_install.py",
-          "version": "repo-file-v1:sha256:bfdafd2bf58447836da32c2085f2519c99dfa514d285529010d8aacf08b3965f"
+          "version": "repo-file-v1:sha256:c9073793bace5ed86bbf711c558c6969c8e4c11b0358529878e9e8c3b217ec97"
         }
       ]
     },
@@ -900,43 +688,15 @@
       "evidence": [
         {
           "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/UninstallManagedRoot.kt",
-          "version": "repo-file-v1:sha256:eeec92a3a3cbbc3428cfc6d2f0969354f346887d646576b9b08658ba88c8b9f7"
+          "version": "repo-file-v1:sha256:c3b89341d96a228c3a4f3e08ee88d893f7a586ec2f870f2355ea25919e1d7e93"
         },
         {
           "resource": "repo://packaging/internal/installation/immutable_store.py",
-          "version": "repo-file-v1:sha256:ab5302564c2a6f50b79218e2f85b004eb88f23e33e64e79eba4ce56382e0c39c"
+          "version": "repo-file-v1:sha256:74118e12dd9d19350571cdef529854caa15485455278a73c8ddd4d5c0c7cdad5"
         },
         {
           "resource": "repo://packaging/internal/product/managed_product_installation.py",
-          "version": "repo-file-v1:sha256:151e2bb915ac3e38bdfb1f0bb50cc2c894be6f67b559c768fe1014bdccd74373"
-        }
-      ]
-    },
-    {
-      "id": "claim_490e7c009ba74d859e91e5f362020627",
-      "statement": "When MCP dependency production rejects during installer support generation, generate_bootstrap.stage_support writes the existing structured MCP_REJECTED result to stderr and preserves its finite failure code in the raised rejection. Missing tooling, installation failure and timeout remain distinguishable.",
-      "evidence": [
-        {
-          "resource": "repo://packaging/internal/bootstrap/generate_bootstrap.py",
-          "version": "repo-file-v1:sha256:65905c296f7f77864e40af4d7c61ebbbed4ef7bba29b9d0a16633fa0147cf7f8"
-        },
-        {
-          "resource": "repo://packaging/tests/test-managed-bootstrap.py",
-          "version": "repo-file-v1:sha256:83e49df8b9ae8a4e9c0b4783d3dab928b0334e2b7fcce48d6e2e95a681a10a9b"
-        }
-      ]
-    },
-    {
-      "id": "claim_ce68bad0e87946d2948cd551656b39c8",
-      "statement": "MCP dependency production passes --python sys.executable explicitly to uv with an empty PATH and UV_PYTHON_DOWNLOADS=never, rather than relying on ambient virtual-environment or interpreter discovery. The process-contract tests pin those arguments and environment values without downloads.",
-      "evidence": [
-        {
-          "resource": "repo://packaging/internal/mcp/mcp_dependency_artifact.py",
-          "version": "repo-file-v1:sha256:82b9c08687b01c682e1db54297b074dfed5edd1a9fc557902702d727be916e86"
-        },
-        {
-          "resource": "repo://packaging/tests/test_mcp_dependency_artifact.py",
-          "version": "repo-file-v1:sha256:325482b8ab6b486ae953bd8c2c7a04ad4346767aea410ee8cd3416808b912c58"
+          "version": "repo-file-v1:sha256:fc8fada835ab693aacf4d03da320dbc510c89ae94b298bb5771529d42fac508e"
         }
       ]
     },
@@ -950,13 +710,13 @@
         },
         {
           "resource": "repo://packaging/tests/test-managed-headless.py",
-          "version": "repo-file-v1:sha256:7dd88c77722de6a477791940e8a7d58cbde7b9c6f21d98fbb3250b80d2a7264b"
+          "version": "repo-file-v1:sha256:7deaf88f0193fd8d16979694c62701eacd5acb246fab33d20b23ce8c8a0a88c9"
         }
       ]
     }
   ],
   "verification": {
     "by": "openwiki/0.9.0",
-    "at": "2026-11-16T17:58:38.298Z"
+    "at": "2026-11-21T22:16:17.145Z"
   }
 }

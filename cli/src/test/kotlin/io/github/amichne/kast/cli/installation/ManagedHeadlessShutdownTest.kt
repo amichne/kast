@@ -1,6 +1,5 @@
 package io.github.amichne.kast.cli.installation
 
-import io.github.amichne.kast.protocol.contract.HostAutoReload
 import io.github.amichne.kast.protocol.contract.HostedCompatibilityDocument
 import io.github.amichne.kast.protocol.contract.HostedContractDocument
 import io.github.amichne.kast.protocol.contract.IdeHostBuildIdentity
@@ -135,7 +134,6 @@ class ManagedHeadlessShutdownTest {
                 100,
                 "host",
                 IdeHostBuildIdentity("1.2.3", "a".repeat(40), "b".repeat(40)),
-                HostAutoReload.DISABLED,
             )
         val inspected =
             IdeLifecycleResult.Inspected(

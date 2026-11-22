@@ -30,7 +30,7 @@ if not sys.flags.isolated:
 import managed_installation as installation
 import managed_product_installation as activation
 import managed_release as product
-from composed_host_probe import HostIdentity, desktop_processes, live_host
+from composed_host_probe import HostIdentity, live_host
 from composition_platform import HostPlatform
 from private_interpreter import PrivateInterpreter
 from product_lifecycle_probe import INVOCATION_FILE, LocalSource, Probe
@@ -77,8 +77,6 @@ class LocalReport:
     componentReceiptSha256: str
     trials: tuple[ColdTrial, ...]
     repair: RepairObservation
-    desktopProcessesBefore: tuple[str, ...]
-    desktopProcessesAfter: tuple[str, ...]
     type: Literal["LOCAL_INSTALLED_ACCEPTANCE"] = "LOCAL_INSTALLED_ACCEPTANCE"
     releaseQualification: Literal["NOT_ESTABLISHED"] = "NOT_ESTABLISHED"
     acquisition: Literal["LOCAL_SOURCE_WITH_SCHEMA_FIXTURE"] = "LOCAL_SOURCE_WITH_SCHEMA_FIXTURE"
@@ -347,7 +345,6 @@ def execute(args: argparse.Namespace) -> LocalReport:
     home = work / "home"
     home.mkdir(mode=0o700)
     root = home / ".local/share/kast"
-    desktop_before = desktop_processes(work, HostPlatform.MACOS_ARM64)
     workspace = work / "workspace"
     repository = Path(__file__).resolve().parents[3]
     _ = shutil.copytree(
@@ -485,9 +482,6 @@ def execute(args: argparse.Namespace) -> LocalReport:
             raise ValueError("final uninstall left managed state or live Host")
         if any(path.read_bytes() != b"foreign sentinel\n" for path in sentinels):
             raise ValueError("installed lifecycle changed a protected sentinel")
-        desktop_after = desktop_processes(work, HostPlatform.MACOS_ARM64)
-        if desktop_after != desktop_before:
-            raise ValueError("desktop IDEA process identities changed during acceptance")
         native = record.targets[1]
         report = LocalReport(
             record.sourceRevision,
@@ -495,8 +489,6 @@ def execute(args: argparse.Namespace) -> LocalReport:
             native.qualification.receipt.sha256,
             tuple(trials),
             repair,
-            desktop_before,
-            desktop_after,
         )
         _ = (args.evidence / "local-report.json").write_bytes(installation.encoded(report))
         shutil.rmtree(work)

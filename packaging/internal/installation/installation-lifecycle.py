@@ -246,24 +246,6 @@ class EmptyRecovery:
     type: str = field(default='EMPTY_RECOVERY', init=False)
 
 @dataclass(frozen=True)
-class AbsentConfiguration:
-    type: str = field(default='ABSENT_CONFIGURATION', init=False)
-
-@dataclass(frozen=True)
-class CapturedHomeConfigurationFile:
-    artifact: str
-    identity: FileIdentity
-    digest: str
-
-@dataclass(frozen=True)
-class AdmittedConfiguration:
-    home: str
-    directoryIdentity: FileIdentity
-    directoryMode: str
-    files: list[CapturedHomeConfigurationFile]
-    type: str = field(default='ADMITTED_CONFIGURATION', init=False)
-
-@dataclass(frozen=True)
 class UninstallRetirementJournal:
     installationRoot: str
     executable: str
@@ -273,7 +255,6 @@ class UninstallRetirementJournal:
     managedRootIdentity: FileIdentity
     controlIdentity: FileIdentity
     recoveryProof: Union[AbsentRecovery, AdmittedRecovery, EmptyRecovery]
-    homeConfiguration: Union[AbsentConfiguration, AdmittedConfiguration]
 
 @dataclass(frozen=True)
 class ProductUninstallRetirementJournal(UninstallRetirementJournal):
@@ -353,25 +334,6 @@ def decode_recovery_proof(document, installation):
         captured_recovery_file(document['lifecycleScript']),
         captured_recovery_file(document['journalScript']) if document.get('journalScript') is not None else None)
 
-def decode_configuration_proof(document, installation):
-    if document == {'type': 'ABSENT_CONFIGURATION'}:
-        return AbsentConfiguration()
-    exact_fields(document, ('type', 'home', 'directoryIdentity', 'directoryMode', 'files'))
-    if (document['type'] != 'ADMITTED_CONFIGURATION'
-            or document['home'] != str(installation.managed_root.parent.parent.parent)
-            or document['directoryMode'] not in {'PRIVATE', 'READABLE'}
-            or not isinstance(document['files'], list) or len(document['files']) > 2):
-        raise Rejected(Failure.RECOVERY_REJECTED)
-    files = []
-    for entry in document['files']:
-        exact_fields(entry, ('artifact', 'identity', 'digest'))
-        if (entry['artifact'] not in {'CONFIGURATION', 'CHECKPOINT'}
-                or any(previous.artifact == entry['artifact'] for previous in files)
-                or not isinstance(entry['digest'], str) or re.fullmatch('[0-9a-f]{64}', entry['digest']) is None):
-            raise Rejected(Failure.RECOVERY_REJECTED)
-        files.append(CapturedHomeConfigurationFile(entry['artifact'], journal_identity(entry['identity']), entry['digest']))
-    return AdmittedConfiguration(document['home'], journal_identity(document['directoryIdentity']), document['directoryMode'], files)
-
 def admit_uninstall_journal(path, installation):
     expected = installation.managed_root.parent / ('.kast-uninstall-' +
         hashlib.sha256(str(installation.managed_root).encode()).hexdigest() + '.json')
@@ -382,7 +344,7 @@ def admit_uninstall_journal(path, installation):
         raise Rejected(Failure.RECOVERY_REJECTED)
     document = read_json(path, UNINSTALL_JOURNAL_MAXIMUM_BYTES, Failure.RECOVERY_REJECTED)
     expected_fields = ('installationRoot', 'executable', 'executableSha256', 'channel', 'type',
-                       'managedRootIdentity', 'controlIdentity', 'recoveryProof', 'homeConfiguration')
+                       'managedRootIdentity', 'controlIdentity', 'recoveryProof')
     optional_fields = tuple(name for name in ('product', 'workspaceRemovals', 'productRemoval') if name in document)
     exact_fields(document, expected_fields + optional_fields)
     executable = Path(document['executable'])
@@ -395,8 +357,7 @@ def admit_uninstall_journal(path, installation):
     journal = UninstallRetirementJournal(document['installationRoot'], document['executable'],
         document['executableSha256'], document['channel'], UninstallPhase(document['type']),
         journal_identity(document['managedRootIdentity']), journal_identity(document['controlIdentity']),
-        decode_recovery_proof(document['recoveryProof'], installation),
-        decode_configuration_proof(document['homeConfiguration'], installation))
+        decode_recovery_proof(document['recoveryProof'], installation))
     if 'product' in document:
         from managed_installation import RECOVERY
         from managed_product import ProductReference
@@ -404,7 +365,7 @@ def admit_uninstall_journal(path, installation):
         journal = ProductUninstallRetirementJournal(
             journal.installationRoot, journal.executable, journal.executableSha256,
             journal.channel, journal.type, journal.managedRootIdentity, journal.controlIdentity,
-            journal.recoveryProof, journal.homeConfiguration, reference)
+            journal.recoveryProof, reference)
     if 'workspaceRemovals' in document:
         kind = (ProductWorkspaceUninstallRetirementJournal if 'product' in document
                 else WorkspaceUninstallRetirementJournal)
@@ -1097,8 +1058,7 @@ def retire(installation, roots):
         coordinator = private_service
         coordinator_arguments = ['disable']
     retire_child(coordinator, coordinator_arguments, installation.root, coordinator_environment, RetirementStage.COORDINATOR)
-    # Hosted-only manifests own no isolated workspace process. IDEA remains user-owned;
-    # plugin activation requires the separate, explicit IDE restart after installation.
+    # Only schema-1 manifests own isolated workspace processes to stop.
     if installation.manifest['schemaVersion'] == 1:
         for root in roots:
             retire_child(executable, ['stop'], root, environment, RetirementStage.WORKSPACE)

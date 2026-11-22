@@ -1,8 +1,7 @@
 ---
 type: System Explanation
-title: Native management and harness connections
-description: Explains the public native command, passive status evidence, connection
-  directory admission, registration ownership, and Codex plugins.
+title: Native management and agent connections
+description: Explains the public native command, passive status evidence, managed workspace admission, skill export, and dotagents agent connections.
 tags:
 - kast
 - distribution
@@ -11,16 +10,12 @@ code_sources:
 - path: distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagementCommand.kt
 - path: distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagementExecution.kt
 - path: packaging/composed_bundle.py
-- path: packaging/mcp_environment.py
-- path: packaging/mcp_dependency_artifact.py
 - path: distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagementStatus.kt
-- path: distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ConnectionConfiguration.kt
-- path: distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/PluginInstallation.kt
-- path: packaging/codex-mcp-registration.py
 - path: distribution/contract/src/main/kotlin/io/github/amichne/kast/distribution/contract/configuration/ConfigurationSchemaDocument.kt
 - path: distribution/cli/src/test/kotlin/io/github/amichne/kast/distribution/cli/ManagementCliTest.kt
-- path: distribution/cli/src/test/kotlin/io/github/amichne/kast/distribution/cli/ConnectionConfigurationContractTest.kt
-- path: distribution/cli/src/test/kotlin/io/github/amichne/kast/distribution/cli/PluginInstallationTest.kt
+- path: distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/SkillExport.kt
+- path: distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagementUninstall.kt
+- path: docs/public/reference/integrations.mdx
 sources:
   - id: openwiki-source-5e92c81a46b459b558f8901e
     resource: repo://.github/scripts/release/product_candidate.py
@@ -28,18 +23,12 @@ sources:
     resource: repo://.github/scripts/release/product_producer.py
   - id: openwiki-source-f02c30e87f3db4d071a7be5b
     resource: repo://.github/scripts/release/publish_developer.py
-  - id: openwiki-source-19c1ebaf58581a8fc0c5c10a
-    resource: repo://cli/build.gradle.kts
+  - id: openwiki-source-9334c5b6f4494897095d1968
+    resource: repo://cli/src/main/control-launchers/bin/kast-mcp
   - id: openwiki-source-581a5d52446c24f31ab1ed9d
     resource: repo://cli/src/main/kotlin/io/github/amichne/kast/cli/direct/WorkspaceSeedHost.kt
-  - id: openwiki-source-f2c689f11ca37c5559bce314
-    resource: repo://cli/src/main/kotlin/io/github/amichne/kast/cli/KastNativeMain.kt
-  - id: openwiki-source-e1bc625b6dcbcb48924bf9b4
-    resource: repo://cli/src/main/kotlin/io/github/amichne/kast/cli/publicshell/PublicHook.kt
-  - id: openwiki-source-fb61cc58d2fa4809ff4d73bb
-    resource: repo://cli/src/main/native-launchers/bin/kast-mcp
-  - id: openwiki-source-75e91bf709db8b5e164b1b31
-    resource: repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ConnectionConfiguration.kt
+  - id: openwiki-source-7904a856aedff77e554352c6
+    resource: repo://cli/src/main/kotlin/io/github/amichne/kast/cli/KastControlMain.kt
   - id: openwiki-source-e18a27e9e0fbd580f3d323e9
     resource: repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ContainerFiles.kt
   - id: openwiki-source-97c3915cf78feeb35ecec04a
@@ -50,18 +39,8 @@ sources:
     resource: repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ContainerStateAdmission.kt
   - id: openwiki-source-dc8df2b070b8c6ba7da7a8f9
     resource: repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ContainerStore.kt
-  - id: openwiki-source-5640c4be5bb8760f0f77a90d
-    resource: repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/CopilotPluginInstallation.kt
-  - id: openwiki-source-b6ffac113b6a09198425b019
-    resource: repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/GuidanceInstallation.kt
-  - id: openwiki-source-fe95fd24c4ce348de98bb357
-    resource: repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/HarnessUninstall.kt
-  - id: openwiki-source-4ea7092ecf62f475b11026f1
-    resource: repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/InstalledGuidanceRefresh.kt
   - id: openwiki-source-6ead538479055040a6fa54d0
     resource: repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/InstalledProductRuntime.kt
-  - id: openwiki-source-cfc838a1a4168e12e43d463d
-    resource: repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/IntegrationDisconnection.kt
   - id: openwiki-source-2141db5e92ccbb5de75a1544
     resource: repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/KastManagementMain.kt
   - id: openwiki-source-b30c7b16cf2f49971ca55950
@@ -78,16 +57,6 @@ sources:
     resource: repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagementReceiptAdmission.kt
   - id: openwiki-source-a62e12ff14ead337deede61b
     resource: repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagementUninstall.kt
-  - id: openwiki-source-552a7d3faff1f8e990a51c96
-    resource: repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/PiGuidanceInstallation.kt
-  - id: openwiki-source-2353a5c8f9b33ce9b982a841
-    resource: repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/PiSkillReplacement.kt
-  - id: openwiki-source-927dce901b5dbac4a4d84f48
-    resource: repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/PluginInstallation.kt
-  - id: openwiki-source-55d373ae663a2c299fafa8fe
-    resource: repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ProductManagementReceipt.kt
-  - id: openwiki-source-7391bd7fab188bde9fd1c847
-    resource: repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ProviderRegistration.kt
   - id: openwiki-source-dfb88490277ececa651be1f8
     resource: repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/PublicInstallationReset.kt
   - id: openwiki-source-e62300b4b70eef650b59f1db
@@ -104,47 +73,38 @@ sources:
     resource: repo://distribution/cli/src/test/kotlin/io/github/amichne/kast/distribution/cli/BuildSelectionTest.kt
   - id: openwiki-source-d95d75ec0e14dda7faf63dbf
     resource: repo://distribution/cli/src/test/kotlin/io/github/amichne/kast/distribution/cli/ManagedUpgradeSelectionFileTest.kt
-  - id: openwiki-source-9685c35bc7adaf6e5678720b
-    resource: repo://packaging/internal/bootstrap/generate_bootstrap.py
+  - id: openwiki-source-1c6c64417570ecf53e6c68a2
+    resource: repo://docs/public/reference/integrations.mdx
   - id: openwiki-source-714a256a14f92900e3bd2e7e
     resource: repo://packaging/internal/composition/composed_release.py
   - id: openwiki-source-9f2a730e7185b57c14ac08e8
     resource: repo://packaging/internal/installation/managed_installation.py
   - id: openwiki-source-496462e31bbb3fc9156abfe9
     resource: repo://packaging/internal/installation/managed_release.py
-  - id: openwiki-source-d5f001f4e6d4079a98a98b0e
-    resource: repo://packaging/internal/mcp/mcp_dependency_artifact.py
-  - id: openwiki-source-2ee7084aa788108d645f937e
-    resource: repo://packaging/internal/mcp/mcp_environment.py
-  - id: openwiki-source-07f32471b5605b546192361f
-    resource: repo://packaging/internal/product/managed_product_installation.py
   - id: openwiki-source-ba9aa96ff29fd40c40dce826
     resource: repo://packaging/internal/verification/product_acceptance.py
   - id: openwiki-source-6904899612d0ede016a5965a
     resource: repo://packaging/internal/verification/product_lifecycle_probe.py
-  - id: openwiki-source-278ed736a68f237214fdc90e
-    resource: repo://packaging/tests/test_mcp_dependency_artifact.py
-  - id: openwiki-source-d4b63d273ed6048ab72eda6d
-    resource: repo://packaging/tests/test-managed-bootstrap.py
-generated: { by: "unknown", at: "2026-11-16T17:54:20.995Z" }
+generated: { by: "codex", at: "2026-11-21T22:51:07.455Z" }
 verified:
   - by: openwiki/0.9.0
-    at: 2026-11-16T18:00:35.258Z
+    at: 2026-11-21T22:51:07.455Z
 ---
 
-# Native management and harness connections
+# Native management and agent connections
 
 ## The public command owner
 
-`KastManagementMain` parses the public native `kast` command.
-Its six management verbs are `install`, `status`, `stop`, `versions`, `upgrade`, and `uninstall`.
-Semantic command groups dispatch separately. Public container, resume, disconnect, and reinstall commands are absent.
-The `cli` module composes management and the private transport entry points in one native executable.
-Thin private launchers select their existing command and lifecycle owners without a JVM.
+`KastManagementMain` parses the public `kast` command.
+Its management commands are `config`, `status`, `stop`, `install skill`, `versions`, `upgrade`, and `uninstall`.
+The `query`, `result`, `source`, `diagnostic`, and `describe` command groups dispatch separately to the public semantic CLI.
+Public container, resume, disconnect, reinstall, connect, and plugin commands are absent.
+`KastControlMain` selects management and the private transport entries behind one Control executable.
+Thin private launchers select their existing command and lifecycle owners.
 Their internal command families do not add public semantic commands.
 
 Passive status reads installed receipts and available runtime evidence.
-The output separates installed and loaded identities, update policy, pending recovery, registrations, workspaces, and in-flight requests.
+The output separates installed and loaded identities, update policy, pending recovery, live connections, hosted services, workspaces, and in-flight requests.
 Unavailable evidence stays unavailable with its reason.
 Status does not start Java, prepare a workspace, or contact a release server to manufacture readiness.
 
@@ -164,7 +124,7 @@ Global lifecycle rejection names the workspace entry and its finite cause.
 Explicit uninstall can remove an inactive rejected record under its exclusive lease after private-state and mutation checks.
 That recovery does not permit retirement of an unproven live Host or deletion outside the private profile.
 
-A request owns its reader lease, rather than an entire MCP or RPC session.
+A request owns its reader lease, rather than an entire MCP session.
 Installed product identity is rechecked before generation publication and binding.
 Queries neither acquire release assets nor fall back to a desktop installation.
 `stop` selects the current workspace, an explicit workspace, or all recorded workspaces.
@@ -228,44 +188,16 @@ Missing legacy receipts remain unavailable; they are not synthesized as `NOT_REQ
 Phase 1 native qualification and performance remain pending. Historical seeded-start measurements do not qualify this implementation.
 Immutable seed snapshots remain outside Phase 1.
 
-## Guidance installation and ownership
+## Agent connections
 
-`kast install codex`, `kast install copilot`, and `kast install pi` install CLI guidance by default.
-The default bundle includes CLI guidance and passive session hooks without an automatic MCP server.
-It does not prepare a Python environment.
-The explicit `--mcp` option selects the complete optional transport composition and its dependency preparation.
-Production materializes target-specific wheels and their inventory before delivery.
-Before recording `artifact.json`, the producer admits the inventory, sets its regular import-data files to `0644`, and observes the inventory again.
-This includes native extensions and wheel command files shipped as data, not executable commands.
-Generated-support reuse also requires every dependency file at `0644`; even a self-consistent cached `0755` record rejects.
-The producer passes `--python sys.executable` explicitly to uv, with an empty `PATH` and interpreter downloads disabled.
-It does not depend on uv finding an ambient virtual environment or interpreter.
-Installed preparation admits that artifact, copies its site-packages, and runs an isolated import check with the private interpreter.
-It invokes no pip, uv, dependency solver, or download.
-The inventory and artifact record preserve target identity, requirement hashes, native extensions, and license files.
-Consumer admission still requires exact bytes and modes; normalization does not relax ownership, identity, or finite failure checks.
-The retired `connect` and `plugin` setup syntax directs callers to `kast install`.
-Legacy connection variants remain available for receipt admission and exact cleanup.
-
-Codex and Copilot own plugin installation, configuration, and removal through their native commands.
-Kast admits the manifest-owned bundle, exact marketplace identity, selected composition, and discovered resource bytes.
-Equal plugin versions alone do not prove that the cache contains the selected resources.
-A repeated setup repairs a stale owned cache and admits an unchanged selected bundle as `ALREADY_INSTALLED`.
-After success, Kast removes only exact receipt-owned legacy registrations.
-Foreign registrations and conflicting plugin sources reject before replacement.
-
-Pi receives the canonical skill through native skill discovery.
-CLI-only composition installs its context extension. Explicit MCP composition selects the complete MCP extension.
-The Pi receipt selects the owned skill directory.
-Kast replaces that directory as a unit and rejects symbolic links.
-Foreign paths outside that directory remain protected.
-Installer completion refreshes admitted provider plugins and recorded Pi guidance for both legacy and managed product results.
-`ProductInstalled` carries notices and enters the same capability-marked refresh branch.
-A failed or interrupted refresh preserves `HARNESS_REFRESH_REQUIRED`; successful refresh clears that notice without discarding other notices.
-These source paths do not establish live provider refresh success.
-`kast install skill --output <parent>` exports the complete canonical skill directory without provider configuration.
-An identical directory succeeds without replacement. Extra, changed, or symbolic-link entries reject.
+`kast install skill [--output <parent>]` exports the complete canonical skill directory, by default under `./.agents/skills`.
+An identical directory returns `ALREADY_INSTALLED` without replacement. A different, incomplete, or linked directory rejects and stays unchanged.
+Any other `install` target rejects and directs the caller to dotagents.
+Kast writes no agent harness configuration, plugin cache, or provider registration.
+An agent receives the exported skill and one MCP server that runs `kast --internal-entrypoint=mcp`, both declared in the repository's `agents.toml` and applied by dotagents.
+MCP registration and `tools/list` grant no trust and start no Host.
 A fresh agent session is necessary after setup.
+The [agent setup guide](../../docs/public/reference/integrations.mdx) owns the exact `agents.toml` entries.
 
 ## Selection and passive status
 
@@ -281,14 +213,11 @@ Pending recovery takes precedence over selector resolution and invokes only the 
 Bridge admission requires the complete Control payload inventory to match the manifest, with unique paths and verified bytes.
 The wrapper preserves the child terminal result and does not select another release after recovery.
 
-The parser admits `uninstall --force [--json]` for legacy state only, without a harness selector.
+The parser admits `uninstall --force [--json]` for legacy state only.
 Under an exterior workspace lifetime lease, either managed store or `product-selection.json` rejects force detachment with `MANAGED_STATE_REQUIRES_UNINSTALL`.
-Managed products use ordinary uninstall with its recovery journal. It removes receipted Pi guidance while preserving foreign siblings.
-`ProviderRegistration` records only CODEX/COPILOT routing intent before provider mutation; current provider inventories still prove ownership.
-Ordinary uninstall removes those recorded provider resources before Host retirement and rejects conflicting resources without retiring the Host.
-It rechecks for new registrations under the registration lock and holds that lock through payload removal.
-Explicit harness removal forgets only the selected routing record after verified cleanup.
-Kotlin schema-2/schema-3 receipts and Python replacement preserve these records.
+Managed products use ordinary uninstall with its recovery journal.
+Uninstall holds the workspace store-removal lease while it admits the receipted payload and retires the installation.
+It changes no agent configuration.
 
 Qualification separates component assembly checks from installed-product acceptance.
 `composed_release._qualify_release` verifies exact archives and passive shipped-Control discovery, without a test-only native executable.
@@ -303,37 +232,33 @@ Exact repair cannot stand in for upgrade evidence. CI admits the baseline's exac
 This staged source contract replaces the earlier circular setup route, but no successful native Host acceptance is established here.
 See [distribution qualification](../modules/distribution.md) for the stage owners and evidence limits.
 
-Management receipts preserve installed build identity, update policy, registrations, and guidance ownership.
-Pinned policy needs the same recorded build identity. Tracking policy admits older receipts without a recorded build.
-Guidance entries need unique harnesses and file paths, normalized destinations, and exact SHA-256 syntax.
+Schema 3 management receipts preserve the installation root, executable digest, channel, update policy, installed build identity, and product reference.
+They carry no agent configuration.
+Pinned policy needs the same recorded build identity.
 Passive status reads the selected IDEA and profile evidence without Host preparation or release access.
 Unavailable evidence keeps its finite reason.
 
 Fixture tests establish finite parsing, ownership, and recovery outcomes.
-Native adapter qualification needs separate process and provider evidence.
+Native adapter qualification needs separate process evidence.
 These mechanisms alone do not establish that a running IDEA loaded the selected Host or answered semantic queries.
 
 ## Focused tests
 
 - [ManagementCliTest.kt](../../distribution/cli/src/test/kotlin/io/github/amichne/kast/distribution/cli/ManagementCliTest.kt)
-- [ConnectionConfigurationContractTest.kt](../../distribution/cli/src/test/kotlin/io/github/amichne/kast/distribution/cli/ConnectionConfigurationContractTest.kt)
-- [PluginInstallationTest.kt](../../distribution/cli/src/test/kotlin/io/github/amichne/kast/distribution/cli/PluginInstallationTest.kt)
 - [ManagedUpgradeSelectionFileTest.kt](../../distribution/cli/src/test/kotlin/io/github/amichne/kast/distribution/cli/ManagedUpgradeSelectionFileTest.kt)
 
 ## Source owners
 
-- [mcp_environment.py](../../packaging/internal/mcp/mcp_environment.py)
-- [mcp_dependency_artifact.py](../../packaging/internal/mcp/mcp_dependency_artifact.py)
 - [KastManagementMain.kt](../../distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/KastManagementMain.kt)
 - [ManagementCommand.kt](../../distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagementCommand.kt)
 - [ManagementStatus.kt](../../distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagementStatus.kt)
-- [ConnectionConfiguration.kt](../../distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ConnectionConfiguration.kt)
-- [PluginInstallation.kt](../../distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/PluginInstallation.kt)
-- [`codex-mcp-registration.py`](../../packaging/internal/installation/codex-mcp-registration.py)
+- [SkillExport.kt](../../distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/SkillExport.kt)
+- [ManagementReceiptAdmission.kt](../../distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagementReceiptAdmission.kt)
+- [ManagementUninstall.kt](../../distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagementUninstall.kt)
 - [ConfigurationSchemaDocument.kt](../../distribution/contract/src/main/kotlin/io/github/amichne/kast/distribution/contract/configuration/ConfigurationSchemaDocument.kt)
 
 ## Read next
 
-- [Direct tool processes](../transport/direct-mcp-and-tool-rpc.md)
+- [Direct MCP](../transport/direct-mcp-and-tool-rpc.md)
 - [Codex hosts](../transport/codex-hosts-and-framing.md)
 - [Guarded reset](upgrades-shutdown-and-reset.md)

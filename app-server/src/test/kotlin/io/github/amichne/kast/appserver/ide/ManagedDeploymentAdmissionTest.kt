@@ -1,7 +1,6 @@
 package io.github.amichne.kast.appserver.ide
 
 import io.github.amichne.kast.kernel.Refinement
-import io.github.amichne.kast.protocol.contract.HostAutoReload
 import io.github.amichne.kast.protocol.contract.HostedCompatibilityDocument
 import io.github.amichne.kast.protocol.contract.IdeHostApplicationAdvertisement
 import io.github.amichne.kast.protocol.contract.IdeLifecycleResult
@@ -63,7 +62,7 @@ class ManagedDeploymentAdmissionTest {
     }
 
     @Test
-    fun `semantic admission retains managed profile process and reload restrictions`(@TempDir root: Path) {
+    fun `semantic admission retains managed profile and process restrictions`(@TempDir root: Path) {
         val fixture = ManagedDeploymentFixture(root.toRealPath())
         val identity = fixture.identity()
         val owner = (HostedEndpointOwnerPid.parse(identity.pid.toString()) as Refinement.Refined).value
@@ -74,7 +73,6 @@ class ManagedDeploymentAdmissionTest {
         assertEquals(Refinement.Refined(descriptor), admitSemanticDeployment(fixture.selected, descriptor))
         val invalid =
             listOf(
-                    identity.copy(autoReload = HostAutoReload.ENABLED),
                     identity.copy(ideaHome = "/foreign/idea"),
                     identity.copy(profile = "/foreign/profile"),
                     identity.copy(pid = identity.pid + 1),

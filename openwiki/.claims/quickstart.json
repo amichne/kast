@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:68d60c4c5194b4f511ad0b0378f7474e8382617b44b3ce2b8dc6e19197ad3acf",
+  "pageVersion": "sha256:09883f1e3d0f7386c1d81b4f7919cdd71c01c0c68e2e16292099be3ff3ffc832",
   "claims": [
     {
       "id": "claim_68b3b4212912400cb4aaca348651f813",
@@ -8,11 +8,11 @@
       "evidence": [
         {
           "resource": "repo://runtime/hosted/build.gradle.kts",
-          "version": "repo-file-v1:sha256:02f2bf0731dd328357ce3ac96ad7011fa928764c9797990bf3c2ff7d0e2e91fd"
+          "version": "repo-file-v1:sha256:b9e11a4ce440b3c30df1f9a0cda1a935263a5b2c67c7214f0495f9dfd7b58dd7"
         },
         {
           "resource": "repo://settings.gradle.kts",
-          "version": "repo-file-v1:sha256:a0bfafaf3a6f7d042dde551309835a2c9aba6cbab3edca93ae20889dc964bbd5"
+          "version": "repo-file-v1:sha256:94859686bf715aa3a82bedfcf64778a6beed75840b5c072ac56931f41673b2c8"
         }
       ]
     },
@@ -33,10 +33,28 @@
           "version": "repo-lines-v1:sha256:6b6db196818aa8a0ab6fb01a1bc7cb914d0abbb262e25c932254399c199dca8a:eyJzZWxlY3RlZExpbmVDb3VudCI6MTIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjIwNmFlMWMwYTBmNGM1MGRiNjMxZGUzZDZmMDQxNTEwZGZkODEzYWJiZTdhZmM0ZTMxYjA0NTllMTIzMGM0ZWMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjE2N2NiMDZmZWE5ZGFhNGQyMjg2NTg0M2Y1ZDMzYWNiYzJkODAwZjFlZDgzMDIzNDIxYmNlNmEyY2Q1ZWI2ODIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImE5ZmE0NzU1ZjcwMGUwOWUxYTk0N2YxNzUyNTRlMDFmNzYxMTQ3MDYyNmY2OTNhNWY4ODBiZjY1ZWI3ZjFkNGQifQ"
         }
       ]
+    },
+    {
+      "id": "claim_7faee45490d148428dd822b22729cd7c",
+      "statement": "Kast runs semantic work in a managed headless IDEA Host and agents reach it through the Go CLI or the native MCP entry declared with dotagents.",
+      "evidence": [
+        {
+          "resource": "repo://cli/src/main/kotlin/io/github/amichne/kast/cli/KastControlMain.kt",
+          "version": "repo-file-v1:sha256:88cf4100b9ef11e24962af0599e172239d5caebc9d3027a895c308bd84f32f0a"
+        },
+        {
+          "resource": "repo://docs/public/reference/integrations.mdx",
+          "version": "repo-file-v1:sha256:352164cb56343e41f32d7ae8c16e89a3d36543b17d2da6b346b2087641ecd9f0"
+        },
+        {
+          "resource": "repo://frontend/cmd/kast/main.go",
+          "version": "repo-file-v1:sha256:9cdaa1476a0fa3db0b47c16e45da54d74c32ef0863dcd87823b1acd13f88719a"
+        }
+      ]
     }
   ],
   "verification": {
     "by": "openwiki/0.9.0",
-    "at": "2026-11-15T20:10:47.711Z"
+    "at": "2026-11-21T22:16:17.145Z"
   }
 }

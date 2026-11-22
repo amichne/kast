@@ -82,7 +82,7 @@ An uncertain read does not create that write fence.
 These hosted lane rules do not impose identical concurrency on every transport.
 
 MCP starts a stdio session and exposes tools through tools/list.
-Tool RPC supplies its installed catalog before a one-shot call and can admit a bounded `querySession`.
+The public CLI admits its installed catalog before each one-shot call.
 Hosted dynamic calls also need client protocol, thread ownership, and workspace binding.
 Disconnect removes the recorded client connection without automatically retiring the shared daemon or IDEA project.
 Upgrades need new catalogs and the selected Host loaded before semantic admission.

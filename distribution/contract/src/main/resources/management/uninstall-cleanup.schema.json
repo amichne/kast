@@ -28,8 +28,7 @@
             "RETIREMENT_JOURNAL",
             "RECOVERY_BUNDLE",
             "ACTIVATION_LOCK",
-            "MANAGED_ROOT",
-            "HOME_CONFIGURATION"
+            "MANAGED_ROOT"
           ]
         }
       }
@@ -59,8 +58,7 @@
             "RETIREMENT_JOURNAL",
             "RECOVERY_BUNDLE",
             "ACTIVATION_LOCK",
-            "MANAGED_ROOT",
-            "HOME_CONFIGURATION"
+            "MANAGED_ROOT"
           ]
         }
       }
@@ -91,8 +89,7 @@
             "RETIREMENT_JOURNAL",
             "RECOVERY_BUNDLE",
             "ACTIVATION_LOCK",
-            "MANAGED_ROOT",
-            "HOME_CONFIGURATION"
+            "MANAGED_ROOT"
           ]
         },
         "failure": {
@@ -168,32 +165,6 @@
             "RECOVERY_UNRESOLVED",
             "FOREIGN_CONTENT",
             "IO_UNAVAILABLE"
-          ]
-        }
-      }
-    },
-    {
-      "type": "object",
-      "required": [
-        "type",
-        "artifact",
-        "failure"
-      ],
-      "additionalProperties": false,
-      "properties": {
-        "type": {
-          "const": "HOME_CONFIGURATION_REJECTED"
-        },
-        "artifact": {
-          "const": "HOME_CONFIGURATION"
-        },
-        "failure": {
-          "enum": [
-            "OWNERSHIP_UNPROVEN",
-            "DOCUMENT_REJECTED",
-            "CONTENT_CHANGED",
-            "FOREIGN_CONTENT",
-            "FILESYSTEM_REJECTED"
           ]
         }
       }

@@ -14,7 +14,6 @@ code_sources:
   - path: build-logic/src/main/kotlin/kast.public-query-contract.gradle.kts
   - path: build-logic/src/main/kotlin/conventions/JsonContractVerification.kt
   - path: build-logic/src/main/kotlin/conventions/VerifyJsonContractsTask.kt
-  - path: packaging/generate-public-query.py
   - path: cli/build.gradle.kts
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/bootstrap/InstalledServerProjectionDocuments.kt
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/MintlifyCallableSchemaProjection.kt
@@ -27,7 +26,7 @@ code_sources:
   - path: protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/AdmittedReadRejections.kt
   - path: protocol/wire/src/main/kotlin/io/github/amichne/kast/protocol/wire/metadata/HostedCapabilityDescriptor.kt
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/rpc/QuerySessionRejectionDetail.kt
-  - path: cli/src/test/js/tool-rpc-rejection.test.mjs
+  - path: packaging/internal/query/generate-public-query.py
 sources:
   - id: openwiki-source-9c15e352c1a80cb81e9b0fed
     resource: repo://build-logic/src/main/kotlin/conventions/JsonContractVerification.kt
@@ -39,12 +38,16 @@ sources:
     resource: repo://cli/src/main/kotlin/io/github/amichne/kast/cli/bootstrap/InstalledServerProjectionDocuments.kt
   - id: openwiki-source-1e1d1563882058df6fa2e4da
     resource: repo://cli/src/main/kotlin/io/github/amichne/kast/cli/MintlifyCallableSchemaProjection.kt
+  - id: openwiki-source-13cba9b2380689652b09f8ee
+    resource: repo://cli/src/main/kotlin/io/github/amichne/kast/cli/rpc/QuerySessionRejectionDetail.kt
   - id: openwiki-source-cc6a899b4b43717488dde542
     resource: repo://config/json-contracts/README.md
-generated: { by: "codex", at: "2026-11-03T05:45:59.282Z" }
+  - id: openwiki-source-ef31c8fc167ea83cd99b28bc
+    resource: repo://packaging/internal/query/generate-public-query.py
+generated: { by: "codex", at: "2026-11-21T22:16:17.145Z" }
 verified:
   - by: openwiki/0.9.0
-    at: 2026-11-12T22:37:51.261Z
+    at: 2026-11-21T22:16:17.145Z
 ---
 
 
@@ -59,7 +62,7 @@ The protocol contract defines operation identities, request documents, result va
 Public display text does not replace the admitted operation identity.
 
 The public query schema is an authored interface in App Server.
-Its generator projects Kotlin syntax, defaults, public tool identities, and selected harness delivery sections.
+Its generator projects Kotlin syntax, defaults, public tool identities, and the agent references under `agent-tools/references`.
 Admission maps that typed syntax into the canonical operation.
 The public schema and the internal operation graph keep separate owners and evidence roles.
 
@@ -78,7 +81,7 @@ Absent, null, empty, and default values remain distinct when the external contra
 
 ## Independent guards
 
-`verifyPublicQueryGeneration` compares generated Kotlin and harness outputs against the current source inputs.
+`verifyPublicQueryGeneration` compares generated Kotlin and agent reference outputs against the current source inputs.
 Its generator regression gate also examines illegal defaults, reference families, and tool bindings.
 Kotlin compilation depends on generation parity, so stale syntax cannot pass through a successful compiler task.
 
@@ -104,7 +107,7 @@ Then examine the focused encoded-shape cases and the affected contract consumers
 - [`kast.public-query-contract.gradle.kts`](../../build-logic/src/main/kotlin/kast.public-query-contract.gradle.kts)
 - [JsonContractVerification.kt](../../build-logic/src/main/kotlin/conventions/JsonContractVerification.kt)
 - [VerifyJsonContractsTask.kt](../../build-logic/src/main/kotlin/conventions/VerifyJsonContractsTask.kt)
-- [generate-public-query.py](../../packaging/generate-public-query.py)
+- [generate-public-query.py](../../packaging/internal/query/generate-public-query.py)
 - [`build.gradle.kts`](../../cli/build.gradle.kts)
 - [InstalledServerProjectionDocuments.kt](../../cli/src/main/kotlin/io/github/amichne/kast/cli/bootstrap/InstalledServerProjectionDocuments.kt)
 - [MintlifyCallableSchemaProjection.kt](../../cli/src/main/kotlin/io/github/amichne/kast/cli/MintlifyCallableSchemaProjection.kt)
@@ -127,7 +130,5 @@ It supplies no wildcard or baseline-write operation.
 
 ## New query-feedback projections
 
-The public-query generator projects typed authority-mismatch and callback-subject details into the adapter contracts.
-The JavaScript presentation owner supplies received-evidence summaries without a second semantic outcome.
-Tool RPC rejection fields keep their typed local session or canonical authority detail.
-The focused rejection and presentation cases exercise those encoded projections.
+`QuerySessionRejectionDetail` keeps typed output-allowance, detail-selector, and canonical authority details beside a tool rejection.
+The semantic owner, not this projection, decides source freshness.

@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:9c025e6e6d3215f9c3da0822e2fd1447e7ec23eb051df40cfc14c41e46cde015",
+  "pageVersion": "sha256:807b62ad800d440a519b78d3f45ff76b8e988d2902bdfd64a677beb8b0a7c85d",
   "claims": [
     {
       "id": "claim_8c0d2193cfc6423db92d99f0cda80e68",
@@ -16,7 +16,7 @@
         },
         {
           "resource": "repo://symbol/intellij/src/main/kotlin/io/github/amichne/kast/symbol/intellij/IntellijScopedDeclarationEnumeration.kt",
-          "version": "repo-file-v1:sha256:993d3657f58ca657420e6a8132944a38f0e15e5970bd2ccbd440b3aefa919cea"
+          "version": "repo-file-v1:sha256:043fcc76e0d85527ef71360954ceda751a022e15eec5e9eed4a0fca30713128a"
         }
       ]
     },
@@ -51,6 +51,6 @@
   ],
   "verification": {
     "by": "openwiki/0.9.0",
-    "at": "2026-11-11T06:28:10.019Z"
+    "at": "2026-11-21T22:16:17.145Z"
   }
 }

@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:f908f12c8148f5af2ad4e8d0615da157763e0d31811e8b2f16b97085fb4ad7a5",
+  "pageVersion": "sha256:b3eea2f9776160d88488eaf567792ff53793e5a0f773779f207234a722b65ec5",
   "claims": [
     {
       "id": "claim_449573d278134379993a9d52760e0573",
@@ -8,11 +8,11 @@
       "evidence": [
         {
           "resource": "repo://build-logic/src/main/kotlin/support/architecture/policy/KastCleanSlateModules.kt",
-          "version": "repo-file-v1:sha256:c0c1fa317851da0c81f01e1a41eb5c6a789e94df237337fe1edbbf95f985ba82"
+          "version": "repo-file-v1:sha256:6dd1b9485f82ca441749afab64aab905b44ebfcc13b2a3a4bffaef84877ae92e"
         },
         {
           "resource": "repo://settings.gradle.kts",
-          "version": "repo-file-v1:sha256:a0bfafaf3a6f7d042dde551309835a2c9aba6cbab3edca93ae20889dc964bbd5"
+          "version": "repo-file-v1:sha256:94859686bf715aa3a82bedfcf64778a6beed75840b5c072ac56931f41673b2c8"
         }
       ]
     },
@@ -22,7 +22,7 @@
       "evidence": [
         {
           "resource": "repo://runtime/hosted/build.gradle.kts",
-          "version": "repo-file-v1:sha256:02f2bf0731dd328357ce3ac96ad7011fa928764c9797990bf3c2ff7d0e2e91fd"
+          "version": "repo-file-v1:sha256:b9e11a4ce440b3c30df1f9a0cda1a935263a5b2c67c7214f0495f9dfd7b58dd7"
         },
         {
           "resource": "repo://topology/service/build.gradle.kts",
@@ -39,10 +39,24 @@
           "version": "repo-lines-v1:sha256:32e81fbca02227afbf889baa0f4c58c72e1c17dbc39b637f9b9876cb27aa506c:eyJzZWxlY3RlZExpbmVDb3VudCI6NDQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjczZTgwMDRjM2FlNzg5MTMxZWY5OWQ1Mzk4Yzg1OTg5Mjg2MmU3MTJhYmU3M2U4MjkzMjU3NDg1MzBmY2YyODgiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImU2YjA0NDkxNDY5NzIyZTgzNjNhOTRlNDA0NDUzOGUwMTNhMmEyMTdlMzZiMWU1NjhiYTYwYWNiN2I0YzhmMmUiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjM4ODM2MTM3N2IwZjQ2ZWVjZTg4Yjg5MzEwZjAzZGIwODVhM2JkMmM1YWNlYzYxNjVmYTc0YzM2ZGNjMzMzOTgiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjE5ZTc2MzU1Y2YxMTk5NDgwYzNmOTk4MzZiMTQ4NmM4NDFkODkxZmFhZDkwNGM2MDhlMDkzMDIyZDM3NTdhZWUifQ"
         }
       ]
+    },
+    {
+      "id": "claim_7d8b1bc76d504ff9bd2a26ece4faf0ee",
+      "statement": "The Go frontend is the user-facing Control executable and enters the JVM through KastControlMain.",
+      "evidence": [
+        {
+          "resource": "repo://cli/src/main/kotlin/io/github/amichne/kast/cli/KastControlMain.kt",
+          "version": "repo-file-v1:sha256:88cf4100b9ef11e24962af0599e172239d5caebc9d3027a895c308bd84f32f0a"
+        },
+        {
+          "resource": "repo://frontend/cmd/kast/main.go",
+          "version": "repo-file-v1:sha256:9cdaa1476a0fa3db0b47c16e45da54d74c32ef0863dcd87823b1acd13f88719a"
+        }
+      ]
     }
   ],
   "verification": {
     "by": "openwiki/0.9.0",
-    "at": "2026-11-15T20:10:47.711Z"
+    "at": "2026-11-21T22:16:17.145Z"
   }
 }

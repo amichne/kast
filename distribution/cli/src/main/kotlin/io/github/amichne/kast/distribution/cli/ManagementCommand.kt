@@ -2,14 +2,6 @@ package io.github.amichne.kast.distribution.cli
 
 import java.nio.file.InvalidPathException
 import java.nio.file.Path
-import kotlinx.serialization.Serializable
-
-@Serializable
-/** A saved Codex connection directory, read only so uninstall can retire Kast's former home configuration. */
-internal enum class HarnessConnection {
-    CODEX_MCP,
-    CODEX_APP_SERVER,
-}
 
 internal sealed interface ManagementCommand {
     /** Opaque argv. Only the JVM public command owner interprets semantic options. */

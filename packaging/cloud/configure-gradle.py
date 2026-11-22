@@ -5,7 +5,7 @@ from pathlib import Path
 import shlex
 from urllib.parse import urlparse
 
-root = Path(os.environ["KAST_CLOUD_ROOT"]).resolve()
+root = Path(os.environ["DEV_CLOUD_ROOT"]).resolve()
 if not (root / ".kast-cloud-owned").is_file():
     raise SystemExit("Owned runtime required")
 proxy = urlparse(os.environ.get("HTTPS_PROXY") or os.environ.get("https_proxy") or "")
@@ -17,7 +17,7 @@ if proxy.hostname:
         properties[f"systemProp.{protocol}.proxyHost"] = proxy.hostname
         properties[f"systemProp.{protocol}.proxyPort"] = str(proxy.port or 80)
     properties["systemProp.http.nonProxyHosts"] = "localhost|127.*|[::1]"
-truststore = Path(os.environ.get("KAST_CLOUD_JAVA_TRUSTSTORE", "/etc/ssl/certs/java/cacerts"))
+truststore = Path(os.environ.get("DEV_CLOUD_JAVA_TRUSTSTORE", "/etc/ssl/certs/java/cacerts"))
 if truststore.is_file():
     properties["systemProp.javax.net.ssl.trustStore"] = str(truststore)
 target = root / "gradle/gradle.properties"
@@ -26,4 +26,4 @@ if target.exists() and not target.read_text().startswith(marker):
     raise SystemExit("Refusing to replace an unowned Gradle properties file")
 target.write_text(marker + "".join(f"{key}={value}\n" for key, value in properties.items()))
 options = shlex.join(["-D" + key.removeprefix("systemProp.") + "=" + value for key, value in properties.items()])
-(root / "gradle-runtime.sh").write_text('export GRADLE_OPTS="$KAST_CLOUD_GRADLE_BASE_OPTS "' + shlex.quote(options) + "\n")
+(root / "gradle-runtime.sh").write_text('export GRADLE_OPTS="$DEV_CLOUD_GRADLE_BASE_OPTS "' + shlex.quote(options) + "\n")

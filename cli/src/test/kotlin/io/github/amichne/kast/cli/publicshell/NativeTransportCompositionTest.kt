@@ -1,8 +1,6 @@
 package io.github.amichne.kast.cli.publicshell
 
-import io.github.amichne.kast.appserver.query.PublicToolContract
 import io.github.amichne.kast.cli.mcp.McpCallResult
-import io.github.amichne.kast.cli.mcp.McpEmptyObject
 import io.github.amichne.kast.cli.mcp.McpInitializeResult
 import io.github.amichne.kast.cli.mcp.McpRequest
 import io.github.amichne.kast.cli.mcp.McpResponse
@@ -15,7 +13,6 @@ import java.nio.file.Files
 import java.nio.file.Path
 import java.util.concurrent.TimeUnit
 import kotlinx.serialization.encodeToString
-import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.decodeFromJsonElement
 import kotlinx.serialization.json.encodeToJsonElement
@@ -78,29 +75,6 @@ class NativeTransportCompositionTest {
                     .getValue("code")
                     .jsonPrimitive
                     .content,
-            )
-        }
-    }
-
-    @Test
-    fun `native tool RPC plans a canonical request and rejects invalid input`(@TempDir evidence: Path) {
-        NativePublicFixture(evidence).use { fixture ->
-            val request =
-                PublicToolContract.examples(PublicToolIdentity.QUERY_SYMBOLS).examples.getValue("runByName").value
-            val accepted =
-                nativeEntry(fixture, evidence, "rpc", listOf("--catalog=COMPLETE", "plan-query"), request.toString())
-            assertEquals("planned", Json.parseToJsonElement(accepted).jsonObject.getValue("type").jsonPrimitive.content)
-            val rejected =
-                nativeEntry(
-                    fixture,
-                    evidence,
-                    "rpc",
-                    listOf("--catalog=COMPLETE", "plan-query"),
-                    mcpWire.encodeToString(McpEmptyObject()),
-                )
-            assertEquals(
-                "rejected",
-                Json.parseToJsonElement(rejected).jsonObject.getValue("type").jsonPrimitive.content,
             )
         }
     }

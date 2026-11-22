@@ -3,7 +3,7 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 import unittest
 
-import reproduce_semantic_queries as replay
+import hosted_timing as replay
 
 
 class ObservationRotationTest(unittest.TestCase):

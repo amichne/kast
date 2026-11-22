@@ -71,7 +71,7 @@ Activation sets `GOTOOLCHAIN=local`, so Go never downloads another toolchain. Th
 Kast remains `GPL-3.0-only`; changing its build toolchain does not relicense the project.
 The wrapper owns the Gradle distribution checksum. The generated activation file
 configures only the owned Gradle directory through the current approved proxy.
-Set `KAST_CLOUD_JAVA_TRUSTSTORE` if the platform provides a different Java certificate store.
+Set `DEV_CLOUD_JAVA_TRUSTSTORE` if the platform provides a different Java certificate store.
 
 The Linux source path admits the standalone vendor layout, bundled JBR and exact
 per-user plugin profile. Control archives carry a Linux platform name. Fresh
@@ -98,10 +98,10 @@ lifecycle launch; a process start never establishes Host readiness.
 Run Slopsentral's actual gates in its pinned source checkout:
 
 ```sh
-cd "$KAST_CLOUD_ROOT/sources/slopsentral"
+cd "$DEV_CLOUD_ROOT/sources/slopsentral"
 npm ci --ignore-scripts --no-audit --no-fund
 node tools/validate-source-graph.mjs
-TEST_VALE_ARCHIVE="$KAST_CLOUD_ROOT/downloads/vale_3.24.0_Linux_64-bit.tar.gz" uv run --locked tools/check.py
+TEST_VALE_ARCHIVE="$DEV_CLOUD_ROOT/downloads/vale_3.24.0_Linux_64-bit.tar.gz" uv run --locked tools/check.py
 ```
 
 Prepare an independent fixture from Git bytes, with its receipt outside that workspace:
@@ -146,9 +146,9 @@ A successful graphical startup alone does not prove import or Kast readiness.
 Use the bounded vendor launcher probe in an owned directory outside the checkout:
 
 ```sh
-python3 packaging/cloud/probe-idea.py --idea-home "$KAST_CLOUD_ROOT/idea-2026.2.2" \
+python3 packaging/cloud/probe-idea.py --idea-home "$DEV_CLOUD_ROOT/idea-2026.2.2" \
   --root /workspace/evidence/idea-headless --mode headless
-python3 packaging/cloud/probe-idea.py --idea-home "$KAST_CLOUD_ROOT/idea-2026.2.2" \
+python3 packaging/cloud/probe-idea.py --idea-home "$DEV_CLOUD_ROOT/idea-2026.2.2" \
   --root /workspace/evidence/idea-graphical --mode virtual-display
 ```
 

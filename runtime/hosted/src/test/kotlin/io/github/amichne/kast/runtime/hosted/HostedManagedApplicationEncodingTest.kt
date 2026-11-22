@@ -28,11 +28,12 @@ class HostedManagedApplicationEncodingTest {
         assertTrue(schema.validate(encoded, InputFormat.JSON).isEmpty(), encoded)
         val obsoleteSchema = json.encodeToString(document.copy(querySchema = "kast.query.run.v9"))
         assertTrue(schema.validate(obsoleteSchema, InputFormat.JSON).isNotEmpty())
-        // A Host identity has no mode: a retired desktop or unknown mode member is rejected.
-        val withMode =
-            encoded.replace("\"autoReload\":\"DISABLED\"", "\"autoReload\":\"DISABLED\",\"mode\":\"DESKTOP\"")
-        assertTrue(withMode != encoded)
-        assertTrue(schema.validate(withMode, InputFormat.JSON).isNotEmpty())
+        // A Host identity has no mode or reload switch: retired desktop members are rejected.
+        for (retired in listOf("\"mode\":\"DESKTOP\"", "\"autoReload\":\"ENABLED\"", "\"autoReload\":\"DISABLED\"")) {
+            val withRetired = encoded.replace("\"runtimeIdentity\":{", "\"runtimeIdentity\":{$retired,")
+            assertTrue(withRetired != encoded)
+            assertTrue(schema.validate(withRetired, InputFormat.JSON).isNotEmpty(), withRetired)
+        }
     }
 
     @Test

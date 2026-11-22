@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:9869188e2272153b553f79bb44912e83078528fe42c882a3ee4589aba205a7f7",
+  "pageVersion": "sha256:4864298caaa06abee62a9de924cea362826c2401121e35e31ec41ce81cd55078",
   "claims": [
     {
       "id": "claim_33df4f539870445aaef2d593695dca1b",
@@ -46,21 +46,17 @@
         },
         {
           "resource": "repo://protocol/wire/src/main/kotlin/io/github/amichne/kast/protocol/wire/presentation/CanonicalQueryCliDocuments.kt",
-          "version": "repo-file-v1:sha256:5c939005373ed5d8733c9660ef5c35741a73cabe13a90a7d931eb5dc0fa9c49c"
+          "version": "repo-file-v1:sha256:477869d03e91fd435bf9d3183d6455ddda80191931be87c294dbf352a47df43d"
         }
       ]
     },
     {
       "id": "claim_502ee5b7d36a48b09e126a58ba97c010",
-      "statement": "The keyless hosted contract declares kast.ide-hosted.runtime.v3, and daemon operation RPC version 3 projects canonical Apply and Recover requests without private approval preparation or assertions.",
+      "statement": "The keyless hosted contract declares kast.ide-hosted.runtime.v3, and daemon operation RPC version 5 projects canonical change plan, apply and recover requests without private approval preparation or assertions.",
       "evidence": [
         {
-          "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/DaemonOperationProtocol.kt#L19-L27",
-          "version": "repo-lines-v1:sha256:b7334b887aec24e9d05970a59c16efeeb5156b39b2b2b9da2ee74223cd3a2702:eyJzZWxlY3RlZExpbmVDb3VudCI6OSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiMTliMjVhZDQyYWUwYjFlMGYyOWRlODU5YjBkODkyZTdkODk2MWYzNGMwYzYwMjM5MmQ1MTYxZjA2MmIzMjdhMyIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNDg5M2Y0MGUzNzgxZWI4OTZjODJkMDQ2YTA4MDY3YTExZTM1Y2RmMmYxZGZhZjI2ZmVhOTBiOGRiNjY3NjQxMyIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiMjBkY2QwYThjN2M1YmYzMTFmYjQ5YmRkZjZkYzAwN2EzZTQyZTJmMDMxNTI0NTRmZTkzZWE0ODk1NjNmNDYyZSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiMjU2NTIzNDExOGI2ODk5NDhmZmNlZDk5YWYyMGRhOGYxOGQ2NDI5ODAzMDljZDEwNTllMDVkZTZjOTZjNjczNyJ9"
-        },
-        {
-          "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/DaemonOperationProtocol.kt#L62-L76",
-          "version": "repo-lines-v1:sha256:504740413a1e48cdf6ec87cf982f321f52bfd9821a43d322ac715c834b93f205:eyJzZWxlY3RlZExpbmVDb3VudCI6MTUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjcxMmQyYTc3ZWEyY2EyNWI4MDc2Yzk2YjU1YjUxN2ZiZWE3YWEzMTJkMWY1OGE5YzY1M2NkYWMxM2NlZDQyMTAiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQzOGNkM2Q1MTYyZDM4YzNjMzgzYjE3MmQ5M2QzMDVjMWQ5MTUyNWIzMTBmYzI4NjQ1MDBjMmViMGJmYzQxOGEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImNjZjRjMWZmYmVhZGY4NTQzMWUwZjdlYTMzMDEwYTBiY2YyNjI1NWIxMGZjMDViMGE1YjBjMjI4MTQxMTM4ZDUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImRiYTcwMzQ1YTIwN2U3Y2M1NDI4ZjBjYzAxYjVhYzYxOTQ0YzI2ZjE3NzIyYzFkYWFiMGJmYzViZmVjODUyMmQifQ"
+          "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/DaemonOperationProtocol.kt",
+          "version": "repo-file-v1:sha256:1446e7bdd54e20c8a4e354f09498d202fa707822fd09097277c4a9246a949e5f"
         },
         {
           "resource": "repo://protocol/wire/src/main/kotlin/io/github/amichne/kast/protocol/wire/CanonicalHostedContract.kt",
@@ -92,11 +88,11 @@
       "evidence": [
         {
           "resource": "repo://protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/QueryCallbackObservationDocument.kt",
-          "version": "repo-file-v1:sha256:28b0e080216b0ec1110d2d36d98f3371b1fe5f8abce255ee76b8a38c86d54672"
+          "version": "repo-file-v1:sha256:55c9297791d9daa7e455f0c6f8b006d3ec6efac072bf5085d780adb9d3bd5418"
         },
         {
           "resource": "repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryCallbackEnumProjection.kt",
-          "version": "repo-file-v1:sha256:7540cf889ecd628c1296e3d32755ea01a63f0ca7193a2e083d3dfa8584e8def8"
+          "version": "repo-file-v1:sha256:2c3fc76a98ef16c7b5c885e864435e4f97c437e452cd00288081a2deb8e81d48"
         },
         {
           "resource": "repo://relation/contract/src/main/kotlin/io/github/amichne/kast/relation/contract/CallbackInvocationFlow.kt",
@@ -124,7 +120,7 @@
       "evidence": [
         {
           "resource": "repo://protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/QueryCallbackDocumentAdmission.kt",
-          "version": "repo-file-v1:sha256:a2fe09224072c8d075f6910e02d69b65ddfb26bfaf2c58835d6b91ad1deb51da"
+          "version": "repo-file-v1:sha256:786bca4342160378c836ae87ea68cda5731030c6ff122e6239ddd72ebd45f938"
         },
         {
           "resource": "repo://protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/QueryDeferredSupplierExecutionDocument.kt",
@@ -137,22 +133,26 @@
       "statement": "Dependency-contract callback bindings preserve the four declared Kotlin invocation kinds through the public DTO and exhaustive query projection.",
       "evidence": [
         {
-          "resource": "repo://protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/QueryCallbackObservationDocument.kt#L192-L198",
-          "version": "repo-lines-v1:sha256:32133e9c8d9d7d39e4f542d6e6910764c1463bd872cd7e6af655b1365f3c2122:eyJzZWxlY3RlZExpbmVDb3VudCI6NywiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiZDViMzdiNWFjMDM1MWM0NTlmMDM1ODUyMDFkZjI2YjYzYzFjNzIzN2U4OWQxZjI1YmRhNDkxNzc0ZTI1ZGRlMCIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiMDFiYTQ3MTljODBiNmZlOTExYjA5MWE3YzA1MTI0YjY0ZWVlY2U5NjRlMDljMDU4ZWY4Zjk4MDVkYWNhNTQ2YiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiNzkyYjY3NDVjMWM1MWMwMDk5MjlhNzVhYThiY2M0N2M1NzM3NzZkZGQ1YjZlMWJkM2ZkMmNmN2FjMmU5MjE2MSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZjZjNjdlYjliM2NlMWVmYTczNmI2NzNhM2EyOWQzODM4NjNhZjQyZWUyNmJhNzBhOTgzYWIwMjk2Y2U0ZGMwNSJ9"
+          "resource": "repo://protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/QueryCallbackObservationDocument.kt",
+          "version": "repo-file-v1:sha256:55c9297791d9daa7e455f0c6f8b006d3ec6efac072bf5085d780adb9d3bd5418"
         },
         {
-          "resource": "repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryCallbackEnumProjection.kt#L16-L23",
-          "version": "repo-lines-v1:sha256:42ae568611a8c2f18c292681de8db436ab60e1a828e90748836162a78eef1373:eyJzZWxlY3RlZExpbmVDb3VudCI6OCwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiZjZhNmFhNzk2NDdmNWZmMWY5NWUwMWMwYmYxMjIxYzM3YmFjMzE4YWQ3M2U1ODc0MDVkZDYxMTk5MzNiNmM4MyIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNDg5M2Y0MGUzNzgxZWI4OTZjODJkMDQ2YTA4MDY3YTExZTM1Y2RmMmYxZGZhZjI2ZmVhOTBiOGRiNjY3NjQxMyIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZDU4MDc1ZjFhMWJjODdjMzEwMjkyZjZiY2I1NDQ1MjgzMmNiMjcwNTVkZjQ3MmQ1ZDEyNDM4NDYzMTVjOTNlZSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiYWNmMGY4ODgxYTQ3OGI3MzQxYjA0MzNiZmU4ZmJhYmU5MmQ1ZjIyZGVlZGUwYjRiNGFhYWVlMTU4NzA4NWVjYyJ9"
+          "resource": "repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryCallbackEnumProjection.kt",
+          "version": "repo-file-v1:sha256:2c3fc76a98ef16c7b5c885e864435e4f97c437e452cd00288081a2deb8e81d48"
         }
       ]
     },
     {
       "id": "claim_1d170c7470524dbfa32d4577b8f71cfa",
-      "statement": "Managed installation defines typed settle_host_for_reload and refresh_host_bundle requests. HOST_PREPARED_RELOAD_REFRESH admits prepared-marker refresh, while ordinary settlement remains independent. The host_refresh_requested acknowledgment keeps the settled runtime identity. Canonical hosted compatibility fingerprints the lifecycle request and result descriptors.",
+      "statement": "The Host lifecycle keeps settle_host, resume_host and stop_host with exact Host and transaction selectors, while the removed reload commands, the host_refresh_requested acknowledgment and the reload capabilities reject at decoding; canonical hosted compatibility fingerprints the lifecycle request and result descriptors.",
       "evidence": [
         {
           "resource": "repo://protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/IdeLifecycleDocuments.kt",
-          "version": "repo-file-v1:sha256:548e6dbd6f3f437c96eb0acc00bb7c598fecaeef67e77d26334b5df16ab3678b"
+          "version": "repo-file-v1:sha256:b814fa22181ec4be193f202f20a5ae127c3a3f326c0e71f80176dbef6be52971"
+        },
+        {
+          "resource": "repo://protocol/contract/src/test/kotlin/io/github/amichne/kast/protocol/contract/HostInstallationLifecycleContractTest.kt",
+          "version": "repo-file-v1:sha256:9b40a141308516bfef307f27bc043b0d19fba6986513b2924c933b0c6a0ba1af"
         },
         {
           "resource": "repo://protocol/wire/src/main/kotlin/io/github/amichne/kast/protocol/wire/CanonicalHostedContract.kt",
@@ -162,35 +162,25 @@
     },
     {
       "id": "claim_296512735e2d4e4c8cfaebfdfb141365",
-      "statement": "Runtime identity encodes the closed Host mode, including default DESKTOP. Managed project advertisements require MANAGED_HEADLESS, disabled auto reload, process identity, and hosted compatibility.",
+      "statement": "Host runtime identity carries IDEA home, profile, process identity, Host lifetime and build identity without a Host mode or automatic reload member, and a former autoReload value rejects at decoding; managed project advertisements require positive process identity and hosted compatibility.",
       "evidence": [
         {
-          "resource": "repo://protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/IdeLifecycleDocuments.kt#L286-L317",
-          "version": "repo-lines-v1:sha256:56b6db6fa087f133dd7545864f20d807405398d7d4c296143d787032c6bb54a8:eyJzZWxlY3RlZExpbmVDb3VudCI6MzIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjcyZjgyNGI1MDJlMGZmMDExODg1ODlkMzdkOTIwYjgxYTIyOGY5Mjk0NmZkZDBjYzYxNGYxNDAyYWI4NzFkMGEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImE4ZTc4ZGU2YzI0MDRkN2E0MGY3NTgzNTZlZjMzYjgxYzFiNmM5MTk3MjRkMWQ0NDczMjQ2ODE1NDczZGZmN2UiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImQ5ZDQ2MTU5MGFkOWM2NWM5ODhhNDNlNDBhOGZkZmZiNjBlMDA1NjVkZTQ4ZjJiZmMwZWRiNGRhNjFiNDAwNDUifQ"
+          "resource": "repo://protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/IdeLifecycleDocuments.kt",
+          "version": "repo-file-v1:sha256:b814fa22181ec4be193f202f20a5ae127c3a3f326c0e71f80176dbef6be52971"
         },
         {
-          "resource": "repo://protocol/contract/src/main/resources/ide-hosted/hosted-endpoint.schema.json#L76-L120",
-          "version": "repo-lines-v1:sha256:1ed3cce820cf7f851da51f0648443faa1d790c961c117ca84a8aaf9af5ce45b1:eyJzZWxlY3RlZExpbmVDb3VudCI6NDUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjIzYjNmY2E2ODBkZTI0NmExZWIwOTQzOTU0MzU0MjdlZWViNGQ2NTE5NmVhYmEyMzU4ZTlhNjlhNDY2YTRiY2EiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImFjZTljODMwM2I0NWE3ZmZhMDMwZTcyMjdlZGIyMjU4NTcxMDcyZTE2YjJjMzk4ZWM3MTJkYTRkMDRlZWQ4MjgiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjA3ZjliYjQyY2MxZjIzZmM4N2FmNmRlNTk0Y2M3ZGVmNmUzNDU0OGJmMmEwNGY5OGRmZjBmM2VjMGVjMzc3MGYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjZlNGJhYzJhZDYzZThmYTU4YWU5ZTMwODhmNWI5MDIyZTg3ZWJlY2FjZWZiMTc5ZThmOTE1MGJlOTMyMjliNjQifQ"
-        }
-      ]
-    },
-    {
-      "id": "claim_60f60006f7e340409ff0c334eeb6cc11",
-      "statement": "DESKTOP and enabled automatic plugin reload are deprecated at warning level while their wire values and the omitted-mode DESKTOP default remain compatible with 0.51.x advertisements.",
-      "evidence": [
-        {
-          "resource": "repo://protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/IdeLifecycleDocuments.kt#L285-L317",
-          "version": "repo-lines-v1:sha256:689325be1a17d13751c584b157eb05da9f8db44ad0f866f06b2082d6821ffe70:eyJzZWxlY3RlZExpbmVDb3VudCI6MzMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImI3MTVmOWU1ZTg1MzQ1OWIyNmQ1MTVmYWRmMjA2NWYwNWNkOWNkYTZiMDYxNTk5ZjM2ZTE3ZjY0OTdmMjY5YjkiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjM3ZDNlNDZiMmExMzVjNzAzNTIyN2UxMTRiOTgwNjk4YmU0ZjA5ZTEwODczYzA4ZTczNWU0NzQzOTM0Y2YyMmYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImQ5ZDQ2MTU5MGFkOWM2NWM5ODhhNDNlNDBhOGZkZmZiNjBlMDA1NjVkZTQ4ZjJiZmMwZWRiNGRhNjFiNDAwNDUifQ"
+          "resource": "repo://protocol/contract/src/main/resources/ide-hosted/hosted-endpoint.schema.json",
+          "version": "repo-file-v1:sha256:a4b3d261f9c80099c95400b51da10a3e454b5634fa5fc0782baacce285a6548b"
         },
         {
           "resource": "repo://protocol/contract/src/test/kotlin/io/github/amichne/kast/protocol/contract/HostInstallationLifecycleContractTest.kt",
-          "version": "repo-file-v1:sha256:7e6d487a2b80001749ac908c8ff20d6726ac8b5d91db6afe76497bbcc303e113"
+          "version": "repo-file-v1:sha256:9b40a141308516bfef307f27bc043b0d19fba6986513b2924c933b0c6a0ba1af"
         }
       ]
     }
   ],
   "verification": {
     "by": "openwiki/0.9.0",
-    "at": "2026-11-15T03:03:20.161Z"
+    "at": "2026-11-21T22:16:17.145Z"
   }
 }

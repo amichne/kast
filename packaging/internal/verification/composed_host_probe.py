@@ -256,14 +256,3 @@ def live_host(
         )
         assert not external, external
     return result
-
-
-def desktop_processes(root: Path, target: HostPlatform) -> tuple[str, ...]:
-    if target.is_linux:
-        return ()
-    listing = subprocess.check_output(["/bin/ps", "-axo", "pid=,lstart=,comm="], text=True)
-    return tuple(
-        line.strip()
-        for line in listing.splitlines()
-        if line.endswith("/Contents/MacOS/idea") and str(root / "runtime") not in line
-    )

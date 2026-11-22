@@ -14,7 +14,7 @@ from pydantic import Field
 
 import campaign_queries as wire
 from hosted_timing import ObservationWindow, TimingFailure, collect_observations
-from reproduce_semantic_queries import (
+from mcp_replay import (
     HERE,
     MatchedDiagnostic,
     McpReplaySession,
@@ -187,8 +187,7 @@ def prepare(plan: CampaignPlan, corpus: wire.Corpus, plan_path: Path) -> None:
             for name in (
                 "campaign_promptfoo.py",
                 "campaign_queries.py",
-                "reproduce_semantic_queries.py",
-                "replay_requests.py",
+                "mcp_replay.py",
                 "hosted_timing.py",
                 "retained_pages.py",
             )

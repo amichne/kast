@@ -33,8 +33,6 @@ mise exec -- ./gradlew \
     --tests '*RetainedRelationGraphSchemaTest' \
     --tests '*RetainedSymbolGraphSchemaTest' \
     --tests '*QueryReferenceSurfaceTest' \
-    --tests '*PiQuestionSchemaParityTest' \
-  :cli:queryPresentationTest \
   -PnativeFixtureIdeaHome="$PWD/relation/intellij/build/native-test/idea" \
   --console=plain
 ```

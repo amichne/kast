@@ -25,7 +25,6 @@ code_sources:
   - path: cli/src/test/kotlin/io/github/amichne/kast/cli/MintlifyCallableReferenceTest.kt
   - path: docs/public/docs.json
   - path: app-server/src/main/resources/io/github/amichne/kast/appserver/query/tools.schema.json
-  - path: packaging/generate-public-query.py
   - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/query/PublicToolContract.kt
     symbols:
       - PublicToolContract
@@ -78,7 +77,9 @@ code_sources:
   - path: query/protocol/src/test/kotlin/io/github/amichne/kast/query/protocol/ImpactFindingPresentationTest.kt
   - path: query/protocol/src/test/kotlin/io/github/amichne/kast/query/protocol/PendingImpactReadResultTest.kt
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/rpc/QueryCostPlan.kt
-  - path: cli/src/main/js/query-presentation.mjs
+  - path: packaging/internal/query/generate-public-query.py
+  - path: cli/src/main/kotlin/io/github/amichne/kast/cli/publicshell/KastPublicCliMain.kt
+  - path: cli/src/main/kotlin/io/github/amichne/kast/cli/publicshell/PublicCliArguments.kt
 sources:
   - id: openwiki-source-468da36f81e497d3a91bd73f
     resource: repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/query/PublicToolContract.kt
@@ -94,28 +95,22 @@ sources:
     resource: repo://app-server/src/main/resources/io/github/amichne/kast/appserver/query/tools.schema.json
   - id: openwiki-source-25b472ce8bd658b8f8006f96
     resource: repo://app-server/src/test/kotlin/io/github/amichne/kast/appserver/query/PublicToolExpansionScopeContractTest.kt
-  - id: openwiki-source-82cf2cb34e9f56bad15bc34f
-    resource: repo://cli/src/main/js/query-delivery.mjs
   - id: openwiki-source-59889f27a7250df554c3789e
     resource: repo://cli/src/main/kotlin/io/github/amichne/kast/cli/bootstrap/KotlinxRequestJsonSchema.kt
   - id: openwiki-source-1477ae5b7ae5aa974c4639a0
     resource: repo://cli/src/main/kotlin/io/github/amichne/kast/cli/CanonicalSchemaReferences.kt
-  - id: openwiki-source-13541e0f8bd3fead648241e7
-    resource: repo://cli/src/test/js/harness-adapters.test.mjs
-  - id: openwiki-source-5e000dafdc7ca9b43b0fab21
-    resource: repo://cli/src/test/js/query-presentation.test.mjs
+  - id: openwiki-source-a566d74d2962e0f1901a1d38
+    resource: repo://cli/src/main/kotlin/io/github/amichne/kast/cli/publicshell/KastPublicCliMain.kt
+  - id: openwiki-source-495e046d01965e5f1076dd99
+    resource: repo://cli/src/main/kotlin/io/github/amichne/kast/cli/publicshell/PublicCliArguments.kt
+  - id: openwiki-source-210e5a1fdf9d35bc022594a2
+    resource: repo://cli/src/main/kotlin/io/github/amichne/kast/cli/rpc/QueryCostPlan.kt
   - id: openwiki-source-4ef03fc871e7002a6d738dfc
     resource: repo://cli/src/test/kotlin/io/github/amichne/kast/cli/GeneratedSchemaReuseTest.kt
-  - id: openwiki-source-ffafcc2936c3877f4b78db93
-    resource: repo://copilot/extension.mjs
-  - id: openwiki-source-9202c39abfaacebb6448e73f
-    resource: repo://distribution/contract/src/main/kotlin/io/github/amichne/kast/distribution/contract/configuration/KastConfigurationResolution.kt
   - id: openwiki-source-4c3bfb0ba56fa265cf888602
     resource: repo://kernel/src/main/kotlin/io/github/amichne/kast/kernel/ReadLimits.kt
-  - id: openwiki-source-c3a707e4531bdd548867dd23
-    resource: repo://packaging/generate-public-query.py
-  - id: openwiki-source-32e1c94e6e0a0ff71b06b0e3
-    resource: repo://pi/extension.ts
+  - id: openwiki-source-ef31c8fc167ea83cd99b28bc
+    resource: repo://packaging/internal/query/generate-public-query.py
   - id: openwiki-source-05da3777c7ca26cfd93f5389
     resource: repo://protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/CanonicalQueryOperationModels.kt
   - id: openwiki-source-a21072bd22321038737c578c
@@ -188,10 +183,10 @@ sources:
     resource: repo://query/protocol/src/test/kotlin/io/github/amichne/kast/query/protocol/RetainedGraphNodeRetrievalTest.kt
   - id: openwiki-source-2b629829f5e5fae7962e2e68
     resource: repo://workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/HostedReadConfiguration.kt
-generated: { by: "codex", at: "2026-11-12T06:30:47.924Z" }
+generated: { by: "codex", at: "2026-11-21T22:16:17.145Z" }
 verified:
   - by: openwiki/0.9.0
-    at: 2026-11-12T06:35:59.298Z
+    at: 2026-11-21T22:16:17.145Z
 ---
 
 # Public intent tools
@@ -295,7 +290,7 @@ The authored tool bundle generates Kotlin request DTOs, executable normalization
 
 Every RUN requires `COMPLETE_ONLY` within `COMPILER_RESOLVED_STATIC_V1`. RUN has no completion selector; supplied retired completion fields reject. The sole public execution entry drains internal semantic pages under one admitted budget, then proves completion or returns a typed rejection. Retained rejection reads preserve the original question, coverage and finite cause as `EVIDENCE_ONLY`; row and evidence cursors perform no semantic work. Required storage failure reports `RETENTION_UNAVAILABLE` without relabeling completed enumeration as incomplete. Public semantic checkpoint tokens reject, while output continuation presents already-produced data.
 
-Hosted tools pass admitted requests through the provider and shared workspace preparation owner. The daemon checks exact workspace identity before the existing-IDE operation. Complete, qualified, and rejected results keep their distinct documents. There is no semantic CLI operation RPC or direct-IDE fallback.
+Hosted tools pass admitted requests through the provider and shared workspace preparation owner. The daemon checks exact workspace identity before the managed Host operation. Complete, qualified, and rejected results keep their distinct documents. There is no direct-IDE fallback.
 
 The pipeline preserves source meaning, step order, repeated steps and empty projections. Expansion can present related declarations or individual occurrence facts through the one query result. Occurrence rows preserve repeated call sites, exact endpoint references, use-site location and provenance. Structured result omissions keep the exact subject, relation kind and provider evidence beside known positive rows. Query items expose exact-symbol `ref` values. Exact-symbol references, retained-result references, execution continuations, and result presentation cursors are distinct typed values. No token spelling creates authority: runtime owners re-admit workspace, lifetime, epoch and compiler evidence.
 
@@ -317,7 +312,7 @@ Joined binding rows keep their own row type through presentation pages. They can
 
 `query_symbols.request.output.fields` accepts `SOURCE` in symbol mode for a run. It returns a committed source window for each exact symbol, extending five whole lines before and after the declaration and clipping at the file boundary. It is opt-in because each selected symbol incurs a source read within the one admitted query transaction. A failed or withheld window retains a finite per-item source cause and `SOURCE_INCOMPLETE` qualification; it never supplies guessed text. Read-result can present a retained source window only when that evidence was captured in the original run.
 
-MCP `tools/list` and tool RPC `catalog` advertise the same generated input schema. Copilot registers the generated strict query union without merging alternatives into optional property bags. `CopilotInputSchemaCompatibilityTest` checks variant mutual exclusion in the generated provider schema.
+MCP `tools/list` and the public CLI catalog advertise the same generated input schema. `CopilotInputSchemaCompatibilityTest` checks that the generated query input keeps its variant union rather than an optional property bag.
 
 Installed output generation substitutes references to registry-owned serializer
 descriptors before expanding nested schemas, then attaches the existing named
@@ -369,7 +364,7 @@ that require live evidence with a distinct label. Schema-model
 pages reference those generated components; authored prose does not replace the
 machine contract. The focused test compares resolved validation assertions with
 every installed input and output schema, ignoring only definition placement and
-display titles. The projection also publishes typed tool RPC reply and direct
+display titles. The projection also publishes typed public CLI reply and direct
 MCP result schemas as named components. Synthetic callable paths remain
 documentation routes, with no HTTP server or interactive playground advertised.
 
@@ -445,12 +440,6 @@ the exact workspace without a separate lifecycle call.
 
 `workspace_lifecycle` is a hosted tool with external effects with action-specific tagged inputs for inspect, open, present, sync, `configure_sync`, release, close, `request_user_close` and status. The configure action applies a task-success refresh rule only to an exact project target. Host selection comes from installed configuration; caller identity comes from the coordinator thread. The `EXACT_PROJECT_CLOSE` approval policy applies to the explicit user-close branch. Ordinary managed cleanup still enforces ownership and shared use.
 
-The public-contract generator also owns the supported version constant in the
-single-file Copilot and Pi adapters. Each adapter validates the entire catalog
-before registering its first tool. Version rejection names the expected and
-observed version and selected executable. This admission establishes catalog
-compatibility, not live IDEA semantic readiness.
-
 The four semantic tools, hosted `workspace_lifecycle`, and direct `health_check` accept root `verbose: true` for
 execution detail. Omitted or false selects compact typed presentation after
 execution, retaining results, qualifications, identities and recovery records.
@@ -458,15 +447,6 @@ Completed diagnostic progress, host UUID/epoch bookkeeping, empty query failure
 lists, and the verified mutation's duplicated plan preview are omitted. The
 application retains its receipt, actual diff and fresh reference. Presentation
 never changes retained evidence, request lowering or canonical wire outcomes.
-
-Portable Pi/Copilot query delivery presents a compact human text projection by default.
-Canonical replies remain unchanged internally; `verbose: true` returns their JSON envelope.
-Exact row identities, source ranges, original coverage and finite failures remain usable.
-Repeated occurrence descriptions are shared, and retained observation details use the
-existing authority-bound `READ_RESULT` interface. Optional boolean catalog `querySession`
-support selects one invocation-owned child for sequential query/output requests. It admits
-only the preceding reply's retained reference or output checkpoint after the first request;
-a second RUN is rejected before execution. Missing capability keeps the one-shot path.
 
 Lifecycle results keep their full state and ownership evidence in both modes;
 its tool-only boolean never enters canonical lifecycle requests or close approvals.
@@ -498,15 +478,8 @@ roles, owners, ranges or catch indexes. This evidence describes the supported
 static transfer, without asserting runtime path feasibility.
 
 Public contract version 19 keeps this branch evidence and adds typed native read rejections.
-Pi and Copilot reject an incompatible catalog version before tool registration.
 
 Query retention has two current success shapes: `not_requested` for inline output and `retained` with an issued reference. Required storage failure returns typed completion rejection with original coverage and the finite `RETENTION_UNAVAILABLE` cause. The previous success-shaped capacity outcome has no supported variant.
-
-Pi and Copilot consume `KAST_TOOL_RPC_COMMAND` as their own executable selector
-and remove it from each child environment.
-Both adapters also remove the private `KAST_EVALUATION_DEADLINE_MS` setting.
-Ordinary settings keep their values. This keeps private adapter selection outside Kast's strict product
-configuration admission without accepting unknown product settings.
 
 Local declarations use closed `LOCAL_FUNCTION` or `LOCAL_PROPERTY` signatures
 with required declaration addresses. The address retains a compiler-confirmed
@@ -559,14 +532,10 @@ A backed connection shares a declaration-owned reference witness only after full
 The canonical result preserves the actual current field selection for its detail request.
 Legacy SYMBOLS documents without that fact keep full output.
 
-The shared client admits the graph's retained basis before it accepts a page.
-Its EVIDENCE CURSOR counts the graph's reference observations.
-Delivery progress remains separate from semantic coverage, and a delivery stop preserves the original outcome.
 
 ## Query feedback before and after execution
 
-The private tool RPC `plan-query` command admits a RUN request before installation access or host preparation.
-Its request-shape advice does not measure cost or grant a semantic budget.
-The [direct transport explanation](../transport/direct-mcp-and-tool-rpc.md) describes that path.
-Agent summaries count received evidence and preserve original coverage, blockers, and finite rejection details.
-The [delivery explanation](../transport/harness-delivery.md) describes these counts and their limits.
+The public `kast query plan` command admits a RUN request and returns request-shape advice before installation access or host preparation.
+A request other than RUN rejects with `RUN_REQUIRED`.
+The advice does not measure cost or grant a semantic budget.
+The [direct transport explanation](../transport/direct-mcp-and-tool-rpc.md) describes the MCP path.

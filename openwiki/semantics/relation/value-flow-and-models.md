@@ -36,7 +36,7 @@ sources:
 generated: { by: "codex", at: "2026-11-12T06:30:47.924Z" }
 verified:
   - by: openwiki/0.9.0
-    at: 2026-11-12T06:35:59.298Z
+    at: 2026-11-21T22:16:17.145Z
 ---
 
 # Value flow and representation models

@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:872372de2986973533fc6c7e34e22cb3e135d2ce4413476a3bea2bea31fb9399",
+  "pageVersion": "sha256:451f9f7f31b82d5e37544f3e0911d6e999fbf62cc5c775845ce12f09f26c5778",
   "claims": [
     {
       "id": "claim_7fda699bacbb4390ab5eb06aef3b31b3",
@@ -40,7 +40,7 @@
       "evidence": [
         {
           "resource": "repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryCallbackGraphAdmission.kt",
-          "version": "repo-file-v1:sha256:11d1c26a2af0572961a8a3f049360bb23344dcc4ebd3aba171bede6385a8df7a"
+          "version": "repo-file-v1:sha256:2aea3be3dd7ee831cd41495c36635866c491594b4ff9f22fe46114d6799f1b2b"
         },
         {
           "resource": "repo://relation/contract/src/main/kotlin/io/github/amichne/kast/relation/contract/CompleteStaticCallbackGraph.kt",
@@ -62,7 +62,7 @@
         },
         {
           "resource": "repo://relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/IntellijK2RelationSearch.kt",
-          "version": "repo-file-v1:sha256:a8143184d701e960f05ca9bd2eef8735860f2c6902b5f5af3be99d8606916fb1"
+          "version": "repo-file-v1:sha256:95b25c703bae86a9e776d307495624e090cde24814b89b7dc83e86ef5e4d2f1a"
         },
         {
           "resource": "repo://relation/intellij/src/test/kotlin/io/github/amichne/kast/relation/intellij/CallbackEvidenceAccessTest.kt",
@@ -76,7 +76,7 @@
       "evidence": [
         {
           "resource": "repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryCallbackGraphAdmission.kt",
-          "version": "repo-file-v1:sha256:11d1c26a2af0572961a8a3f049360bb23344dcc4ebd3aba171bede6385a8df7a"
+          "version": "repo-file-v1:sha256:2aea3be3dd7ee831cd41495c36635866c491594b4ff9f22fe46114d6799f1b2b"
         },
         {
           "resource": "repo://query/protocol/src/test/kotlin/io/github/amichne/kast/query/protocol/CompleteOnlyCallbackQueryTest.kt",
@@ -88,7 +88,7 @@
         },
         {
           "resource": "repo://relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/IntellijCallbackResultProjection.kt",
-          "version": "repo-file-v1:sha256:a55cf5dac63649a9aec02641373a6d214c887f4711fb9dfae520229180a8f38e"
+          "version": "repo-file-v1:sha256:228098a465339058488db43cdc3bf6a67a7ea2bec32b546f179d1687c4193baf"
         }
       ]
     },
@@ -109,6 +109,6 @@
   ],
   "verification": {
     "by": "openwiki/0.9.0",
-    "at": "2026-11-11T06:28:10.019Z"
+    "at": "2026-11-21T22:16:17.145Z"
   }
 }

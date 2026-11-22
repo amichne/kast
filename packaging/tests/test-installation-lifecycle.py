@@ -786,7 +786,7 @@ class SingleInstallationLifecycleTest(unittest.TestCase):
             'executableSha256': 'a' * 64, 'channel': 'STABLE', 'type': 'REMOVAL_REQUESTED',
             'managedRootIdentity': lifecycle.asdict(lifecycle.FileIdentity.observe(self.outer)),
             'controlIdentity': lifecycle.asdict(lifecycle.FileIdentity.observe(self.root)),
-            'homeConfiguration': {'type': 'ABSENT_CONFIGURATION'}, 'recoveryProof': {'type': 'ABSENT_RECOVERY'}}
+            'recoveryProof': {'type': 'ABSENT_RECOVERY'}}
         path.write_text(json.dumps(record))
         path.chmod(0o600)
         return path, record

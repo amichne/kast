@@ -18,9 +18,10 @@ code_sources:
 - path: distribution/release/plugin-release.gradle.kts
 - path: .github/workflows/release-component.yml
 - path: .github/scripts/release/test_build_candidate.py
+- path: .github/scripts/ci/release_handoff.py
 sources:
-  - id: openwiki-source-782f88ea0a8c13260d76dfa4
-    resource: repo://.github/scripts/ci/native_handoff.py
+  - id: openwiki-source-645374ea4b988c91aac66118
+    resource: repo://.github/scripts/ci/release_handoff.py
   - id: openwiki-source-0475f74ce9e8867a7d899c7d
     resource: repo://.github/scripts/ci/test_validation_outcome.py
   - id: openwiki-source-8af2d4c0154aab4f1e556475
@@ -65,10 +66,10 @@ sources:
     resource: repo://packaging/internal/verification/product_lifecycle_probe.py
   - id: openwiki-source-56b11a0b6d3644e3f2024856
     resource: repo://packaging/tests/test_product_acceptance.py
-generated: { by: "unknown", at: "2026-11-16T17:54:20.995Z" }
+generated: { by: "codex", at: "2026-11-21T22:51:07.455Z" }
 verified:
   - by: openwiki/0.9.0
-    at: 2026-11-16T17:58:38.298Z
+    at: 2026-11-21T22:51:07.455Z
 ---
 
 # Release candidates and promotion
@@ -79,19 +80,19 @@ The complete-product producer verifies component assembly before it seals each t
 Each schema 2 `COMPONENT_ASSEMBLY` receipt binds source, Control, runtime, and bundle identities without a test-only native binary.
 The producer hashes the supplied shipped Control itself and requires the receipt to match it.
 Published schema 1 `COMPONENT_NATIVE` receipts retain their original admission contract.
-The join requires both macOS ARM64 and Linux x86-64 from the exact producer attempt.
+Current CI seals a Mac-only schema 5 record with `product_producer.py seal --macos-only`; that join requires the macOS ARM64 target from the exact producer attempt.
+Schema 2 and 3 records instead join both macOS ARM64 and Linux x86-64.
 It records source revision, source tree, toolchain inputs, and asset names, sizes, and digests without rebuilding those assets.
 
-Linux composition starts after scope selection, alongside source validation.
-Fresh Mac composition admits the same-attempt release assembled from the existing native producer.
-It checks the source revision, source tree, version, archive digest, platform, and compiler toolchain before extraction.
-A missing or rejected archive stops the job; it does not trigger a replacement build.
-The reused PR candidate path has no same-attempt native release and keeps its independent complete-product compilation.
-Both targets run assembly qualification; compiler and Host lifecycle checks use the shipped Control during installed acceptance.
-Source success joins both qualified targets at sealing, so early Linux work cannot bypass a failed source check.
+Linux assembles the release once. `release_handoff.py` records its kind, source revision, source tree, version, and SHA-256 digest.
+The Mac job and Linux composition restore that exact record before extraction instead of rebuilding Control.
+A missing or rejected record stops the job; it does not trigger a replacement build.
+The Mac job then exercises that exact assembled Control product.
+Each recorded target runs assembly qualification; compiler and Host lifecycle checks use the shipped Control during installed acceptance.
+Sealing requires successful source work and the qualified Mac product, so early assembly cannot bypass a failed source check.
 
 The sealed build record then enters installed-product acceptance through normal managed admission.
-Both detached `INSTALLED_PRODUCT_NATIVE` receipts are required before publication admission.
+One detached `INSTALLED_PRODUCT_NATIVE` receipt per recorded target is required before publication admission.
 Joining those receipts does not rewrite the sealed build record.
 Neither schema decoding nor a successful seal alone establishes installed-product acceptance.
 
@@ -103,11 +104,10 @@ A later failed job in that baseline run does not erase its sealing evidence.
 The probe upgrades the baseline, removes it, installs the fresh candidate, and checks passive discovery before simultaneous first queries.
 Three shipped public `kast query` callers start together from absent workspace state.
 Every response must succeed, and a later warm query must retain their compiler Host identity.
-It also checks both roots concurrently and protects external Gradle and foreign-profile sentinels.
-Schema 2 installed receipts require all 18 cases, including the six migrated component probes.
+It also checks two roots concurrently and protects external Gradle and foreign-profile sentinels.
+Schema 3 installed receipts require all 17 cases in order, including the six migrated component probes.
 Those probes check caller edge provenance, Java references, unknown-result rejection, runtime-only Linux shared libraries and answering-Host identity,
 endpoint/socket cleanup after stop, and re-analysis after an existing-file edit.
-Legacy schema 1 installed receipts retain their 12-case contract only for component-native-qualified records.
 
 The required aggregate examines the jobs selected by the scope decision.
 After those checks succeed, it seals the selected plan, exact source revision, source tree, and producer run identities.
@@ -159,7 +159,7 @@ Matching component release numbers alone do not establish a usable pair.
 
 The developer catalog contains at most five already published immutable products.
 Each product entry keeps its main revision, release tag, complete build record, and record digest.
-The record preserves build revision, source tree, both targets, and original producer identity.
+The record preserves build revision, source tree, its recorded targets, and original producer identity.
 Publishing a product converts discovery to product-only entries without deleting old releases or pins.
 Main ancestry orders the entries. Job completion time and numeric version do not determine order.
 An out-of-order publication cannot replace a newer selection.
@@ -170,7 +170,7 @@ Conflicting identity, unproven ancestry, changed assets, and exhausted contentio
 An older main revision remains a selector only while it appears in this bounded discovery window.
 
 The management command captures one admitted selection before the installer downloads artifacts.
-For published products, `managed_release.py` rechecks the selected build-record digest and complete two-target schema 2 or 3 record.
+For published products, `managed_release.py` rechecks the selected build-record digest and the record's targets: both for schema 2 or 3, macOS ARM64 alone for schema 5.
 `managed_product.py` admits the target's exact archive bytes, native receipt, composed inventory, and component compatibility before effects.
 Legacy main component-pair selections reject. Stable selections require an exact complete-product mapping.
 It does not rerun latest selection after capture.
@@ -185,7 +185,7 @@ Candidate and component gates establish source and artifact provenance under the
 They do not establish that an installed IDEA instance loaded a Host or enrolled a specific workspace.
 Keep publication permission, artifact integrity, and installed semantic qualification as separate facts.
 Local component execution does not establish clean-source CI, Linux qualification, or either detached installed-product acceptance receipt.
-This explanation records the source contract, not a completed two-target acceptance run or publication.
+This explanation records the source contract, not a completed acceptance run or publication.
 
 ## Focused tests
 

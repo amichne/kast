@@ -1,40 +1,40 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:a6409082e76c2f9c23b92607a3fc2d976e2b5c4f8534514ba06c84b8846a970a",
+  "pageVersion": "sha256:27e36bce253b9c71054b433d33e531783646a977ed2fa28696e971bda4c8d69a",
   "claims": [
     {
       "id": "claim_0fe7af4106b045dd82c65489eb808ff3",
-      "statement": "CI seals both assembly-qualified targets into one immutable complete-product record with exact source, producer attempt, toolchain inputs, asset identities, and independently hashed Control bytes. Schema 2 COMPONENT_ASSEMBLY replaces the removed native test harness receipt. Detached installed-product receipts are joined without rewriting the record; sealing alone does not establish installed acceptance.",
+      "statement": "CI seals its assembly-qualified targets into one immutable complete-product record with exact source, producer attempt, toolchain inputs, asset identities, and independently hashed Control bytes; current CI seals a Mac-only schema 5 record. Schema 2 COMPONENT_ASSEMBLY replaces the removed native test harness receipt. Detached installed-product receipts are joined without rewriting the record; sealing alone does not establish installed acceptance.",
       "evidence": [
         {
           "resource": "repo://.github/scripts/release/product_producer.py",
-          "version": "repo-file-v1:sha256:e989707edabe43e9c9908127e57460493093df65049cdca2a5b2a864a4ef57db"
+          "version": "repo-file-v1:sha256:442435a5160da4e8b62538e34fb5fdbac8a89b7189d883d7901228b45bfb57bf"
         },
         {
-          "resource": "repo://.github/workflows/composed-linux.yml",
-          "version": "repo-file-v1:sha256:a830df2203d9f1304a4d493a5b4d962bbcd7567d12029dfd18c211588a513138"
+          "resource": "repo://.github/workflows/ci.yml",
+          "version": "repo-file-v1:sha256:a2e41be5dec3363779c75bf38061f2bc4aa1cd510c3a92e72681560926de717f"
         },
         {
           "resource": "repo://packaging/internal/composition/composed_release.py",
-          "version": "repo-file-v1:sha256:4c234a329309389144bb2b637bac66ee1a858272a67e4f5f69998a076695c79c"
+          "version": "repo-file-v1:sha256:89fac07b383ce65bccc69cee95901fa776e72d8e82909962fa7ab4fc4fba8ba0"
         }
       ]
     },
     {
       "id": "claim_ce4b8eae80b545c9a408e2eff1fce670",
-      "statement": "The retained component-candidate reuse path admits source-tree equality and exact payload digests while preserving original producer and merged revision in promotion evidence. That legacy component candidate is not the complete two-target product used by current developer publication.",
+      "statement": "The retained component-candidate reuse path admits source-tree equality and exact payload digests while preserving original producer and merged revision in promotion evidence. That legacy component candidate is not the complete product record used by current developer publication.",
       "evidence": [
         {
           "resource": "repo://.github/scripts/release/build_candidate.py",
-          "version": "repo-file-v1:sha256:325c61b445685a491febae59b6f30615a0cef2cf501b396cbd1f5a71b684ccee"
+          "version": "repo-file-v1:sha256:be13f11eafcd0536e600c08c019e47653f559d28136b711821e21a8a99bd330e"
         },
         {
           "resource": "repo://.github/workflows/ci.yml",
-          "version": "repo-file-v1:sha256:683eca41513f99d00cbb8c5eb4e21686a8bb281401a3d8b274b03e318ea9eccd"
+          "version": "repo-file-v1:sha256:a2e41be5dec3363779c75bf38061f2bc4aa1cd510c3a92e72681560926de717f"
         },
         {
           "resource": "repo://.github/workflows/developer-release.yml",
-          "version": "repo-file-v1:sha256:db0aaac561c719a36b04dec856358f2a8bde291d3f1e884500f8dfcbbc27cc4c"
+          "version": "repo-file-v1:sha256:3bd676de2d06dc634fb823fc6c475ce707f8fb7ff899ba186480c082421437fa"
         }
       ]
     },
@@ -48,7 +48,7 @@
         },
         {
           "resource": "repo://distribution/release/component_release.py",
-          "version": "repo-file-v1:sha256:376593f0af96ef9180e1655d86feebccc784dce86c3fd332a8cccac0047c8986"
+          "version": "repo-file-v1:sha256:e6eb0392277093fe7a5c189a3fc317378bdb58bed46e40d0b8942e441e72a6c5"
         }
       ]
     },
@@ -62,21 +62,21 @@
         },
         {
           "resource": "repo://.github/scripts/release/publish_developer.py",
-          "version": "repo-file-v1:sha256:edc1fbf6e445d6fd92f00ef19fa134c7a0b203c878f17d1ff7c503a8c9028e85"
+          "version": "repo-file-v1:sha256:6d32e10f71f465f1a6fa8988e9b3d9d1c8b102f21fae81c1454e312564d967ec"
         }
       ]
     },
     {
       "id": "claim_49265ebfb2964e7384175f55bac63b1d",
-      "statement": "For published products, the managed installer consumes one captured complete-product selection, rechecks its exact build-record bytes and both CI targets under schema 2/3, and admits the selected target archive bytes, native receipt, composed inventory and component compatibility before activation. Legacy main component pairs reject; stable selection requires an exact product mapping.",
+      "statement": "For published products, the managed installer consumes one captured complete-product selection, rechecks its exact build-record bytes and its recorded targets (both CI targets under schema 2/3, macOS ARM64 under schema 5), and admits the selected target archive bytes, native receipt, composed inventory and component compatibility before activation. Legacy main component pairs reject; stable selection requires an exact product mapping.",
       "evidence": [
         {
           "resource": "repo://packaging/internal/installation/managed_release.py",
-          "version": "repo-file-v1:sha256:c669bd96c14cab328dc42ed8d2695bdba485dda8a9a8993f0249fd77febdac90"
+          "version": "repo-file-v1:sha256:471e28f5edf60d29744193ab64442f586628070bd2b01f9290d307bba12c03c7"
         },
         {
           "resource": "repo://packaging/internal/product/managed_product.py",
-          "version": "repo-file-v1:sha256:e3aea46ff9ebfdc4ad68bdcd3515ee2d06fa71b6691890f0661a4f7c486723fa"
+          "version": "repo-file-v1:sha256:f7d28d15819adbf6c30d698b28e375df70b1c5350ed73489d688a80e5e74b085"
         }
       ]
     },
@@ -94,19 +94,19 @@
         },
         {
           "resource": "repo://.github/scripts/ci/validation_scope.py",
-          "version": "repo-file-v1:sha256:fbd17a30617c34490582b3a80ae015e8fcb100f7dd1d9a8b75268514bead60df"
+          "version": "repo-file-v1:sha256:aecabd9750c16cfcb0f103db7cf95783424636bd182b3f1ed92fc9f8a07be92e"
         },
         {
           "resource": "repo://.github/scripts/release/build_candidate.py",
-          "version": "repo-file-v1:sha256:325c61b445685a491febae59b6f30615a0cef2cf501b396cbd1f5a71b684ccee"
+          "version": "repo-file-v1:sha256:be13f11eafcd0536e600c08c019e47653f559d28136b711821e21a8a99bd330e"
         },
         {
           "resource": "repo://.github/scripts/release/test_build_candidate.py",
-          "version": "repo-file-v1:sha256:804a6abcdd9096f256554824ba7237ba3a5c34a3cf2ea756e97f795ac40ddd90"
+          "version": "repo-file-v1:sha256:9368ec6002250f9ce0e37a4e48baf72d4b6a6f4c80b5762eb793ecc43bbb0ff2"
         },
         {
           "resource": "repo://.github/workflows/developer-release.yml",
-          "version": "repo-file-v1:sha256:db0aaac561c719a36b04dec856358f2a8bde291d3f1e884500f8dfcbbc27cc4c"
+          "version": "repo-file-v1:sha256:3bd676de2d06dc634fb823fc6c475ce707f8fb7ff899ba186480c082421437fa"
         }
       ]
     },
@@ -116,61 +116,61 @@
       "evidence": [
         {
           "resource": "repo://.github/scripts/release/product_candidate.py",
-          "version": "repo-file-v1:sha256:03cbb37a9ba42048c030405397da37270fa262cd2d4f9c083ffcfd0d132461de"
+          "version": "repo-file-v1:sha256:188b5b71cfd5d066ee40a5e1660739b98edaaea483bc411c8b2ececd9091bc0a"
         },
         {
           "resource": "repo://packaging/internal/verification/product_lifecycle_probe.py",
-          "version": "repo-file-v1:sha256:ee5555a6ce5be1bfd716c6fef7139966a378cb29bbdcab775692e6192c458258"
+          "version": "repo-file-v1:sha256:ef2f0407a4e29c52f582836c9492121dcfc407d4e222e5679e1ef74a8a33262b"
         }
       ]
     },
     {
       "id": "claim_6b6d0e8741004313a92d5dcbed450fb6",
-      "statement": "The installed-product probe upgrades a baseline, removes it, installs the fresh candidate, and verifies passive discovery before three simultaneous public first queries. Schema 2 installed receipts require all 18 cases, including caller provenance, Java references, unknown-result rejection, Linux runtime libraries and answering-Host identity, stop cleanup, and edit re-analysis. Legacy v1 retains its 12 cases only with component-native evidence. Source and receipt checks do not establish native execution.",
+      "statement": "The installed-product probe upgrades a baseline, removes it, installs the fresh candidate, and verifies passive discovery before three simultaneous public first queries. Schema 3 installed receipts require all 17 cases in order, including caller provenance, Java references, unknown-result rejection, answering-Host identity, stop cleanup, and edit re-analysis. Source and receipt checks do not establish native execution.",
       "evidence": [
         {
           "resource": "repo://packaging/internal/verification/product_acceptance.py",
-          "version": "repo-file-v1:sha256:bfb749008e7194d86f3c458417aa3447157c33606193bab650bc8152be0e1584"
+          "version": "repo-file-v1:sha256:67993fbe2bb9746c3c67499c08a65e8988afab83422c737a5be0ae0b8ad21b0d"
         },
         {
           "resource": "repo://packaging/internal/verification/product_lifecycle_probe.py",
-          "version": "repo-file-v1:sha256:ee5555a6ce5be1bfd716c6fef7139966a378cb29bbdcab775692e6192c458258"
+          "version": "repo-file-v1:sha256:ef2f0407a4e29c52f582836c9492121dcfc407d4e222e5679e1ef74a8a33262b"
         },
         {
           "resource": "repo://packaging/tests/test_product_acceptance.py",
-          "version": "repo-file-v1:sha256:f76bce763ac33ea654c81223c34384f966d1256e9198217977c35ed01ff97705"
+          "version": "repo-file-v1:sha256:3b1ba9238e8e37fcac834c564f9413863d3a355b4436151a39fd3ba1c77cd951"
         }
       ]
     },
     {
       "id": "claim_48c8e3d9b8714337b96416bdcfefc64d",
-      "statement": "Linux composition starts alongside source validation, but sealing requires successful source work and both qualified targets; independent compilation cannot bypass a failed source check.",
+      "statement": "Sealing requires successful source work and the qualified Mac product, so independent assembly cannot bypass a failed source check.",
       "evidence": [
         {
           "resource": "repo://.github/scripts/ci/test_validation_scope.py",
-          "version": "repo-file-v1:sha256:99550f967e840ef0318434929639d44f753b0c1e6ea7d892a2877cf5398ea33c"
+          "version": "repo-file-v1:sha256:4bb8bc7dbc9741fcf0cb5ba4aa8ca4be4046f13851f2b6b039624dd1cca9f9bd"
         },
         {
           "resource": "repo://.github/workflows/ci.yml",
-          "version": "repo-file-v1:sha256:683eca41513f99d00cbb8c5eb4e21686a8bb281401a3d8b274b03e318ea9eccd"
+          "version": "repo-file-v1:sha256:a2e41be5dec3363779c75bf38061f2bc4aa1cd510c3a92e72681560926de717f"
         }
       ]
     },
     {
       "id": "claim_36b5f8f4f9b44b2ba708fd2aa280a102",
-      "statement": "Fresh Mac complete-product composition admits the same-run, same-attempt assembled release through revision, tree, version, digest, platform, and toolchain checks instead of rebuilding Control. A rejected artifact fails; the separately selected reused PR candidate path keeps independent compilation when no same-attempt native release exists.",
+      "statement": "CI assembles the release once on Linux; release_handoff binds it to kind, source revision, source tree, version and SHA-256 digest, and the Mac job restores and exercises that exact Control product instead of rebuilding it. A rejected record fails the job.",
       "evidence": [
         {
-          "resource": "repo://.github/scripts/ci/native_handoff.py",
-          "version": "repo-file-v1:sha256:cb09802851a9752088e6b418cbc305d0c766b324bda37e4a248badcd5b1e8b4e"
+          "resource": "repo://.github/scripts/ci/release_handoff.py",
+          "version": "repo-file-v1:sha256:9583f5c710c07bdbdb2eda3d2721f8da266bd1de07d99ff872e953a7b758b58c"
         },
         {
           "resource": "repo://.github/workflows/ci.yml",
-          "version": "repo-file-v1:sha256:683eca41513f99d00cbb8c5eb4e21686a8bb281401a3d8b274b03e318ea9eccd"
+          "version": "repo-file-v1:sha256:a2e41be5dec3363779c75bf38061f2bc4aa1cd510c3a92e72681560926de717f"
         },
         {
           "resource": "repo://.github/workflows/composed-linux.yml",
-          "version": "repo-file-v1:sha256:a830df2203d9f1304a4d493a5b4d962bbcd7567d12029dfd18c211588a513138"
+          "version": "repo-file-v1:sha256:f035ece1026bc4c621be542ca8e53119e778ca9fb2ca3c93fa8d1e5b4d0020ac"
         }
       ]
     },
@@ -180,21 +180,21 @@
       "evidence": [
         {
           "resource": "repo://.github/scripts/release/product_producer.py",
-          "version": "repo-file-v1:sha256:e989707edabe43e9c9908127e57460493093df65049cdca2a5b2a864a4ef57db"
+          "version": "repo-file-v1:sha256:442435a5160da4e8b62538e34fb5fdbac8a89b7189d883d7901228b45bfb57bf"
         },
         {
           "resource": "repo://packaging/internal/installation/managed_release.py",
-          "version": "repo-file-v1:sha256:c669bd96c14cab328dc42ed8d2695bdba485dda8a9a8993f0249fd77febdac90"
+          "version": "repo-file-v1:sha256:471e28f5edf60d29744193ab64442f586628070bd2b01f9290d307bba12c03c7"
         },
         {
           "resource": "repo://packaging/internal/product/local_product_install.py",
-          "version": "repo-file-v1:sha256:bfdafd2bf58447836da32c2085f2519c99dfa514d285529010d8aacf08b3965f"
+          "version": "repo-file-v1:sha256:c9073793bace5ed86bbf711c558c6969c8e4c11b0358529878e9e8c3b217ec97"
         }
       ]
     }
   ],
   "verification": {
     "by": "openwiki/0.9.0",
-    "at": "2026-11-16T17:58:38.298Z"
+    "at": "2026-11-21T22:51:07.455Z"
   }
 }

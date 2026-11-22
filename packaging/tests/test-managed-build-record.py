@@ -355,7 +355,6 @@ class RemovalJournalFixture:
     managedRootIdentity: journal.Identity
     controlIdentity: journal.Identity
     recoveryProof: AbsenceFixture
-    homeConfiguration: AbsenceFixture
     product: staging.ProductReference
 
 
@@ -854,7 +853,6 @@ class ProductActivationTest(unittest.TestCase):
             journal.Identity.observe(self.root),
             journal.Identity.observe(self.root / "installation"),
             AbsenceFixture("ABSENT_RECOVERY"),
-            AbsenceFixture("ABSENT_CONFIGURATION"),
             management.product,
         )
         path = self.root.parent / (

@@ -13,13 +13,10 @@ code_sources:
   - path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/RetainedQueryPresentation.kt
   - path: query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryRetainedResult.kt
   - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedQueryPublicationSession.kt
-  - path: cli/src/main/kotlin/io/github/amichne/kast/cli/rpc/KastToolRpcQuerySession.kt
-  - path: cli/src/main/js/query-delivery.mjs
   - path: query/protocol/src/test/kotlin/io/github/amichne/kast/query/protocol/QueryRetainedOccurrencePresentationTest.kt
   - path: query/protocol/src/test/kotlin/io/github/amichne/kast/query/protocol/QueryRetainedCallbackPresentationTest.kt
   - path: runtime/hosted/src/test/kotlin/io/github/amichne/kast/runtime/hosted/HostedQueryPublicationProjectionTest.kt
-  - path: cli/src/main/js/query-presentation.mjs
-  - path: cli/src/test/js/query-presentation.test.mjs
+  - path: cli/src/main/kotlin/io/github/amichne/kast/cli/mcp/KastMcpServer.kt
 sources:
   - id: openwiki-source-a184ae82a49703816522523e
     resource: repo://query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryRetainedResult.kt
@@ -33,10 +30,10 @@ sources:
     resource: repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/RetainedQueryPresentation.kt
   - id: openwiki-source-94796d308902e0d5ca80c5fc
     resource: repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedQueryPublicationSession.kt
-generated: { by: "codex", at: "2026-10-15T01:04:37.434Z" }
+generated: { by: "codex", at: "2026-11-21T22:16:17.145Z" }
 verified:
   - by: openwiki/0.9.0
-    at: 2026-11-11T06:28:10.019Z
+    at: 2026-11-21T22:16:17.145Z
 ---
 
 # Retained results and output delivery
@@ -73,8 +70,8 @@ The full envelope must fit, including necessary qualification and failure eviden
 A response-byte budget is not permission to discard evidence until a success document fits.
 Required retention failure remains a finite rejection with the original coverage.
 
-Tool RPC and the shared JavaScript delivery client consume this admitted output protocol.
-Presentation keeps received evidence and follows returned cursors without a hidden semantic retry.
+The public CLI and native MCP consume this admitted output protocol.
+A caller follows returned continuations and cursors explicitly; neither surface performs a hidden semantic retry.
 Expired, foreign, unavailable, or capacity-rejected state does not become an empty successful page.
 Output reads preserve the owning lifetime and do not renew it through a new semantic grant.
 
@@ -95,18 +92,10 @@ They do not establish the latency or completeness of an unmeasured native query.
 - [RetainedQueryPresentation.kt](../../query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/RetainedQueryPresentation.kt)
 - [QueryRetainedResult.kt](../../query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryRetainedResult.kt)
 - [HostedQueryPublicationSession.kt](../../runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedQueryPublicationSession.kt)
-- [KastToolRpcQuerySession.kt](../../cli/src/main/kotlin/io/github/amichne/kast/cli/rpc/KastToolRpcQuerySession.kt)
-- [query-delivery.mjs](../../cli/src/main/js/query-delivery.mjs)
+- [KastMcpServer.kt](../../cli/src/main/kotlin/io/github/amichne/kast/cli/mcp/KastMcpServer.kt)
 
 ## Read next
 
 - [Completion](trace-and-completion.md)
-- [Shared delivery](../transport/harness-delivery.md)
+- [Direct MCP](../transport/direct-mcp-and-tool-rpc.md)
 - [Impact witnesses](impact-and-peer-proof.md)
-
-## Received-evidence summaries
-
-The shared presentation starts with received row, relation, and file counts, original coverage, and blockers.
-Received counts do not describe an unread suffix or the invocation's entire accumulated output.
-Refinement failures keep exact locations and finite reasons without an issued source selector.
-Recovery advice does not grant authority or start another RUN.

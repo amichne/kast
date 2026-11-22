@@ -20,6 +20,8 @@ code_sources:
 - path: runtime/hosted/src/test/kotlin/io/github/amichne/kast/runtime/hosted/HostedQueryPublicationProjectionTest.kt
 - path: runtime/hosted/src/test/kotlin/io/github/amichne/kast/runtime/hosted/HostedCompletionRejectionPublicationTest.kt
 sources:
+  - id: openwiki-source-b490c970be179fe22cf68e37
+    resource: repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/ide/ManagedSemanticDeployment.kt
   - id: openwiki-source-5efa910d729623be2b070bc2
     resource: repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedConnectionAdmission.kt
   - id: openwiki-source-b711ac75af08966d13a95b22
@@ -34,10 +36,10 @@ sources:
     resource: repo://workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedQueryExecutor.kt
   - id: openwiki-source-95e44f119ab39a83df93b28f
     resource: repo://workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedReadPublicationAdmission.kt
-generated: { by: "codex", at: "2026-11-06T05:26:56.646Z" }
+generated: { by: "codex", at: "2026-11-21T22:16:17.145Z" }
 verified:
   - by: openwiki/0.9.0
-    at: 2026-11-11T14:25:07.841Z
+    at: 2026-11-21T22:16:17.145Z
 ---
 
 # Hosted endpoint composition and publication
@@ -50,7 +52,7 @@ Its endpoint identity, project admission, refresh owner, and retirement state be
 Another process cannot manufacture a current endpoint by copying a descriptor.
 
 A managed headless endpoint also publishes the application's captured runtime identity and hosted compatibility.
-Desktop endpoints keep the existing descriptor shape without that advertisement.
+Semantic deployment admission rejects a descriptor without that advertisement, so it cannot reach managed dispatch.
 Application identity does not replace project ownership, fresh read admission, or final publication proof.
 
 The endpoint admits request framing and connection ownership before semantic dispatch.

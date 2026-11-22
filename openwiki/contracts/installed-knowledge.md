@@ -9,7 +9,7 @@ code_sources:
   - path: build-logic/src/main/kotlin/kast.architecture.gradle.kts
   - path: distribution/contract/src/main/kotlin/io/github/amichne/kast/distribution/contract/ControlDistributionLimits.kt
   - path: build.gradle.kts
-  - path: packaging/run-installed-product.py
+  - path: packaging/internal/verification/run-installed-product.py
 sources:
   - id: openwiki-source-6d6c58a5bfeff1b2388a6735
     resource: repo://build-logic/src/main/kotlin/kast.architecture.gradle.kts
@@ -19,12 +19,12 @@ sources:
     resource: repo://build.gradle.kts
   - id: openwiki-source-d1f8b0a2ac011ef2d36005a5
     resource: repo://distribution/contract/src/main/kotlin/io/github/amichne/kast/distribution/contract/ControlDistributionLimits.kt
-  - id: openwiki-source-8faf23d69764b95242de5e09
-    resource: repo://packaging/run-installed-product.py
+  - id: openwiki-source-27b11dfabcb3ca89e348f52d
+    resource: repo://packaging/internal/verification/run-installed-product.py
 generated: { by: "amp", at: "2026-11-15T20:10:47.711Z" }
 verified:
   - by: openwiki/0.9.0
-    at: 2026-11-15T20:10:47.711Z
+    at: 2026-11-21T22:16:17.145Z
 ---
 
 # Retired installed knowledge contract

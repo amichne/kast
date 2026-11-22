@@ -1,7 +1,7 @@
 ---
 type: Kotlin Module Group
 title: Runtime and process hosts
-description: The existing IDEA plugin owns semantic execution; CLI and App Server
+description: The hosted IDEA plugin in the managed headless Host owns semantic execution; CLI and App Server
   own installation, transport, sessions and canonical native mutation admission.
 resource: file://runtime
 tags:
@@ -20,7 +20,6 @@ code_sources:
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/direct/KastDirectToolSession.kt
     symbols:
       - KastDirectToolSession
-  - path: cli/src/main/kotlin/io/github/amichne/kast/cli/rpc/KastToolRpcMain.kt
   - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/ide/HostedServiceAdmissionScan.kt
     symbols:
       - observeHostedEntries
@@ -56,14 +55,12 @@ code_sources:
   - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/protocol/FileThreadCatalogStore.kt
   - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/protocol/ThreadBindingDocuments.kt
   - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/protocol/ThreadCatalogStore.kt
-  - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/protocol/ThreadMigrationObservation.kt
   - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/runtime/InvocationResponses.kt
   - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/runtime/InvocationCapacityLimit.kt
   - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/runtime/InvocationFence.kt
   - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/runtime/InvocationRecords.kt
   - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/runtime/FileInvocationRecords.kt
   - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/storage/PrivateRecordFiles.kt
-  - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/runtime/InvocationMigrationObservation.kt
   - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/InstalledWorkspacePreparation.kt
   - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/runtime/WorkspaceDemand.kt
   - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/runtime/WorkspacePreparations.kt
@@ -99,7 +96,6 @@ code_sources:
   - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/runtime/BrokerControlRoute.kt
   - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/PersistentBrokerService.kt
   - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/AppServerManagement.kt
-  - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/LegacyLoginBootstrap.kt
   - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/ServiceLoginAgent.kt
   - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/BrokerServiceStartLock.kt
   - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/BrokerLaunchdServiceDocument.kt
@@ -192,6 +188,8 @@ code_sources:
   - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedQueryResultRetentionObservation.kt
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/rpc/QuerySessionRejectionDetail.kt
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/rpc/QueryCostPlan.kt
+  - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/lifecycle/HostedApplicationSettlement.kt
+  - path: protocol/contract/src/test/kotlin/io/github/amichne/kast/protocol/contract/HostInstallationLifecycleContractTest.kt
 sources:
   - id: openwiki-source-948a9971897847e7bf395c0e
     resource: repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/AppServerManagement.kt
@@ -241,8 +239,8 @@ sources:
     resource: repo://cli/src/main/kotlin/io/github/amichne/kast/cli/direct/InstalledToolAdmission.kt
   - id: openwiki-source-7685e27063adfdefffa21252
     resource: repo://cli/src/main/kotlin/io/github/amichne/kast/cli/direct/KastDirectToolSession.kt
-  - id: openwiki-source-1d161f3eb7933044519fd33a
-    resource: repo://cli/src/main/kotlin/io/github/amichne/kast/cli/rpc/KastToolRpcMain.kt
+  - id: openwiki-source-a566d74d2962e0f1901a1d38
+    resource: repo://cli/src/main/kotlin/io/github/amichne/kast/cli/publicshell/KastPublicCliMain.kt
   - id: openwiki-source-51fd272ea7471c9e42b84369
     resource: repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagementStatusRendering.kt
   - id: openwiki-source-a0efdefba63982f6209d2b1d
@@ -255,6 +253,8 @@ sources:
     resource: repo://evidence/sqlite/src/main/kotlin/io/github/amichne/kast/evidence/sqlite/SqliteMutationStateInspection.kt
   - id: openwiki-source-1320464fca8af68fbc8ba11a
     resource: repo://protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/HostedContract.kt
+  - id: openwiki-source-38dc8ef482bf6ce4d8ab0cc4
+    resource: repo://protocol/contract/src/test/kotlin/io/github/amichne/kast/protocol/contract/HostInstallationLifecycleContractTest.kt
   - id: openwiki-source-1905c35a82810ccf74696707
     resource: repo://protocol/wire/src/main/kotlin/io/github/amichne/kast/protocol/wire/CanonicalHostedContract.kt
   - id: openwiki-source-d6999ec49aac231ecbc30c0b
@@ -277,8 +277,6 @@ sources:
     resource: repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedSemanticServices.kt
   - id: openwiki-source-0e5288eaa02fcf3a6d2748f0
     resource: repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedTraversalOperations.kt
-  - id: openwiki-source-8fae9d27fc5ee242f935c4cf
-    resource: repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/lifecycle/HostBundleRefresh.kt
   - id: openwiki-source-5bce5e00d8d37b48b461a27e
     resource: repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/lifecycle/HostedApplicationSettlement.kt
   - id: openwiki-source-64703967945cd84894f27ab4
@@ -287,8 +285,6 @@ sources:
     resource: repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/lifecycle/IdeLifecycleApplication.kt
   - id: openwiki-source-9713af85ff6a629a6ce68bf3
     resource: repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/lifecycle/IdeLifecycleNative.kt
-  - id: openwiki-source-93a63f2900e2bb9b08843608
-    resource: repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/lifecycle/LifecycleReply.kt
   - id: openwiki-source-b063b188a00b030d97a5f66b
     resource: repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/lifecycle/ManagedHeadlessHost.kt
   - id: openwiki-source-7669fe754d342a928a513d56
@@ -311,10 +307,10 @@ sources:
     resource: repo://workspace/intellij-read/src/test/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedQueryRetentionDiagnosticsTest.kt
   - id: openwiki-source-73144b588342a1cc6d17731e
     resource: repo://workspace/intellij-read/src/test/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedTraversalPhaseDiagnosticsTest.kt
-generated: { by: "amp", at: "2026-11-15T20:10:47.711Z" }
+generated: { by: "codex", at: "2026-11-21T22:16:17.145Z" }
 verified:
   - by: openwiki/0.9.0
-    at: 2026-11-15T20:10:47.711Z
+    at: 2026-11-21T22:16:17.145Z
 ---
 
 # Runtime and process hosts
@@ -341,7 +337,7 @@ cannot change these files. Every later connection repeats admission.
 
 `HostedResponse` keeps the original complete, qualified or rejected outcome alongside its encoded document. Encoding and response-size failures keep the original semantic result. The endpoint observer reports semantic classification rather than treating every written frame as completion. [Hosted queries](../flows/hosted-query.md) describes lifetime and cancellation.
 
-The hosted provider admits public intent tools and supported changes through the existing IDEA plugin. A missing host rejects. The private installed `kast` executable retains product-version inspection for release identity; former semantic CLI routes reject.
+The hosted provider admits public intent tools and supported changes through the hosted IDEA plugin in the managed Host. A missing host rejects. The private installed `kast` executable retains product-version inspection for release identity; former semantic CLI routes reject.
 
 Installation lifecycle admission fences automatic coordinator startup while detachment, shutdown, transition or reset markers remain. Unknown observation rejects. A reset marker permits startup only for an exact installation-bound `ACTIVATING` record and a currently held exclusive reset lease; malformed, foreign, oversized or unlocked records remain fenced. Installed direct tools reject shutdown, reset, or replacement-journal markers and unproven absence before workspace discovery or dispatch.
 An empty journal directory or dangling symbolic link still blocks calls until final removal. This allows the reset owner to establish daemon readiness while tool calls remain stopped until it lifts the exterior fence. The focused `InstallationLifecycleFenceTest` covers absent installation state, held versus released activation locks, and malformed, foreign and oversized records. See [distribution lifecycle](distribution.md) for retirement, cold staging and readiness obligations.
@@ -437,11 +433,7 @@ and mutation planning do not use this capability. The
 [query protocol](query-protocol.md#automatic-acquisition-for-fresh-reads) specifies
 the identity checks and returned handle metadata.
 
-The plugin additionally owns one `IdeLifecycleApplication` service and user-scoped control endpoint per selected graphical application home. It remains available with zero projects, advertises actual build, host incarnation and capabilities, and keeps at most 256 operation records. The endpoint reuses existing ownership and framed transport. After a plugin upgrade, Kast can reclaim a dead endpoint with the same root and socket without matching its old capability catalog. The absent PID, exclusive lock, and unchanged file identities still govern retirement. Project semantic services remain project-scoped.
-
-Desktop IntelliJ IDEA Hosts are deprecated in favor of managed headless Hosts and automatic workspace creation.
-The application service logs `kast_desktop_host_deprecated` once during desktop initialization, not per project or request.
-Managed headless initialization does not emit that warning. Existing desktop startup and admission remain unchanged.
+The plugin additionally owns one `IdeLifecycleApplication` service and user-scoped control endpoint per selected application home. It remains available with zero projects, advertises actual build, host incarnation and capabilities, and keeps at most 256 operation records. The endpoint reuses existing ownership and framed transport. After a plugin upgrade, Kast can reclaim a dead endpoint with the same root and socket without matching its old capability catalog. The absent PID, exclusive lock, and unchanged file identities still govern retirement. Project semantic services remain project-scoped.
 
 The agent-only `workspace_lifecycle` tool calls the App Server-owned lifecycle client directly and exposes inspect/open/present/release/close/status. `request_user_close` needs the existing controller lease and an exact local confirmation for one native target. Preparation cannot produce that confirmation. The daemon uses opening before semantic dispatch and never obtains user-close authority from that preparation.
 
@@ -453,17 +445,8 @@ Missing or mismatched receipts for applied writes keep settlement blocked.
 Pending writes and contradictory rollback receipts also keep settlement blocked.
 Live settlement and offline inspection share that admission rule.
 
-Managed installation uses the application service with zero projects.
-`HostedApplicationSettlement` admits Host refresh only for the exact settled Host and transaction, enabled auto-reload, and idle native work.
-The adapter admits the loaded plugin root from the actual IDEA home and profile.
-Reload settlement captures the exact cached `lib/kast-ide-hosted.jar` before file exchange.
-Ordinary settlement remains independent of reload preparation.
-`LifecycleReply` dispatches the refresh only after the complete acknowledgment write succeeds.
-The SDK adapter dirties the prepared marker and requests recursive asynchronous VFS refresh.
-Bounded diagnostics count content events from refresh for that exact marker.
-The acknowledgment does not prove a loaded replacement.
-The installer still needs fresh selected-runtime evidence.
-Plugin-owned native qualification remains pending.
+Managed installation uses the application service with zero projects for exact settlement, resume, and normal stop.
+The former reload settlement and bundle refresh commands are removed; replacing the Host requires a normal stop and a fresh start.
 
 App Server qualifies its complete tool catalog from the bounded packaged provider
 contract and canonical registry. It has no Kast process executor or CLI version
@@ -508,7 +491,7 @@ the historical record remains. A second change rejects. Transport failures never
 semantic request. Preparation rejection retains its finite cause and operation ID
 as known pre-execution failure evidence.
 
-Hosted provider calls use the shared workspace demand owner and the existing-IDE client. Canonical mutations preserve exact plan identity. Complete, qualified and rejected outcomes keep distinct replies. The former `/kast-operation` CLI RPC route is removed.
+Hosted provider calls use the shared workspace demand owner and the project socket client. Canonical mutations preserve exact plan identity. Complete, qualified and rejected outcomes keep distinct replies. The former `/kast-operation` CLI route is removed.
 
 Launchd invokes the private daemon entry point without the public CLI command graph. The managed readiness environment is required at ingress and then qualified by the existing coordinator. Published-command recovery admits the private daemon form only when the entire property-list document matches the document generated from the recovered command, including launch behavior and logging. It still admits the earlier `kast broker serve` form for retirement.
 On enable, the login variant of the exact service property-list document is published only after the service and its private receipt are qualified. It retains the same label and daemon executable and adds the private `--login` argument. At login the daemon verifies that exact agent, retained service receipt and loaded launchd label under the service lock before clearing a prior stop. Explicit disable removes the agent, so login cannot override it. An unknown file blocks lifecycle effects. The legacy bootstrap command remains available to converge an older one-shot entry on the direct service job.
@@ -571,8 +554,8 @@ The coordinator's passive management reply projects its captured running control
 Control status distinguishes installed and running Control versions and reports
 each observed Host's identity, loaded plugin version and compatibility. It reads
 the current workspace registry and selects only its admitted exact physical
-settings roots for fresh bounded live describe/status exchanges. A one-shot Tool
-RPC query in another process does not need to populate the daemon client's query
+settings roots for fresh bounded live describe/status exchanges. A one-shot public
+query in another process does not need to populate the daemon client's query
 history. Status does not prepare or enroll workspaces, open projects or select an
 ancestor when a registered root moves or loses its settings file.
 
@@ -616,7 +599,7 @@ intervals are not inclusive traversal duration or CPU measurements.
 
 The peer-site adapter uses the already created lifecycle application's registry without activating it. Exact registered host, canonical root and non-disposed project must agree before an independently owned child read is allowed. That read makes sure that the complete target basis remains valid before it restores declaration tokens, uses single evaluation and final freshness validation, and binds the actual admitted grant, aggregate work and whole elapsed time into a completed receipt. An over-granted child or missing/changed authority fails closed. It neither opens the peer nor traverses target flow.
 
-One-shot Tool RPC invocation checks compiled `AgentToolName` registrations without
+One-shot public invocation checks compiled `AgentToolName` registrations without
 constructing discovery schemas. The complete hosted and direct catalogs are projected
 lazily on discovery, with exact name and count checks against the same registration
 owner. Canonical public request admission and installation shutdown admission still
@@ -634,9 +617,9 @@ The bundled descriptor selects the starter and `ManagedHeadlessProjectStore`.
 The project-store descriptor keeps the actual repository as its identity and historical base path.
 Admission needs the private metadata directory and native external-storage support before project creation.
 The existing opener, importer, readiness owner, and semantic services remain authoritative.
-The process advertises `MANAGED_HEADLESS` with disabled auto reload and no graphical presentation capability.
+The process advertises its runtime identity with no graphical presentation capability.
 
-Managed cold launch skips desktop process discovery.
+Managed cold launch performs no process discovery of other IDEA installations.
 Native private-profile locking owns exclusivity, and a live lifecycle handshake owns admission.
 An exited child cannot grant readiness.
 Private workspace preparation needs a trust record before a cold Host starts.
@@ -649,10 +632,7 @@ The running private Host rejects workspace open unless its sole trust grant name
 - [Coordinator preparation](../transport/coordinator-and-workspace-preparation.md) explains exact-root enrollment and coalesced work.
 - [Invocation fencing and durable records](../transport/invocations-and-durable-records.md) traces replay, interruption, and restart settlement.
 - [Codex hosts](../transport/codex-hosts-and-framing.md) explains host-owned transport and bounded framing.
-- [Direct MCP and tool RPC](../transport/direct-mcp-and-tool-rpc.md) explains the shared direct session.
-- [Harness delivery](../transport/harness-delivery.md) explains Copilot, Pi, and portable output adapters.
+- [Direct MCP](../transport/direct-mcp-and-tool-rpc.md) explains the shared direct session.
+- [Agent context and skill delivery](../transport/harness-delivery.md) explains the exported skill and session context hooks.
 
-The tool RPC query session now admits one initial READ_SOURCE as a terminal source read.
-After query output, another source read needs a new session.
-Typed session rejection preserves the expected and requested result or continuation and the next permitted action.
-Request-only `plan-query` returns scope advice before installation access or host effects.
+Request-only `kast query plan` returns scope advice before installation access or host effects.

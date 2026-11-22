@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:6ef9c99bd7e128f5a4262682e661033442e47a025fda495effd8652ad85cf2b7",
+  "pageVersion": "sha256:c9ef1c967d09b507c0f83a88a2c24a3e74c23b8ce34fb3d51b4a1f62272c4d05",
   "claims": [
     {
       "id": "claim_ff079a4bad1c49b29e631747df0a01a1",
@@ -8,23 +8,23 @@
       "evidence": [
         {
           "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/WorkspaceOperationAdmission.kt",
-          "version": "repo-file-v1:sha256:cc944731d41640789668bfdccf0bc9f24f4cbe5e5b181169637fdadcbc99a20d"
+          "version": "repo-file-v1:sha256:ebab6a00ff08fb0118c047833bb6596ce440c5ba50b782f48e2c2eb898f1656f"
         },
         {
-          "resource": "repo://cli/src/main/kotlin/io/github/amichne/kast/cli/direct/KastDirectToolSession.kt#L91-L133",
-          "version": "repo-lines-v1:sha256:b01be96069c69f3453244258b5689662c5be7120d8cf7055ec19daca88e34b3a:eyJzZWxlY3RlZExpbmVDb3VudCI6NDMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImQ0MTdlOTk2ZmEyNDQ5MTYwZGZhMTEyOGIwYmY0MWI5MTVlNTg1YTdkMmRkNjVhNWVkZGExMzg2YjkwOWMyZDAiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImExYTNjYmZjYmE3ZGRiYjZkMDNlY2EwNmU0ZGM1NTYzZmUwMDFiZDJiYTFiM2UxYzY4YzNiYmM3YjRiYWI0MGEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjdhMWFkYjNiNzY3YjJjNDI2ZDA3OWNkMmM3MjcxMGUyMDhjOWQ2MWMwZDM5NWFmNmJjMjAwMDA2NzFmZWEzMTkiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjY1M2EyZWE2MjkwZTRmM2EwM2Q4OWEyNzYwMTdkZWM1ZTc4Nzg3MmQ3YWE4ZTJhNGVhNzVkN2Y5NTczNmEwYTkifQ"
+          "resource": "repo://cli/src/main/kotlin/io/github/amichne/kast/cli/direct/KastDirectToolSession.kt",
+          "version": "repo-file-v1:sha256:e176481489fff82a27d57b6f17eeff6ff1fa8db587d5736726d22c83c2d5808b"
         },
         {
           "resource": "repo://cli/src/main/kotlin/io/github/amichne/kast/cli/direct/ManagedToolInvocation.kt",
-          "version": "repo-file-v1:sha256:088c978c8a45415e16a5cdb1c78c7495e0c9730f76eacfc793ceb872a09cc196"
+          "version": "repo-file-v1:sha256:151cf774c0c31b8c1d8fbce7c52e2b0b546f60d2619f4e269add275b485c3679"
         },
         {
           "resource": "repo://cli/src/main/kotlin/io/github/amichne/kast/cli/publicshell/PublicHookPreparation.kt",
-          "version": "repo-file-v1:sha256:ea56f739af557d0d001289a2208e751805a15b9f487823b326bdd870330c63b5"
+          "version": "repo-file-v1:sha256:f747656c6f8683eef9e74b2e1b0dcb8457e98a3f5251dbef9dc16d139adb5d65"
         },
         {
           "resource": "repo://cli/src/test/kotlin/io/github/amichne/kast/cli/publicshell/PublicHookManagedPreparationTest.kt",
-          "version": "repo-file-v1:sha256:630fda427f32fc5c3116a8990beff1bae432377ab83a6d07443a2463f9bd7259"
+          "version": "repo-file-v1:sha256:024da3f2c40cefc9a6330a58cf4c99a013698f17b384998f976b162a232e7eba"
         }
       ]
     },
@@ -33,40 +33,18 @@
       "statement": "KastMcpServer fixes one protocol era per connection, but initialization, discovery and tool listing do not prepare a workspace; explicit admitted calls reach the managed invocation owner.",
       "evidence": [
         {
-          "resource": "repo://cli/src/main/kotlin/io/github/amichne/kast/cli/mcp/KastMcpServer.kt#L85-L137",
+          "resource": "repo://cli/src/main/kotlin/io/github/amichne/kast/cli/mcp/KastMcpServer.kt#L88-L140",
           "version": "repo-lines-v1:sha256:d1f8fc721f6e74ec2fb22e956fc05ccf6af3e24f61e35b2994dea87010eabdf7:eyJzZWxlY3RlZExpbmVDb3VudCI6NTMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjJiNjc2YWUwZGM4MmZlOTcyMmQ0NmM4MThmMjgxMTkzNGQ4YTI3ZGNiNTNiYmYxMjdhY2U4ZjJiNTYxN2ZkMmEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijg4ZjIzNmI1NzM0MmY0ZmRjYmFjMzNhZDgxMDFiZDdjMTI5OTJkNDc2ODAyMzU4NTc2ZTg4NTFiMTJhMTM2Y2IiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImMzYzU5MmNlNDY1YzA5N2NiMDllNmY2Y2ExNDQzZmFlNGI3NGI5NDFkMzgxNmY2YjVjNTk5ZjRmNjg4YjU2NzQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjY1YjQ1NzMyNGFhNmVmNTk0ZWQzNmM0MzA2ZThlYjI5NDk5N2UzMDc5NzJiOTZiYTIyNWE2NjkzYmNmMDRjMmUifQ"
         }
       ]
     },
     {
-      "id": "claim_6ff0a69637ee412b80a7178fec723a48",
-      "statement": "The tool RPC query session bounds one child to 64 records and permits only presentation authority issued by the preceding reply after its first query.",
-      "evidence": [
-        {
-          "resource": "repo://cli/src/main/kotlin/io/github/amichne/kast/cli/rpc/KastToolRpcMain.kt",
-          "version": "repo-file-v1:sha256:d676db7f2d637239e828d44755f5f66f0771ee36d597e01cd77737feda61006f"
-        },
-        {
-          "resource": "repo://cli/src/main/kotlin/io/github/amichne/kast/cli/rpc/KastToolRpcQuerySession.kt",
-          "version": "repo-file-v1:sha256:a6662a05c0ef6573f4c18ab826e36add62bb7463d6927e1eed889dd3029596b1"
-        },
-        {
-          "resource": "repo://cli/src/main/kotlin/io/github/amichne/kast/cli/rpc/KastToolRpcQuerySession.kt#L40-L40",
-          "version": "repo-lines-v1:sha256:09ca7490578f5d5aa8489d925f513740a88936ba8d08b05a1e600cfa32d13c46:eyJzZWxlY3RlZExpbmVDb3VudCI6MSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiMDljYTc0OTA1NzhmNWQ1YWE4NDg5ZDkyNWY1MTM3NDBhODg5MzZiYThkMDhiMDVhMWU2MDBjZmEzMmQxM2M0NiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiMDljYTc0OTA1NzhmNWQ1YWE4NDg5ZDkyNWY1MTM3NDBhODg5MzZiYThkMDhiMDVhMWU2MDBjZmEzMmQxM2M0NiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZjJhNzUwZDlkNWQyYmQ1OGVmYjIzMWVkOTczODljMjQzZDFlMDgxNmI4YTI1MDFjNGJkNmQ1YWQ0YzBhNWM1ZSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiMzIxNjM5NTNlNDc3ZjFjYmFjYzM5Y2Q2YzJmOGUwYmQyNjA2NjZhNzczNWExNDUxYWViZTc4OTMyOTc5YWRlYSJ9"
-        }
-      ]
-    },
-    {
       "id": "claim_67b8ad2fd960498192eae7225e6c9e32",
-      "statement": "The private plan-query path admits public RUN syntax before installation or host effects and returns request-shape advice without measured cost or an execution grant.",
+      "statement": "The public query plan command admits public RUN syntax before installation or host effects and returns request-shape advice without measured cost or an execution grant.",
       "evidence": [
         {
-          "resource": "repo://cli/src/main/kotlin/io/github/amichne/kast/cli/rpc/KastToolRpcMain.kt",
-          "version": "repo-file-v1:sha256:d676db7f2d637239e828d44755f5f66f0771ee36d597e01cd77737feda61006f"
-        },
-        {
-          "resource": "repo://cli/src/main/kotlin/io/github/amichne/kast/cli/rpc/KastToolRpcMain.kt#L33-L33",
-          "version": "repo-lines-v1:sha256:126bfe01ec52b6b5f1068b500470a5182a87e80d981137922bf6b13c6481cedc:eyJzZWxlY3RlZExpbmVDb3VudCI6MSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiMTI2YmZlMDFlYzUyYjZiNWYxMDY4YjUwMDQ3MGE1MTgyYTg3ZTgwZDk4MTEzNzkyMmJmNmIxM2M2NDgxY2VkYyIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiMTI2YmZlMDFlYzUyYjZiNWYxMDY4YjUwMDQ3MGE1MTgyYTg3ZTgwZDk4MTEzNzkyMmJmNmIxM2M2NDgxY2VkYyIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiY2U1MjhkNzI1N2ZiMmNhNzk1NDBkYjQ5NTE1NTVmMWQxYTY4ZTM5YTcyNTBiNzM3NTExNWFlNjFkYzAzOTRhMyIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiMmUwOWE1YjcxOTRlZGVmYTRmYzkyMTdkYjg3MWJkMGVlNzQ1Mzk1Y2ZmZTk5YmVhNjI3MzgzNTM3ZmYzZGZiOSJ9"
+          "resource": "repo://cli/src/main/kotlin/io/github/amichne/kast/cli/publicshell/KastPublicCliMain.kt",
+          "version": "repo-file-v1:sha256:3502b9cd8eee3ffe9b28d640232f35e995ee791b1cc97cba339d12e4b0616b70"
         },
         {
           "resource": "repo://cli/src/main/kotlin/io/github/amichne/kast/cli/rpc/QueryCostPlan.kt",
@@ -80,13 +58,37 @@
       "evidence": [
         {
           "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagedWorkspaceQuery.kt",
-          "version": "repo-file-v1:sha256:9a5410e2aa90b960dde03a554445d080125402430020554292cfd5aee522f00b"
+          "version": "repo-file-v1:sha256:bb1961ff837b50a01c49ebf61430cd23e116e2c77b50791d4c3adddd629e48f1"
+        }
+      ]
+    },
+    {
+      "id": "claim_9fa5416ee3a44f979cfef679e97ad8e6",
+      "statement": "KastControlMain dispatches the mcp internal entry to KastMcpMain, which runs one stdio MCP server per client process without starting an App Server or broker.",
+      "evidence": [
+        {
+          "resource": "repo://cli/src/main/kotlin/io/github/amichne/kast/cli/KastControlMain.kt",
+          "version": "repo-file-v1:sha256:88cf4100b9ef11e24962af0599e172239d5caebc9d3027a895c308bd84f32f0a"
+        },
+        {
+          "resource": "repo://cli/src/main/kotlin/io/github/amichne/kast/cli/mcp/KastMcpMain.kt",
+          "version": "repo-file-v1:sha256:ca3aba8019d73c420f167d0564e84570686ebe39d204442ce33e737b61a91015"
+        }
+      ]
+    },
+    {
+      "id": "claim_7ba1c961fc8c4a1688a549a47959c040",
+      "statement": "The direct MCP entry accepts an optional --catalog=COMMON or --catalog=COMPLETE selector, defaults to COMMON, and rejects any other catalog argument.",
+      "evidence": [
+        {
+          "resource": "repo://cli/src/main/kotlin/io/github/amichne/kast/cli/direct/DirectCatalogArguments.kt",
+          "version": "repo-file-v1:sha256:26df84f13a4131f50627953323bac552da19d8c48356427c8a52e8b33be8e376"
         }
       ]
     }
   ],
   "verification": {
     "by": "openwiki/0.9.0",
-    "at": "2026-11-14T23:43:30.219Z"
+    "at": "2026-11-21T22:16:17.145Z"
   }
 }

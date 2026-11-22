@@ -2,7 +2,7 @@
 type: System Explanation
 title: Upgrade, shutdown, and guarded reset
 description: Explains managed product retirement, exact repair, vanished-root
-  reclamation, retained legacy lifecycle contracts, and recovery evidence limits.
+  reclamation, retained lifecycle contracts, and recovery evidence limits.
 tags:
 - kast
 - distribution
@@ -11,10 +11,6 @@ code_sources:
 - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/runtime/DaemonUpgradeGate.kt
 - path: distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ForceInstallationReset.kt
 - path: distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ForceLifecycleStates.kt
-- path: distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagementShutdown.kt
-- path: cli/src/main/kotlin/io/github/amichne/kast/cli/installation/InstallationDaemonUpgrade.kt
-- path: cli/src/main/kotlin/io/github/amichne/kast/cli/installation/ControlInstallationRecovery.kt
-- path: packaging/installation-lifecycle.py
 - path: distribution/cli/src/test/kotlin/io/github/amichne/kast/distribution/cli/ForceInstallationResetTest.kt
 - path: distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagedWorkspaceRetirement.kt
 - path: distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagedWorkspaceRemoval.kt
@@ -22,6 +18,9 @@ code_sources:
 - path: distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/UninstallManagedRoot.kt
 - path: distribution/cli/src/test/kotlin/io/github/amichne/kast/distribution/cli/ProductRemovalRecoveryTest.kt
 - path: distribution/contract/src/main/kotlin/io/github/amichne/kast/distribution/contract/ControlDistributionLimits.kt
+- path: distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagementUninstall.kt
+- path: packaging/internal/installation/installation-lifecycle.py
+- path: packaging/internal/installation/installation-recovery.py
 sources:
   - id: openwiki-source-977a0730acc279a32f98ae18
     resource: repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/InstalledDaemonUpgrade.kt
@@ -37,8 +36,6 @@ sources:
     resource: repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ForceLifecycleStates.kt
   - id: openwiki-source-4a775e59f7cd3b1cc2d7cc10
     resource: repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/InstallationLifecycle.kt
-  - id: openwiki-source-cfc838a1a4168e12e43d463d
-    resource: repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/IntegrationDisconnection.kt
   - id: openwiki-source-b30c7b16cf2f49971ca55950
     resource: repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagedUpgrade.kt
   - id: openwiki-source-8631d89978b8c4768c0c151b
@@ -49,8 +46,6 @@ sources:
     resource: repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagedWorkspaceRetirement.kt
   - id: openwiki-source-a62e12ff14ead337deede61b
     resource: repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagementUninstall.kt
-  - id: openwiki-source-7391bd7fab188bde9fd1c847
-    resource: repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ProviderRegistration.kt
   - id: openwiki-source-dfb88490277ececa651be1f8
     resource: repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/PublicInstallationReset.kt
   - id: openwiki-source-3ca2bb7453e21d39c96827be
@@ -59,6 +54,8 @@ sources:
     resource: repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/RejectedWorkspaceRemoval.kt
   - id: openwiki-source-d258f44cd873e00e544ca7ed
     resource: repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/UninstallManagedRoot.kt
+  - id: openwiki-source-76b7f82a658d043d4483702c
+    resource: repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/UserStateInventoryBuilder.kt
   - id: openwiki-source-d9ace9189c53b7c82c5ed60c
     resource: repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/WorkspaceReclamation.kt
   - id: openwiki-source-8a98987a84aecf7454a62390
@@ -67,44 +64,28 @@ sources:
     resource: repo://distribution/cli/src/test/kotlin/io/github/amichne/kast/distribution/cli/RecordedRecoveryInstallerTest.kt
   - id: openwiki-source-d1f8b0a2ac011ef2d36005a5
     resource: repo://distribution/contract/src/main/kotlin/io/github/amichne/kast/distribution/contract/ControlDistributionLimits.kt
-  - id: openwiki-source-6fea3b3b86300de08664c4ee
-    resource: repo://packaging/host-installation.py
-  - id: openwiki-source-ab52e7c01cf17ee137f833e7
-    resource: repo://packaging/immutable_store.py
-  - id: openwiki-source-fd4b4980f80cb901046d8f0e
-    resource: repo://packaging/installation-lifecycle.py
-  - id: openwiki-source-5a685931788e905bc230c148
-    resource: repo://packaging/installation-recovery.py
-  - id: openwiki-source-1380068036b00bec817a6579
-    resource: repo://packaging/managed_installation.py
-  - id: openwiki-source-7f5792fd36f508c6577b3562
-    resource: repo://packaging/managed_product_installation.py
-  - id: openwiki-source-5e407ffc0053b191a3e609bc
-    resource: repo://packaging/managed_update_contract.py
-  - id: openwiki-source-608c1b34f50deb259c322e04
-    resource: repo://packaging/product_mcp_removal.py
-  - id: openwiki-source-a0c37a49715759f5ea160f59
-    resource: repo://packaging/product_removal_recovery.py
-  - id: openwiki-source-4e34cb0ddcdfb8190eaa8290
-    resource: repo://packaging/test-installation-recovery.py
-  - id: openwiki-source-b3ca2d66028c874ac7b10e77
-    resource: repo://packaging/test-managed-build-record.py
-  - id: openwiki-source-988817829b83f3eaab1d41af
-    resource: repo://packaging/test-managed-installation.py
-  - id: openwiki-source-8fae9d27fc5ee242f935c4cf
-    resource: repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/lifecycle/HostBundleRefresh.kt
-  - id: openwiki-source-5bce5e00d8d37b48b461a27e
-    resource: repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/lifecycle/HostedApplicationSettlement.kt
-  - id: openwiki-source-64703967945cd84894f27ab4
-    resource: repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/lifecycle/HostNativeSettlement.kt
-  - id: openwiki-source-4d9e0980fb11127dc7427b28
-    resource: repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/lifecycle/IdeLifecycleStop.kt
-  - id: openwiki-source-93a63f2900e2bb9b08843608
-    resource: repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/lifecycle/LifecycleReply.kt
-generated: { by: "amp", at: "2026-11-15T19:32:41.514Z" }
+  - id: openwiki-source-f819c9a16e09783f5c943c2d
+    resource: repo://packaging/internal/installation/immutable_store.py
+  - id: openwiki-source-e2f98663750a2e6ad150484d
+    resource: repo://packaging/internal/installation/installation-lifecycle.py
+  - id: openwiki-source-8a0fac4a3d7fbab0f56c743e
+    resource: repo://packaging/internal/installation/installation-recovery.py
+  - id: openwiki-source-9f2a730e7185b57c14ac08e8
+    resource: repo://packaging/internal/installation/managed_installation.py
+  - id: openwiki-source-07f32471b5605b546192361f
+    resource: repo://packaging/internal/product/managed_product_installation.py
+  - id: openwiki-source-558cf2932a7142fbf6311f57
+    resource: repo://packaging/internal/product/product_removal_recovery.py
+  - id: openwiki-source-678716bd23af50e8bbe1978b
+    resource: repo://packaging/internal/product/product_state_removal.py
+  - id: openwiki-source-ac80bd41e2d128ed2647c9d8
+    resource: repo://packaging/tests/test-installation-recovery.py
+  - id: openwiki-source-abab1b24f64b3271633d720d
+    resource: repo://packaging/tests/test-managed-build-record.py
+generated: { by: "codex", at: "2026-11-21T22:16:17.145Z" }
 verified:
   - by: openwiki/0.9.0
-    at: 2026-11-15T23:15:42.491Z
+    at: 2026-11-21T22:16:17.145Z
 ---
 
 # Upgrade, shutdown, and guarded reset
@@ -154,17 +135,15 @@ Completed native calls may leave empty `state/run/one-shot` and `state/run/tool-
 Replacement admits that empty bookkeeping, and removal deletes it with identity checks and empty-directory operations.
 Surviving invocation records, unknown directory names, and linked directories still reject before payload removal.
 These source contracts do not establish native removal qualification.
-Full removal now delegates receipted Pi guidance cleanup to `IntegrationDisconnection`, preserving foreign siblings.
-It removes recorded CODEX/COPILOT resources before Host retirement, using provider inventories rather than routing records as ownership proof.
-A provider conflict preserves the Host. The registration lock protects a final empty-record check through payload removal.
+Uninstall changes no agent configuration. Besides the managed root and its workspace store, it removes only admitted Kast-owned state under `~/.kast`.
 Legacy `uninstall --force [--json]` holds an exterior workspace lifetime lease before detachment.
 Either managed store or `product-selection.json` rejects with `MANAGED_STATE_REQUIRES_UNINSTALL`; managed products use ordinary uninstall with its recovery journal.
 These source-level removal boundaries still need full native qualification.
 
 ## Admit the existing lifecycle first
 
-The following coordinator, legacy attachment, and hot-reload contracts remain for existing lifecycle and recovery owners.
-They do not expose a public desktop, Control-only, or force-reinstall route.
+The following coordinator contracts remain for existing lifecycle and recovery owners.
+They do not expose a public Control-only or force-reinstall route.
 `InstalledDaemonUpgrade` examines the selected service before an update request.
 It distinguishes an absent daemon, pending blockers, an exact sealed permit, an already-committed permit, and rejection.
 The permit keeps the selected daemon target and request identity through commit or cancellation.
@@ -181,11 +160,6 @@ Shutdown fences new tool calls and automatic restart before it waits for owned w
 Recorded process identity scopes the permitted retirement effects.
 An in-flight mutation needs its existing recovery settlement before the workspace lane ends.
 Shared IDEA and Gradle processes remain outside Kast's force-retirement ownership.
-
-After an acknowledged normal stop, the coordinator waits within the existing Host settlement budget for a captured process inventory proving absence.
-During that poll, `PROCESS_IDENTITY_UNAVAILABLE` produces `WAITING` evidence and does not prove that the process stopped.
-If the deadline expires, the timeout retains that native failure code.
-A changed process, a Host identity rejection, or cancellation ends the wait without admitting absence.
 
 Installation recovery preserves the failure stage and the result of restoration.
 A failed payload completion keeps the shutdown fence and its exact failure evidence.
@@ -235,51 +209,6 @@ A pending journal path still blocks public calls, including an empty directory o
 Ordinary upgrade preserves owned settings and history. It does not use force reset to bypass failed ownership admission.
 The exceptional reset path remains separate from the recorded transaction.
 
-## Re-admit legacy Host evidence
-
-Legacy inspection keeps the attached profile proof with its exact process incarnation and opaque Host identity.
-Re-admission compares the PID, start time, executable, Host identity, IDEA home, IDEA build, and complete compatibility digest.
-A matching response keeps the earlier profile proof.
-A changed or missing captured fact rejects as a concurrent change.
-The opaque legacy identity remains separate from the runtime identity contract.
-
-Without a captured endpoint, re-admission requests explicit `ATTACH` and compares the admitted snapshot.
-Bare `REJECT_UNPROVEN` needs the earlier attached proof before it can preserve profile authority.
-The coordinator repeats admission under its management lock before preparation and before the fence.
-A running legacy Host without restart permission rejects before journal creation or retirement.
-
-## Request a scoped VFS refresh
-
-Hot reload needs compatible archives, enabled native auto reload, and the live `HOST_PREPARED_RELOAD_REFRESH` capability.
-`MANAGED_HEADLESS` identity parsing rejects enabled auto reload.
-This mode uses the existing settlement and normal-stop path.
-`SETTLE_RELOAD` prepares the exact cached `lib/kast-ide-hosted.jar` before file exchange.
-The checked acknowledgment keeps the Host, transaction, and prepared marker together.
-Ordinary `SETTLE` remains independent of reload preparation and supports normal stop.
-
-After exchange, the Host-file owner advances only the modification time of the admitted main JAR under its existing lease.
-It preserves the file's inode, owner, bytes, mode, and access time.
-The coordinator then requests `REFRESH` for that prepared transaction.
-The reply owner dispatches the SDK effect only after the acknowledgment frame writes successfully.
-The SDK dirties the exact prepared marker and records bounded content-event counts.
-Only a fresh selected runtime handshake establishes activation.
-
-Only `WRONG_HOST`, `HOST_UNAVAILABLE`, `PLUGIN_UNAVAILABLE`, and `EXCHANGE_DEADLINE_EXCEEDED` can defer refresh rejection to the existing bounded runtime wait.
-That wait still needs exact selected build, contract, process, and Host lifetime evidence.
-The caller sends one refresh request.
-
-## Settle the actual Host during rollback
-
-Hot-reload recovery first admits the actual Host as the recorded prior or selected build.
-It settles that Host before the rollback exchange.
-A loaded selected build needs `SETTLE_RELOAD` and a modification-time update after restoration.
-If the selected build remains loaded, recovery restores prior bytes and requests a refresh from that settled Host.
-Recovery then needs the prior build and a fresh Host lifetime.
-If the original Host remains loaded, recovery restores bytes and resumes that same held Host.
-Resume targets the held lifetime, including a fresh Host with the prior build.
-
-Unknown builds, changed processes, and unproved restoration keep `RECOVERY_REQUIRED` fenced.
-
 ## Retained reset has separate proofs
 
 Force reset bypasses old payload and receipt admission for the selected deletion scope.
@@ -297,8 +226,8 @@ Actual launchd retirement and IDEA restart behavior need their separate native p
 ## Focused tests
 
 - [ForceInstallationResetTest.kt](../../distribution/cli/src/test/kotlin/io/github/amichne/kast/distribution/cli/ForceInstallationResetTest.kt)
-- [test-managed-installation.py](../../packaging/test-managed-installation.py)
-- [HostRefreshRpcTest.kt](../../runtime/hosted/src/test/kotlin/io/github/amichne/kast/runtime/hosted/lifecycle/HostRefreshRpcTest.kt)
+- [test-managed-installation.py](../../packaging/tests/test-managed-installation.py)
+- [test-installation-recovery.py](../../packaging/tests/test-installation-recovery.py)
 
 ## Source owners
 
@@ -306,10 +235,10 @@ Actual launchd retirement and IDEA restart behavior need their separate native p
 - [DaemonUpgradeGate.kt](../../app-server/src/main/kotlin/io/github/amichne/kast/appserver/runtime/DaemonUpgradeGate.kt)
 - [ForceInstallationReset.kt](../../distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ForceInstallationReset.kt)
 - [ForceLifecycleStates.kt](../../distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ForceLifecycleStates.kt)
-- [ManagementShutdown.kt](../../distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagementShutdown.kt)
-- [InstallationDaemonUpgrade.kt](../../cli/src/main/kotlin/io/github/amichne/kast/cli/installation/InstallationDaemonUpgrade.kt)
-- [ControlInstallationRecovery.kt](../../cli/src/main/kotlin/io/github/amichne/kast/cli/installation/ControlInstallationRecovery.kt)
-- [installation-lifecycle.py](../../packaging/installation-lifecycle.py)
+- [ManagementUninstall.kt](../../distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagementUninstall.kt)
+- [ManagedUpgrade.kt](../../distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagedUpgrade.kt)
+- [installation-lifecycle.py](../../packaging/internal/installation/installation-lifecycle.py)
+- [installation-recovery.py](../../packaging/internal/installation/installation-recovery.py)
 
 ## Read next
 

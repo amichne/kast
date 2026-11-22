@@ -54,10 +54,10 @@ sources:
     resource: repo://workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/epoch/ProjectReadEpochVfsListener.kt
   - id: openwiki-source-26adf1e57264a6d43e0f22c1
     resource: repo://workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedReadFreshnessOwner.kt
-generated: { by: "amp", at: "2026-11-14T06:28:38.719Z" }
+generated: { by: "codex", at: "2026-11-21T22:16:17.145Z" }
 verified:
   - by: openwiki/0.9.0
-    at: 2026-11-14T06:28:38.719Z
+    at: 2026-11-21T22:16:17.145Z
 ---
 
 # Workspace
@@ -84,7 +84,7 @@ Successful publication proves that the observed epoch remained equal through fin
 
 Existing explicit reference reacquisition can locate a current declaration, but it does not revive an old continuation or promise an old snapshot. Epoch movement returns the existing `restart_read` recovery guidance and keeps any admitted execution budget. No epoch migration or background replay is introduced.
 
-Published lease and lifecycle types remain available for historical protocol contracts and tests. Their former `workspace:service` transition coordinator and `workspace:intellij` importer are retired and absent from the build. The retained topology publisher accepts complete generations but is not wired into the production plugin. See [historical publication](../flows/workspace-publication.md) and [existing-IDE reads](../flows/hosted-query.md).
+Published lease and lifecycle types remain available for historical protocol contracts and tests. Their former `workspace:service` transition coordinator and `workspace:intellij` importer are retired and absent from the build. The retained topology publisher accepts complete generations but is not wired into the production plugin. See [historical publication](../flows/workspace-publication.md) and [managed Host reads](../flows/hosted-query.md).
 
 Before evaluation, HostedReadDeadline derives a positive HostedSemanticTimeAllowance from remaining host time with a completion reserve. The context carries that allowance into query and diagnostic-scope budgets. An exhausted allowance rejects before the evaluator starts; final freshness validation and cancellation drainage remain required.
 
@@ -110,8 +110,8 @@ The hosted workspace lifecycle boundary retains file refresh and Gradle model re
 The internal per-host task rule maps one exact IDE-observed successful single-task Gradle invocation to the same lifecycle service. New hosts default off; imports, unsuccessful tasks, other roots and other projects cannot trigger it. Gradle callbacks schedule the request without waiting for readiness. Existing epoch listeners remain the semantic freshness authority.
 
 Application lifecycle opens one canonical root through the native project opener.
-Desktop mode requests a new frame.
-Managed headless mode admits private project storage before it opens a project without a frame.
+The managed headless Host admits private project storage before it opens a project without a frame.
+A headless application without that managed admission rejects with `UNSUPPORTED_HOST_MODE`.
 Project reuse does not change window focus.
 The owner examines admission, then waits for a native import already in progress.
 If the cached model stays missing or incomplete, it requests one linked Gradle model reload.
