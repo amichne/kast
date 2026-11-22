@@ -13,9 +13,6 @@ while [[ $# -gt 0 ]]; do
         'Installs one complete private-runtime product. No Python, uv, or IDEA installation is required.' \
         'Local products contain build-record.json and payload/; private bootstrap inputs still download.'
       exit 0 ;;
-    --developer-latest)
-      [[ "$selection" == 0 ]] || fail 'select exactly one build'
-      selection=1; arguments+=(--channel preview); shift ;;
     --channel|--version|--commit|--local-artifact)
       [[ "$selection" == 0 && $# -ge 2 ]] || fail 'select exactly one build with a value'
       case "$1:$2" in
