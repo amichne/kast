@@ -61,10 +61,10 @@ sources:
     resource: repo://packaging/tests/test-managed-installation.py
   - id: openwiki-source-40badbf2c7286dd74fa8aee8
     resource: repo://packaging/tests/test-managed-state-admission.py
-generated: { by: "codex", at: "2026-11-22T20:53:36.158Z" }
+generated: { by: "codex", at: "2026-11-22T21:35:10.249Z" }
 verified:
   - by: openwiki/0.9.0
-    at: 2026-11-22T20:53:36.158Z
+    at: 2026-11-22T21:35:10.249Z
 ---
 
 
@@ -165,7 +165,7 @@ Each state admission check that rejects raises a typed rejection with a closed f
 It emits one structured observation that names at most eight sorted installation-relative entries, never their contents.
 The installer outcome carries the same evidence in `Rejected.state`, and removal reports a state rejection with the same evidence.
 One mapping serves activation, resume, and the entry point.
-An errno `OSError` reports `FILESYSTEM_REJECTED`, and `OWNERSHIP_UNPROVEN` remains only for checks that still raise `ValueError`.
+An `OSError` that carries an `errno` reports `FILESYSTEM_REJECTED`, and `OWNERSHIP_UNPROVEN` remains only for checks that still raise `ValueError`.
 Any other exception reports `INSTALLATION_DEFECT` with its class name; an `AssertionError` is re-raised rather than reported as an outcome.
 
 Control staging cleanup retains the directory identity before extraction.

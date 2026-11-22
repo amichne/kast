@@ -1612,8 +1612,8 @@
     },
     {
       "path": "openwiki/semantics/relation/named-relations.md",
-      "sha256": "01464200361e3d2972cbc602c9d69db5f71038389a5b9cd53f3cb5914801c096",
-      "claimsSha256": "dd4b829ea9f219728b2f72e60aea275d90b57d7f7fada411d6d9fb37d4f333e9",
+      "sha256": "17accaff934af75a5aecb8a70c1ddf14aef3d5acb3b39071de5282945e712cd7",
+      "claimsSha256": "5a84643ed95c685a08b7487af6a7cb9c0a50a20f3f455a3df2e52e96c1d2a524",
       "evidence": [
         {
           "claim": "claim_fe33fe126b7646c38ff54533310b15dd",

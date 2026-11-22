@@ -40,7 +40,7 @@ Collected candidates remain weaker evidence until the compiler confirms the targ
 Bounded inventories and advancing positions keep resumed pages from replaying already-consumed work.
 
 A Kotlin constructor call such as `Name(...)` resolves to the constructor, not to the class.
-When a reference resolves to a constructor, K2 supplies the constructor's containing class, and the ordinary exact declaration proof compares that class with a classlike subject.
+When a reference resolves to a constructor, K2 supplies the constructor's containing class, and the ordinary exact declaration proof compares that class with a class-like subject declaration.
 The call therefore counts as a reference to the class.
 An owner that K2 cannot prove stays unresolved, so the read degrades rather than reporting absence.
 

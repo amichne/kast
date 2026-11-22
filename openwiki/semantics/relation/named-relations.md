@@ -43,10 +43,10 @@ sources:
     resource: repo://relation/intellij/src/nativeTest/kotlin/io/github/amichne/kast/relation/intellij/NativeReferenceDestinationTest.kt
   - id: openwiki-source-92edd83497ca3a9bab136f66
     resource: repo://relation/service/src/main/kotlin/io/github/amichne/kast/relation/service/RelationService.kt
-generated: { by: "codex", at: "2026-11-22T20:53:36.158Z" }
+generated: { by: "codex", at: "2026-11-22T21:35:10.249Z" }
 verified:
   - by: openwiki/0.9.0
-    at: 2026-11-22T20:53:36.158Z
+    at: 2026-11-22T21:35:10.249Z
 ---
 
 # Named relationships and occurrences
@@ -77,7 +77,7 @@ Collected candidates remain weaker evidence until the compiler confirms the targ
 Bounded inventories and advancing positions keep resumed pages from replaying already-consumed work.
 
 A Kotlin constructor call such as `Name(...)` resolves to the constructor, not to the class.
-When a reference resolves to a constructor, K2 supplies the constructor's containing class, and the ordinary exact declaration proof compares that class with a classlike subject.
+When a reference resolves to a constructor, K2 supplies the constructor's containing class, and the ordinary exact declaration proof compares that class with a class-like subject declaration.
 The call therefore counts as a reference to the class.
 An owner that K2 cannot prove stays unresolved, so the read degrades rather than reporting absence.
 
