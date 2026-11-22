@@ -13,7 +13,7 @@ updates:
       include: "scope"
     # Fixtures describe exact admitted environments; update them with their owning tests.
     exclude-paths:
-      - "experiments/host-observation/semantic-fixture/**"
+      - "fixtures/**"
     # The IDE distribution and platform artifacts are one qualified host build.
     # A standalone artifact bump cannot establish that qualification.
     ignore:
@@ -81,3 +81,15 @@ updates:
       host-protocol-tests:
         patterns:
           - "*"
+
+  - package-ecosystem: "uv"
+    directory: "/config/python"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+      timezone: "America/New_York"
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: "chore"
+      include: "scope"

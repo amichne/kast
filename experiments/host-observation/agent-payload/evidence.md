@@ -29,7 +29,7 @@ The final delivery receipt records the branch HEAD and the complete source-gate 
 ## Independent acceptance oracle
 
 The authored oracle is [oracle.json](oracle.json).
-Its Kotlin source resides in the existing `semantic-fixture/logging` project.
+Its Kotlin source resides in the existing `fixtures/semantic-fixture/logging` project.
 The fixture contains String and Int overloads, an exact caller, and a two-edge trace path.
 A same-signature declaration in another file supplies the nearest identity control.
 The fixed scope is package `repro.payload`, with `includeSubpackages=false`, with source set `main`.

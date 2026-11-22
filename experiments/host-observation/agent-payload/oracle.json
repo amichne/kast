@@ -1,6 +1,6 @@
 {
   "authority": "Authored from fixture source before product changes. Expected facts do not come from query output.",
-  "fixture": "experiments/host-observation/semantic-fixture",
+  "fixture": "fixtures/semantic-fixture",
   "scope": {"packageName": "repro.payload", "includeSubpackages": false, "sourceSetNames": ["main"]},
   "lookup": {"name": "payloadTarget", "expectedOverloads": ["payloadTarget(kotlin.String): kotlin.String", "payloadTarget(kotlin.Int): kotlin.Int"]},
   "selected": {"file": "logging/src/main/kotlin/repro/payload/PayloadFixture.kt", "line": 3, "parameterType": "kotlin.String"},

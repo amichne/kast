@@ -889,10 +889,10 @@ def execute(
         roots = (work / "first", work / "second")
         for workspace in roots:
             _ = shutil.copytree(
-                repository / "experiments/host-observation/static-callback-fixture", workspace
+                repository / "fixtures/static-callback-fixture", workspace
             )
             _ = shutil.copytree(
-                repository / "experiments/host-observation/composed-host-fixture-overlay",
+                repository / "fixtures/composed-host-fixture-overlay",
                 workspace,
                 dirs_exist_ok=True,
             )

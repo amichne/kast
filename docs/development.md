@@ -251,8 +251,9 @@ describes the separate source and product gates.
 ## Build and install the checkout
 
 Gradle provisions the pinned Python dependencies for its schema tests in
-`build/python-tests/env`. The build does not depend on the active shell's Python
-packages or the interpreter search path retained by an existing Gradle daemon.
+`build/python-tests/env` with `uv sync --locked` from the uv project in `config/python`.
+The build does not depend on the active shell's Python packages or the interpreter search
+path retained by an existing Gradle daemon.
 
 The retired Kast push dispatcher still exits without local qualification.
 The repository instead declares opt-in [pre-commit](https://pre-commit.com) hooks in

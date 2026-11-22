@@ -570,10 +570,10 @@ jobs:
         with:
           python-version-file: ".python-version"
           cache: ${{ inputs.rollout != 'cold' && 'pip' || '' }}
-          cache-dependency-path: experiments/host-observation/requirements-test.txt
+          cache-dependency-path: config/python/uv.lock
 
-      - name: Install host protocol and semantic test tools
-        run: python3 -m pip install --disable-pip-version-check -r experiments/host-observation/requirements-test.txt uv==0.12.9
+      - name: Install uv
+        run: python3 -m pip install --disable-pip-version-check uv==0.12.9
 
       - uses: ./.github/actions/jq-oracle
 

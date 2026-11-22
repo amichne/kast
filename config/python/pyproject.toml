@@ -1,0 +1,14 @@
+# Pinned Python dependencies for the routine test gate. `preparePythonTestEnvironment` syncs them
+# into build/python-tests/env with `uv sync --locked`; Gradle's Python test tasks run there.
+[project]
+name = "kast-python-tests"
+version = "0.1.0"
+requires-python = ">=3.12,<3.14"
+dependencies = [
+    "jsonschema==4.26.0",
+    "PyYAML==6.0.3",
+]
+
+[tool.uv]
+package = false
+no-build = true

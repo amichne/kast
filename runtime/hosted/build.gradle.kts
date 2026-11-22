@@ -345,7 +345,7 @@ fun registerHostedNativeFixtures(taskName: String, selectedClasses: List<String>
         classpath = nativeTest.runtimeClasspath
         inputs
             .files(
-                fileTree(repositoryRoot.dir("experiments/host-observation/nested-callback-fixture")) {
+                fileTree(repositoryRoot.dir("fixtures/nested-callback-fixture")) {
                     include("*/src/main/kotlin/**/*.kt")
                 }
             )

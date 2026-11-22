@@ -132,6 +132,6 @@ internal enum class DecoderFixtureModule(val directory: String, val fileName: St
         val fixtureRoot: Path =
             generateSequence(Path.of("").toAbsolutePath()) { it.parent }
                 .first { Files.isDirectory(it.resolve("runtime/hosted")) }
-                .resolve("experiments/host-observation/nested-callback-fixture")
+                .resolve("fixtures/nested-callback-fixture")
     }
 }

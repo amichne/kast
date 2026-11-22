@@ -88,10 +88,10 @@ def fetch_interpreter(work: Path) -> tuple[Path, Path]:
 
 
 def fixture(repo: Path, workspace: Path) -> None:
-    experiments = repo / "experiments/host-observation"
-    _ = shutil.copytree(experiments / "static-callback-fixture", workspace)
+    fixtures = repo / "fixtures"
+    _ = shutil.copytree(fixtures / "static-callback-fixture", workspace)
     _ = shutil.copytree(
-        experiments / "composed-host-fixture-overlay", workspace, dirs_exist_ok=True
+        fixtures / "composed-host-fixture-overlay", workspace, dirs_exist_ok=True
     )
     _ = shutil.copytree(repo / "gradle/wrapper", workspace / "gradle/wrapper")
     _ = shutil.copy2(repo / "gradlew", workspace / "gradlew")

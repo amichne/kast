@@ -60,6 +60,8 @@ This guide owns repository rules and routes source investigation.
 - [`agent-tools/`](agent-tools/AGENTS.md) - shared context, generated query references, MCP plugins, and marketplace source.
 - [`build-logic/`](build-logic/AGENTS.md) - Gradle conventions and architecture enforcement.
 - [`docs/`](docs/AGENTS.md) - public Mintlify documentation and visual evidence helpers.
+- `fixtures/` - Kotlin and Gradle workspaces that product tests, native fixtures, and installed-product probes compile or open. Experiments may read them; they do not own them.
+- `config/python/` - the locked uv project for the Python test gate; `preparePythonTestEnvironment` syncs it into `build/python-tests/env`.
 
 ## Entry Points
 

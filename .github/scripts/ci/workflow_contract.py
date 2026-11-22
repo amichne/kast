@@ -50,9 +50,6 @@ PUBLICATION_WORKFLOWS = frozenset(
 BOOTSTRAP: dict[str, str] = {
     "python3 -m pip install --disable-pip-version-check uv==0.12.9": "installs uv before any task",
     "python3 -m pip install uv==0.12.9": "installs uv before any task",
-    "python3 -m pip install --disable-pip-version-check -r experiments/host-observation/requirements-test.txt uv==0.12.9": (
-        "installs the host-observation test tools and uv before any task"
-    ),
     'echo "Semantic fixture switch: $KAST_SEMANTIC_FIXTURES" >> "$GITHUB_STEP_SUMMARY" '
     'echo "macOS check switch: $KAST_MACOS_CHECKS; effective product assembly: $KAST_NATIVE_COMPILATION" >> "$GITHUB_STEP_SUMMARY"': (
         "reports the CI switches to the step summary"

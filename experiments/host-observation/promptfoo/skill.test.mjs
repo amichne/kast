@@ -159,7 +159,7 @@ test('concurrent trials and a later process admit one shared fixture for this wo
     assert.deepEqual(first, second);
     assert.deepEqual(await invoke(), first);
     assert.equal(first.root, await realpath(fileURLToPath(new URL('../../../build/projects/callback-service', import.meta.url))));
-    const external = fileURLToPath(new URL('../static-callback-fixture', import.meta.url));
+    const external = fileURLToPath(new URL('../../../fixtures/static-callback-fixture', import.meta.url));
     assert.deepEqual(await invoke({ ...env, KAST_EVAL_WORKSPACE: external }), { root: await realpath(external) });
     await assert.rejects(invoke({ ...env, KAST_EVAL_WORKSPACE: scratch }), /Kotlin sources differ from the fixture/);
   } finally {

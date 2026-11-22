@@ -21,7 +21,7 @@ if args.receipt.resolve().is_relative_to(destination):
 if destination.exists() or args.receipt.exists():
     raise SystemExit("Use new fixture and receipt paths")
 revision = subprocess.check_output(["git", "-C", str(args.repository), "rev-parse", args.revision + "^{commit}"], text=True).strip()
-prefix = "experiments/host-observation/" + args.fixture + "/"
+prefix = "fixtures/" + args.fixture + "/"
 archive = subprocess.check_output(["git", "-C", str(args.repository), "archive", revision, prefix])
 files = []
 with tarfile.open(fileobj=io.BytesIO(archive)) as source:

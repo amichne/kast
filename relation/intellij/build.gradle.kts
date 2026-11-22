@@ -69,43 +69,39 @@ tasks.named<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>("compileTestKotlin"
     source(
         File(
             repositoryRoot.asFile,
-            "experiments/host-observation/immutable-callback-fixture/invocation/src/main/kotlin",
+            "fixtures/immutable-callback-fixture/invocation/src/main/kotlin",
         )
     )
     source(
         File(
             repositoryRoot.asFile,
-            "experiments/host-observation/immutable-callback-fixture/forwarding/src/main/kotlin",
+            "fixtures/immutable-callback-fixture/forwarding/src/main/kotlin",
         )
     )
-    source(
-        File(repositoryRoot.asFile, "experiments/host-observation/immutable-callback-fixture/suppliers/src/main/kotlin")
-    )
+    source(File(repositoryRoot.asFile, "fixtures/immutable-callback-fixture/suppliers/src/main/kotlin"))
     source(
         File(
             repositoryRoot.asFile,
-            "experiments/host-observation/semantic-fixture/value-flow/RepresentationImpactFixture.kt",
-        )
-    )
-    source(
-        File(
-            repositoryRoot.asFile,
-            "experiments/host-observation/semantic-fixture/value-flow/LocalIdentityOtherFixture.kt",
-        )
-    )
-    source(
-        File(repositoryRoot.asFile, "experiments/host-observation/semantic-fixture/read-reliability/ReadKotlinCalls.kt")
-    )
-    source(
-        File(
-            repositoryRoot.asFile,
-            "experiments/host-observation/semantic-fixture/read-reliability/ReadKotlinReferenceTarget.kt",
+            "fixtures/semantic-fixture/value-flow/RepresentationImpactFixture.kt",
         )
     )
     source(
         File(
             repositoryRoot.asFile,
-            "experiments/host-observation/semantic-fixture/read-reliability/ReadKotlinReferences.kt",
+            "fixtures/semantic-fixture/value-flow/LocalIdentityOtherFixture.kt",
+        )
+    )
+    source(File(repositoryRoot.asFile, "fixtures/semantic-fixture/read-reliability/ReadKotlinCalls.kt"))
+    source(
+        File(
+            repositoryRoot.asFile,
+            "fixtures/semantic-fixture/read-reliability/ReadKotlinReferenceTarget.kt",
+        )
+    )
+    source(
+        File(
+            repositoryRoot.asFile,
+            "fixtures/semantic-fixture/read-reliability/ReadKotlinReferences.kt",
         )
     )
 }
