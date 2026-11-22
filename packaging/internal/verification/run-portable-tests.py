@@ -1,5 +1,9 @@
 #!/usr/bin/env python3
-"""Run every offline packaging test with an owned home, temp tree, and tool path."""
+"""Run offline packaging tests with an owned home, temp tree, and tool path.
+
+With no arguments, every packaging/tests/test-*.py suite runs. Each argument
+selects one suite from that inventory; any other path is rejected.
+"""
 from pathlib import Path
 import os
 import re
@@ -18,10 +22,29 @@ def expected_skips() -> dict[str, int]:
     return {}
 
 
+def select_suites(inventory: tuple[Path, ...], arguments: list[str]) -> tuple[Path, ...] | None:
+    """Return the selected inventory suites, or None when an argument names no suite."""
+    if not arguments:
+        return inventory
+    admitted = {path.resolve(): path for path in inventory}
+    selected: list[Path] = []
+    for argument in arguments:
+        suite = admitted.get(Path(argument).resolve())
+        if suite is None:
+            return None
+        if suite not in selected:
+            selected.append(suite)
+    return tuple(selected)
+
+
 def main() -> int:
-    tests = tuple(sorted((ROOT / 'packaging/tests').glob('test-*.py')))
-    if not tests:
+    inventory = tuple(sorted((ROOT / 'packaging/tests').glob('test-*.py')))
+    if not inventory:
         print('portable-tests: test inventory rejected', file=sys.stderr)
+        return 2
+    tests = select_suites(inventory, sys.argv[1:])
+    if tests is None:
+        print('portable-tests: select packaging/tests/test-*.py suites only', file=sys.stderr)
         return 2
     permitted_skips = expected_skips()
     with tempfile.TemporaryDirectory(prefix='kast-portable-') as directory:

@@ -22,23 +22,31 @@ from pathlib import Path
 from typing import cast
 from unittest.mock import patch
 
-import bootstrap_entry
-import composed_bundle
-import generate_bootstrap
-import immutable_store
-import managed_headless as headless
-import managed_installation as install
-import managed_product as staging
-import managed_product_installation as activation
-import managed_product_removal as removal
-import managed_release as release
-import managed_update_contract as contract
-import managed_update_journal as journal
-import product_removal_recovery
-import runtime_base
-from composition_platform import HostPlatform
-from managed_headless import AssemblyEntryKind, AssemblyFile
-from runtime_archive import RuntimeFile, RuntimeLink, RuntimeManifest
+try:
+    import bootstrap_entry
+    import composed_bundle
+    import generate_bootstrap
+    import immutable_store
+    import managed_headless as headless
+    import managed_installation as install
+    import managed_product as staging
+    import managed_product_installation as activation
+    import managed_product_removal as removal
+    import managed_release as release
+    import managed_update_contract as contract
+    import managed_update_journal as journal
+    import product_removal_recovery
+    import runtime_base
+    from composition_platform import HostPlatform
+    from managed_headless import AssemblyEntryKind, AssemblyFile
+    from runtime_archive import RuntimeFile, RuntimeLink, RuntimeManifest
+except ModuleNotFoundError as missing:
+    raise SystemExit(
+        f"{Path(__file__).name}: module {missing.name} is unavailable; run "
+        "mise exec -- uv run --locked --project packaging python "
+        "packaging/internal/verification/run-portable-tests.py "
+        f"packaging/tests/{Path(__file__).name}"
+    ) from missing
 
 
 def product() -> release.ProductRecord:

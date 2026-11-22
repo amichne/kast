@@ -177,6 +177,34 @@ The scoped loop supplies local evidence for selected owners.
 Before a push, the optional pre-commit hooks run affected source obligations on the committed source.
 Live installation and release-catalog reads keep their existing freshness rules.
 
+### Run one suite or one generator check
+
+Some packaging suites import modules that only their runner puts on the module path.
+Run one or more of those suites through the portable runner, which supplies the module path and an owned home:
+
+```shell
+mise exec -- uv run --locked --project packaging python \
+  packaging/internal/verification/run-portable-tests.py packaging/tests/test-managed-bootstrap.py
+```
+
+Each argument must name a `packaging/tests/test-*.py` suite; the runner rejects any other path.
+A suite that starts without its module path exits with a message that names this command.
+`test-install-checkout.py`, `test-managed-bootstrap.py`, and `test-managed-build-record.py` carry this guard.
+
+Each generator has a `--check` mode that rejects stale output without changing files:
+
+```shell
+python3 packaging/internal/bootstrap/generate_bootstrap.py --check
+python3 packaging/internal/query/generate-public-query.py --check
+```
+
+The first command compares the root `install.sh` with the bootstrap template.
+The second command compares the public query projections with the authored tool schema.
+
+`source_validation.py` needs a clean committed tree, so it cannot check work before a commit.
+Before a commit, run `fast_checks.py` and the `scopedCheck` task of each changed module.
+Add the single-suite and generator checks above for the files that you changed.
+
 Run all offline packaging suites in an isolated Linux container with:
 
 ```shell
@@ -195,7 +223,7 @@ CI runs this container suite on a disposable Ubuntu runner for every pull reques
 and main push, alongside the macOS product checks.
 
 Run the same offline inventory without Docker using
-`python3 packaging/internal/verification/run-portable-tests.py`. A container pass proves the offline installer contract
+`python3 packaging/internal/verification/run-portable-tests.py`; add suite paths to [run only those suites](#run-one-suite-or-one-generator-check). A container pass proves the offline installer contract
 and process tests on Linux. It does not establish native IDEA or Codex behavior.
 
 Report the command, observed result and evidence level: pure policy, private

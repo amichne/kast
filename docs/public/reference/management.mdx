@@ -130,6 +130,8 @@ kast stop --all --json
 ```
 
 Stop is temporary and scoped. The next explicit semantic request can restart the Host.
+Without an option, `kast stop` stops only the Host of the current workspace; `--all` stops every recorded workspace Host.
+The result names each stopped workspace, so a broad stop shows which Hosts must start again.
 There is no persistent disable or resume command. A passive hook does not restart it.
 Stopping Kast does not authorize termination of unrelated IDEA or Gradle processes.
 An active lease can reject a stop as busy; preserve the result and retry only after the active work settles.

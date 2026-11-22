@@ -5,8 +5,16 @@ import re
 import unittest
 from pathlib import Path
 
-import generate_bootstrap as bootstrap
-import managed_release as release
+try:
+    import generate_bootstrap as bootstrap
+    import managed_release as release
+except ModuleNotFoundError as missing:
+    raise SystemExit(
+        f"{Path(__file__).name}: module {missing.name} is unavailable; run "
+        "mise exec -- uv run --locked --project packaging python "
+        "packaging/internal/verification/run-portable-tests.py "
+        f"packaging/tests/{Path(__file__).name}"
+    ) from missing
 
 ROOT = Path(__file__).resolve().parents[2]
 ROOT_BUILD = ROOT / "build.gradle.kts"

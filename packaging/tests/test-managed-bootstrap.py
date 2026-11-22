@@ -17,10 +17,18 @@ from dataclasses import replace
 from pathlib import Path
 from unittest.mock import patch
 
-import defusedxml
+try:
+    import defusedxml
 
-import generate_bootstrap as generator
-import private_interpreter as private
+    import generate_bootstrap as generator
+    import private_interpreter as private
+except ModuleNotFoundError as missing:
+    raise SystemExit(
+        f"{Path(__file__).name}: module {missing.name} is unavailable; run "
+        "mise exec -- uv run --locked --project packaging python "
+        "packaging/internal/verification/run-portable-tests.py "
+        f"packaging/tests/{Path(__file__).name}"
+    ) from missing
 
 
 def script(path: Path, source: str) -> None:
