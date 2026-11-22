@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """The release handoff retains one exact assembled release and qualifies its macOS Control product."""
 import json
+import re
 import subprocess
 import tarfile
 import tempfile
@@ -47,8 +48,9 @@ class ReleaseHandoffTest(unittest.TestCase):
                 )
                 seen = []
 
-                def suite(observed_identity, *arguments, code=gradle_exit):
+                def suite(observed_identity, *arguments, stage, code=gradle_exit):
                     self.assertEqual(IDENTITY, observed_identity)
+                    self.assertIs(release_handoff.GradleStage.QUALIFICATION, stage)
                     self.assertEqual("publicLauncherTest", arguments[1])
                     product = Path(arguments[0].removeprefix("-PkastControlProduct="))
                     self.assertTrue(arguments[0].startswith("-PkastControlProduct=") and product.is_absolute())
@@ -72,6 +74,54 @@ class ReleaseHandoffTest(unittest.TestCase):
                         release_handoff.qualify(payload)
                     gradle.assert_called_once()
                     self.assertEqual(1, len(seen))
+
+    def test_gradle_stages_map_monitored_outcomes_to_typed_failures(self):
+        graph = release_handoff.gradle_graph
+        cases = {
+            graph.Outcome.SUCCEEDED: None,
+            graph.Outcome.TIMED_OUT: release_handoff.Failure.GRADLE_TIMED_OUT,
+            graph.Outcome.CANCELLED: release_handoff.Failure.GRADLE_CANCELLED,
+            graph.Outcome.PROCESS_FAILED: release_handoff.Failure.GRADLE_FAILED,
+            graph.Outcome.START_FAILED: release_handoff.Failure.GRADLE_FAILED,
+        }
+        for stage in release_handoff.GradleStage:
+            for outcome, failure in cases.items():
+                with self.subTest(stage=stage, outcome=outcome):
+                    observed = []
+
+                    def monitored(command, root, destination, budget, outcome=outcome):
+                        observed.append((command, destination, budget))
+                        code = 0 if outcome is graph.Outcome.SUCCEEDED else 1
+                        return graph.Result(outcome, code, 1)
+
+                    with patch.object(graph, "run", side_effect=monitored):
+                        if failure is None:
+                            release_handoff.gradle(IDENTITY, "task", stage=stage)
+                        else:
+                            with self.assertRaises(SystemExit) as raised:
+                                release_handoff.gradle(IDENTITY, "task", stage=stage)
+                            self.assertEqual(failure.value, raised.exception.code)
+                    command, destination, budget = observed[0]
+                    self.assertEqual("./gradlew", command[0])
+                    self.assertIn("task", command)
+                    self.assertIn(f"-Pversion={IDENTITY.version}", command)
+                    self.assertEqual(release_handoff.ROOT / "build/reports/native" / stage.directory, destination)
+                    self.assertEqual(stage.seconds, budget.seconds)
+                    self.assertIn(f"--max-workers={stage.workers}", command)
+
+    def test_mac_qualification_configures_projects_sequentially(self):
+        # Parallel configuration starved on the macOS runner; one worker keeps it sequential.
+        self.assertEqual(1, release_handoff.GradleStage.QUALIFICATION.workers)
+
+    def test_gradle_budgets_stay_below_their_job_timeouts(self):
+        workflow = (Path(__file__).resolve().parents[2] / "workflows/ci.yml").read_text()
+
+        def timeout(job: str) -> int:
+            body = workflow.split(f"\n  {job}:\n", 1)[1]
+            return int(re.search(r"\n    timeout-minutes: (\d+)\n", body).group(1)) * 60
+
+        self.assertLess(release_handoff.GradleStage.ASSEMBLY.seconds, timeout("assembly"))
+        self.assertLess(release_handoff.GradleStage.QUALIFICATION.seconds, timeout("kotlin"))
 
     def test_restore_retains_release_bytes_only_on_the_macos_target(self):
         for system, machine in (("Darwin", "arm64"), ("Linux", "x86_64")):
@@ -98,8 +148,9 @@ class ReleaseHandoffTest(unittest.TestCase):
             root = Path(temporary)
             effects = []
 
-            def gradle(identity, *tasks):
+            def gradle(identity, *tasks, stage):
                 self.assertEqual(IDENTITY, identity)
+                self.assertIs(release_handoff.GradleStage.ASSEMBLY, stage)
                 self.assertEqual(
                     (
                         "-PkastControlPlatform=macos-aarch64",

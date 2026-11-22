@@ -24,6 +24,10 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
+      - name: Install the task runner
+        uses: jdx/mise-action@5228313ee0372e111a38da051671ca30fc5a96db # v3
+        with:
+          install: false
 
       - uses: ./.github/actions/source-toolchain
 
@@ -43,4 +47,4 @@ jobs:
             notifications
 
       - name: Run complete source validation to populate task outputs
-        run: python3 .github/scripts/ci/source_validation.py
+        run: mise run ci:source

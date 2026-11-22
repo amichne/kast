@@ -15,6 +15,7 @@ import platform
 import re
 import shutil
 import subprocess
+import sys
 import tarfile
 import tempfile
 from dataclasses import asdict, dataclass
@@ -23,6 +24,9 @@ from pathlib import Path, PurePosixPath
 from typing import TypeGuard
 
 ROOT = Path(__file__).resolve().parents[3]
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+
+import gradle_graph  # noqa: E402 - shares this directory
 
 
 class Kind(str, Enum):
@@ -50,6 +54,34 @@ class Failure(str, Enum):
     WRONG_PLATFORM = "WRONG_PLATFORM"
     PROCESS_FAILED = "PROCESS_FAILED"
     EFFECT_FAILED = "EFFECT_FAILED"
+    GRADLE_FAILED = "GRADLE_FAILED"
+    GRADLE_TIMED_OUT = "GRADLE_TIMED_OUT"
+    GRADLE_CANCELLED = "GRADLE_CANCELLED"
+
+
+class GradleStage(Enum):
+    """Each Gradle stage has a budget below its CI job timeout and its own evidence directory.
+
+    A stage that exceeds its budget is stopped with a process snapshot and Gradle daemon thread
+    dumps under `build/reports/native/<stage>/`, so a hang names its blocked frame instead of
+    ending as a silent job cancellation.
+    """
+
+    # Qualification runs on the macOS runner, where Gradle 9.8.2's parallel project configuration
+    # intermittently starves: its thread dump shows the configuration coordinator waiting while no
+    # worker configures a project. One worker selects sequential configuration, as the macOS reset
+    # suites already do (#1302).
+    ASSEMBLY = ("assembly", 3000, 2)
+    QUALIFICATION = ("qualification", 1200, 1)
+
+    def __init__(self, directory: str, seconds: int, workers: int) -> None:
+        self.directory = directory
+        self.seconds = seconds
+        self.workers = workers
+
+    @property
+    def reports(self) -> Path:
+        return ROOT / "build/reports/native" / self.directory
 
 
 @dataclass(frozen=True)
@@ -211,22 +243,34 @@ def current_identity(version: str) -> Identity:
     return Identity(revision, tree, version)
 
 
-def gradle(identity: Identity, *tasks: str) -> None:
-    run(
-        [
-            "./gradlew",
-            "--no-daemon",
-            "--no-parallel",
-            "--max-workers=2",
-            "-Dorg.gradle.jvmargs=-Xmx5g",
-            f"-Pversion={identity.version}",
-            f"-PkastSourceRevision={identity.revision}",
-            *tasks,
-            "--console=plain",
-            # Keep diagnostic HTML profiling outside artifact qualification.
-            "--info",
-        ]
+def gradle(identity: Identity, *tasks: str, stage: GradleStage) -> None:
+    command = (
+        "./gradlew",
+        "--no-daemon",
+        "--no-parallel",
+        f"--max-workers={stage.workers}",
+        "-Dorg.gradle.jvmargs=-Xmx5g",
+        f"-Pversion={identity.version}",
+        f"-PkastSourceRevision={identity.revision}",
+        *tasks,
+        "--console=plain",
+        # Keep diagnostic HTML profiling outside artifact qualification.
+        "--info",
     )
+    result = gradle_graph.run(command, ROOT, stage.reports, gradle_graph.Budget(stage.seconds))
+    print(
+        json.dumps({"stage": stage.directory, **{key: str(value) for key, value in asdict(result).items()}}),
+        file=sys.stderr,
+    )
+    match result.outcome:
+        case gradle_graph.Outcome.SUCCEEDED:
+            return
+        case gradle_graph.Outcome.TIMED_OUT:
+            raise SystemExit(Failure.GRADLE_TIMED_OUT.value)
+        case gradle_graph.Outcome.CANCELLED:
+            raise SystemExit(Failure.GRADLE_CANCELLED.value)
+        case gradle_graph.Outcome.PROCESS_FAILED | gradle_graph.Outcome.START_FAILED:
+            raise SystemExit(Failure.GRADLE_FAILED.value)
 
 
 def assemble(identity: Identity, destination: Path) -> None:
@@ -237,6 +281,7 @@ def assemble(identity: Identity, destination: Path) -> None:
         "assembleRelease",
         ":runtime:hosted:headlessBootstrapPlugin",
         "generateKastModuleKnowledge",
+        stage=GradleStage.ASSEMBLY,
     )
     run(
         [
@@ -293,7 +338,7 @@ def qualify(payload: Admitted) -> None:
                 raise SystemExit(Failure.UNSAFE_ARCHIVE.value)
             archive.extractall(product, members=members, filter="data")
         # The suite runs the exact assembled Control executable and JVM libraries, not a local rebuild.
-        gradle(identity, f"-PkastControlProduct={product}", "publicLauncherTest")
+        gradle(identity, f"-PkastControlProduct={product}", "publicLauncherTest", stage=GradleStage.QUALIFICATION)
 
 
 def main() -> None:

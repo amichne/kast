@@ -51,74 +51,34 @@ jobs:
           cache-cleanup: on-success
 
       - name: Verify parser and glossary contracts
-        run: mise exec -- python3 .github/scripts/ci/verify_documentation.py
+        run: mise run docs:contracts
 
       - name: Install locked Mintlify CLI
-        env:
-          NPM_CONFIG_USERCONFIG: ${{ runner.temp }}/kast-mint-user.npmrc
-          NPM_CONFIG_GLOBALCONFIG: ${{ runner.temp }}/kast-mint-global.npmrc
-          NPM_CONFIG_CACHE: ${{ runner.temp }}/kast-mint-npm-cache
-          NPM_CONFIG_UPDATE_NOTIFIER: "false"
-        run: |
-          : > "$NPM_CONFIG_USERCONFIG"
-          : > "$NPM_CONFIG_GLOBALCONFIG"
-          npm ci --prefix .github/tools/mintlify --ignore-scripts --no-audit --no-fund
+        run: mise run docs:mintlify-install
 
       - name: Verify validator network handling
-        run: node --test .github/tools/mintlify/test-runtime.mjs
+        run: mise run docs:mintlify-runtime
 
       - name: Validate Mintlify build
-        working-directory: docs/public
-        run: '"${{ github.workspace }}/.github/tools/mintlify/node_modules/.bin/mint" validate'
+        run: mise run docs:mintlify-validate
 
       - name: Examine Mintlify links
-        working-directory: docs/public
-        run: '"${{ github.workspace }}/.github/tools/mintlify/node_modules/.bin/mint" broken-links'
+        run: mise run docs:mintlify-links
 
       - name: Select rendered reader path check
         id: reader-path
         env:
           BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
-        run: |
-          python3 - <<'PYTHON'
-          import os
-          import subprocess
-          paths = (
-              "docs/public/docs.json", "docs/public/index.mdx", "docs/public/start.mdx",
-              "docs/public/search.mdx", "docs/public/troubleshooting.mdx",
-              "docs/public/style.css", "docs/public/sidebar-toggle.js",
-              "docs/internal/tooling/rendered", ".github/tools/mintlify", ".github/workflows/docs.yml",
-          )
-          base = os.environ["BASE_SHA"]
-          head = os.environ["HEAD_SHA"]
-          revisions = [f"{base}...{head}"] if os.environ["GITHUB_EVENT_NAME"] == "pull_request" else [base, head]
-          changed = not base or subprocess.run(
-              ["git", "diff", "--quiet", *revisions, "--", *paths], check=False,
-          ).returncode != 0
-          with open(os.environ["GITHUB_OUTPUT"], "a") as output:
-              output.write(f"run={'true' if changed else 'false'}\n")
-          PYTHON
+        run: mise run docs:reader-path
 
       - name: Click through Get started on desktop and mobile
         if: steps.reader-path.outputs.run == 'true'
-        run: |
-          npm ci --prefix docs/internal/tooling/rendered --ignore-scripts --no-audit --no-fund
-          node .github/tools/mintlify/node_modules/@puppeteer/browsers/lib/cjs/main-cli.js \
-            install chrome@155.0.8059.84 --path build/documentation/browsers
-          uv run --locked --project docs/internal/tooling python docs/internal/tooling/rendered/run.py \
-            --preview --reader-journey \
-            --browser-executable build/documentation/browsers/chrome/linux-155.0.8059.84/chrome-linux64/chrome \
-            --output build/reports/documentation/reader-journey
+        run: mise run docs:reader-journey
 
       - name: Assess prose and contract evidence
         id: prose
-        run: >-
-          uv run --locked --project docs/internal/tooling python docs/internal/tooling/prose_assessment.py
-          --vale-bin "$(mise where vale@3.24.0)/vale"
-          --reader-vale-bin "$(mise where vale@3.25.1)/vale"
-          --dispositions docs/reviews/documentation-migration/prose-dispositions.json
-          --report build/reports/documentation/prose/receipt.json
+        run: mise run docs:prose
 
       - name: Keep documentation evidence
         if: ${{ !cancelled() }}

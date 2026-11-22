@@ -1,0 +1,55 @@
+# Documentation checks for .github/workflows/docs.yml. The contract is in config/ci/tasks/ci.toml.
+#
+# The workflow runs these tasks in the order below. The Mintlify, reader-journey, and prose tasks
+# use the locked Mintlify CLI, so run `docs:mintlify-install` before them. `docs:all` runs every
+# check in workflow order.
+
+["docs:contracts"]
+description = "[network] Parser, glossary, knowledge, and reader contract suites"
+run = "python3 .github/scripts/ci/verify_documentation.py"
+
+["docs:mintlify-install"]
+description = "[network] Install the locked Mintlify CLI with empty npm configuration"
+run = ".github/tools/mintlify/install.sh"
+
+["docs:mintlify-runtime"]
+description = "Verify the Mintlify validator's network handling"
+run = "node --test .github/tools/mintlify/test-runtime.mjs"
+
+["docs:mintlify-validate"]
+description = "[network] Validate the Mintlify build of docs/public"
+run = ".github/tools/mintlify/mint.sh validate"
+
+["docs:mintlify-links"]
+description = "[network] Examine Mintlify links in docs/public"
+run = ".github/tools/mintlify/mint.sh broken-links"
+
+["docs:reader-path"]
+description = "Select the reader journey from BASE_SHA and HEAD_SHA; with no base it selects run=true"
+run = "python3 docs/internal/tooling/rendered/reader_path.py"
+
+["docs:reader-journey"]
+description = "[network] Click through Get started on desktop and mobile in the pinned Chrome"
+run = "docs/internal/tooling/rendered/reader-journey.sh"
+
+["docs:prose"]
+description = "Assess prose and contract evidence with Vale 3.24.0 and reader Vale 3.25.1"
+run = '''
+vale="$(mise where vale@3.24.0)"
+reader_vale="$(mise where vale@3.25.1)"
+uv run --locked --project docs/internal/tooling python docs/internal/tooling/prose_assessment.py --vale-bin "$vale/vale" --reader-vale-bin "$reader_vale/vale" --dispositions docs/reviews/documentation-migration/prose-dispositions.json --report build/reports/documentation/prose/receipt.json'''
+
+# Local aggregate. The reader-path selector only schedules CI work; with no base it always selects
+# the journey, so the aggregate runs the journey directly.
+
+["docs:all"]
+description = "[network] Every documentation check, in workflow order"
+run = [
+  "mise run docs:contracts",
+  "mise run docs:mintlify-install",
+  "mise run docs:mintlify-runtime",
+  "mise run docs:mintlify-validate",
+  "mise run docs:mintlify-links",
+  "mise run docs:reader-journey",
+  "mise run docs:prose",
+]

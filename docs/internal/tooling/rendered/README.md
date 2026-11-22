@@ -13,6 +13,10 @@ mise exec -- npm ci --ignore-scripts --engine-strict --prefix .github/tools/mint
 mise exec -- npm ci --ignore-scripts --engine-strict --prefix docs/internal/tooling/rendered
 ```
 
+CI runs the reader journey with `mise run docs:reader-journey`, and the same command works locally on Linux or macOS.
+It installs the locked packages and the pinned Chrome, then runs the journey.
+The steps below do the same work by hand.
+
 For Linux CI, install the exact Chrome version through the existing locked browser installer:
 
 ```shell

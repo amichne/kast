@@ -17,6 +17,7 @@ from unittest.mock import patch
 from urllib.parse import unquote
 
 import macos_reset_checks
+import workflow_contract
 import verification_plan
 from validation_scope import (
     ALL_CHECKS,
@@ -39,6 +40,26 @@ PRODUCT = frozenset({Check.SOURCE, Check.PRODUCT, Check.PORTABLE})
 SOURCE_ONLY = frozenset({Check.SOURCE, Check.PORTABLE})
 PAGE = "docs/public/index.mdx"
 SOURCE = "cli/src/main/kotlin/Management.kt"
+
+
+
+def task_run(name: str) -> str:
+    """The command a CI task runs; workflow steps call the task, and the task owns the command."""
+    run = workflow_contract.tasks()[name]["run"]
+    return run if isinstance(run, str) else " && ".join(run)
+
+
+def composed_ci():
+    """The composed step driver; its plans own the commands that composed tasks run."""
+    import importlib.util
+
+    if "composed_ci" not in sys.modules:
+        path = Path(__file__).resolve().parents[3] / "packaging/internal/composition/composed_ci.py"
+        spec = importlib.util.spec_from_file_location("composed_ci", path)
+        module = importlib.util.module_from_spec(spec)
+        sys.modules["composed_ci"] = module
+        spec.loader.exec_module(module)
+    return sys.modules["composed_ci"]
 
 
 class ValidationScopeTest(unittest.TestCase):
@@ -512,7 +533,8 @@ class SourceInventoryTest(unittest.TestCase):
                 selection = re.split(r"\n  (?=\S)", selection, maxsplit=1)[0]
                 self.assertIn("if: github.ref == 'refs/heads/main'", selection)
                 self.assertIn('steps.select.outputs.labels || \'"macos-15"\'', selection)
-                self.assertIn("run: python3 .github/scripts/ci/mac_runner.py", selection)
+                self.assertIn("run: mise run ci:mac-runner", selection)
+                self.assertEqual("python3 .github/scripts/ci/mac_runner.py", task_run("ci:mac-runner"))
         self.assertEqual(1, workflow.count("fromJSON(needs."))
         for path in workflows.glob("*.yml"):
             with self.subTest(workflow=path.name):
@@ -524,7 +546,8 @@ class SourceInventoryTest(unittest.TestCase):
             self.assertNotIn(f"\n  {retired}:\n", workflow)
         assembly = re.split(r"\n  (?=\S)", workflow.split("\n  assembly:\n", 1)[1], maxsplit=1)[0]
         self.assertIn("    needs: scope\n", assembly)
-        self.assertIn("release_handoff.py assemble --version", assembly)
+        self.assertIn("run: mise run ci:assembly", assembly)
+        self.assertIn("release_handoff.py assemble --version", task_run("ci:assembly"))
         # Mac qualification runs beside source validation. The sealed product and the
         # required aggregate keep the complete source proof as a precondition.
         for job in ("kotlin", "composed-macos"):
@@ -619,16 +642,31 @@ class SourceInventoryTest(unittest.TestCase):
             "if: inputs.release_target != 'macos-aarch64'\n",
             assembly,
         )
-        self.assertIn("assembleRelease :runtime:hosted:headlessBootstrapPlugin", assembly)
-        self.assertIn(
-            "${{ matrix.target == 'linux-x86_64' && 'verifyJsonContracts verifyKastArchitecture' || '' }}",
-            assembly,
-        )
+        self.assertIn("TARGET: ${{ matrix.target }}", assembly)
+        self.assertIn('run: mise run composed:release --target "$TARGET"', assembly)
+        self.assertIn("composed_ci.py release ", task_run("composed:release"))
+        # The driver adds the source guards for linux-x86_64 only.
+        ci = composed_ci()
+        release = ci.Release("1.2.3", "a" * 40)
+        tasks = ("assembleRelease", ":runtime:hosted:headlessBootstrapPlugin")
+        guards = ("verifyJsonContracts", "verifyKastArchitecture")
+        for target, expected in (
+            (ci.Target.LINUX_X86_64, (*tasks, *guards)),
+            (ci.Target.MACOS_AARCH64, tasks),
+        ):
+            with self.subTest(target=target):
+                (command,) = ci.release_plan(target, release).commands
+                self.assertEqual("./gradlew", command.argv[0])
+                self.assertEqual(expected, command.argv[-len(expected):])
+                self.assertEqual(len(expected), len(set(command.argv) & {*tasks, *guards}))
         bootstrap = workflow.split("- name: Assemble bootstrap for the retained macOS release\n", 1)[1]
         bootstrap = bootstrap.split("\n      - name:", 1)[0]
         self.assertIn("if: inputs.release_target == 'macos-aarch64' && !inputs.complete_product\n", bootstrap)
-        self.assertIn(":runtime:hosted:headlessBootstrapPlugin", bootstrap)
-        self.assertNotIn("assembleRelease", bootstrap)
+        self.assertIn("run: mise run composed:bootstrap\n", bootstrap)
+        self.assertIn("composed_ci.py bootstrap ", task_run("composed:bootstrap"))
+        (command,) = ci.bootstrap_plan(release).commands
+        self.assertEqual(":runtime:hosted:headlessBootstrapPlugin", command.argv[-1])
+        self.assertNotIn("assembleRelease", command.argv)
 
     def test_complete_mac_qualification_precedes_preview_publication(self):
         workflows = Path(__file__).resolve().parents[2] / "workflows"
@@ -656,12 +694,14 @@ class SourceInventoryTest(unittest.TestCase):
             joined,
         )
         self.assertIn("path: build/product-inputs/macos-aarch64", joined)
-        self.assertIn("product_producer.py seal", joined)
+        self.assertIn("run: mise run ci:seal", joined)
+        self.assertIn("product_producer.py seal", task_run("ci:seal"))
         self.assertNotIn("name: ci-product-candidate-", joined)
         accepted = jobs["complete-product"]
         self.assertIn("needs: [sealed-product, installed-product]", accepted)
         self.assertNotIn("always()", accepted)
-        self.assertIn("product_producer.py accept", accepted)
+        self.assertIn("run: mise run ci:join", accepted)
+        self.assertIn("product_producer.py accept", task_run("ci:join"))
         self.assertIn(
             "name: kast-installed-product-macos-aarch64-"
             "${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}", accepted
@@ -670,19 +710,24 @@ class SourceInventoryTest(unittest.TestCase):
         self.assertIn("needs: sealed-product", installed)
         self.assertNotIn("linux-x86_64", installed + joined + accepted)
         self.assertIn("runner: macos-15", installed)
-        self.assertIn("product_lifecycle_probe.py", installed)
-        self.assertIn("KAST_ACCEPTANCE_BASELINE_RECORD_SHA256", installed)
+        self.assertIn("run: mise run ci:acceptance ", installed)
+        self.assertIn("product_lifecycle_probe.py", task_run("ci:acceptance"))
+        # The baseline is a checked-in pin, read into step outputs before any download.
+        self.assertIn("run: mise run ci:acceptance-baseline", installed)
+        self.assertNotIn("KAST_ACCEPTANCE_BASELINE", installed)
         # Schema-2 baselines carry acceptance only in the joined candidate; the sealed
         # artifact is a fallback for legacy baselines, and admission still decides.
         accepted_baseline = installed.index(
-            "name: ci-product-candidate-${{ vars.KAST_ACCEPTANCE_BASELINE_REVISION }}"
+            "name: ci-product-candidate-${{ steps.baseline.outputs.revision }}"
         )
         legacy_baseline = installed.index(
-            "name: ci-product-sealed-${{ vars.KAST_ACCEPTANCE_BASELINE_REVISION }}"
+            "name: ci-product-sealed-${{ steps.baseline.outputs.revision }}"
         )
         self.assertLess(accepted_baseline, legacy_baseline)
         self.assertIn("if: steps.accepted-baseline.outcome != 'success'", installed)
-        self.assertLess(legacy_baseline, installed.index("candidate.admit_baseline("))
+        self.assertLess(installed.index("run: mise run ci:acceptance-baseline"), accepted_baseline)
+        self.assertLess(legacy_baseline, installed.index("run: mise run ci:acceptance-inputs"))
+        self.assertIn("acceptance_inputs.py admit", task_run("ci:acceptance-inputs"))
         self.assertIn(
             "name: ci-product-candidate-${{ github.sha }}-${{ github.run_attempt }}", accepted
         )
@@ -693,8 +738,9 @@ class SourceInventoryTest(unittest.TestCase):
         self.assertIn("COMPLETE_PRODUCT_RESULT: ${{ needs.complete-product.result }}", required)
         self.assertLess(
             required.index('test "$COMPLETE_PRODUCT_RESULT" = success'),
-            required.index("validation_outcome.py"),
+            required.index("run: mise run ci:outcome"),
         )
+        self.assertIn("validation_outcome.py", task_run("ci:outcome"))
         candidate = (workflows / "composed-linux.yml").read_text()
         reused = candidate.split("- name: Download the exact CI release\n", 1)[1]
         reused = reused.split("- name: Assemble bootstrap", 1)[0]
@@ -705,7 +751,12 @@ class SourceInventoryTest(unittest.TestCase):
             self.assertIn("artifact_id: ${{ steps.handoff.outputs.artifact-id }}", jobs[producer])
             self.assertIn(f"artifact-ids: ${{{{ needs.{producer}.outputs.artifact_id || '0' }}}}", jobs[consumer])
         self.assertNotIn("run-id:", reused)
-        self.assertIn("release_handoff.py restore --version", reused)
+        self.assertIn("run: mise run composed:restore\n", reused)
+        self.assertEqual(
+            'uv run --locked --script .github/scripts/ci/release_handoff.py restore'
+            ' --version "${BUNDLE_VERSION-0.0.0}"',
+            task_run("composed:restore"),
+        )
         self.assertIn("if: inputs.release_target != '' && !inputs.complete_product", candidate)
         assembled = candidate.split("- name: Retain the assembled candidate\n", 1)[1]
         assembled = assembled.split("\n      - name:", 1)[0]
@@ -726,14 +777,40 @@ class SourceInventoryTest(unittest.TestCase):
             "target-record-${{ matrix.target }}.json",
         ):
             self.assertIn(f"build/composed-release/{item}", artifact)
-        self.assertIn('--version "$BUNDLE_VERSION" --source-revision "$GITHUB_SHA"', candidate)
-        self.assertIn("--receipt build/composed-evidence/qualification.json", candidate)
-        self.assertLess(
-            candidate.index("packaging/internal/composition/composed_release.py qualify"),
-            candidate.index("product_producer.py target"),
+        # Workflow-supplied identity reaches every step that builds or qualifies the product.
+        identity = '--version "${BUNDLE_VERSION-0.0.0}" --source-revision "${GITHUB_SHA:-$(git rev-parse HEAD)}"'
+        for task in (
+            "composed:bootstrap",
+            "composed:release",
+            "composed:assemble",
+            "composed:qualify",
+            "composed:coordinator",
+        ):
+            with self.subTest(task=task):
+                self.assertIn(identity, task_run(task))
+        self.assertIn(
+            "--receipt build/composed-evidence/qualification.json", task_run("composed:seal-target")
+        )
+        self.assertIn("product_producer.py target ", task_run("composed:seal-target"))
+        self.assertIn("composed_ci.py qualify ", task_run("composed:qualify"))
+        ci = composed_ci()
+        qualify = ci.qualification_plan(
+            ci.Target.MACOS_AARCH64,
+            "/opt/python",
+            ci.Release("1.2.3", "a" * 40),
+            ("b" * 64, "c" * 64),
+            Path("/work"),
+            Path("/scratch"),
+        ).commands[-1]
+        self.assertEqual(
+            ("packaging/internal/composition/composed_release.py", "qualify"), qualify.argv[4:6]
         )
         self.assertLess(
-            candidate.index("product_producer.py target"),
+            candidate.index('run: mise run composed:qualify --target "$TARGET"'),
+            candidate.index('run: mise run composed:seal-target --target "$TARGET"'),
+        )
+        self.assertLess(
+            candidate.index('run: mise run composed:seal-target --target "$TARGET"'),
             candidate.index("Retain target-local qualified product evidence"),
         )
         preview = (workflows / "developer-release.yml").read_text()
@@ -811,7 +888,8 @@ class SourceInventoryTest(unittest.TestCase):
         self.assertNotIn("pull_request", seed)
         self.assertIn(key, seed)
         self.assertIn("cache-read-only: false", seed)
-        self.assertIn("run: python3 .github/scripts/ci/source_validation.py\n", seed)
+        self.assertIn("run: mise run ci:source\n", seed)
+        self.assertEqual("python3 .github/scripts/ci/source_validation.py", task_run("ci:source"))
         docs = (workflows / "docs.yml").read_text()
         self.assertIn("uses: gradle/actions/setup-gradle@", docs)
         self.assertIn(trusted, docs)
@@ -824,7 +902,8 @@ class SourceInventoryTest(unittest.TestCase):
             self.assertIn(trusted, body)
             if job == "source-work":
                 self.assertIn(key, body)
-        self.assertIn("uv run --locked --script .github/scripts/ci/macos_reset_checks.py", body)
+        self.assertIn("run: mise run ci:mac-reset", body)
+        self.assertEqual("uv run --locked --script .github/scripts/ci/macos_reset_checks.py", task_run("ci:mac-reset"))
         command = macos_reset_checks.COMMAND
         self.assertIn("--max-workers=1", command)
         self.assertIn(":distribution:cli:test", command)

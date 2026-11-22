@@ -1,0 +1,77 @@
+# Composed product checks for .github/workflows/composed-linux.yml. The contract is in
+# config/ci/tasks/ci.toml.
+#
+# `packaging/internal/composition/composed_ci.py` owns each step's platform behaviour and
+# selects it from an explicit `--target linux-x86_64|macos-aarch64`. Tasks that take a target
+# say so; pass it after the task name, as the workflow does.
+#
+# Local defaults: the source revision is HEAD and the version is 0.0.0. The version and the
+# candidate interpreter use `${NAME-default}` rather than `${NAME:-default}`, so a value that CI
+# sets but leaves empty still reaches the admission check and fails there.
+#
+# Additional prefix: [Linux] a Linux x86-64 host.
+
+["composed:source"]
+description = "Require a clean checkout at the expected source revision"
+run = 'bash .github/scripts/release/admit-source.sh --expected-source-revision "${GITHUB_SHA:-$(git rev-parse HEAD)}"'
+
+["composed:admit"]
+description = "Admit the clean source, numeric version, retired action input, and target; pass --target and --release-target"
+depends = ["composed:source"]
+run = 'python3 .github/scripts/release/candidate_admission.py --version "${BUNDLE_VERSION-0.0.0}" --action-revision "${ACTION_REVISION-}"'
+
+["composed:storage"]
+description = "Require free workspace and /tmp scratch space for composed assembly"
+run = 'python3 .github/scripts/ci/build_storage.py check --minimum-bytes 8589934592 "${GITHUB_WORKSPACE:-$PWD}" /tmp'
+
+["composed:linux-support"]
+description = "[Linux] [network] Prepare APT-authenticated Linux runtime support in build/cloud-input; pass --target"
+run = "python3 packaging/internal/composition/composed_ci.py linux-support"
+
+["composed:lint"]
+description = "Ruff and Pyright for the shared composition Python source"
+run = [
+  "uv run --locked --project packaging ruff check packaging/internal/composition/composed_release.py packaging/internal/composition/composed_ci.py packaging/internal/verification/composed_host_probe.py packaging/tests/test_composition_release.py packaging/tests/test_composition_ci.py",
+  "uv run --locked --project packaging ruff format --check packaging/internal/composition/composed_release.py packaging/internal/composition/composed_ci.py packaging/internal/verification/composed_host_probe.py packaging/tests/test_composition_release.py packaging/tests/test_composition_ci.py",
+  "uv run --locked --project packaging pyright --project packaging",
+]
+
+["composed:tests"]
+description = "Composition, runtime archive, and managed headless suites on this host's platform"
+run = "uv run --locked --project packaging pytest packaging/tests/test_composition_*.py packaging/tests/test_runtime_archive.py packaging/tests/test-managed-headless.py -q"
+
+["composed:restore"]
+description = "[macOS] [artifacts] Admit the retained CI release in build/handoff-input"
+run = 'uv run --locked --script .github/scripts/ci/release_handoff.py restore --version "${BUNDLE_VERSION-0.0.0}"'
+
+["composed:bootstrap"]
+description = "[network] Assemble the managed headless bootstrap for a retained release"
+run = 'python3 packaging/internal/composition/composed_ci.py bootstrap --version "${BUNDLE_VERSION-0.0.0}" --source-revision "${GITHUB_SHA:-$(git rev-parse HEAD)}"'
+
+["composed:release"]
+description = "[network] Assemble Control, Host, and bootstrap; linux-x86_64 adds the JSON contract and architecture guards; pass --target"
+run = 'python3 packaging/internal/composition/composed_ci.py release --version "${BUNDLE_VERSION-0.0.0}" --source-revision "${GITHUB_SHA:-$(git rev-parse HEAD)}"'
+
+["composed:assemble"]
+description = "[network] Download the pinned donor and assemble the composed archive from composed:release outputs; pass --target and --donor"
+run = 'python3 packaging/internal/composition/composed_ci.py assemble --version "${BUNDLE_VERSION-0.0.0}" --source-revision "${GITHUB_SHA:-$(git rev-parse HEAD)}"'
+
+["composed:discard"]
+description = "Discard the donor and assembly scratch inputs before qualification"
+run = "python3 packaging/internal/composition/composed_ci.py discard"
+
+["composed:qualify"]
+description = "Qualify the composed archive from composed:assemble in /tmp/kc with the target's interpreter; pass --target"
+run = 'python3 packaging/internal/composition/composed_ci.py qualify --candidate-python "${CANDIDATE_PYTHON-$(command -v python3)}" --version "${BUNDLE_VERSION-0.0.0}" --source-revision "${GITHUB_SHA:-$(git rev-parse HEAD)}"'
+
+["composed:coordinator"]
+description = "[Linux] Exercise the installed coordinator; needs sudo, loginctl, and systemd user services; pass --target"
+run = 'python3 packaging/internal/composition/composed_ci.py coordinator --java-release "$(mise where java)/release" --version "${BUNDLE_VERSION-0.0.0}" --source-revision "${GITHUB_SHA:-$(git rev-parse HEAD)}"'
+
+["composed:receipt"]
+description = "Copy the qualification receipt beside its product bytes; pass --target"
+run = "python3 packaging/internal/composition/composed_ci.py retain-receipt"
+
+["composed:seal-target"]
+description = "[artifacts] Seal target and toolchain evidence; needs the GitHub Actions run identity; pass --target"
+run = 'python3 .github/scripts/release/product_producer.py target --directory build/composed-release --receipt build/composed-evidence/qualification.json --control /tmp/kc/components/control/share/kast/libexec/kast-management --java-release "$(mise where java)/release"'

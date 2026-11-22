@@ -8,6 +8,34 @@ Mergify brings it up to date with `main`, waits for `CI required checks` on that
 One pull request is validated at a time, on the pull request itself.
 `.mergify.yml` owns the queue rules. GitHub's native merge queue needs an organization-owned repository.
 
+## Run a CI check locally
+
+Every check workflow step runs `mise run <task> [arguments]`; a developer or agent runs the same task.
+Tasks live in `config/ci/tasks/ci.toml`, `docs.toml`, and `composed.toml`, and `mise.toml` includes them.
+GitHub-supplied values, such as the run number or workspace, have local defaults inside each task.
+The check workflows are `ci.yml`, `docs.yml`, `composed-linux.yml`, and `gradle-cache.yml`.
+
+| Command | Runs |
+| --- | --- |
+| `mise run ci:pr` | Decisions, documentation, and complete source obligations, in that order |
+| `mise run ci:pr-full` | `ci:pr`, the portable container suites, and the macOS reset adapters |
+| `mise run ci:source --affected --base <full-sha> --event pull_request` | The affected source obligations for a change |
+| `mise tasks ls` | Every task, with the host requirements in its description |
+
+A description prefix names what a task needs beyond the pinned toolchain.
+`[macOS]` needs a macOS host, `[container]` a running container runtime, and `[network]` public downloads.
+`[github]` needs the GitHub API with an authenticated `gh`, and `[artifacts]` needs outputs of earlier CI jobs.
+A task that lacks its requirement fails with a reason; it never reports success.
+
+`workflow_contract.py` enforces this in the decisions suite.
+It rejects a check workflow step that is not a task invocation or a reviewed bootstrap step, and a step that names an unknown task.
+It also rejects a task nothing uses and a task file that `mise.toml` does not include.
+Every workflow file must be classified as a check or publication workflow.
+Publication workflows release or maintain artifacts and stay outside this contract.
+
+The installed acceptance baseline is the checked-in pin `config/ci/acceptance-baseline.json`.
+`acceptance_inputs.py` decodes it, so changing the baseline is a reviewed one-file change.
+
 `validation_scope.py` selects checks from the exact Git diff and the native compilation setting.
 The selector checks the checkout revision before it reads the diff.
 Pull requests use the merge base. Pushes use the entire before/head range.
@@ -217,6 +245,10 @@ Jobs set up Python through `.github/actions/local-python`, which uses uv with ru
 The runner `.path` must include uv.
 
 ## Compile once and join qualification late
+
+Release assembly and Mac qualification run Gradle through `gradle_graph.run` with budgets below their job timeouts.
+A stage that exceeds its budget stops with a process snapshot and Gradle daemon thread dumps in `build/reports/native/<stage>/`.
+The failure is `GRADLE_TIMED_OUT`, not a silent job cancellation.
 
 Ubuntu assembles the shared release and runs source validation.
 The hosted Mac restores the exact assembled release and qualifies the macOS ARM64 runtime.

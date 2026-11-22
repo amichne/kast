@@ -75,29 +75,19 @@ nativeTest.runtimeClasspath += sourceSets.main.get().output
 
 kotlin.target.compilations.getByName("nativeTest").associateWith(kotlin.target.compilations.getByName("main"))
 
-val nativeFixtureIdeaHome = providers.gradleProperty("nativeFixtureIdeaHome")
-val nativeFixtureIdea = SharedNativeFixtureIdea.select(project)
+val nativeFixtureIdea = SharedNativeFixtureIdea.select(project, ideaPlatformBuild)
 val nativeIdeaHome = nativeFixtureIdea.home
-val extractNativeTestIdea =
-    tasks.register("extractNativeTestIdea") {
-        dependsOn(nativeFixtureIdea.contents)
-    }
 val nativeIdeaLibraries =
-    files(
-            nativeIdeaHome.map { home ->
-                fileTree(home) {
-                    include(
-                        "lib/**/*.jar",
-                        "plugins/java/lib/**/*.jar",
-                        "plugins/platform-structuralSearch-plugin/lib/**/*.jar",
-                        "plugins/Kotlin/lib/**/*.jar",
-                        "plugins/toml/lib/**/*.jar",
-                    )
-                    exclude("plugins/Kotlin/lib/jps/**", "plugins/Kotlin/lib/kotlinc/**")
-                }
-            }
+    nativeFixtureIdea.contents.asFileTree.matching {
+        include(
+            "lib/**/*.jar",
+            "plugins/java/lib/**/*.jar",
+            "plugins/platform-structuralSearch-plugin/lib/**/*.jar",
+            "plugins/Kotlin/lib/**/*.jar",
+            "plugins/toml/lib/**/*.jar",
         )
-        .apply { if (!nativeFixtureIdeaHome.isPresent) builtBy(extractNativeTestIdea) }
+        exclude("plugins/Kotlin/lib/jps/**", "plugins/Kotlin/lib/kotlinc/**")
+    }
 
 dependencies {
     add(nativeTest.implementationConfigurationName, nativeIdeaLibraries)
@@ -123,7 +113,7 @@ fun registerSymbolNativeFixtures(taskName: String, selectedClasses: List<String>
         testClassesDirs = nativeTest.output.classesDirs
         classpath = nativeTest.runtimeClasspath
         dependsOn("detektNativeTest")
-        if (!nativeFixtureIdeaHome.isPresent) dependsOn(extractNativeTestIdea)
+        dependsOn(nativeFixtureIdea.contents)
         if (selectedClasses.isNotEmpty()) {
             dependsOn(":verifyKotlinSemanticInputs")
             filter { selectedClasses.forEach(::includeTestsMatching) }

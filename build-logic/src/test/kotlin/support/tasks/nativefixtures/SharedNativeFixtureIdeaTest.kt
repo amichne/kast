@@ -7,6 +7,9 @@ import java.util.zip.ZipOutputStream
 import kotlin.io.path.createDirectories
 import kotlin.io.path.readText
 import kotlin.io.path.writeText
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.SerializationException
+import kotlinx.serialization.json.Json
 import org.gradle.testkit.runner.BuildResult
 import org.gradle.testkit.runner.GradleRunner
 import org.gradle.testkit.runner.TaskOutcome
@@ -15,6 +18,10 @@ import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
+
+/** Product metadata whose fixed build field is absent. */
+@Serializable
+private data class ProductInfoWithoutBuild(val name: String)
 
 class SharedNativeFixtureIdeaTest {
     @TempDir lateinit var root: Path
@@ -59,29 +66,86 @@ class SharedNativeFixtureIdeaTest {
         root.resolve("idea.zip").writeText("invalid archive must remain unobserved with an explicit home")
         val supplied = root.resolve("supplied").createDirectories()
         supplied.resolve("supplied.jar").writeText("external SDK")
+        supplied.resolve(PRODUCT_INFO).writeText(productInfo(PINNED))
         val property = "-PnativeFixtureIdeaHome=$supplied"
-        assertNull(run(property).task(PRODUCER))
-        assertHomes(mapOf("supplied.jar" to "external SDK"))
+        val admitted = run(property)
+        assertNull(admitted.task(PRODUCER))
+        assertEquals(TaskOutcome.SUCCESS, admitted.task(":symbol:intellij:$ADMISSION")?.outcome)
+        assertHomes(mapOf("supplied.jar" to "external SDK", PRODUCT_INFO to productInfo(PINNED)))
         supplied.resolve("supplied.jar").writeText("updated external SDK")
         val changed = run(property)
         assertNull(changed.task(PRODUCER))
         assertEquals(TaskOutcome.SUCCESS, changed.task(":symbol:intellij:observe")?.outcome)
-        assertHomes(mapOf("supplied.jar" to "updated external SDK"))
+        assertHomes(mapOf("supplied.jar" to "updated external SDK", PRODUCT_INFO to productInfo(PINNED)))
 
         val rejected = runner().buildAndFail()
         assertEquals(TaskOutcome.FAILED, rejected.task(PRODUCER)?.outcome)
     }
+
+    @Test
+    fun `missing supplied home fails admission before any consumer`() {
+        fixture()
+        val supplied = root.resolve("removed-sdk")
+        assertRejected(supplied, "the directory does not exist")
+    }
+
+    @Test
+    fun `supplied home without product info fails admission before any consumer`() {
+        fixture()
+        val supplied = root.resolve("bare-sdk").createDirectories()
+        supplied.resolve("supplied.jar").writeText("external SDK")
+        assertRejected(supplied, "the directory has no product-info.json")
+    }
+
+    @Test
+    fun `supplied home of another build fails admission before any consumer`() {
+        fixture()
+        val supplied = root.resolve("other-sdk").createDirectories()
+        supplied.resolve(PRODUCT_INFO).writeText(productInfo("261.1.1"))
+        assertRejected(supplied, "it is build 261.1.1 instead of pinned build $PINNED")
+    }
+
+    @Test
+    fun `supplied home with malformed product info fails admission before any consumer`() {
+        fixture()
+        val supplied = root.resolve("malformed-sdk").createDirectories()
+        supplied.resolve(PRODUCT_INFO).writeText(Json.encodeToString(ProductInfoWithoutBuild("IntelliJ IDEA")))
+        assertRejected(supplied, "its product-info.json has no valid buildNumber")
+    }
+
+    private fun assertRejected(supplied: Path, problem: String) {
+        root.resolve("idea.zip").writeText("invalid archive must remain unobserved with an explicit home")
+        val rejected = runner("-PnativeFixtureIdeaHome=$supplied").buildAndFail()
+        val expected = "Native fixture IDEA home rejected: Gradle property nativeFixtureIdeaHome points at $supplied, " +
+            "but $problem. Remove the nativeFixtureIdeaHome override to use the extracted pinned distribution, " +
+            "or point it at an IntelliJ IDEA $PINNED distribution."
+        assertTrue(rejected.output.contains(expected)) { rejected.output.takeLast(8_192) }
+        val admissions = rejected.tasks.filter { it.path.endsWith(":$ADMISSION") }
+        assertTrue(admissions.isNotEmpty() && admissions.all { it.outcome == TaskOutcome.FAILED }) {
+            rejected.output.takeLast(8_192)
+        }
+        assertNull(rejected.task(PRODUCER))
+        assertTrue(rejected.tasks.none { it.path.endsWith(":observe") }) { rejected.output.takeLast(8_192) }
+        listOf("symbol/intellij", "runtime/hosted").forEach {
+            assertTrue(!Files.exists(root.resolve("$it/build/observed")), "$it consumer ran")
+        }
+    }
+
+    private fun productInfo(build: String): String = Json.encodeToString(NativeFixtureProductInfo(build, emptyList()))
 
     private fun fixture() {
         listOf("relation/intellij", "symbol/intellij", "runtime/hosted").forEach { root.resolve(it).createDirectories() }
         root.resolve("settings.gradle").writeText(
             "rootProject.name = 'shared-native-sdk'\ninclude ':relation:intellij', ':symbol:intellij', ':runtime:hosted'\n",
         )
-        val classes = Path.of(SharedNativeFixtureIdea::class.java.protectionDomain.codeSource.location.toURI())
-        val classpath = classes.toString().replace("\\", "\\\\").replace("'", "\\'")
+        // Admission decodes product metadata, so the plugin classpath carries its serialization runtime.
+        val classpath = listOf(SharedNativeFixtureIdea::class.java, Json::class.java, SerializationException::class.java)
+            .map { Path.of(it.protectionDomain.codeSource.location.toURI()).toString() }
+            .distinct()
+            .joinToString(", ") { "'" + it.replace("\\", "\\\\").replace("'", "\\'") + "'" }
         root.resolve("build.gradle").writeText(
             """
-            buildscript { dependencies { classpath files('$classpath') } }
+            buildscript { dependencies { classpath files($classpath) } }
             project(':relation:intellij') {
                 apply plugin: 'base'
                 tasks.register('extractNativeTestIdea', Sync) {
@@ -90,7 +154,7 @@ class SharedNativeFixtureIdeaTest {
                 }
             }
             configure([project(':symbol:intellij'), project(':runtime:hosted')]) {
-                def sdk = support.tasks.nativefixtures.SharedNativeFixtureIdea.INSTANCE.select(project)
+                def sdk = support.tasks.nativefixtures.SharedNativeFixtureIdea.INSTANCE.select(project, '$PINNED')
                 tasks.register('observe', Sync) {
                     from(sdk.contents)
                     into(layout.buildDirectory.dir('observed'))
@@ -141,5 +205,8 @@ class SharedNativeFixtureIdeaTest {
 
     private companion object {
         const val PRODUCER = ":relation:intellij:extractNativeTestIdea"
+        const val ADMISSION = "admitNativeFixtureIdea"
+        const val PINNED = "262.9437.185"
+        const val PRODUCT_INFO = "product-info.json"
     }
 }

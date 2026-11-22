@@ -3,6 +3,7 @@ import org.gradle.api.artifacts.VersionCatalogsExtension
 import support.tasks.nativefixtures.CompileDependencyFixture
 import support.tasks.nativefixtures.DependencyFixtureArguments
 import support.tasks.nativefixtures.NativeFixtureJvmArguments
+import support.tasks.nativefixtures.SharedNativeFixtureIdea
 
 plugins {
     id("kast.kotlin-library")
@@ -169,33 +170,25 @@ nativeTest.runtimeClasspath += sourceSets.main.get().output
 
 kotlin.target.compilations.getByName("nativeTest").associateWith(kotlin.target.compilations.getByName("main"))
 
-val nativeFixtureIdeaHome = providers.gradleProperty("nativeFixtureIdeaHome")
-val nativeIdeaHome =
-    objects.directoryProperty().apply {
-        if (nativeFixtureIdeaHome.isPresent) set(project.file(nativeFixtureIdeaHome.get()))
-        else set(layout.buildDirectory.dir("native-test/idea"))
-    }
-val extractNativeTestIdea =
-    tasks.register<Sync>("extractNativeTestIdea") {
-        from({ zipTree(relationIdeaDistribution.singleFile) })
-        into(layout.buildDirectory.dir("native-test/idea"))
-    }
+// This extraction is the default producer of the shared native-test home for every consuming project.
+tasks.register<Sync>("extractNativeTestIdea") {
+    from({ zipTree(relationIdeaDistribution.singleFile) })
+    into(layout.buildDirectory.dir("native-test/idea"))
+}
+
+val nativeFixtureIdea = SharedNativeFixtureIdea.select(project, ideaPlatformBuild)
+val nativeIdeaHome = nativeFixtureIdea.home
 val nativeIdeaLibraries =
-    files(
-            nativeIdeaHome.map { home ->
-                fileTree(home) {
-                    include(
-                        "lib/**/*.jar",
-                        "plugins/java/lib/**/*.jar",
-                        "plugins/platform-structuralSearch-plugin/lib/**/*.jar",
-                        "plugins/Kotlin/lib/**/*.jar",
-                        "plugins/toml/lib/**/*.jar",
-                    )
-                    exclude("plugins/Kotlin/lib/jps/**", "plugins/Kotlin/lib/kotlinc/**")
-                }
-            }
+    nativeFixtureIdea.contents.asFileTree.matching {
+        include(
+            "lib/**/*.jar",
+            "plugins/java/lib/**/*.jar",
+            "plugins/platform-structuralSearch-plugin/lib/**/*.jar",
+            "plugins/Kotlin/lib/**/*.jar",
+            "plugins/toml/lib/**/*.jar",
         )
-        .apply { if (!nativeFixtureIdeaHome.isPresent) builtBy(extractNativeTestIdea) }
+        exclude("plugins/Kotlin/lib/jps/**", "plugins/Kotlin/lib/kotlinc/**")
+    }
 
 dependencies {
     add(nativeTest.implementationConfigurationName, nativeIdeaLibraries)
@@ -221,15 +214,13 @@ val compileDeclaredEffectFixture =
             File(repositoryRoot.asFile, "runtime/hosted/src/nativeTest/resources/semantic-effects/DependencyEffects.kt")
         )
         compilerClasspath.from(
-            nativeIdeaHome.map { home ->
-                fileTree(home.dir("plugins/Kotlin/kotlinc/lib")) { include("*.jar") }
-            }
+            nativeFixtureIdea.contents.asFileTree.matching { include("plugins/Kotlin/kotlinc/lib/*.jar") }
         )
-        dependencies.from(nativeIdeaHome.file("plugins/Kotlin/kotlinc/lib/kotlin-stdlib.jar"))
+        dependencies.from(nativeIdeaHome.map { it.file("plugins/Kotlin/kotlinc/lib/kotlin-stdlib.jar") })
         javaLauncher.set(javaToolchains.launcherFor(java.toolchain))
         archiveFile.set(layout.buildDirectory.file("native-test/dependencies/effects.jar"))
         timeout.set(Duration.ofSeconds(60))
-        if (!nativeFixtureIdeaHome.isPresent) dependsOn(extractNativeTestIdea)
+        dependsOn(nativeFixtureIdea.contents)
     }
 
 val compileResultEffectFixture =
@@ -273,7 +264,7 @@ fun registerRelationNativeFixtures(taskName: String, selectedClasses: List<Strin
         testClassesDirs = nativeTest.output.classesDirs
         classpath = nativeTest.runtimeClasspath
         dependsOn("detektNativeTest")
-        if (!nativeFixtureIdeaHome.isPresent) dependsOn(extractNativeTestIdea)
+        dependsOn(nativeFixtureIdea.contents)
         if (selectedClasses.isNotEmpty()) {
             dependsOn(":verifyKotlinSemanticInputs")
             filter { selectedClasses.forEach(::includeTestsMatching) }
@@ -286,7 +277,7 @@ fun registerRelationNativeFixtures(taskName: String, selectedClasses: List<Strin
         )
         jvmArgumentProviders.add(
             objects.newInstance<NativeFixtureJvmArguments>().apply {
-                productInfo.set(nativeIdeaHome.file("product-info.json"))
+                productInfo.set(nativeIdeaHome.map { it.file("product-info.json") })
                 pinnedBuild.set(ideaPlatformBuild)
                 osName.set(providers.systemProperty("os.name"))
             }

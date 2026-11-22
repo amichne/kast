@@ -65,14 +65,15 @@ jobs:
           ref: ${{ github.sha }}
           persist-credentials: false
 
+      # The pinned task runner comes first: every later step runs a `composed:` task.
+      - name: Set up pinned tools
+        uses: jdx/mise-action@5228313ee0372e111a38da051671ca30fc5a96db # v3
+
       - name: Admit source and version
         env:
           RELEASE_TARGET: ${{ inputs.release_target }}
           TARGET: ${{ matrix.target }}
-        run: |
-          bash .github/scripts/release/admit-source.sh --expected-source-revision "$GITHUB_SHA"
-          python3 -c 'import os,re; assert re.fullmatch(r"[0-9]+\.[0-9]+\.[0-9]+", os.environ["BUNDLE_VERSION"]), "numeric version required"; assert not os.environ["ACTION_REVISION"], "archive-action contract retired; action_revision must be empty"'
-          test -z "$RELEASE_TARGET" || test "$RELEASE_TARGET" = "$TARGET"
+        run: mise run composed:admit --target "$TARGET" --release-target "$RELEASE_TARGET"
 
       - name: Set up Python
         id: candidate-python
@@ -81,16 +82,13 @@ jobs:
           python-version: '3.12'
 
       - name: Check workspace and scratch free space
-        run: python3 .github/scripts/ci/build_storage.py check --minimum-bytes 8589934592 "$GITHUB_WORKSPACE" /tmp
+        run: mise run composed:storage
 
       - name: Prepare signed Linux support before compilation
         if: startsWith(matrix.target, 'linux-')
-        run: |
-          mkdir -p build/cloud-input
-          python3 packaging/internal/composition/composed_release.py linux-support --output "$PWD/build/cloud-input/linux-support"
-
-      - name: Set up pinned tools
-        uses: jdx/mise-action@5228313ee0372e111a38da051671ca30fc5a96db # v3
+        env:
+          TARGET: ${{ matrix.target }}
+        run: mise run composed:linux-support --target "$TARGET"
 
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@8da46b539cd8fe6ab27ca75128919a18d757604c # v6
@@ -99,13 +97,10 @@ jobs:
           cache-read-only: true
 
       - name: Check shared composition Python source
-        run: |
-          mise exec -- uv run --locked --project packaging ruff check packaging/internal/composition/composed_release.py packaging/internal/verification/composed_host_probe.py packaging/tests/test_composition_release.py
-          mise exec -- uv run --locked --project packaging ruff format --check packaging/internal/composition/composed_release.py packaging/internal/verification/composed_host_probe.py packaging/tests/test_composition_release.py
-          mise exec -- uv run --locked --project packaging pyright --project packaging
+        run: mise run composed:lint
 
       - name: Run composition tests on the target platform
-        run: mise exec -- uv run --locked --project packaging pytest packaging/tests/test_composition_*.py packaging/tests/test_runtime_archive.py packaging/tests/test-managed-headless.py -q
+        run: mise run composed:tests
 
       - name: Download exact macOS release candidate
         if: inputs.release_target == 'macos-aarch64' && !inputs.complete_product
@@ -124,46 +119,27 @@ jobs:
 
       - name: Admit retained CI release identity and bytes
         if: inputs.complete_product && inputs.release_target == 'macos-aarch64'
-        run: >-
-          mise exec -- uv run --locked --script .github/scripts/ci/release_handoff.py restore --version "$BUNDLE_VERSION"
+        run: mise run composed:restore
 
       - name: Assemble bootstrap for the retained macOS release
         if: inputs.release_target == 'macos-aarch64' && !inputs.complete_product
-        run: >-
-          mise exec -- ./gradlew --no-daemon --no-parallel --max-workers=2
-          -Dorg.gradle.jvmargs=-Xmx3g -Pversion="$BUNDLE_VERSION" -PkastSourceRevision="$GITHUB_SHA"
-          :runtime:hosted:headlessBootstrapPlugin
+        run: mise run composed:bootstrap
 
       - name: Assemble matching Control, Host, and bootstrap
         if: inputs.release_target != 'macos-aarch64'
-        run: |
-          mise exec -- ./gradlew --no-daemon --no-parallel --max-workers=2 \
-            -Dorg.gradle.jvmargs=-Xmx3g -Pversion="$BUNDLE_VERSION" -PkastSourceRevision="$GITHUB_SHA" \
-            assembleRelease :runtime:hosted:headlessBootstrapPlugin \
-            ${{ matrix.target == 'linux-x86_64' && 'verifyJsonContracts verifyKastArchitecture' || '' }}
+        env:
+          TARGET: ${{ matrix.target }}
+        run: mise run composed:release --target "$TARGET"
 
       - name: Download pinned donor and assemble the archive
         shell: bash
         env:
           DONOR: ${{ matrix.donor }}
           TARGET: ${{ matrix.target }}
-        run: |
-          scratch=$(cd /tmp && pwd -P)
-          support=()
-          mkdir -p build/cloud-input
-          if [[ "$TARGET" == linux-* ]]; then
-            support=(--linux-support "$PWD/build/cloud-input/linux-support")
-          fi
-          curl --fail --location --retry 3 "https://download.jetbrains.com/idea/$DONOR" --output "build/cloud-input/$DONOR"
-          mise exec -- uv run --locked --project packaging python packaging/internal/composition/composed_release.py assemble \
-            --archive "$PWD/build/cloud-input/$DONOR" \
-            --bootstrap "$PWD/runtime/hosted/build/distributions/kast-managed-headless-v${BUNDLE_VERSION}-idea-262.zip" \
-            --assets "$PWD/build/release/v${BUNDLE_VERSION}" \
-            --root "$scratch/kp" --output "$PWD/build/composed-release" \
-            --version "$BUNDLE_VERSION" --source-revision "$GITHUB_SHA" "${support[@]}"
+        run: mise run composed:assemble --target "$TARGET" --donor "$DONOR"
 
       - name: Re-admit unchanged source
-        run: bash .github/scripts/release/admit-source.sh --expected-source-revision "$GITHUB_SHA"
+        run: mise run composed:source
 
       - name: Retain the assembled candidate
         if: inputs.release_target == '' || inputs.complete_product
@@ -191,11 +167,7 @@ jobs:
           retention-days: 14
 
       - name: Free assembly scratch space before qualification
-        run: |
-          scratch=$(cd /tmp && pwd -P)
-          workspace=$(pwd -P)
-          mise exec -- uv run --locked --project packaging python packaging/internal/composition/composed_release.py \
-            discard-assembly-inputs --root "$scratch/kp" --inputs "$workspace/build/cloud-input"
+        run: mise run composed:discard
 
       - name: Verify the exact component assembly
         timeout-minutes: 60
@@ -203,50 +175,25 @@ jobs:
         env:
           CANDIDATE_PYTHON: ${{ steps.candidate-python.outputs.python-path }}
           TARGET: ${{ matrix.target }}
-        run: |
-          scratch=$(cd /tmp && pwd -P)
-          python=$CANDIDATE_PYTHON
-          if [[ "$TARGET" == linux-* ]]; then
-            python=/usr/bin/python3
-          fi
-          "$python" --version
-          archive="$PWD/build/composed-release/kast-composed-setup-v${BUNDLE_VERSION}-$TARGET.tar.gz"
-          digest=$(cut -d ' ' -f1 "${archive}.sha256")
-          runtime="$PWD/build/composed-release/kast-runtime-v${BUNDLE_VERSION}-$TARGET.zip"
-          runtime_digest=$(cut -d ' ' -f1 "${runtime}.sha256")
-          "$python" -E -s -B packaging/internal/composition/composed_release.py qualify \
-            --archive "$archive" --archive-sha256 "$digest" \
-            --runtime-archive "$runtime" --runtime-sha256 "$runtime_digest" \
-            --root "$scratch/kc" --evidence "$PWD/build/composed-evidence" \
-            --version "$BUNDLE_VERSION" --source-revision "$GITHUB_SHA"
+        run: mise run composed:qualify --target "$TARGET"
 
       - name: Exercise the installed Linux coordinator
         if: github.event_name == 'workflow_dispatch' && inputs.linux_only && matrix.target == 'linux-x86_64'
-        run: |
-          sudo loginctl enable-linger "$(id -un)"
-          XDG_RUNTIME_DIR="/run/user/$(id -u)" systemctl --user start default.target
-          mise exec -- uv run --locked --project packaging python packaging/internal/verification/linux_coordinator_probe.py \
-            --directory build/composed-release --receipt build/composed-evidence/qualification.json \
-            --control /tmp/kc/components/control/share/kast/libexec/kast-management \
-            --java-release "$(mise where java)/release" --version "$BUNDLE_VERSION" \
-            --revision "$GITHUB_SHA" --evidence build/composed-evidence/installed-coordinator
+        env:
+          TARGET: ${{ matrix.target }}
+        run: mise run composed:coordinator --target "$TARGET"
 
       - name: Retain assembly receipt beside its exact product bytes
         if: '!inputs.complete_product && !inputs.linux_only'
         env:
           TARGET: ${{ matrix.target }}
-        run: cp build/composed-evidence/qualification.json "build/composed-release/qualification-${TARGET}.json"
+        run: mise run composed:receipt --target "$TARGET"
 
       - name: Seal native target and toolchain evidence for the exact CI attempt
         if: inputs.complete_product
         env:
           TARGET: ${{ matrix.target }}
-        run: >-
-          mise exec -- python3 .github/scripts/release/product_producer.py target
-          --directory build/composed-release
-          --receipt build/composed-evidence/qualification.json
-          --control /tmp/kc/components/control/share/kast/libexec/kast-management
-          --java-release "$(mise where java)/release" --target "$TARGET"
+        run: mise run composed:seal-target --target "$TARGET"
 
       - name: Retain target-local qualified product evidence
         uses: actions/upload-artifact@v7.0.2
