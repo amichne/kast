@@ -78,17 +78,13 @@ private constructor(private val root: Path, private val home: Path, private val 
                 return rejectedRecordedInstaller()
             if (!ownedJournal(root, slot, receipt, owner)) return rejectedRecordedInstaller()
             val record = managementJson.decodeFromString(InstallationReplacementReceipt.serializer(), raw)
-            val reservation = record.reservation
             if (
                 record.schemaVersion != 1 ||
                     record.installation != root.resolve("installation").toString() ||
                     record.installationIdentity.owner != owner
             )
                 return rejectedRecordedInstaller()
-            return when (reservation) {
-                null -> rejectedRecordedInstaller()
-                else -> admitCandidate(root, home, slot, receipt, record, reservation)
-            }
+            return admitCandidate(root, home, slot, receipt, record, record.reservation)
         }
 
         private fun admitCandidate(

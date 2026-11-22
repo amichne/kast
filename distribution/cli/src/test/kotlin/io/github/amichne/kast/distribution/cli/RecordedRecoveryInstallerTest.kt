@@ -1,13 +1,18 @@
 package io.github.amichne.kast.distribution.cli
 
+import io.github.amichne.kast.distribution.contract.InstallationFilesystemIdentity
 import io.github.amichne.kast.distribution.contract.InstallationReplacementReceipt
 import io.github.amichne.kast.distribution.contract.InstallationReplacementStage
 import io.github.amichne.kast.distribution.contract.ManagedControlReservation
+import io.github.amichne.kast.distribution.contract.ManagedFilePreimage
+import io.github.amichne.kast.distribution.contract.ManagedReplacementPhase
 import io.github.amichne.kast.distribution.contract.PreviousInstallationPayload
+import io.github.amichne.kast.distribution.contract.ProductReplacement
 import java.io.IOException
 import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.attribute.PosixFilePermissions
+import kotlinx.serialization.Required
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -22,7 +27,7 @@ class RecordedRecoveryInstallerTest {
 
     @ParameterizedTest
     @ValueSource(booleans = [false, true])
-    fun `recorded staged installer remains reachable without an active installation`(exterior: Boolean) {
+    fun `a pending product journal resumes through the recorded staged installer`(exterior: Boolean) {
         val fixture = fixture(exterior)
         val before = Files.readAllBytes(fixture.receipt)
         var calls = 0
@@ -57,6 +62,31 @@ class RecordedRecoveryInstallerTest {
         assertEquals(1, calls)
         assertEquals(before.toList(), Files.readAllBytes(fixture.receipt).toList())
         assertFalse(Files.exists(fixture.root.resolve("installation")))
+    }
+
+    @Test
+    fun `a truncated receipt rejects before a recovery child`() {
+        val fixture = fixture()
+        Files.writeString(fixture.receipt, Files.readString(fixture.receipt).dropLast(1))
+        assertRejected(fixture)
+    }
+
+    @Test
+    fun `a journal without its product record rejects before a recovery child`() {
+        val fixture = fixture()
+        Files.writeString(
+            fixture.receipt,
+            managementJson.encodeToString(
+                UnrecordedProductReceipt(
+                    stage = fixture.record.stage,
+                    installation = fixture.record.installation,
+                    installationIdentity = fixture.record.installationIdentity,
+                    previous = fixture.record.previous,
+                    reservation = fixture.reservation,
+                )
+            ),
+        )
+        assertRejected(fixture)
     }
 
     @Test
@@ -206,19 +236,7 @@ class RecordedRecoveryInstallerTest {
                 file(staged, "share/kast/install-candidate.sh", "#!/bin/bash\nexit 130\n", "rwxr-xr-x", 493),
                 file(staged, "share/kast/managed-install-v1", "1\n", "rw-r--r--", 420),
             )
-        val manifest = staged.resolve("installation.json")
-        Files.writeString(
-            manifest,
-            managementJson.encodeToString(
-                RecoveryManifestFixture(
-                    3,
-                    "1.2.3",
-                    root.resolve("installation").toString(),
-                    "sha256:" + "b".repeat(64),
-                    files,
-                )
-            ),
-        )
+        val manifest = writeManifest(staged, root, files)
         val slot = Files.createDirectories(root.resolve("recovery/replacement"))
         val reservation =
             ManagedControlReservation(
@@ -235,12 +253,41 @@ class RecordedRecoveryInstallerTest {
                 installationIdentity = uninstallFilesystemIdentity(staged),
                 previous = PreviousInstallationPayload.None,
                 reservation = reservation,
+                product = pendingProduct(root, home),
             )
         val receipt = slot.resolve("receipt.json")
         Files.writeString(receipt, managementJson.encodeToString(record))
         Files.setPosixFilePermissions(receipt, PosixFilePermissions.fromString("rw-------"))
         return Fixture(root, home, staged, receipt, record, reservation)
     }
+
+    private fun writeManifest(staged: Path, root: Path, files: List<BundledPayload>): Path {
+        val manifest = staged.resolve("installation.json")
+        Files.writeString(
+            manifest,
+            managementJson.encodeToString(
+                RecoveryManifestFixture(
+                    3,
+                    "1.2.3",
+                    root.resolve("installation").toString(),
+                    "sha256:" + "b".repeat(64),
+                    files,
+                )
+            ),
+        )
+        return manifest
+    }
+
+    /** A first installation interrupted after its Control commit, as the product installer records it. */
+    private fun pendingProduct(root: Path, home: Path) =
+        ProductReplacement(
+            management = ManagedFilePreimage.Absent(root.resolve("management.json").toString()),
+            publicExecutable = ManagedFilePreimage.Absent(home.resolve(".local/bin/kast").toString()),
+            selectionSha256 = "d".repeat(64),
+            previousManifestSha256 = null,
+            phase = ManagedReplacementPhase.CONTROL_COMMITTED,
+            fence = uninstallFilesystemIdentity(home),
+        )
 
     private fun file(root: Path, relative: String, bytes: String, permissions: String, mode: Int): BundledPayload {
         val path = root.resolve(relative)
@@ -256,6 +303,17 @@ class RecordedRecoveryInstallerTest {
         val staged: Path,
         val receipt: Path,
         val record: InstallationReplacementReceipt,
+        val reservation: ManagedControlReservation,
+    )
+
+    /** The receipt shape this admission decoded before the product record was modeled. */
+    @Serializable
+    private data class UnrecordedProductReceipt(
+        @Required val schemaVersion: Int = 1,
+        val stage: InstallationReplacementStage,
+        val installation: String,
+        val installationIdentity: InstallationFilesystemIdentity,
+        val previous: PreviousInstallationPayload,
         val reservation: ManagedControlReservation,
     )
 
