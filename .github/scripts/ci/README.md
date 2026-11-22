@@ -1,5 +1,13 @@
 # CI validation and cache policy
 
+## Land a pull request through the merge queue
+
+Add the `queue` label, or comment `@mergifyio queue`, to queue a pull request for `main`.
+Comment `@mergifyio dequeue` to remove it.
+Mergify brings it up to date with `main`, waits for `CI required checks` on that exact result, and squash-merges it.
+One pull request is validated at a time, on the pull request itself.
+`.mergify.yml` owns the queue rules. GitHub's native merge queue needs an organization-owned repository.
+
 `validation_scope.py` selects checks from the exact Git diff and the native compilation setting.
 The selector checks the checkout revision before it reads the diff.
 Pull requests use the merge base. Pushes use the entire before/head range.

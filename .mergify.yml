@@ -1,0 +1,35 @@
+# Merge queue for main. A pull request enters the queue when it carries the `queue` label or
+# after an `@mergifyio queue` comment. The label rule needs Mergify Workflow Automation. Mergify brings it up to date with main, waits for
+# the required CI aggregate on that exact result, and squash-merges it. One pull request is
+# validated at a time, so the check runs in place on the pull request itself and the single
+# macOS acceptance runner is never asked to qualify parallel candidates.
+
+merge_queue:
+  mode: serial
+  max_parallel_checks: 1
+
+queue_rules:
+  - name: default
+    merge_method: squash
+    update_method: rebase
+    batch_size: 1
+    queue_conditions:
+      - base = main
+      - -draft
+      - check-success = CI required checks
+    merge_conditions:
+      - base = main
+      - -draft
+      - check-success = CI required checks
+    # A complete CI run with macOS qualification and installed acceptance stays under three
+    # hours; ci.yml's longest job timeout is 180 minutes.
+    checks_timeout: 3 hours
+
+pull_request_rules:
+  - name: Queue labelled pull requests for main
+    conditions:
+      - base = main
+      - label = queue
+    actions:
+      queue:
+        name: default
