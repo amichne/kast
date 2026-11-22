@@ -20,7 +20,9 @@ import signal
 import subprocess
 import sys
 import tempfile
+import time
 import uuid
+from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import asdict, dataclass, field
 from enum import Enum
@@ -91,6 +93,41 @@ class RestartRead(Enum):
                 return declaration_query("invokeCallback")
             case RestartRead.CALLERS:
                 return CALLERS_QUERY
+
+
+class StageKind(str, Enum):
+    INSTALLATION = "INSTALLATION"
+    COMMAND = "COMMAND"
+
+
+@dataclass(frozen=True)
+class StageTiming:
+    """How long one probe stage took. `exitCode` is absent when the stage raised."""
+
+    stage: str
+    kind: StageKind
+    elapsedMs: int
+    exitCode: int | None
+
+
+@dataclass(frozen=True)
+class StageTimings:
+    schemaVersion: int
+    stages: tuple[StageTiming, ...]
+
+
+# Far above the probe's cases; a runaway loop cannot grow the evidence without bound.
+MAXIMUM_STAGE_TIMINGS = 256
+STAGE_TIMINGS_FILE = "stage-timings.json"
+
+
+def write_stage_timings(evidence: Path, stages: list[StageTiming]) -> Path:
+    """Write the stage durations into evidence, once; a failed run records its stages so far."""
+    path = evidence / STAGE_TIMINGS_FILE
+    if not path.exists():
+        document = StageTimings(1, tuple(stages[:MAXIMUM_STAGE_TIMINGS]))
+        _ = path.write_text(json.dumps(asdict(document), indent=2) + "\n")
+    return path
 
 
 @dataclass(frozen=True)
@@ -366,6 +403,13 @@ class Probe:
     environment: dict[str, str]
     completed: set[acceptance.Case] = field(default_factory=lambda: set[acceptance.Case]())
     sandbox: Path | None = None
+    timings: list[StageTiming] = field(default_factory=lambda: list[StageTiming]())
+    # Monotonic nanoseconds; injected so a test can script elapsed time.
+    clock: Callable[[], int] = time.monotonic_ns
+
+    def record_stage(self, stage: str, kind: StageKind, started: int, code: int | None) -> None:
+        elapsed = (self.clock() - started) // 1_000_000
+        self.timings.append(StageTiming(stage, kind, elapsed, code))
 
     @property
     def control(self) -> Path:
@@ -419,26 +463,31 @@ class Probe:
         environment = self.environment | {"KAST_DEBUG": "1"} if trace else self.environment
         output = self.evidence / f"{case}.stdout"
         error = self.evidence / f"{case}.stderr"
-        if disposable_caller:
-            if raw is not None:
-                raise ValueError("A disposable caller expects no stdin")
-            code = run_in_disposable_group(command, workspace, environment, output, error)
-            response = output.read_bytes()
-        else:
-            result = subprocess.run(
-                command,
-                cwd=workspace,
-                env=environment,
-                input=raw,
-                capture_output=True,
-                timeout=1800,
-                check=False,
-            )
-            code = result.returncode
-            response = result.stdout
-            _ = output.write_bytes(result.stdout)
-            _ = error.write_bytes(result.stderr)
-        return NativeCaseResult(code, response)
+        if disposable_caller and raw is not None:
+            raise ValueError("A disposable caller expects no stdin")
+        started, code = self.clock(), None
+        try:
+            if disposable_caller:
+                exit_code = run_in_disposable_group(command, workspace, environment, output, error)
+                response = output.read_bytes()
+            else:
+                result = subprocess.run(
+                    command,
+                    cwd=workspace,
+                    env=environment,
+                    input=raw,
+                    capture_output=True,
+                    timeout=1800,
+                    check=False,
+                )
+                exit_code = result.returncode
+                response = result.stdout
+                _ = output.write_bytes(result.stdout)
+                _ = error.write_bytes(result.stderr)
+            code = exit_code
+        finally:
+            self.record_stage(case, StageKind.COMMAND, started, code)
+        return NativeCaseResult(exit_code, response)
 
     def observe_host(
         self, case: str, workspace: Path, lifetime: str, runtime_digest: str
@@ -711,8 +760,10 @@ class Probe:
             arguments = ["--resolved-selection", str(path)]
             source = LocalSource(directory, record)
         # Production activation and its retirement journal, with only acquisition virtualized.
-        if (
-            installation.main(
+        stage = f"install-{1 + sum(item.kind is StageKind.INSTALLATION for item in self.timings)}"
+        started, code = self.clock(), None
+        try:
+            code = installation.main(
                 [
                     *arguments,
                     "--install-root",
@@ -725,8 +776,9 @@ class Probe:
                 ],
                 source=source,
             )
-            != 0
-        ):
+        finally:
+            self.record_stage(stage, StageKind.INSTALLATION, started, code)
+        if code != 0:
             raise ValueError("native product installation rejected")
 
     def mcp(self, workspace: Path, lifetime: str) -> None:
@@ -888,9 +940,7 @@ def execute(
         }
         roots = (work / "first", work / "second")
         for workspace in roots:
-            _ = shutil.copytree(
-                repository / "fixtures/static-callback-fixture", workspace
-            )
+            _ = shutil.copytree(repository / "fixtures/static-callback-fixture", workspace)
             _ = shutil.copytree(
                 repository / "fixtures/composed-host-fixture-overlay",
                 workspace,
@@ -1028,6 +1078,8 @@ def execute(
                     _ = probe.run("failure-stop", roots[0], ("stop", "--all", "--json"))
             with contextlib.suppress(OSError):
                 _ = retain_host_logs(home, evidence)
+            with contextlib.suppress(OSError):
+                _ = write_stage_timings(evidence, probe.timings)
             os.environ.clear()
             os.environ.update(before)
         if probe.completed != set(acceptance.Case):

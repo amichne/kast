@@ -1006,5 +1006,69 @@ class HostLogRetentionTest(unittest.TestCase):
         self.assertEqual([b"before uninstall\n"], [path.read_bytes() for path in second.iterdir()])
 
 
+class StageTimingTest(unittest.TestCase):
+    def setUp(self) -> None:
+        temporary = tempfile.TemporaryDirectory()
+        self.addCleanup(temporary.cleanup)
+        self.root = Path(temporary.name).resolve()
+        # Scripted monotonic nanoseconds: each stage reads the clock once at start and end.
+        ticks = iter((1_000_000, 251_000_000, 300_000_000, 305_500_000))
+        self.runner = probe.Probe(
+            self.root, self.root, self.root, self.root, self.root, {}, clock=lambda: next(ticks)
+        )
+
+    def test_a_command_records_its_duration_and_exit_code(self) -> None:
+        # A real child, so the timing wraps the actual process boundary. A rejected case
+        # still records its stage before the caller decides on the exit status.
+        _ = self.runner.run(
+            "exit-three", self.root, ("-c", "exit 3"), launcher=Path("/bin/sh"), rejected=True
+        )
+        self.assertEqual(
+            [probe.StageTiming("exit-three", probe.StageKind.COMMAND, 250, 3)], self.runner.timings
+        )
+
+    def test_a_stage_that_raises_records_no_exit_code(self) -> None:
+        with self.assertRaises(OSError):
+            _ = self.runner.run(
+                "missing", self.root / "absent", ("-c", "exit 0"), launcher=Path("/bin/sh")
+            )
+        self.assertEqual(
+            [probe.StageTiming("missing", probe.StageKind.COMMAND, 250, None)], self.runner.timings
+        )
+
+    def test_timings_are_written_once_with_their_typed_shape(self) -> None:
+        stages = [
+            probe.StageTiming("install-1", probe.StageKind.INSTALLATION, 61_250, 0),
+            probe.StageTiming("baseline", probe.StageKind.COMMAND, 75_000, None),
+        ]
+        path = probe.write_stage_timings(self.root, stages)
+        self.assertEqual(
+            {
+                "schemaVersion": 1,
+                "stages": [
+                    {
+                        "stage": "install-1",
+                        "kind": "INSTALLATION",
+                        "elapsedMs": 61250,
+                        "exitCode": 0,
+                    },
+                    {"stage": "baseline", "kind": "COMMAND", "elapsedMs": 75000, "exitCode": None},
+                ],
+            },
+            json.loads(path.read_text()),
+        )
+        # The first write wins, so a later failure path keeps the complete record.
+        _ = probe.write_stage_timings(self.root, [])
+        self.assertEqual(2, len(json.loads(path.read_text())["stages"]))
+
+    def test_the_number_of_written_timings_is_bounded(self) -> None:
+        stages = [
+            probe.StageTiming(f"case-{index}", probe.StageKind.COMMAND, index, 0)
+            for index in range(probe.MAXIMUM_STAGE_TIMINGS + 5)
+        ]
+        written = json.loads(probe.write_stage_timings(self.root, stages).read_text())["stages"]
+        self.assertEqual(probe.MAXIMUM_STAGE_TIMINGS, len(written))
+
+
 if __name__ == "__main__":
     _ = unittest.main()
