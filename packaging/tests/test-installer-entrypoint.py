@@ -60,6 +60,7 @@ class InstallerEntrypointTest(unittest.TestCase):
             "uninstall",
             "--purge-legacy",
             "--skip-codex-plugin",
+            "--developer-latest",
         ):
             with self.subTest(option=option), InstallerFixture(admitted_tools()) as fixture:
                 sentinel = fixture.root / "home/foreign"
