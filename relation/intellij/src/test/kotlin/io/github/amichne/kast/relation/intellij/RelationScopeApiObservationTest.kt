@@ -7,6 +7,7 @@ import io.github.amichne.kast.symbol.contract.SymbolDiscoveryConstraints
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryContainment
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryDirectory
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryDirectoryConstraint
+import io.github.amichne.kast.symbol.contract.SymbolDiscoverySourceSets
 import io.github.amichne.kast.symbol.contract.SymbolGeneratedSourcePolicy
 import io.github.amichne.kast.symbol.contract.SymbolLibraryPolicy
 import io.github.amichne.kast.symbol.contract.SymbolSearchScope
@@ -203,7 +204,7 @@ class RelationScopeApiObservationTest {
                     )
             )
         val scope =
-            compiled(sdk, workspace(), observed, constraints) { path ->
+            compiled(sdk, workspace(), observed, constraints) { path, _ ->
                     admittedPaths.add(path)
                     true
                 }
@@ -247,7 +248,7 @@ class RelationScopeApiObservationTest {
         selected: SymbolSearchScope,
         observation: IntellijReadObservation,
         constraints: SymbolDiscoveryConstraints = SymbolDiscoveryConstraints.None,
-        fileAdmission: (Path) -> Boolean = { true },
+        fileAdmission: (Path, SymbolDiscoverySourceSets) -> Boolean = { _, _ -> true },
     ): CompiledRelationScope =
         (IntellijRelationScopeCompiler(fileAdmission)
                 .compile(

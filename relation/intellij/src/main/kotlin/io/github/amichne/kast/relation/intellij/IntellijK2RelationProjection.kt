@@ -195,7 +195,12 @@ internal class IntellijK2RelationProjection(
                 is IntellijK2ResolvedDeclaration.Unsupported,
                 IntellijK2ResolvedDeclaration.Unresolved -> return IntellijReferenceTargetResult.Unresolved
             }
-        return confirmDeclaration(declaration, subject)
+        return when (val direct = confirmDeclaration(declaration, subject)) {
+            IntellijReferenceTargetResult.Different ->
+                confirmConstructedClassReference(reference, declaration, subject) ?: direct
+            is IntellijReferenceTargetResult.Confirmed,
+            IntellijReferenceTargetResult.Unresolved -> direct
+        }
     }
 
     private fun confirmExactTarget(reference: KtReference, subject: RelationEndpoint): IntellijK2TargetConfirmation =
