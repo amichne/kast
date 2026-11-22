@@ -165,9 +165,13 @@ class KnowledgeBaseValidatorTest(unittest.TestCase):
             self.assertIn("Deleted", report["assessment"]["issues"][0]["message"])
             (repository / "owner.py").unlink()
             concept.write_text(concept.read_text() + "[Source](../owner.py)\n")
+            # A moved or deleted citation must be updated or retired, not carried as advice.
             missing = subprocess.run(command, capture_output=True, text=True, check=False)
-            self.assertEqual(0, missing.returncode, missing.stdout + missing.stderr)
-            self.assertEqual("unresolved", json.loads(missing.stdout)["assessment"]["status"])
+            self.assertEqual(1, missing.returncode, missing.stdout + missing.stderr)
+            self.assertEqual(
+                ["code_sources path does not exist: owner.py"],
+                [issue["message"] for issue in json.loads(missing.stdout)["issues"]],
+            )
             concept.write_text(concept.read_text() + "[Missing document](missing.md)\n")
             broken_link = subprocess.run(command, capture_output=True, text=True, check=False)
             self.assertEqual(1, broken_link.returncode, broken_link.stdout + broken_link.stderr)

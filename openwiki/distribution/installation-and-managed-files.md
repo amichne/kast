@@ -27,10 +27,6 @@ sources:
     resource: repo://packaging/internal/bootstrap/bootstrap.sh.in
   - id: openwiki-source-9685c35bc7adaf6e5678720b
     resource: repo://packaging/internal/bootstrap/generate_bootstrap.py
-  - id: openwiki-source-44a574497eca3c945455c98f
-    resource: repo://packaging/internal/installation/host_directory_exchange.py
-  - id: openwiki-source-d49c64c0efdff5cd60ab7fde
-    resource: repo://packaging/internal/installation/host-installation.py
   - id: openwiki-source-f819c9a16e09783f5c943c2d
     resource: repo://packaging/internal/installation/immutable_store.py
   - id: openwiki-source-e2f98663750a2e6ad150484d
@@ -39,8 +35,8 @@ sources:
     resource: repo://packaging/internal/installation/managed_installation.py
   - id: openwiki-source-496462e31bbb3fc9156abfe9
     resource: repo://packaging/internal/installation/managed_release.py
-  - id: openwiki-source-7278ad36ad11610ea5b05753
-    resource: repo://packaging/internal/installation/managed_update_journal.py
+  - id: openwiki-source-9aba602a70fbe25d03d80e37
+    resource: repo://packaging/internal/installation/managed_update_contract.py
   - id: openwiki-source-68861fd33e9641882305aee3
     resource: repo://packaging/internal/product/local_product_install.py
   - id: openwiki-source-07f32471b5605b546192361f
@@ -51,8 +47,8 @@ sources:
     resource: repo://packaging/internal/product/product_removal_recovery.py
   - id: openwiki-source-678716bd23af50e8bbe1978b
     resource: repo://packaging/internal/product/product_state_removal.py
-  - id: openwiki-source-340b62f8bf82efc1df499202
-    resource: repo://packaging/tests/test-host-installation.py
+  - id: openwiki-source-9947fbfd711e87d328509a2c
+    resource: repo://packaging/internal/verification/harness_launchd.py
   - id: openwiki-source-12d7829bb8c1e9c898163e3a
     resource: repo://packaging/tests/test-install-checkout.py
   - id: openwiki-source-d660a64cf3c39a2f406a497b
@@ -63,10 +59,12 @@ sources:
     resource: repo://packaging/tests/test-managed-build-record.py
   - id: openwiki-source-db7ba27a263287dfa200741e
     resource: repo://packaging/tests/test-managed-installation.py
-generated: { by: "codex", at: "2026-11-21T22:16:17.145Z" }
+  - id: openwiki-source-40badbf2c7286dd74fa8aee8
+    resource: repo://packaging/tests/test-managed-state-admission.py
+generated: { by: "codex", at: "2026-11-22T21:35:10.249Z" }
 verified:
   - by: openwiki/0.9.0
-    at: 2026-11-21T22:16:17.145Z
+    at: 2026-11-22T21:35:10.249Z
 ---
 
 
@@ -103,15 +101,18 @@ Use the generated `install.sh --local-artifact DIRECTORY` separately for canonic
 These source contracts do not establish that a particular native build or global installation has succeeded.
 
 `generate_bootstrap.py` owns the embedded engine, retained lifecycle support, and fixed data inventory.
-Gradle stages its generated support projection under `share/kast`, including the canonical root `install.sh`.
+Gradle stages its generated support projection under `share/kast`.
+That projection carries no copy of the root `install.sh`; the generator rejects `install.sh` as a support member.
 The former `install-legacy.sh`, `install-local.sh`, and `install-checkout.sh` entry points are removed.
-The retained `install-candidate.sh` is a private lifecycle bridge, not another public installer.
+Upgrade, removal, and recovery run the retained `install-candidate.sh`, a private lifecycle bridge rather than another public installer.
+The bootstrap rejects the retired `--developer-latest` alias; `--channel preview` selects preview.
 The separate contributor `install` command uses `local_product_install.py` and the existing product activation owner under an isolated root.
+Contributor removal retires the semantic coordinator launchd jobs registered under that root, also when stop or uninstall fails, and reports `LAUNCHD_JOBS_REMAIN` when one survives.
 
 Control owns the management executable, coordinator, adapters, private launchers, and installed configuration.
-Host owns the IDEA plugin and semantic runtime.
-Their release versions are independent.
-Exact hosted contract identity and platform admission establish compatibility between them.
+The managed headless Host runtime and its vendor base are immutable store entries that product activation publishes.
+The standalone desktop Host installer is removed, and release admission rejects a release that still carries it.
+Exact hosted contract identity and platform admission establish compatibility between Control and Host.
 Version equality alone does not establish that compatibility.
 
 ## Control replacement
@@ -129,7 +130,7 @@ The `share/kast/jvm-control-v1` marker selects the JVM layout: the executable ru
 Verification rejects class files, JARs outside `lib`, a second native executable, and symbolic links.
 The verifier logs the bounded executable count before enforcing exactly one Control executable.
 The Python `inspect_control` admission applies the same layout rules and checks the executable's target header.
-Verification also rejects retired task payloads and `share/kast/knowledge`, including its descendants.
+Verification also rejects retired task payloads, `share/kast/install.sh`, and `share/kast/knowledge`, including its descendants.
 The installed knowledge generator, extraction path, and retrieval implementation are retired; repository citation checks and module reports remain separate.
 Published-release admission still accepts the earlier `native-control-v1` layout and the historical layout without either marker.
 `ManagedInstallationOwnedTree` admits exact destructive-recovery trees under the physical selected installation.
@@ -160,6 +161,13 @@ Replacement and uninstall admit those exact empty directories, but reject surviv
 Removal rechecks directory identities and uses empty-directory deletion, never record deletion, for this bookkeeping.
 Bounded `kast-invocation-state` observations distinguish admitted state from unknown directories and unsettled invocations.
 
+Each state admission check that rejects raises a typed rejection with a closed failure code and its owning component.
+It emits one structured observation that names at most eight sorted installation-relative entries, never their contents.
+The installer outcome carries the same evidence in `Rejected.state`, and removal reports a state rejection with the same evidence.
+One mapping serves activation, resume, and the entry point.
+An `OSError` that carries an `errno` reports `FILESYSTEM_REJECTED`, and `OWNERSHIP_UNPROVEN` remains only for checks that still raise `ValueError`.
+Any other exception reports `INSTALLATION_DEFECT` with its class name; an `AssertionError` is re-raised rather than reported as an outcome.
+
 Control staging cleanup retains the directory identity before extraction.
 A failed preparation deletes only that allocation, while no replacement journal owns it.
 Runtime and base publication stages retain original evidence before copying payload bytes.
@@ -177,50 +185,14 @@ Foreign additions, changed links, and replaced directory identities block deleti
 Workspace roots and external Gradle homes remain outside this reset.
 Journal staging and the destination store must share a filesystem; repair rejects a mismatch before retirement or deletion.
 
-The retained composition recovery path coordinates the existing Control and Host effect owners under the selected management lock.
 The bootstrap disables Python bytecode writes before importing its installed helpers.
 Those imports preserve the exact installed payload inventory.
-The legacy composition journal captures exact preimages for management, the public command, profile options, runtime state, and Host receipts.
-The typed journal records the selected artifacts and one `STOPPED`, `HOT_RELOAD`, or `NORMAL_RESTART` strategy.
-These retained strategies do not restore a public desktop or archive selection route.
 
-The coordinator fences public calls before Host settlement and payload replacement.
-It holds the admitted Host lock during the Control and Host commit sequence.
-A stopped Host stays stopped. A loaded Host needs the selected activation proof before terminal receipts and journal removal.
-Recovery uses the recorded composition and preimages. An unresolved recovery keeps the fence and returns `RECOVERY_REQUIRED`.
+Only product journals are recoverable.
+When `recovery/replacement/receipt.json` records a product replacement, the coordinator resumes it through `managed_product_installation.resume`.
+Any other recorded journal, including a legacy composition record, fails closed with `RECOVERY_REQUIRED` and `RECOVERY_UNPROVEN`.
+The product resume path itself rejects a record that carries a composition.
 A recovery-only invocation does not select a new release.
-
-## Retained independent Host receipts
-
-The standalone `host-installation.py` command is deprecated for desktop IDEA plugin installation.
-It warns on stderr before argument admission, leaving stdout reports unchanged.
-Managed installers still import its shared receipt and transaction helpers without that command warning.
-
-`host-installation.py` admits the Host release and plugin destination before effects.
-The active receipt records the plugin root, destination, and artifact inventory with filesystem identities.
-If the device identifier changes, admission keeps the recorded inode and owner constraints and keeps a consistent mapping from recorded device identities to their current identities.
-The current root and destination must remain stable through the inventory examination.
-
-Managed Host replacement needs the exact recorded inventory.
-Removal permits missing recorded entries, but each remaining entry must match the recorded artifact.
-A foreign or changed file rejects ownership admission.
-An absent plugin destination does not erase the receipt's root proof or permit deletion elsewhere.
-
-Host preflight examines the existing target before Control installation changes.
-Ordinary Host installation keeps legacy Control backups and unselected recovery entries in `.kast-plugin-recovery`.
-Host removal keeps those backups and rejects pending Host transactions and unknown recovery entries.
-Legacy backup names include baseline, detached, and replaced names with 32-character hexadecimal tokens.
-Force installation can remove entries with known recovery names. It unlinks symbolic links without traversing their targets.
-
-A force dry run accepts a user-owned recovery directory with mode `0755` and keeps that mode.
-Force installation restores mode `0700` under the Host lock.
-Both force modes reject a group-writable recovery directory.
-
-Terminal Host cleanup first admits the selected or restored files and their active receipt.
-The Host owner then moves each admitted candidate or prior payload outside the pending journal before recursive deletion.
-A no-replace native move preserves foreign destinations, including empty directories.
-Partial deletion cannot block the next terminal admission or release of the reserved Host lock.
-Cleanup failures emit `kast_managed_host_cleanup` with `FAILED` and a finite reason.
 
 ## Recovery and evidence limits
 
@@ -232,23 +204,23 @@ Current thread and invocation stores need their exact layout versions, empty rec
 The protocol cache must stay empty, and desktop discovery can contain only its empty lock file.
 Durable records, unknown artifacts, live readiness evidence, symlinks, and foreign ownership still block retirement.
 
-Host receipt tests establish selected-target and artifact protection under private files.
-They do not establish that a running IDEA process loaded the new Host.
+Installer tests establish payload, state, and artifact protection under private files.
+They do not establish that a running Host loaded the new runtime.
 Read native lifecycle evidence before a claim about loaded components or workspace semantics.
 
 ## Focused tests
 
-- [test-host-installation.py](../../packaging/tests/test-host-installation.py)
 - [test-installer-entrypoint.py](../../packaging/tests/test-installer-entrypoint.py)
 - [test-managed-installation.py](../../packaging/tests/test-managed-installation.py)
 - [test-managed-build-record.py](../../packaging/tests/test-managed-build-record.py)
+- [test-managed-state-admission.py](../../packaging/tests/test-managed-state-admission.py)
 
 ## Source owners
 
 - [install.sh](../../install.sh)
 - [generate_bootstrap.py](../../packaging/internal/bootstrap/generate_bootstrap.py)
 - [local_product_install.py](../../packaging/internal/product/local_product_install.py)
-- [host-installation.py](../../packaging/internal/installation/host-installation.py)
+- [managed_update_contract.py](../../packaging/internal/installation/managed_update_contract.py)
 - [managed_product_installation.py](../../packaging/internal/product/managed_product_installation.py)
 - [managed_installation.py](../../packaging/internal/installation/managed_installation.py)
 - [managed_release.py](../../packaging/internal/installation/managed_release.py)

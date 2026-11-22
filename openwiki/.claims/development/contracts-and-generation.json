@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:9ddcc508e1055cba560b13f821deb7d79e2922e20ef8432c09349f3fcb2ecb87",
+  "pageVersion": "sha256:d1db1ce6d6e202c11784738d93e9eccccf31d8fe5e730c9614d71100d272e00d",
   "claims": [
     {
       "id": "claim_33e6522130644483961b71cc571e663b",
@@ -40,11 +40,11 @@
       "evidence": [
         {
           "resource": "repo://build-logic/src/main/kotlin/conventions/JsonContractVerification.kt",
-          "version": "repo-file-v1:sha256:717897a3aa97869a486c4cffbeb6e00e595b520c54a1a74a6033e164677bf7b7"
+          "version": "repo-file-v1:sha256:ddde493aee4cf413160eb5aa76a3c88318a51a523c2477c827e6b35cb1a47e01"
         },
         {
           "resource": "repo://config/json-contracts/README.md",
-          "version": "repo-file-v1:sha256:308d467fc4b0e205a6f3dbb339b3ed95425f49a01561d044c1dc948bdb7df8e1"
+          "version": "repo-file-v1:sha256:39d0f555ee43962500d2078dcfd606e8b9af206334413d6d3a570afca0255e32"
         }
       ]
     },
@@ -57,10 +57,24 @@
           "version": "repo-file-v1:sha256:bb5ebd4931bbe814498390133e1eaa81450d8e192a5afce7a2feb0224afe5613"
         }
       ]
+    },
+    {
+      "id": "claim_dd45873758c74e7ea3f8e11121aa574e",
+      "statement": "The JSON contract scan excludes only the build child of a Gradle project directory, so a source module named build such as topology/build remains scanned.",
+      "evidence": [
+        {
+          "resource": "repo://build-logic/src/main/kotlin/conventions/JsonContractVerification.kt",
+          "version": "repo-file-v1:sha256:ddde493aee4cf413160eb5aa76a3c88318a51a523c2477c827e6b35cb1a47e01"
+        },
+        {
+          "resource": "repo://config/json-contracts/README.md",
+          "version": "repo-file-v1:sha256:39d0f555ee43962500d2078dcfd606e8b9af206334413d6d3a570afca0255e32"
+        }
+      ]
     }
   ],
   "verification": {
     "by": "openwiki/0.9.0",
-    "at": "2026-11-21T22:16:17.145Z"
+    "at": "2026-11-22T20:53:36.158Z"
   }
 }

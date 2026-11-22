@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:dfe230e9af7ad46168941a1b3d57feac2e7c0167dcbbbe04129662f86ab540cb",
+  "pageVersion": "sha256:5ae9cecf13d1455583963015dd5d9e207c23bacc99908731f8663dad56d67d51",
   "claims": [
     {
       "id": "claim_4418145e0e48413589ccb805f87f8741",
@@ -40,17 +40,17 @@
         },
         {
           "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/RecordedRecoveryInstaller.kt",
-          "version": "repo-file-v1:sha256:6357c9ac2f09bf738288a53f4b2196b21402a17969b47c8e11e37f5115ebe26c"
+          "version": "repo-file-v1:sha256:41ac290bf72540a2bd85d8b0ee092bf8d08e8b8000c922e2bdcc4138918fa5cc"
         },
         {
           "resource": "repo://distribution/cli/src/test/kotlin/io/github/amichne/kast/distribution/cli/RecordedRecoveryInstallerTest.kt",
-          "version": "repo-file-v1:sha256:e610dc9a24214adb4b9844ecc22d9afd9539759f18ca3cc7ea2c02388a16bbde"
+          "version": "repo-file-v1:sha256:852cf245bcdda1cc28ea496ba8d3b0631b5b277f0c15178e698037ebbc193cbe"
         }
       ]
     },
     {
       "id": "claim_8dc609c61bc94d7491d3366ee0faac4a",
-      "statement": "Recorded recovery resumes finalization or restores captured preimages under admitted locks. A reservation without composition aborts only after exact staged inventory and prior-state admission, without Host artifacts or a retirement fence. Before recursive deletion, the Control owner atomically detaches admitted terminal payloads into transaction-bound completed storage. Terminal finalization atomically renames the journal before receipt deletion. Partial deletion cannot poison pending inventory admission. Closed-storage cleanup failure emits a typed diagnostic and does not block a new upgrade. A remaining pending journal still blocks public calls, including empty or dangling paths.",
+      "statement": "Recorded recovery resumes only a product journal, finalizing or restoring captured preimages under admitted locks; any other recorded journal returns RECOVERY_REQUIRED with RECOVERY_UNPROVEN. Before recursive deletion, the Control owner atomically detaches admitted terminal payloads into transaction-bound completed storage. Terminal finalization atomically renames the journal before receipt deletion. Partial deletion cannot poison pending inventory admission. Closed-storage cleanup failure emits a typed diagnostic and does not block a new upgrade. A remaining pending journal still blocks public calls, including empty or dangling paths.",
       "evidence": [
         {
           "resource": "repo://cli/src/main/kotlin/io/github/amichne/kast/cli/direct/InstalledToolAdmission.kt",
@@ -58,11 +58,15 @@
         },
         {
           "resource": "repo://packaging/internal/installation/installation-recovery.py",
-          "version": "repo-file-v1:sha256:fe7c196ba334df37ff902318411ca653547b5c41b0e6f00106018af30540bd82"
+          "version": "repo-file-v1:sha256:fcf7bc2eba57f883af92211f40de4cbc94227862bdb47f735d343b327f16eae4"
         },
         {
           "resource": "repo://packaging/internal/installation/managed_installation.py",
-          "version": "repo-file-v1:sha256:17c4c50b8c594a8f8d1079829b2a5ceec26b12e84b46626d9b40ddca02a523d2"
+          "version": "repo-file-v1:sha256:7343a3e74578f263b8b9861bdbaab153690e350570a13830da0bc6c1e176b9fb"
+        },
+        {
+          "resource": "repo://packaging/internal/product/managed_product_installation.py",
+          "version": "repo-file-v1:sha256:85b174d534c99d75bd439593419e20290070e31816d32775ce48c46e1c4dc4ee"
         }
       ]
     },
@@ -144,7 +148,7 @@
       "evidence": [
         {
           "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/InstallationLifecycle.kt",
-          "version": "repo-file-v1:sha256:1da4adce07a0f42cb25d16c907c6b3c606c77978d87cd1b889b38e5a2df58932"
+          "version": "repo-file-v1:sha256:aaacaa9da754fd4497712c10ad047867efb6889daed954ccdcefa68327b625c0"
         },
         {
           "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagedWorkspaceRemoval.kt",
@@ -166,15 +170,15 @@
       "evidence": [
         {
           "resource": "repo://packaging/internal/installation/immutable_store.py",
-          "version": "repo-file-v1:sha256:74118e12dd9d19350571cdef529854caa15485455278a73c8ddd4d5c0c7cdad5"
+          "version": "repo-file-v1:sha256:d573adbdce52ebb982599eab5b87978e7f419a5dcf38e48d7ae661a900735b06"
         },
         {
           "resource": "repo://packaging/internal/product/managed_product_installation.py",
-          "version": "repo-file-v1:sha256:fc8fada835ab693aacf4d03da320dbc510c89ae94b298bb5771529d42fac508e"
+          "version": "repo-file-v1:sha256:85b174d534c99d75bd439593419e20290070e31816d32775ce48c46e1c4dc4ee"
         },
         {
           "resource": "repo://packaging/tests/test-managed-build-record.py",
-          "version": "repo-file-v1:sha256:d247c5e000fb1332b11d49a26a37d2111764bfcf744c054b31ea04cb4a45ff35"
+          "version": "repo-file-v1:sha256:57f6c9d4f690fdc4d3f698578fcf92dcc617a53c2a2d5caa1b3ff0952da6f9db"
         }
       ]
     },
@@ -188,15 +192,15 @@
         },
         {
           "resource": "repo://packaging/internal/installation/installation-recovery.py",
-          "version": "repo-file-v1:sha256:fe7c196ba334df37ff902318411ca653547b5c41b0e6f00106018af30540bd82"
+          "version": "repo-file-v1:sha256:fcf7bc2eba57f883af92211f40de4cbc94227862bdb47f735d343b327f16eae4"
         },
         {
           "resource": "repo://packaging/internal/product/managed_product_installation.py",
-          "version": "repo-file-v1:sha256:fc8fada835ab693aacf4d03da320dbc510c89ae94b298bb5771529d42fac508e"
+          "version": "repo-file-v1:sha256:85b174d534c99d75bd439593419e20290070e31816d32775ce48c46e1c4dc4ee"
         },
         {
           "resource": "repo://packaging/tests/test-installation-recovery.py",
-          "version": "repo-file-v1:sha256:d7ea155ca7442497757680e1f98fb82d7de82b2b5b7aaeae1144e3243e334a88"
+          "version": "repo-file-v1:sha256:7fcac4dc16de2950aa53dbb155f84621b50c79397d3134b798e1fd6573c412a3"
         }
       ]
     },
@@ -206,19 +210,19 @@
       "evidence": [
         {
           "resource": "repo://packaging/internal/product/managed_product_installation.py",
-          "version": "repo-file-v1:sha256:fc8fada835ab693aacf4d03da320dbc510c89ae94b298bb5771529d42fac508e"
+          "version": "repo-file-v1:sha256:85b174d534c99d75bd439593419e20290070e31816d32775ce48c46e1c4dc4ee"
         },
         {
           "resource": "repo://packaging/internal/product/product_removal_recovery.py",
-          "version": "repo-file-v1:sha256:52c43478e4b88b0d32375304ceac47238fb193ee9ed3d2d4523549ae021b1fcf"
+          "version": "repo-file-v1:sha256:b4d6c3e9273ae9a142525b1fa52072ab47d54e54c7a010ff41ca8744aa6f1bbb"
         },
         {
           "resource": "repo://packaging/internal/product/product_state_removal.py",
-          "version": "repo-file-v1:sha256:44cdaa3bf0a7f3ae623dbdccaa6914bdb3b5abfcb436647a16cc669dac51c3ec"
+          "version": "repo-file-v1:sha256:a93275342a7d7c04ba3585f665a4e459e3f6ae00a50fafcdbbe54df6f0b1cf4a"
         },
         {
           "resource": "repo://packaging/tests/test-managed-build-record.py",
-          "version": "repo-file-v1:sha256:d247c5e000fb1332b11d49a26a37d2111764bfcf744c054b31ea04cb4a45ff35"
+          "version": "repo-file-v1:sha256:57f6c9d4f690fdc4d3f698578fcf92dcc617a53c2a2d5caa1b3ff0952da6f9db"
         }
       ]
     },
@@ -268,17 +272,53 @@
         },
         {
           "resource": "repo://packaging/internal/installation/immutable_store.py",
-          "version": "repo-file-v1:sha256:74118e12dd9d19350571cdef529854caa15485455278a73c8ddd4d5c0c7cdad5"
+          "version": "repo-file-v1:sha256:d573adbdce52ebb982599eab5b87978e7f419a5dcf38e48d7ae661a900735b06"
         },
         {
           "resource": "repo://packaging/internal/product/managed_product_installation.py",
-          "version": "repo-file-v1:sha256:fc8fada835ab693aacf4d03da320dbc510c89ae94b298bb5771529d42fac508e"
+          "version": "repo-file-v1:sha256:85b174d534c99d75bd439593419e20290070e31816d32775ce48c46e1c4dc4ee"
+        }
+      ]
+    },
+    {
+      "id": "claim_bd7605c8476e4d50b8f3621ea957f60f",
+      "statement": "The Kotlin InstallationReplacementReceipt strictly decodes the product installer's journal: it requires the reservation and product record, models file preimages as closed ABSENT or PRESENT variants, records the closed phase set, selection and previous manifest digests and shutdown fence, and admits only null for composition.",
+      "evidence": [
+        {
+          "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/RecordedRecoveryInstaller.kt",
+          "version": "repo-file-v1:sha256:41ac290bf72540a2bd85d8b0ee092bf8d08e8b8000c922e2bdcc4138918fa5cc"
+        },
+        {
+          "resource": "repo://distribution/contract/src/main/kotlin/io/github/amichne/kast/distribution/contract/InstallationReplacementReceipt.kt",
+          "version": "repo-file-v1:sha256:1e9678242de99b14362bb9ffab40b993f96649041436c5caff60d20f4c86548a"
+        },
+        {
+          "resource": "repo://distribution/contract/src/test/kotlin/io/github/amichne/kast/distribution/contract/InstallationReplacementReceiptTest.kt",
+          "version": "repo-file-v1:sha256:87a30307f1c880dccbea3a0fbe02fd15d8d9ed36769880ea882893e1eadaf44c"
+        }
+      ]
+    },
+    {
+      "id": "claim_1f59563b693e413593366105815b5d06",
+      "statement": "The uninstall retirement journal requires the admitted product identity; decoding a journal without it fails at uninstall-retirement with 'retirement proof lacks its product identity', and its schema requires a closed product reference.",
+      "evidence": [
+        {
+          "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/UninstallRetirementJournal.kt",
+          "version": "repo-file-v1:sha256:5491058762c8c119f11aa113ee57fe2388c36e1b8f227afccf84629b097674f9"
+        },
+        {
+          "resource": "repo://distribution/cli/src/test/kotlin/io/github/amichne/kast/distribution/cli/UninstallContractTest.kt",
+          "version": "repo-file-v1:sha256:ee8a6fb582ce3ce12b4f41134a6b587298d5c77720f109ab5d624fef2301279c"
+        },
+        {
+          "resource": "repo://distribution/contract/src/main/resources/management/uninstall-retirement.schema.json",
+          "version": "repo-file-v1:sha256:d85ea99066e8de336cd1e9aac4a498964b325a0d6e22ef89489fe14a3e0cb194"
         }
       ]
     }
   ],
   "verification": {
     "by": "openwiki/0.9.0",
-    "at": "2026-11-21T22:16:17.145Z"
+    "at": "2026-11-22T20:53:36.158Z"
   }
 }

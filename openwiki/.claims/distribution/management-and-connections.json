@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:fabd1f472099b8bfd0ab220c48bed4c14df70f0a13cdcf3e7f0247bfe3c26245",
+  "pageVersion": "sha256:f65a86510b46b98a96f090df2aadecf9f78c61f78fde61af7ec52a4ca32efcc5",
   "claims": [
     {
       "id": "claim_d60c4b147f224d3ea584e14dde77d04e",
@@ -68,7 +68,7 @@
         },
         {
           "resource": "repo://packaging/internal/installation/managed_installation.py",
-          "version": "repo-file-v1:sha256:17c4c50b8c594a8f8d1079829b2a5ceec26b12e84b46626d9b40ddca02a523d2"
+          "version": "repo-file-v1:sha256:7343a3e74578f263b8b9861bdbaab153690e350570a13830da0bc6c1e176b9fb"
         }
       ]
     },
@@ -88,7 +88,7 @@
       "evidence": [
         {
           "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagedWorkspaceLifecycle.kt",
-          "version": "repo-file-v1:sha256:e3b0710d8610dd14734d16abd704c43e73c9110e69fe5312ad4d1762a1425104"
+          "version": "repo-file-v1:sha256:a3dc75fe55a555a3065023b6ec11c98cd393480412f60dd2b3639e9546dfa6d8"
         }
       ]
     },
@@ -140,7 +140,7 @@
       "evidence": [
         {
           "resource": "repo://.github/scripts/release/product_producer.py",
-          "version": "repo-file-v1:sha256:442435a5160da4e8b62538e34fb5fdbac8a89b7189d883d7901228b45bfb57bf"
+          "version": "repo-file-v1:sha256:7c3c6e5c107028014e4e30ddb7a2c85ddeb010fd55cf1c1c8d19ff00a81e70bf"
         },
         {
           "resource": "repo://packaging/internal/composition/composed_release.py",
@@ -148,11 +148,11 @@
         },
         {
           "resource": "repo://packaging/internal/installation/managed_release.py",
-          "version": "repo-file-v1:sha256:471e28f5edf60d29744193ab64442f586628070bd2b01f9290d307bba12c03c7"
+          "version": "repo-file-v1:sha256:f77c414fd5fb7eea33876f3163e62a7d5a3e4ad3df01a96fecccdb50bf7e37bb"
         },
         {
           "resource": "repo://packaging/internal/verification/product_lifecycle_probe.py",
-          "version": "repo-file-v1:sha256:ef2f0407a4e29c52f582836c9492121dcfc407d4e222e5679e1ef74a8a33262b"
+          "version": "repo-file-v1:sha256:457353ed8ae88ef7683d354ba1bc5f539bf7507548906b09fb548ae151d3a2d5"
         }
       ]
     },
@@ -162,11 +162,11 @@
       "evidence": [
         {
           "resource": "repo://.github/scripts/release/product_candidate.py",
-          "version": "repo-file-v1:sha256:188b5b71cfd5d066ee40a5e1660739b98edaaea483bc411c8b2ececd9091bc0a"
+          "version": "repo-file-v1:sha256:12b52a3b6fbee1c5037665f3f5de0a667b6facc3e1265667c4f323f2fbee478d"
         },
         {
           "resource": "repo://.github/scripts/release/product_producer.py",
-          "version": "repo-file-v1:sha256:442435a5160da4e8b62538e34fb5fdbac8a89b7189d883d7901228b45bfb57bf"
+          "version": "repo-file-v1:sha256:7c3c6e5c107028014e4e30ddb7a2c85ddeb010fd55cf1c1c8d19ff00a81e70bf"
         },
         {
           "resource": "repo://.github/scripts/release/publish_developer.py",
@@ -180,7 +180,7 @@
       "evidence": [
         {
           "resource": "repo://.github/scripts/release/product_candidate.py",
-          "version": "repo-file-v1:sha256:188b5b71cfd5d066ee40a5e1660739b98edaaea483bc411c8b2ececd9091bc0a"
+          "version": "repo-file-v1:sha256:12b52a3b6fbee1c5037665f3f5de0a667b6facc3e1265667c4f323f2fbee478d"
         },
         {
           "resource": "repo://packaging/internal/verification/product_acceptance.py",
@@ -188,7 +188,7 @@
         },
         {
           "resource": "repo://packaging/internal/verification/product_lifecycle_probe.py",
-          "version": "repo-file-v1:sha256:ef2f0407a4e29c52f582836c9492121dcfc407d4e222e5679e1ef74a8a33262b"
+          "version": "repo-file-v1:sha256:457353ed8ae88ef7683d354ba1bc5f539bf7507548906b09fb548ae151d3a2d5"
         }
       ]
     },
@@ -337,10 +337,24 @@
           "version": "repo-file-v1:sha256:519f5b8e97ec064ed8eec75d349b79f9924fd699b4cc1e4bb0996e3fdbce68fa"
         }
       ]
+    },
+    {
+      "id": "claim_dc02d82d84b844bda2d3a501d4281bff",
+      "statement": "The kast stop text result names every stopped workspace after its count.",
+      "evidence": [
+        {
+          "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagedWorkspaceLifecycle.kt",
+          "version": "repo-file-v1:sha256:a3dc75fe55a555a3065023b6ec11c98cd393480412f60dd2b3639e9546dfa6d8"
+        },
+        {
+          "resource": "repo://distribution/cli/src/test/kotlin/io/github/amichne/kast/distribution/cli/LifecycleIngressTest.kt",
+          "version": "repo-file-v1:sha256:432280626b213870c97ed6f2b543abac9fadba1cfb06343d0c252988fa9a0c68"
+        }
+      ]
     }
   ],
   "verification": {
     "by": "openwiki/0.9.0",
-    "at": "2026-11-21T22:51:07.455Z"
+    "at": "2026-11-22T20:53:36.158Z"
   }
 }

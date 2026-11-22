@@ -406,6 +406,84 @@ def test_repository_public_projection_matches_its_canonical_sources() -> None:
     assert not isinstance(result, Failure), result
 
 
+def public_fixture(root: Path, authored: str | None = None, page_link: str | None = None) -> None:
+    """A tracked repository whose public site holds one projected view and one authored page."""
+    manifest, _tracked = fixture(root)
+    if page_link is not None:
+        page = (root / PAGE).read_text() + f"\nSee [the moved owner]({page_link}).\n"
+        (root / PAGE).write_text(page)
+        version = "repo-file-v1:sha256:" + hashlib.sha256((root / SOURCE).read_bytes()).hexdigest()
+        (root / CLAIMS).write_text(claims_document(page, version))
+    (root / "docs/public/reference").mkdir(parents=True)
+    (root / "docs/public/reference/example.mdx").write_text("Initial shell.\n")
+    (root / "docs/public/start.mdx").write_text(authored or "No repository links.\n")
+    (root / "docs/okf-public.json").write_text(
+        manifest_without_introduction(
+            Manifest(manifest.views, (Authored("start", "reader-navigation"),))
+        )
+    )
+    git = shutil.which("git")
+    assert git is not None
+    subprocess.run([git, "init", "-q", str(root)], check=True)
+    subprocess.run([git, "add", "."], cwd=root, check=True)
+
+
+@pytest.mark.parametrize(
+    "link",
+    [
+        "https://github.com/amichne/kast/blob/main/src/example.txt",
+        "https://github.com/amichne/kast/blob/main/src/example.txt#L1-L2",
+        "https://github.com/amichne/kast/tree/main/src",
+        "https://github.com/amichne/kast/tree/main/src/",
+        "https://github.com/amichne/kast/blob/main/docs/public/start.mdx?plain=1",
+    ],
+)
+def test_public_links_to_tracked_repository_paths_pass(tmp_path: Path, link: str) -> None:
+    public_fixture(tmp_path, authored=f"Read [the owner]({link}).\n")
+    assert not isinstance(run(tmp_path, write=True), Failure)
+    assert not isinstance(run(tmp_path, write=False), Failure)
+
+
+@pytest.mark.parametrize(
+    ("link", "target"),
+    [
+        ("https://github.com/amichne/kast/blob/main/src/missing.txt", "src/missing.txt"),
+        ("https://github.com/amichne/kast/blob/main/src/missing.txt#L3", "src/missing.txt"),
+        ("https://github.com/amichne/kast/tree/main/retired", "retired"),
+        # A directory is not a blob, and a file is not a tree.
+        ("https://github.com/amichne/kast/blob/main/src", "src"),
+        ("https://github.com/amichne/kast/tree/main/src/example.txt", "src/example.txt"),
+    ],
+)
+def test_authored_public_link_to_a_missing_repository_path_rejects(
+    tmp_path: Path, link: str, target: str
+) -> None:
+    public_fixture(tmp_path, authored=f"Read [the owner]({link}).\n")
+    assert run(tmp_path, write=False) == Failure(Code.LINK, "docs/public/start.mdx", target)
+    assert run(tmp_path, write=True) == Failure(Code.LINK, "docs/public/start.mdx", target)
+    # Rejection precedes every projection write.
+    assert not (tmp_path / "docs/public/snippets").exists()
+    assert (tmp_path / "docs/public/reference/example.mdx").read_text() == "Initial shell.\n"
+
+
+def test_projected_link_to_a_moved_repository_path_rejects_before_writes(tmp_path: Path) -> None:
+    # The canonical page cites a path that no longer exists; projection would publish a 404.
+    public_fixture(tmp_path, page_link="../../packaging/generate-public-query.py")
+    snippet = "docs/public/snippets/okf/contracts/example.mdx"
+    expected = Failure(Code.LINK, snippet, "packaging/generate-public-query.py")
+    assert run(tmp_path, write=True) == expected
+    assert not (tmp_path / snippet).exists()
+    assert run(tmp_path, write=False) == expected
+
+
+def test_untracked_repository_path_does_not_satisfy_a_public_link(tmp_path: Path) -> None:
+    public_fixture(
+        tmp_path, authored="Read [the draft](https://github.com/amichne/kast/blob/main/draft.md).\n"
+    )
+    (tmp_path / "draft.md").write_text("Present locally, absent from the repository.\n")
+    assert run(tmp_path, write=False) == Failure(Code.LINK, "docs/public/start.mdx", "draft.md")
+
+
 @pytest.mark.parametrize("previously_generated", [False, True])
 def test_write_creates_or_restores_declared_generated_route(
     tmp_path: Path, previously_generated: bool

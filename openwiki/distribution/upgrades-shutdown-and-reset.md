@@ -54,6 +54,8 @@ sources:
     resource: repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/RejectedWorkspaceRemoval.kt
   - id: openwiki-source-d258f44cd873e00e544ca7ed
     resource: repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/UninstallManagedRoot.kt
+  - id: openwiki-source-47ff7393e051378d9c971323
+    resource: repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/UninstallRetirementJournal.kt
   - id: openwiki-source-76b7f82a658d043d4483702c
     resource: repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/UserStateInventoryBuilder.kt
   - id: openwiki-source-d9ace9189c53b7c82c5ed60c
@@ -62,8 +64,16 @@ sources:
     resource: repo://distribution/cli/src/test/kotlin/io/github/amichne/kast/distribution/cli/ProductRemovalRecoveryTest.kt
   - id: openwiki-source-a683fe18522ef2e7acd1dca0
     resource: repo://distribution/cli/src/test/kotlin/io/github/amichne/kast/distribution/cli/RecordedRecoveryInstallerTest.kt
+  - id: openwiki-source-ebaa784f87c513520ea30215
+    resource: repo://distribution/cli/src/test/kotlin/io/github/amichne/kast/distribution/cli/UninstallContractTest.kt
   - id: openwiki-source-d1f8b0a2ac011ef2d36005a5
     resource: repo://distribution/contract/src/main/kotlin/io/github/amichne/kast/distribution/contract/ControlDistributionLimits.kt
+  - id: openwiki-source-532b679718b686c6f5550473
+    resource: repo://distribution/contract/src/main/kotlin/io/github/amichne/kast/distribution/contract/InstallationReplacementReceipt.kt
+  - id: openwiki-source-553e99bfbd3574888348e9fa
+    resource: repo://distribution/contract/src/main/resources/management/uninstall-retirement.schema.json
+  - id: openwiki-source-ce3f1fc4b6e5a2d079d0daf2
+    resource: repo://distribution/contract/src/test/kotlin/io/github/amichne/kast/distribution/contract/InstallationReplacementReceiptTest.kt
   - id: openwiki-source-f819c9a16e09783f5c943c2d
     resource: repo://packaging/internal/installation/immutable_store.py
   - id: openwiki-source-e2f98663750a2e6ad150484d
@@ -82,10 +92,10 @@ sources:
     resource: repo://packaging/tests/test-installation-recovery.py
   - id: openwiki-source-abab1b24f64b3271633d720d
     resource: repo://packaging/tests/test-managed-build-record.py
-generated: { by: "codex", at: "2026-11-21T22:16:17.145Z" }
+generated: { by: "codex", at: "2026-11-22T20:53:36.158Z" }
 verified:
   - by: openwiki/0.9.0
-    at: 2026-11-21T22:16:17.145Z
+    at: 2026-11-22T20:53:36.158Z
 ---
 
 # Upgrade, shutdown, and guarded reset
@@ -101,6 +111,8 @@ Uninstall checks rejected workspace entries before fencing neighboring Hosts.
 Its preparation scope removes only the exact fence created by that attempt when no uninstall journal was published.
 An existing fence, a changed fence, or a committed journal prevents that cleanup.
 Inactive rejected records have a separate uninstall admission under exclusive entry access; uncertain live state still rejects removal.
+The uninstall retirement journal requires the admitted product identity.
+Decoding a journal without it fails at `uninstall-retirement` with "retirement proof lacks its product identity", and the schema requires a closed product reference.
 
 Exact repair stages verified runtime and base bytes in the existing replacement journal.
 Only recorded Host retirement and the unchanged shutdown fence permit deletion of a damaged owned runtime directory.
@@ -175,6 +187,9 @@ The replacement adapter preserves that rejection as `CONTROL_REJECTED` with `CON
 A pending transaction invokes the admitted installed bridge with `--recover-only` and the selected output options.
 Installed bridge admission requires unique manifest paths, an exact complete Control inventory, and verified payload bytes.
 If installed admission fails, `RecordedRecoveryInstaller` admits only the candidate identity from the replacement receipt.
+It strictly decodes `recovery/replacement/receipt.json` as `InstallationReplacementReceipt`, the product installer's journal.
+That contract requires the reservation and the product record, models file preimages as closed `ABSENT` or `PRESENT` variants, and records the closed phase set, selection and previous manifest digests, and the shutdown fence.
+Its `composition` field admits only `null`, because only a product journal is recoverable.
 Admission binds canonical paths, the current owner, manifest digest, exact payload inventory, file modes, and installer capability.
 The candidate can occupy its recorded stage, the installation directory, or the journal quarantine.
 New exterior staging must match the recorded transaction UUID exactly; legacy interior staging remains admitted.
@@ -184,16 +199,11 @@ Rejected admission returns finite `RECOVERY_REQUIRED` without a child.
 An uncertain child invocation never triggers another recovery invocation.
 The wrapper returns the recovery child's terminal result and does not continue into a new selection.
 
-The outer recovery owner reads the captured journal and exact prior composition.
+The Python coordinator resumes only a recorded product journal, through `managed_product_installation.resume`.
 It resumes terminal finalization or restores the recorded preimages under the selected locks.
+Any other recorded journal, including a legacy composition record, returns `RECOVERY_REQUIRED` with `RECOVERY_UNPROVEN`.
 A missing bridge can use only the recorded release and digest for recovery.
 An unresolved active transaction keeps its recovery evidence and existing fence.
-
-Recovery first examines a reservation without a composition.
-The owner admits the exact staged Control, its complete inventory, and the unchanged prior installation or absence.
-Host artifacts and retirement fences reject this preparation-only path.
-A successful abort returns `REJECTED` with `CANCELLED`.
-Unknown Host artifacts and changed payloads preserve recovery evidence.
 
 After terminal proof, the owner renames the journal to a completed slot through a no-replace operation.
 This atomic move removes the pending path before it deletes the receipt.

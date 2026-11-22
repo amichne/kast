@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:5b66ee475e8784d59168aca5c398c2fc0541bb4930057c0190997ef6ef301ce9",
+  "pageVersion": "sha256:398139d18e3b71db75725cde3aedce8372c17ad092ec9999789e69f1ea51090c",
   "claims": [
     {
       "id": "claim_b360f4c00a974d9fa3febbb40e81500c",
@@ -8,21 +8,21 @@
       "evidence": [
         {
           "resource": "repo://docs/development.md",
-          "version": "repo-file-v1:sha256:3676914d69fef7f93195e257b580a342b6f1cc6a2a1b746d407059c3ba8b26e1"
+          "version": "repo-file-v1:sha256:372fd667776a9ec034e5615b7edd15ddfdb827ca65e98f10f96009ad961ac999"
         }
       ]
     },
     {
       "id": "claim_6dcd0fb988634a25ab7708ca6caf1b59",
-      "statement": "The portable packaging runner uses owned process state, enumerates offline suites, requires one nonempty test summary per suite, and rejects unexpected skips. It scans summary lines throughout the log so buffered output cannot hide the test count.",
+      "statement": "The portable packaging runner uses owned process state, enumerates offline suites, admits suite path arguments only from that inventory, requires one nonempty test summary per suite, and rejects unexpected skips. It scans summary lines throughout the log so buffered output cannot hide the test count.",
       "evidence": [
         {
           "resource": "repo://packaging/internal/verification/run-portable-tests.py",
-          "version": "repo-file-v1:sha256:7fa8b4804e7f6b4456a774654a521950935dafcc43ff5514afa35a720bbecfb1"
+          "version": "repo-file-v1:sha256:94531155173c8bd3ccb72a11f5c9dba32a8da07db8fa259ebe36ca304d8e49fe"
         },
         {
           "resource": "repo://packaging/tests/test-portable-tests.py",
-          "version": "repo-file-v1:sha256:637f70cbe86bc07bb67e4190d12fc0b91c82458ab4a9e46e933a713b89873408"
+          "version": "repo-file-v1:sha256:3cc1f7315a71a6d8c97bf3050685a35b86ce1f8aec5497c596eb4bdf36959e1a"
         }
       ]
     },
@@ -32,11 +32,11 @@
       "evidence": [
         {
           "resource": "repo://relation/intellij/NATIVE_FIXTURES.md",
-          "version": "repo-file-v1:sha256:0ad89f7d3f631963201a867236078336c8750e0c2c3e19ec7b7b7619e1979e9d"
+          "version": "repo-file-v1:sha256:4621266647afc7b268b82c5994c0111686b8670bbbf61c00d637186bcd5bb054"
         },
         {
           "resource": "repo://runtime/hosted/NATIVE_FIXTURES.md",
-          "version": "repo-file-v1:sha256:76b683121f0bfe035c2314368318a5d3245a2a2a7feed54145658f1309fce323"
+          "version": "repo-file-v1:sha256:6d40276070b08414daf14084f6bf72649499208b5aa2d0a50f3fbe08c5b0fd48"
         }
       ]
     },
@@ -46,11 +46,11 @@
       "evidence": [
         {
           "resource": "repo://docs/development.md",
-          "version": "repo-file-v1:sha256:3676914d69fef7f93195e257b580a342b6f1cc6a2a1b746d407059c3ba8b26e1"
+          "version": "repo-file-v1:sha256:372fd667776a9ec034e5615b7edd15ddfdb827ca65e98f10f96009ad961ac999"
         },
         {
           "resource": "repo://packaging/internal/verification/local_product_probe.py",
-          "version": "repo-file-v1:sha256:700ef9f066925c98c3d7e7aa953f44d10c9302a23a46c62a830611c9eba702d9"
+          "version": "repo-file-v1:sha256:2e49fb9634561a4d02aa75ad2c1677880b2ac46a97affcaa42188d3b08155469"
         }
       ]
     },
@@ -60,11 +60,11 @@
       "evidence": [
         {
           "resource": "repo://packaging/internal/verification/local_product_probe.py",
-          "version": "repo-file-v1:sha256:700ef9f066925c98c3d7e7aa953f44d10c9302a23a46c62a830611c9eba702d9"
+          "version": "repo-file-v1:sha256:2e49fb9634561a4d02aa75ad2c1677880b2ac46a97affcaa42188d3b08155469"
         },
         {
           "resource": "repo://packaging/internal/verification/product_lifecycle_probe.py",
-          "version": "repo-file-v1:sha256:ef2f0407a4e29c52f582836c9492121dcfc407d4e222e5679e1ef74a8a33262b"
+          "version": "repo-file-v1:sha256:457353ed8ae88ef7683d354ba1bc5f539bf7507548906b09fb548ae151d3a2d5"
         }
       ]
     },
@@ -74,7 +74,7 @@
       "evidence": [
         {
           "resource": "repo://packaging/internal/verification/local_product_probe.py",
-          "version": "repo-file-v1:sha256:700ef9f066925c98c3d7e7aa953f44d10c9302a23a46c62a830611c9eba702d9"
+          "version": "repo-file-v1:sha256:2e49fb9634561a4d02aa75ad2c1677880b2ac46a97affcaa42188d3b08155469"
         }
       ]
     },
@@ -84,7 +84,7 @@
       "evidence": [
         {
           "resource": "repo://packaging/internal/verification/local_product_probe.py",
-          "version": "repo-file-v1:sha256:700ef9f066925c98c3d7e7aa953f44d10c9302a23a46c62a830611c9eba702d9"
+          "version": "repo-file-v1:sha256:2e49fb9634561a4d02aa75ad2c1677880b2ac46a97affcaa42188d3b08155469"
         }
       ]
     },
@@ -94,7 +94,7 @@
       "evidence": [
         {
           "resource": "repo://docs/development.md",
-          "version": "repo-file-v1:sha256:3676914d69fef7f93195e257b580a342b6f1cc6a2a1b746d407059c3ba8b26e1"
+          "version": "repo-file-v1:sha256:372fd667776a9ec034e5615b7edd15ddfdb827ca65e98f10f96009ad961ac999"
         },
         {
           "resource": "repo://packaging/internal/verification/run-installed-product.py",
@@ -115,10 +115,32 @@
           "version": "repo-file-v1:sha256:9a81c0d3700941a0e5e1cc2c06cef9fce26ee4123d6e2bfa7909647b436facbd"
         }
       ]
+    },
+    {
+      "id": "claim_b1e9547cdb894c938c60f2f81a5fd960",
+      "statement": "The local product probe and the installed-product lifecycle probe retire every semantic coordinator launchd job under their disposable root, including after a failure, and harness_launchd.py lists or retires jobs that leaked earlier.",
+      "evidence": [
+        {
+          "resource": "repo://docs/development.md",
+          "version": "repo-file-v1:sha256:372fd667776a9ec034e5615b7edd15ddfdb827ca65e98f10f96009ad961ac999"
+        },
+        {
+          "resource": "repo://packaging/internal/verification/harness_launchd.py",
+          "version": "repo-file-v1:sha256:ba6867ca166409ab6840f17959207a930e39ef21a0bac5be87fd746da1fdf65c"
+        },
+        {
+          "resource": "repo://packaging/internal/verification/local_product_probe.py",
+          "version": "repo-file-v1:sha256:2e49fb9634561a4d02aa75ad2c1677880b2ac46a97affcaa42188d3b08155469"
+        },
+        {
+          "resource": "repo://packaging/internal/verification/product_lifecycle_probe.py",
+          "version": "repo-file-v1:sha256:457353ed8ae88ef7683d354ba1bc5f539bf7507548906b09fb548ae151d3a2d5"
+        }
+      ]
     }
   ],
   "verification": {
     "by": "openwiki/0.9.0",
-    "at": "2026-11-21T22:16:17.145Z"
+    "at": "2026-11-22T21:18:16.148Z"
   }
 }

@@ -18,6 +18,8 @@ The request keeps an exact subject selector with its original authority and sour
 Its expansion domain selects the native relationship destinations.
 The source scope that found the subject does not automatically constrain every later destination.
 `RelationFileEnumerationPlan` and scope compilation carry cheap file, source-set, and ownership restrictions into native collection.
+File admission receives the source sets of the scope being compiled, including the subject's own scope.
+A main subject with only test destinations is therefore not rejected as `OUTSIDE_SCOPE`.
 
 The selected meaning distinguishes references, callers, callees, implementations, overrides, and related semantic reads.
 Each provider must establish that meaning through compiler evidence.
@@ -36,6 +38,11 @@ Native search first limits eligible inputs, then refines candidates through K2.
 An excluded file or declaration family must not consume the eligible result capacity.
 Collected candidates remain weaker evidence until the compiler confirms the target and relationship.
 Bounded inventories and advancing positions keep resumed pages from replaying already-consumed work.
+
+A Kotlin constructor call such as `Name(...)` resolves to the constructor, not to the class.
+When a reference resolves to a constructor, K2 supplies the constructor's containing class, and the ordinary exact declaration proof compares that class with a class-like subject declaration.
+The call therefore counts as a reference to the class.
+An owner that K2 cannot prove stays unresolved, so the read degrades rather than reporting absence.
 
 <a id="okf-semantics-relation-named-relations-occurrences-exclusions-and-omissions" />
 

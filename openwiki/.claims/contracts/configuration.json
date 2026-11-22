@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:86d12105bbea78ea07224b91c7ef17fb0745ad2c54efede06cef8073a8ce8b0d",
+  "pageVersion": "sha256:9738ee3ea22c5e17cad9fc1e7b76738b1c8c9d61fb33ec445c46b064e1c2e71e",
   "claims": [
     {
       "id": "claim_91a8a70849534ef1b2462828f3d9c9fb",
@@ -290,7 +290,7 @@
         },
         {
           "resource": "repo://packaging/tests/test-install-checkout.py",
-          "version": "repo-file-v1:sha256:6f2ac874971de999808c713b6ebfc9734f9803c2e9c26e304d07cdeafa222eee"
+          "version": "repo-file-v1:sha256:5f0c80266608738a924b7f9b3e3bcae1c6dcdedee0b98854571c48fd14f7e8fc"
         }
       ]
     },
@@ -321,6 +321,6 @@
   ],
   "verification": {
     "by": "openwiki/0.9.0",
-    "at": "2026-11-21T22:16:17.145Z"
+    "at": "2026-11-22T20:53:36.158Z"
   }
 }

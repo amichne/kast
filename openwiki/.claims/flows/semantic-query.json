@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:d2d32e3e314860296e4527b87604cc10f8052d157d14caa29fe032e95c77d32a",
+  "pageVersion": "sha256:6c06eca8f1352de26488813c17b534d6f405d9ee7ed3599bfa569608164e1295",
   "claims": [
     {
       "id": "claim_028d251874414d8da5da1449de9e8ce4",
@@ -28,7 +28,7 @@
       "evidence": [
         {
           "resource": "repo://query/service/src/main/kotlin/io/github/amichne/kast/query/service/PipelineCheckpoint.kt",
-          "version": "repo-file-v1:sha256:4436a9094582430c668b7802a7641f6c2a73b0b09a608e97bd906ade5c79499a"
+          "version": "repo-file-v1:sha256:8dfb32efcc01590f7a8e1539b4bdd126e922f832ab4f14c7b26a87c35919159c"
         }
       ]
     },
@@ -60,7 +60,7 @@
         },
         {
           "resource": "repo://query/service/src/main/kotlin/io/github/amichne/kast/query/service/PipelineCheckpoint.kt",
-          "version": "repo-file-v1:sha256:4436a9094582430c668b7802a7641f6c2a73b0b09a608e97bd906ade5c79499a"
+          "version": "repo-file-v1:sha256:8dfb32efcc01590f7a8e1539b4bdd126e922f832ab4f14c7b26a87c35919159c"
         },
         {
           "resource": "repo://query/service/src/main/kotlin/io/github/amichne/kast/query/service/QueryImpactCapacity.kt",
@@ -187,10 +187,32 @@
           "version": "repo-file-v1:sha256:e3063720cab1f7ef0d884013f7c0ade6b5ebc931c1961dce7a24f161aed64525"
         }
       ]
+    },
+    {
+      "id": "claim_382e4b8e6ea34f02a006f30d5a6950d2",
+      "statement": "Pipeline checkpoints carry a relation seed obligation across resumes; a run that completes while the first relation-bearing stage still awaits an input symbol rejects with RELATION_SEED_EMPTY, and impact sources keep their own empty-seed accounting.",
+      "evidence": [
+        {
+          "resource": "repo://query/service/src/main/kotlin/io/github/amichne/kast/query/service/PipelineCheckpoint.kt",
+          "version": "repo-file-v1:sha256:8dfb32efcc01590f7a8e1539b4bdd126e922f832ab4f14c7b26a87c35919159c"
+        },
+        {
+          "resource": "repo://query/service/src/main/kotlin/io/github/amichne/kast/query/service/QueryRelationSeed.kt",
+          "version": "repo-file-v1:sha256:2bc72eb0cbd01f28b340469def5e32c2acc5ac2b331d2c214a278f2c95334e88"
+        },
+        {
+          "resource": "repo://query/service/src/main/kotlin/io/github/amichne/kast/query/service/QueryService.kt",
+          "version": "repo-file-v1:sha256:5a641124a79aa45db529867f13b6825aa6a99a8459bbbcad29aacde69561c46c"
+        },
+        {
+          "resource": "repo://query/service/src/test/kotlin/io/github/amichne/kast/query/service/QueryRelationSeedTest.kt",
+          "version": "repo-file-v1:sha256:cf2b53c2e8347a020c7a26c158f3c25747e09199ea1cb9b72f7735c4e6940bb9"
+        }
+      ]
     }
   ],
   "verification": {
     "by": "openwiki/0.9.0",
-    "at": "2026-11-21T22:16:17.145Z"
+    "at": "2026-11-22T20:53:36.158Z"
   }
 }

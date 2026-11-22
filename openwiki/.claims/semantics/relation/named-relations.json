@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:7db2b591834d24130ff86ed507bd91a6a6bf02dfa7a84649d8ac097e03bd06c0",
+  "pageVersion": "sha256:17accaff934af75a5aecb8a70c1ddf14aef3d5acb3b39071de5282945e712cd7",
   "claims": [
     {
       "id": "claim_fe33fe126b7646c38ff54533310b15dd",
@@ -55,10 +55,46 @@
           "version": "repo-file-v1:sha256:e258a1ab5fcdf5d9b25d51a99eca51af0295b2ed726c1ab7850a02fac5e0855a"
         }
       ]
+    },
+    {
+      "id": "claim_4024584c30e04899a7b622d0210a0386",
+      "statement": "A Kotlin constructor call counts as a reference to its class: when a reference resolves to a constructor, K2 supplies the containing class for the exact declaration proof, and an unproved owner stays unresolved rather than different.",
+      "evidence": [
+        {
+          "resource": "repo://relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/IntellijConstructedClass.kt",
+          "version": "repo-file-v1:sha256:ad446b8a3f9803e22dcf0f1e8ab55e832d98b05468c5ffd66d592f57394cfddd"
+        },
+        {
+          "resource": "repo://relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/IntellijK2RelationProjection.kt",
+          "version": "repo-file-v1:sha256:21d9db5096f57b34c63ebd87c4e58e650f5de42dd0366bc4cdb0cf0481ffb789"
+        },
+        {
+          "resource": "repo://relation/intellij/src/nativeTest/kotlin/io/github/amichne/kast/relation/intellij/NativeReferenceDestinationTest.kt",
+          "version": "repo-file-v1:sha256:5a9f969af659e27b72656a5dcc3ae7d0ab2764cce6b7cb46d28da32324af19fa"
+        }
+      ]
+    },
+    {
+      "id": "claim_b35fe96eebc74fb9a6bb1deebb6b418a",
+      "statement": "Relation file admission receives the source sets of the scope being compiled, so a main subject with a test-only destination is not rejected as OUTSIDE_SCOPE.",
+      "evidence": [
+        {
+          "resource": "repo://relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/IntellijRelationScopeCompiler.kt",
+          "version": "repo-file-v1:sha256:c400835161ec4bae998d94df84ed7979f217d5019947bc39d1c3ae3080be6aa0"
+        },
+        {
+          "resource": "repo://relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/ProjectBoundIntellijRelationPort.kt",
+          "version": "repo-file-v1:sha256:90449dc9a970f834c3b484f6a111ec2a3af04ef1353da418018eba1a6cd58209"
+        },
+        {
+          "resource": "repo://relation/intellij/src/nativeTest/kotlin/io/github/amichne/kast/relation/intellij/NativeReferenceDestinationTest.kt",
+          "version": "repo-file-v1:sha256:5a9f969af659e27b72656a5dcc3ae7d0ab2764cce6b7cb46d28da32324af19fa"
+        }
+      ]
     }
   ],
   "verification": {
     "by": "openwiki/0.9.0",
-    "at": "2026-11-11T06:28:10.019Z"
+    "at": "2026-11-22T21:35:10.249Z"
   }
 }

@@ -4,7 +4,7 @@ title: "Distribution and packaging"
 openwiki_generated: true
 verified:
   - by: openwiki/0.9.0
-    at: 2026-11-21T22:16:17.145Z
+    at: 2026-11-22T20:53:36.158Z
 sources:
   - id: openwiki-source-baf30c604828cfde90a8ab63
     resource: repo://.githooks/pre-push
@@ -38,6 +38,8 @@ sources:
     resource: repo://build-logic/src/main/kotlin/support/tasks/control/GenerateAgentToolsTask.kt
   - id: openwiki-source-16803a9d8df1ded50a107e29
     resource: repo://build-logic/src/main/kotlin/support/tasks/control/GenerateComponentReleaseTask.kt
+  - id: openwiki-source-a387d9d545afff426d34a10a
+    resource: repo://build-logic/src/main/kotlin/support/tasks/verification/VerifyDistributionTasks.kt
   - id: openwiki-source-2a9daaac1604f238ef4c63fb
     resource: repo://build.gradle.kts
   - id: openwiki-source-9334c5b6f4494897095d1968
@@ -106,8 +108,6 @@ sources:
     resource: repo://packaging/internal/bootstrap/generate_bootstrap.py
   - id: openwiki-source-714a256a14f92900e3bd2e7e
     resource: repo://packaging/internal/composition/composed_release.py
-  - id: openwiki-source-d49c64c0efdff5cd60ab7fde
-    resource: repo://packaging/internal/installation/host-installation.py
   - id: openwiki-source-f819c9a16e09783f5c943c2d
     resource: repo://packaging/internal/installation/immutable_store.py
   - id: openwiki-source-9f2a730e7185b57c14ac08e8
@@ -146,7 +146,7 @@ sources:
     resource: repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/lifecycle/IdeLifecycleApplication.kt
   - id: openwiki-source-57ba3a687a2a322141093d5f
     resource: repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/OwnedHostedEndpoint.kt
-generated: { by: "codex", at: "2026-11-21T22:16:17.145Z" }
+generated: { by: "codex", at: "2026-11-22T20:53:36.158Z" }
 ---
 
 
@@ -216,7 +216,8 @@ The producer hashes Control itself before sealing the build record; it does not 
 Published schema 1 `COMPONENT_NATIVE` receipts remain admissible under their original contract without relabelling them.
 
 The CI `product_producer.py target` command records one native target's evidence.
-Its `seal` operation creates the immutable build record from the exact producer attempt without rebuilding.
+Its `seal` operation creates the immutable build record from the producer run without rebuilding.
+After a rerun of failed jobs, sealing admits qualification from the same run at an earlier or equal attempt, and the join admits an earlier seal.
 Current CI seals a Mac-only schema 5 record with `seal --macos-only`; schema 2 and 3 records bind both targets.
 That record can then enter installed-product acceptance through normal managed admission.
 The later `accept` operation joins one detached receipt per recorded target without rewriting the sealed record.
@@ -322,7 +323,7 @@ On graph timeout or cancellation, optional diagnostics attempt a bounded daemon 
 Invocation association and process start identity are checked before and after attachment.
 Incomplete diagnostics do not replace the graph failure or prevent client cleanup.
 
-The legacy component candidate retains exact commit, tree, producer, platform, toolchain, and payload digests. Its same-repository PR reuse requires matching trees and successful producer evidence. That candidate is not a complete product. The complete-product lane instead joins the retained native inputs of each recorded target for the exact producer attempt without rebuilding. Missing target evidence rejects; retention is 30 days.
+The legacy component candidate retains exact commit, tree, producer, platform, toolchain, and payload digests. Its same-repository PR reuse requires matching trees and successful producer evidence. That candidate is not a complete product. The complete-product lane instead joins the retained native inputs of each recorded target from the producer run, at the attempt that produced each artifact, without rebuilding. Missing target evidence rejects; retention is 30 days.
 
 Linux assembles the release once; `release_handoff.py` binds it to source revision, tree, version, and digest.
 The Mac job restores that exact record and runs the existing `publicLauncherTest` suite against the assembled Control product instead of compiling Control twice.
@@ -341,7 +342,7 @@ The publisher rechecks producer success, complete asset inventory, checksums, so
 Existing releases must match exactly for retries.
 A delayed publisher can keep its immutable release but cannot update latest after main advances.
 The public `developer-latest` branch contains a pointer to the exact prerelease and original build revision.
-The public bootstrap selects preview, stable, or an explicit local artifact; its historical `--developer-latest` alias selects preview.
+The public bootstrap selects preview, stable, or an explicit local artifact; it no longer accepts the retired `--developer-latest` alias.
 Manual publication accepts a successful current-main push or manual CI run ID with matching event and producer evidence.
 
 The Linux source job and macOS native job configure cache transport for Gradle User Home state and task outputs.
@@ -357,12 +358,13 @@ Stable product release maps a public version to the exact retained preview tag a
 ## Retained internal installation and recovery
 
 `generate_bootstrap.py` owns embedded engine, retained support, and fixed data membership.
-Gradle stages its generated projection under `share/kast`, including the same canonical root `install.sh`.
+Gradle stages its generated projection under `share/kast` without a copy of the root `install.sh`, and Control verification rejects `share/kast/install.sh` as a retired payload.
 The competing `install-legacy.sh`, `install-local.sh`, and `install-checkout.sh` entry points are removed.
 `install-candidate.sh` remains a private bridge for recorded upgrade and recovery callers, not another public installer.
 Bridge admission requires the complete manifest-owned Control inventory and verified bytes.
 The separate contributor `install` command uses `packaging/internal/product/local_product_install.py` and existing product activation under an isolated root.
-The standalone desktop IDEA plugin installer command is deprecated; managed installation still consumes its shared Host receipt and recovery helpers.
+The standalone desktop IDEA plugin installer is removed, and release admission rejects a release that still carries it.
+Only product replacement journals are recoverable; any other recorded journal returns `RECOVERY_REQUIRED`.
 
 `ControlDistributionLimits` owns the maximum verified control-product entry count and manifest size used by staged installation and runtime identity admission. Release layout verification rejects a product outside that bound before publication.
 
@@ -438,15 +440,10 @@ These source rules do not prove a new installed semantic session.
 
 ## Detailed distribution routes
 
-- [Installation and managed files](../distribution/installation-and-managed-files.md) explains Control replacement and independent Host receipts.
+- [Installation and managed files](../distribution/installation-and-managed-files.md) explains Control replacement, product activation, and typed state rejection.
 - [Native management and connections](../distribution/management-and-connections.md) explains public command scope and agent connections.
 - [Upgrade, shutdown, and reset](../distribution/upgrades-shutdown-and-reset.md) traces guarded lifecycle transitions.
 - [Release candidates and promotion](../distribution/release-candidates-and-promotion.md) explains immutable source and artifact proof.
-
-Host receipt admission now qualifies a device change through the recorded root inode and owner.
-It keeps a consistent mapping from the receipt's device identities to their current identities before it examines the current destination and inventory.
-Removal permits missing recorded artifacts, but each remaining artifact must match its receipt.
-Reinstall still needs the exact inventory. Foreign or changed artifacts remain protected.
 
 The public `kast query plan` command admits a RUN request before installation composition.
 That request-only path supplies scope advice without starting an installed host.

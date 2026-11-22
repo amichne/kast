@@ -29,14 +29,24 @@ sources:
     resource: repo://relation/contract/src/main/kotlin/io/github/amichne/kast/relation/contract/RelationRequest.kt
   - id: openwiki-source-cc2bd1ef3fe25286c333cef2
     resource: repo://relation/contract/src/main/kotlin/io/github/amichne/kast/relation/contract/RelationScopeExclusion.kt
+  - id: openwiki-source-1770a50d2dda332e0c231ea6
+    resource: repo://relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/IntellijConstructedClass.kt
+  - id: openwiki-source-e1207a34db31e550d8114bf3
+    resource: repo://relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/IntellijK2RelationProjection.kt
+  - id: openwiki-source-aeb7a0b7ea14e6321b2db8e5
+    resource: repo://relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/IntellijRelationScopeCompiler.kt
+  - id: openwiki-source-0b1a5f52cea351c6d4fdb22d
+    resource: repo://relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/ProjectBoundIntellijRelationPort.kt
   - id: openwiki-source-ad9fc4007f8026e7d56a010c
     resource: repo://relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/RelationFileEnumerationPlan.kt
+  - id: openwiki-source-022f930b3a6f7823111c66e0
+    resource: repo://relation/intellij/src/nativeTest/kotlin/io/github/amichne/kast/relation/intellij/NativeReferenceDestinationTest.kt
   - id: openwiki-source-92edd83497ca3a9bab136f66
     resource: repo://relation/service/src/main/kotlin/io/github/amichne/kast/relation/service/RelationService.kt
-generated: { by: "codex", at: "2026-10-15T00:33:05.932Z" }
+generated: { by: "codex", at: "2026-11-22T21:35:10.249Z" }
 verified:
   - by: openwiki/0.9.0
-    at: 2026-11-11T06:28:10.019Z
+    at: 2026-11-22T21:35:10.249Z
 ---
 
 # Named relationships and occurrences
@@ -47,6 +57,8 @@ The request keeps an exact subject selector with its original authority and sour
 Its expansion domain selects the native relationship destinations.
 The source scope that found the subject does not automatically constrain every later destination.
 `RelationFileEnumerationPlan` and scope compilation carry cheap file, source-set, and ownership restrictions into native collection.
+File admission receives the source sets of the scope being compiled, including the subject's own scope.
+A main subject with only test destinations is therefore not rejected as `OUTSIDE_SCOPE`.
 
 The selected meaning distinguishes references, callers, callees, implementations, overrides, and related semantic reads.
 Each provider must establish that meaning through compiler evidence.
@@ -63,6 +75,11 @@ Native search first limits eligible inputs, then refines candidates through K2.
 An excluded file or declaration family must not consume the eligible result capacity.
 Collected candidates remain weaker evidence until the compiler confirms the target and relationship.
 Bounded inventories and advancing positions keep resumed pages from replaying already-consumed work.
+
+A Kotlin constructor call such as `Name(...)` resolves to the constructor, not to the class.
+When a reference resolves to a constructor, K2 supplies the constructor's containing class, and the ordinary exact declaration proof compares that class with a class-like subject declaration.
+The call therefore counts as a reference to the class.
+An owner that K2 cannot prove stays unresolved, so the read degrades rather than reporting absence.
 
 ## Occurrences, exclusions, and omissions
 

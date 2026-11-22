@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:4901f4b5bcfc0079ae626306df0cfe9290689522ca9f96390f36175fc9e61efb",
+  "pageVersion": "sha256:00f0db2ef4f7d5d02fdcb7f8be0c290b5a1204566e1869b4264014cd3555e21e",
   "claims": [
     {
       "id": "claim_1a8f3f1aad9047d2b79590402921e2dd",
@@ -24,7 +24,7 @@
     },
     {
       "id": "claim_5f1c060cff6246baa129131fe5068c32",
-      "statement": "Control and Host release records, artifacts and installation inputs have independent ownership; fresh installation composes a contract-compatible pair, while Control metadata requires no Host archive.",
+      "statement": "Control and Host retain separate component artifact ownership, but public installation selects them only through one complete product record, and Control metadata requires no Host archive.",
       "evidence": [
         {
           "resource": "repo://build-logic/src/main/kotlin/support/tasks/control/GenerateComponentReleaseTask.kt",
@@ -32,11 +32,11 @@
         },
         {
           "resource": "repo://build.gradle.kts",
-          "version": "repo-file-v1:sha256:aaac0674d99471e186c80d15874f2421a620789f28c033e5e2ba8176e9a8b6af"
+          "version": "repo-file-v1:sha256:7becc191584d7cfc5d62346345959afb8bf403b9d8fc489c6200a9b05f802183"
         },
         {
-          "resource": "repo://packaging/internal/installation/host-installation.py",
-          "version": "repo-file-v1:sha256:d9a8a14a4595fb5989b2bd278fe5a61a13d1082bf639253e27c14b4d7843e2a0"
+          "resource": "repo://packaging/internal/installation/managed_release.py",
+          "version": "repo-file-v1:sha256:f77c414fd5fb7eea33876f3163e62a7d5a3e4ad3df01a96fecccdb50bf7e37bb"
         }
       ]
     },
@@ -62,7 +62,7 @@
         },
         {
           "resource": "repo://packaging/internal/installation/managed_installation.py",
-          "version": "repo-file-v1:sha256:17c4c50b8c594a8f8d1079829b2a5ceec26b12e84b46626d9b40ddca02a523d2"
+          "version": "repo-file-v1:sha256:7343a3e74578f263b8b9861bdbaab153690e350570a13830da0bc6c1e176b9fb"
         }
       ]
     },
@@ -114,19 +114,19 @@
     },
     {
       "id": "claim_447f107d597641368d051439eee9c019",
-      "statement": "Legacy component candidates retain source-tree reuse proof but are not complete products. The complete-product CI join requires the retained native inputs of each recorded target from the exact producer attempt without rebuilding; documentation-only validation needs no product candidate.",
+      "statement": "Legacy component candidates retain source-tree reuse proof but are not complete products. The complete-product CI join requires the retained native inputs of each recorded target from the producer run, at the attempt that produced each artifact, without rebuilding; documentation-only validation needs no product candidate.",
       "evidence": [
         {
           "resource": "repo://.github/scripts/release/build_candidate.py",
-          "version": "repo-file-v1:sha256:be13f11eafcd0536e600c08c019e47653f559d28136b711821e21a8a99bd330e"
+          "version": "repo-file-v1:sha256:dcbcf1068cae571259bf0fc879126ce3c6b01cd7c34b8ca41559a56f2219eec6"
         },
         {
           "resource": "repo://.github/scripts/release/product_producer.py",
-          "version": "repo-file-v1:sha256:442435a5160da4e8b62538e34fb5fdbac8a89b7189d883d7901228b45bfb57bf"
+          "version": "repo-file-v1:sha256:7c3c6e5c107028014e4e30ddb7a2c85ddeb010fd55cf1c1c8d19ff00a81e70bf"
         },
         {
           "resource": "repo://.github/workflows/ci.yml",
-          "version": "repo-file-v1:sha256:a2e41be5dec3363779c75bf38061f2bc4aa1cd510c3a92e72681560926de717f"
+          "version": "repo-file-v1:sha256:61f87cd8d46269a7290cb7a8564544b081a691d9a4fe7b34a1dc88f6ed0ae0b2"
         }
       ]
     },
@@ -150,21 +150,11 @@
       "evidence": [
         {
           "resource": "repo://.github/scripts/release/build_candidate.py",
-          "version": "repo-file-v1:sha256:be13f11eafcd0536e600c08c019e47653f559d28136b711821e21a8a99bd330e"
+          "version": "repo-file-v1:sha256:dcbcf1068cae571259bf0fc879126ce3c6b01cd7c34b8ca41559a56f2219eec6"
         },
         {
           "resource": "repo://.github/workflows/ci.yml",
-          "version": "repo-file-v1:sha256:a2e41be5dec3363779c75bf38061f2bc4aa1cd510c3a92e72681560926de717f"
-        }
-      ]
-    },
-    {
-      "id": "claim_db3d83383ac64f35b420656aef43d715",
-      "statement": "Host receipt admission qualifies device changes through stable root inode and owner evidence and permits missing recorded entries only for protected removal, while exact reinstall inventory remains necessary.",
-      "evidence": [
-        {
-          "resource": "repo://packaging/internal/installation/host-installation.py",
-          "version": "repo-file-v1:sha256:d9a8a14a4595fb5989b2bd278fe5a61a13d1082bf639253e27c14b4d7843e2a0"
+          "version": "repo-file-v1:sha256:61f87cd8d46269a7290cb7a8564544b081a691d9a4fe7b34a1dc88f6ed0ae0b2"
         }
       ]
     },
@@ -178,11 +168,11 @@
         },
         {
           "resource": "repo://packaging/internal/installation/managed_installation.py",
-          "version": "repo-file-v1:sha256:17c4c50b8c594a8f8d1079829b2a5ceec26b12e84b46626d9b40ddca02a523d2"
+          "version": "repo-file-v1:sha256:7343a3e74578f263b8b9861bdbaab153690e350570a13830da0bc6c1e176b9fb"
         },
         {
           "resource": "repo://packaging/internal/product/managed_product_installation.py",
-          "version": "repo-file-v1:sha256:fc8fada835ab693aacf4d03da320dbc510c89ae94b298bb5771529d42fac508e"
+          "version": "repo-file-v1:sha256:85b174d534c99d75bd439593419e20290070e31816d32775ce48c46e1c4dc4ee"
         }
       ]
     },
@@ -214,15 +204,15 @@
       "evidence": [
         {
           "resource": "repo://.github/scripts/ci/release_handoff.py",
-          "version": "repo-file-v1:sha256:9583f5c710c07bdbdb2eda3d2721f8da266bd1de07d99ff872e953a7b758b58c"
+          "version": "repo-file-v1:sha256:aab08715413a8b4acf81d3aa6317426dc50c256dc965f69c058cdcf6aa8fdea8"
         },
         {
           "resource": "repo://.github/workflows/ci.yml",
-          "version": "repo-file-v1:sha256:a2e41be5dec3363779c75bf38061f2bc4aa1cd510c3a92e72681560926de717f"
+          "version": "repo-file-v1:sha256:61f87cd8d46269a7290cb7a8564544b081a691d9a4fe7b34a1dc88f6ed0ae0b2"
         },
         {
           "resource": "repo://build.gradle.kts",
-          "version": "repo-file-v1:sha256:aaac0674d99471e186c80d15874f2421a620789f28c033e5e2ba8176e9a8b6af"
+          "version": "repo-file-v1:sha256:7becc191584d7cfc5d62346345959afb8bf403b9d8fc489c6200a9b05f802183"
         }
       ]
     },
@@ -282,7 +272,7 @@
         },
         {
           "resource": "repo://packaging/tests/test-managed-build-record.py",
-          "version": "repo-file-v1:sha256:d247c5e000fb1332b11d49a26a37d2111764bfcf744c054b31ea04cb4a45ff35"
+          "version": "repo-file-v1:sha256:57f6c9d4f690fdc4d3f698578fcf92dcc617a53c2a2d5caa1b3ff0952da6f9db"
         }
       ]
     },
@@ -324,7 +314,7 @@
         },
         {
           "resource": "repo://runtime/hosted/build.gradle.kts",
-          "version": "repo-file-v1:sha256:b9e11a4ce440b3c30df1f9a0cda1a935263a5b2c67c7214f0495f9dfd7b58dd7"
+          "version": "repo-file-v1:sha256:0efb3b28b04a3819cbf9f959e1a0420ca45fc81dedc30e553cab65d18a90cfaa"
         }
       ]
     },
@@ -338,7 +328,7 @@
         },
         {
           "resource": "repo://.github/scripts/ci/fast_checks.py",
-          "version": "repo-file-v1:sha256:28c6dc12b9dc36713f533e7a571acbfba9c9b5c8f86fd75d9af7da30300e5b99"
+          "version": "repo-file-v1:sha256:d93603cb222f0c85f291b079948d58cb12e8f8d931dfc891f055a91e4f4fafc9"
         },
         {
           "resource": "repo://.github/scripts/ci/test_push_policy.py",
@@ -398,11 +388,11 @@
       "evidence": [
         {
           "resource": "repo://packaging/internal/product/managed_product_installation.py",
-          "version": "repo-file-v1:sha256:fc8fada835ab693aacf4d03da320dbc510c89ae94b298bb5771529d42fac508e"
+          "version": "repo-file-v1:sha256:85b174d534c99d75bd439593419e20290070e31816d32775ce48c46e1c4dc4ee"
         },
         {
           "resource": "repo://packaging/internal/runtime/runtime_base.py",
-          "version": "repo-file-v1:sha256:8940258ef9ffea00beb031f655589ab7e92182105f98958dee9cfd077e94d5dc"
+          "version": "repo-file-v1:sha256:b051f951dbd24f65eedee82f7727942153ecdb5b3a18a29a69b89c0ffc52488c"
         }
       ]
     },
@@ -454,7 +444,7 @@
       "evidence": [
         {
           "resource": "repo://.github/scripts/release/product_producer.py",
-          "version": "repo-file-v1:sha256:442435a5160da4e8b62538e34fb5fdbac8a89b7189d883d7901228b45bfb57bf"
+          "version": "repo-file-v1:sha256:7c3c6e5c107028014e4e30ddb7a2c85ddeb010fd55cf1c1c8d19ff00a81e70bf"
         },
         {
           "resource": "repo://packaging/internal/composition/composed_release.py",
@@ -462,11 +452,11 @@
         },
         {
           "resource": "repo://packaging/internal/installation/managed_release.py",
-          "version": "repo-file-v1:sha256:471e28f5edf60d29744193ab64442f586628070bd2b01f9290d307bba12c03c7"
+          "version": "repo-file-v1:sha256:f77c414fd5fb7eea33876f3163e62a7d5a3e4ad3df01a96fecccdb50bf7e37bb"
         },
         {
           "resource": "repo://packaging/internal/verification/product_lifecycle_probe.py",
-          "version": "repo-file-v1:sha256:ef2f0407a4e29c52f582836c9492121dcfc407d4e222e5679e1ef74a8a33262b"
+          "version": "repo-file-v1:sha256:457353ed8ae88ef7683d354ba1bc5f539bf7507548906b09fb548ae151d3a2d5"
         }
       ]
     },
@@ -476,11 +466,11 @@
       "evidence": [
         {
           "resource": "repo://.github/scripts/release/product_candidate.py",
-          "version": "repo-file-v1:sha256:188b5b71cfd5d066ee40a5e1660739b98edaaea483bc411c8b2ececd9091bc0a"
+          "version": "repo-file-v1:sha256:12b52a3b6fbee1c5037665f3f5de0a667b6facc3e1265667c4f323f2fbee478d"
         },
         {
           "resource": "repo://.github/scripts/release/product_producer.py",
-          "version": "repo-file-v1:sha256:442435a5160da4e8b62538e34fb5fdbac8a89b7189d883d7901228b45bfb57bf"
+          "version": "repo-file-v1:sha256:7c3c6e5c107028014e4e30ddb7a2c85ddeb010fd55cf1c1c8d19ff00a81e70bf"
         },
         {
           "resource": "repo://.github/scripts/release/publish_developer.py",
@@ -488,7 +478,7 @@
         },
         {
           "resource": "repo://.github/workflows/ci.yml",
-          "version": "repo-file-v1:sha256:a2e41be5dec3363779c75bf38061f2bc4aa1cd510c3a92e72681560926de717f"
+          "version": "repo-file-v1:sha256:61f87cd8d46269a7290cb7a8564544b081a691d9a4fe7b34a1dc88f6ed0ae0b2"
         }
       ]
     },
@@ -498,7 +488,7 @@
       "evidence": [
         {
           "resource": "repo://.github/scripts/release/product_candidate.py",
-          "version": "repo-file-v1:sha256:188b5b71cfd5d066ee40a5e1660739b98edaaea483bc411c8b2ececd9091bc0a"
+          "version": "repo-file-v1:sha256:12b52a3b6fbee1c5037665f3f5de0a667b6facc3e1265667c4f323f2fbee478d"
         },
         {
           "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/BuildCatalog.kt",
@@ -506,7 +496,7 @@
         },
         {
           "resource": "repo://packaging/internal/installation/managed_release.py",
-          "version": "repo-file-v1:sha256:471e28f5edf60d29744193ab64442f586628070bd2b01f9290d307bba12c03c7"
+          "version": "repo-file-v1:sha256:f77c414fd5fb7eea33876f3163e62a7d5a3e4ad3df01a96fecccdb50bf7e37bb"
         }
       ]
     },
@@ -516,7 +506,7 @@
       "evidence": [
         {
           "resource": "repo://.github/scripts/release/product_candidate.py",
-          "version": "repo-file-v1:sha256:188b5b71cfd5d066ee40a5e1660739b98edaaea483bc411c8b2ececd9091bc0a"
+          "version": "repo-file-v1:sha256:12b52a3b6fbee1c5037665f3f5de0a667b6facc3e1265667c4f323f2fbee478d"
         },
         {
           "resource": "repo://packaging/internal/verification/product_acceptance.py",
@@ -524,7 +514,7 @@
         },
         {
           "resource": "repo://packaging/internal/verification/product_lifecycle_probe.py",
-          "version": "repo-file-v1:sha256:ef2f0407a4e29c52f582836c9492121dcfc407d4e222e5679e1ef74a8a33262b"
+          "version": "repo-file-v1:sha256:457353ed8ae88ef7683d354ba1bc5f539bf7507548906b09fb548ae151d3a2d5"
         }
       ]
     },
@@ -538,7 +528,7 @@
         },
         {
           "resource": "repo://packaging/internal/verification/product_lifecycle_probe.py",
-          "version": "repo-file-v1:sha256:ef2f0407a4e29c52f582836c9492121dcfc407d4e222e5679e1ef74a8a33262b"
+          "version": "repo-file-v1:sha256:457353ed8ae88ef7683d354ba1bc5f539bf7507548906b09fb548ae151d3a2d5"
         }
       ]
     },
@@ -548,11 +538,11 @@
       "evidence": [
         {
           "resource": "repo://.github/scripts/release/product_producer.py",
-          "version": "repo-file-v1:sha256:442435a5160da4e8b62538e34fb5fdbac8a89b7189d883d7901228b45bfb57bf"
+          "version": "repo-file-v1:sha256:7c3c6e5c107028014e4e30ddb7a2c85ddeb010fd55cf1c1c8d19ff00a81e70bf"
         },
         {
           "resource": "repo://.github/workflows/ci.yml",
-          "version": "repo-file-v1:sha256:a2e41be5dec3363779c75bf38061f2bc4aa1cd510c3a92e72681560926de717f"
+          "version": "repo-file-v1:sha256:61f87cd8d46269a7290cb7a8564544b081a691d9a4fe7b34a1dc88f6ed0ae0b2"
         }
       ]
     },
@@ -566,11 +556,11 @@
         },
         {
           "resource": "repo://packaging/internal/verification/product_lifecycle_probe.py",
-          "version": "repo-file-v1:sha256:ef2f0407a4e29c52f582836c9492121dcfc407d4e222e5679e1ef74a8a33262b"
+          "version": "repo-file-v1:sha256:457353ed8ae88ef7683d354ba1bc5f539bf7507548906b09fb548ae151d3a2d5"
         },
         {
           "resource": "repo://packaging/tests/test_product_acceptance.py",
-          "version": "repo-file-v1:sha256:3b1ba9238e8e37fcac834c564f9413863d3a355b4436151a39fd3ba1c77cd951"
+          "version": "repo-file-v1:sha256:5c3760facdf2213dc366fd3b731c1af83983e0de07c59ad5eb7e9d83306bd994"
         }
       ]
     },
@@ -580,7 +570,7 @@
       "evidence": [
         {
           "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/InstallationLifecycle.kt",
-          "version": "repo-file-v1:sha256:1da4adce07a0f42cb25d16c907c6b3c606c77978d87cd1b889b38e5a2df58932"
+          "version": "repo-file-v1:sha256:aaacaa9da754fd4497712c10ad047867efb6889daed954ccdcefa68327b625c0"
         },
         {
           "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/RejectedWorkspaceRemoval.kt",
@@ -588,11 +578,11 @@
         },
         {
           "resource": "repo://packaging/internal/installation/immutable_store.py",
-          "version": "repo-file-v1:sha256:74118e12dd9d19350571cdef529854caa15485455278a73c8ddd4d5c0c7cdad5"
+          "version": "repo-file-v1:sha256:d573adbdce52ebb982599eab5b87978e7f419a5dcf38e48d7ae661a900735b06"
         },
         {
           "resource": "repo://packaging/internal/product/managed_product_installation.py",
-          "version": "repo-file-v1:sha256:fc8fada835ab693aacf4d03da320dbc510c89ae94b298bb5771529d42fac508e"
+          "version": "repo-file-v1:sha256:85b174d534c99d75bd439593419e20290070e31816d32775ce48c46e1c4dc4ee"
         }
       ]
     },
@@ -602,21 +592,25 @@
       "evidence": [
         {
           "resource": "repo://.github/scripts/ci/release_handoff.py",
-          "version": "repo-file-v1:sha256:9583f5c710c07bdbdb2eda3d2721f8da266bd1de07d99ff872e953a7b758b58c"
+          "version": "repo-file-v1:sha256:aab08715413a8b4acf81d3aa6317426dc50c256dc965f69c058cdcf6aa8fdea8"
         },
         {
           "resource": "repo://.github/workflows/ci.yml",
-          "version": "repo-file-v1:sha256:a2e41be5dec3363779c75bf38061f2bc4aa1cd510c3a92e72681560926de717f"
+          "version": "repo-file-v1:sha256:61f87cd8d46269a7290cb7a8564544b081a691d9a4fe7b34a1dc88f6ed0ae0b2"
         }
       ]
     },
     {
       "id": "claim_a89e8c20d11a4732927560c06b5c84d9",
-      "statement": "The generator owns embedded engine, retained lifecycle support and fixed data membership. Gradle stages that projection with the canonical root install.sh; competing legacy, local and checkout shell installers are removed. The private candidate bridge requires complete manifest-owned Control inventory and verified bytes. The separate contributor install command reuses product activation under an isolated root.",
+      "statement": "The generator owns embedded engine, retained lifecycle support and fixed data membership. Gradle stages that projection without a copy of the root install.sh, and Control verification rejects share/kast/install.sh; competing legacy, local and checkout shell installers are removed. The private candidate bridge requires complete manifest-owned Control inventory and verified bytes. The separate contributor install command reuses product activation under an isolated root.",
       "evidence": [
         {
+          "resource": "repo://build-logic/src/main/kotlin/support/tasks/verification/VerifyDistributionTasks.kt",
+          "version": "repo-file-v1:sha256:216822e59c6c89c44e474ae062ca3ed4878ceacd3900bf38a342c71c0a2d1a1f"
+        },
+        {
           "resource": "repo://build.gradle.kts",
-          "version": "repo-file-v1:sha256:aaac0674d99471e186c80d15874f2421a620789f28c033e5e2ba8176e9a8b6af"
+          "version": "repo-file-v1:sha256:7becc191584d7cfc5d62346345959afb8bf403b9d8fc489c6200a9b05f802183"
         },
         {
           "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagedUpgrade.kt",
@@ -624,15 +618,15 @@
         },
         {
           "resource": "repo://packaging/internal/bootstrap/generate_bootstrap.py",
-          "version": "repo-file-v1:sha256:387bf112fd63a823cbecc399677100d311c73aecb92456fe521135906113f475"
+          "version": "repo-file-v1:sha256:d588c4f04ae4355fdbecc14c48dcb0a062d3ecea0da8a33bf7640ac62c85a2ed"
         },
         {
           "resource": "repo://packaging/internal/product/local_product_install.py",
-          "version": "repo-file-v1:sha256:c9073793bace5ed86bbf711c558c6969c8e4c11b0358529878e9e8c3b217ec97"
+          "version": "repo-file-v1:sha256:d112830f722b9e4f78e4eb07882475e55b63dccfeca5fb70e9eea35a0d286308"
         },
         {
           "resource": "repo://packaging/tests/test-install-checkout.py",
-          "version": "repo-file-v1:sha256:6f2ac874971de999808c713b6ebfc9734f9803c2e9c26e304d07cdeafa222eee"
+          "version": "repo-file-v1:sha256:5f0c80266608738a924b7f9b3e3bcae1c6dcdedee0b98854571c48fd14f7e8fc"
         }
       ]
     },
@@ -642,15 +636,15 @@
       "evidence": [
         {
           "resource": "repo://packaging/internal/bootstrap/bootstrap.sh.in",
-          "version": "repo-file-v1:sha256:2496b219bbd6ad4b9e7a3045813f6647a31acfc055b04ba247d0ef69ecb1688d"
+          "version": "repo-file-v1:sha256:d99120b9b85faf6ddf81f5b5ad42d92257923e84f3cd89b4d33f5121f71c3c14"
         },
         {
           "resource": "repo://packaging/internal/installation/managed_installation.py",
-          "version": "repo-file-v1:sha256:17c4c50b8c594a8f8d1079829b2a5ceec26b12e84b46626d9b40ddca02a523d2"
+          "version": "repo-file-v1:sha256:7343a3e74578f263b8b9861bdbaab153690e350570a13830da0bc6c1e176b9fb"
         },
         {
           "resource": "repo://packaging/internal/installation/managed_release.py",
-          "version": "repo-file-v1:sha256:471e28f5edf60d29744193ab64442f586628070bd2b01f9290d307bba12c03c7"
+          "version": "repo-file-v1:sha256:f77c414fd5fb7eea33876f3163e62a7d5a3e4ad3df01a96fecccdb50bf7e37bb"
         }
       ]
     },
@@ -660,7 +654,7 @@
       "evidence": [
         {
           "resource": "repo://build.gradle.kts",
-          "version": "repo-file-v1:sha256:aaac0674d99471e186c80d15874f2421a620789f28c033e5e2ba8176e9a8b6af"
+          "version": "repo-file-v1:sha256:7becc191584d7cfc5d62346345959afb8bf403b9d8fc489c6200a9b05f802183"
         },
         {
           "resource": "repo://packaging/internal/verification/run-installed-product.py",
@@ -674,11 +668,11 @@
       "evidence": [
         {
           "resource": "repo://.github/scripts/release/product_producer.py",
-          "version": "repo-file-v1:sha256:442435a5160da4e8b62538e34fb5fdbac8a89b7189d883d7901228b45bfb57bf"
+          "version": "repo-file-v1:sha256:7c3c6e5c107028014e4e30ddb7a2c85ddeb010fd55cf1c1c8d19ff00a81e70bf"
         },
         {
           "resource": "repo://packaging/internal/product/local_product_install.py",
-          "version": "repo-file-v1:sha256:c9073793bace5ed86bbf711c558c6969c8e4c11b0358529878e9e8c3b217ec97"
+          "version": "repo-file-v1:sha256:d112830f722b9e4f78e4eb07882475e55b63dccfeca5fb70e9eea35a0d286308"
         }
       ]
     },
@@ -692,11 +686,11 @@
         },
         {
           "resource": "repo://packaging/internal/installation/immutable_store.py",
-          "version": "repo-file-v1:sha256:74118e12dd9d19350571cdef529854caa15485455278a73c8ddd4d5c0c7cdad5"
+          "version": "repo-file-v1:sha256:d573adbdce52ebb982599eab5b87978e7f419a5dcf38e48d7ae661a900735b06"
         },
         {
           "resource": "repo://packaging/internal/product/managed_product_installation.py",
-          "version": "repo-file-v1:sha256:fc8fada835ab693aacf4d03da320dbc510c89ae94b298bb5771529d42fac508e"
+          "version": "repo-file-v1:sha256:85b174d534c99d75bd439593419e20290070e31816d32775ce48c46e1c4dc4ee"
         }
       ]
     },
@@ -713,10 +707,34 @@
           "version": "repo-file-v1:sha256:7deaf88f0193fd8d16979694c62701eacd5acb246fab33d20b23ce8c8a0a88c9"
         }
       ]
+    },
+    {
+      "id": "claim_48017afb0e444d5ab92321671cb200eb",
+      "statement": "The standalone desktop IDEA plugin installer is removed and release admission rejects a release that still carries it; only product replacement journals are recoverable.",
+      "evidence": [
+        {
+          "resource": "repo://packaging/internal/installation/managed_installation.py",
+          "version": "repo-file-v1:sha256:7343a3e74578f263b8b9861bdbaab153690e350570a13830da0bc6c1e176b9fb"
+        },
+        {
+          "resource": "repo://packaging/internal/installation/managed_release.py",
+          "version": "repo-file-v1:sha256:f77c414fd5fb7eea33876f3163e62a7d5a3e4ad3df01a96fecccdb50bf7e37bb"
+        }
+      ]
+    },
+    {
+      "id": "claim_fb89a4986f174d7c94502604406aed70",
+      "statement": "The public bootstrap no longer accepts the retired --developer-latest alias.",
+      "evidence": [
+        {
+          "resource": "repo://packaging/internal/bootstrap/bootstrap.sh.in",
+          "version": "repo-file-v1:sha256:d99120b9b85faf6ddf81f5b5ad42d92257923e84f3cd89b4d33f5121f71c3c14"
+        }
+      ]
     }
   ],
   "verification": {
     "by": "openwiki/0.9.0",
-    "at": "2026-11-21T22:16:17.145Z"
+    "at": "2026-11-22T20:53:36.158Z"
   }
 }

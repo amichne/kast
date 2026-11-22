@@ -44,10 +44,10 @@ sources:
     resource: repo://config/json-contracts/README.md
   - id: openwiki-source-ef31c8fc167ea83cd99b28bc
     resource: repo://packaging/internal/query/generate-public-query.py
-generated: { by: "codex", at: "2026-11-21T22:16:17.145Z" }
+generated: { by: "codex", at: "2026-11-22T20:53:36.158Z" }
 verified:
   - by: openwiki/0.9.0
-    at: 2026-11-21T22:16:17.145Z
+    at: 2026-11-22T20:53:36.158Z
 ---
 
 
@@ -87,6 +87,7 @@ Kotlin compilation depends on generation parity, so stale syntax cannot pass thr
 
 `verifyJsonContracts` uses an isolated Kotlin PSI scanner and an exact baseline for legacy manual JSON expressions.
 It rejects new, changed, duplicated, and stale manual expressions.
+The scan excludes only the `build` child of a Gradle project directory, so a source module named `build`, such as `topology/build`, remains scanned.
 The syntax guard does not establish an encoded result's semantic correctness.
 Encoded-shape assertions and independent schema checks supply that proof.
 
