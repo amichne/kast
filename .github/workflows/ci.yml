@@ -133,8 +133,9 @@ jobs:
         with:
           validate-wrappers: true
           cache-encryption-key: ${{ secrets.GRADLE_ENCRYPTION_KEY }}
-          # Every trusted run writes. Main entries serve all refs; PR entries serve later pushes to that PR.
-          cache-read-only: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository }}
+          # Only main writes. Its entries serve every ref, and pull requests no longer evict them
+          # from the repository's 10 GB cache with entries no other pull request can read.
+          cache-read-only: ${{ github.ref != 'refs/heads/main' }}
           cache-cleanup: on-success
           # caches includes caches/build-cache-1, Gradle's local task-output cache.
           # IDEA library transform outputs also live under caches.
@@ -202,7 +203,7 @@ jobs:
         with:
           validate-wrappers: true
           cache-encryption-key: ${{ secrets.GRADLE_ENCRYPTION_KEY }}
-          cache-read-only: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository }}
+          cache-read-only: ${{ github.ref != 'refs/heads/main' }}
       - name: Set up the frontend Go toolchain
         uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
@@ -291,7 +292,7 @@ jobs:
           # The local runner keeps its own Gradle home and never writes hosted caches.
           cache-disabled: ${{ runner.environment == 'self-hosted' }}
           cache-encryption-key: ${{ secrets.GRADLE_ENCRYPTION_KEY }}
-          cache-read-only: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository }}
+          cache-read-only: ${{ github.ref != 'refs/heads/main' }}
       - name: Exercise macOS reset adapters
         run: mise run ci:mac-reset
       - uses: ./.github/actions/jq-oracle
