@@ -519,6 +519,8 @@ mise exec -- ./gradlew installedProductTest \
 The evidence directory keeps `host-logs/`, which holds the last 512 KiB of each Host `idea.log` and `launcher.log`, at most 16 files.
 It also keeps `stage-timings.json`, which records the elapsed milliseconds and exit code of each installation and command, up to 256 stages.
 A stage that raised records no exit code.
+Each command's `<case>.stderr-timeline.json` lists when each line of `<case>.stderr` arrived, in milliseconds from the stage's start, for up to 4096 lines.
+The product's lifecycle events carry no timestamps, so these offsets show which event a slow command waited on.
 The probe captures them before uninstall removes the logs on success and after the failure stop otherwise.
 
 Version-pinned archives must match the installer contract. To stage historical

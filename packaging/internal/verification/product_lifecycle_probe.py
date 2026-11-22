@@ -11,6 +11,7 @@ from __future__ import annotations
 import argparse
 import contextlib
 import hashlib
+import io
 import json
 import os
 import platform
@@ -27,7 +28,7 @@ from concurrent.futures import ThreadPoolExecutor
 from dataclasses import asdict, dataclass, field
 from enum import Enum
 from pathlib import Path
-from threading import Barrier
+from threading import Barrier, Thread
 from typing import override
 
 if not sys.flags.isolated:
@@ -128,6 +129,91 @@ def write_stage_timings(evidence: Path, stages: list[StageTiming]) -> Path:
         document = StageTimings(1, tuple(stages[:MAXIMUM_STAGE_TIMINGS]))
         _ = path.write_text(json.dumps(asdict(document), indent=2) + "\n")
     return path
+
+
+@dataclass(frozen=True)
+class CapturedRun:
+    code: int
+    stdout: bytes
+    stderr: bytes
+    # Milliseconds from start at which each stderr line arrived, in line order, bounded.
+    lineOffsetsMs: tuple[int, ...]
+    truncated: bool
+
+
+@dataclass(frozen=True)
+class StderrTimeline:
+    """When each line of `<case>.stderr` arrived; line `i` matches `lineOffsetsMs[i]`."""
+
+    schemaVersion: int
+    lineOffsetsMs: tuple[int, ...]
+    truncated: bool
+
+
+MAXIMUM_STDERR_LINE_OFFSETS = 4096
+
+
+def run_captured(
+    command: list[str],
+    cwd: Path,
+    environment: dict[str, str],
+    raw: bytes | None,
+    timeout: float,
+    clock: Callable[[], int],
+    started: int,
+) -> CapturedRun:
+    """Run a child, keeping its exact output and when each stderr line arrived.
+
+    The product's lifecycle events carry no timestamps; arrival times, measured from the
+    stage's `started` clock reading, locate the slow stage.
+    """
+    process = subprocess.Popen(
+        command,
+        cwd=cwd,
+        env=environment,
+        stdin=subprocess.PIPE if raw is not None else None,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+    )
+    assert process.stdout is not None and process.stderr is not None
+    stdout, stderr, offsets = io.BytesIO(), io.BytesIO(), list[int]()
+
+    def drain_stdout() -> None:
+        assert process.stdout is not None
+        _ = stdout.write(process.stdout.read())
+
+    def drain_stderr() -> None:
+        assert process.stderr is not None
+        for line in iter(process.stderr.readline, b""):
+            if len(offsets) <= MAXIMUM_STDERR_LINE_OFFSETS:
+                offsets.append((clock() - started) // 1_000_000)
+            _ = stderr.write(line)
+
+    readers = [Thread(target=drain_stdout), Thread(target=drain_stderr)]
+    for reader in readers:
+        reader.start()
+    if raw is not None:
+        assert process.stdin is not None
+        with contextlib.suppress(BrokenPipeError):
+            _ = process.stdin.write(raw)
+        process.stdin.close()
+    try:
+        code = process.wait(timeout=timeout)
+    except subprocess.TimeoutExpired:
+        process.kill()
+        _ = process.wait()
+        raise
+    finally:
+        for reader in readers:
+            reader.join()
+    truncated = len(offsets) > MAXIMUM_STDERR_LINE_OFFSETS
+    return CapturedRun(
+        code,
+        stdout.getvalue(),
+        stderr.getvalue(),
+        tuple(offsets[:MAXIMUM_STDERR_LINE_OFFSETS]),
+        truncated,
+    )
 
 
 @dataclass(frozen=True)
@@ -471,19 +557,17 @@ class Probe:
                 exit_code = run_in_disposable_group(command, workspace, environment, output, error)
                 response = output.read_bytes()
             else:
-                result = subprocess.run(
-                    command,
-                    cwd=workspace,
-                    env=environment,
-                    input=raw,
-                    capture_output=True,
-                    timeout=1800,
-                    check=False,
+                result = run_captured(
+                    command, workspace, environment, raw, 1800, self.clock, started
                 )
-                exit_code = result.returncode
+                exit_code = result.code
                 response = result.stdout
                 _ = output.write_bytes(result.stdout)
                 _ = error.write_bytes(result.stderr)
+                timeline = StderrTimeline(1, result.lineOffsetsMs, result.truncated)
+                _ = (self.evidence / f"{case}.stderr-timeline.json").write_text(
+                    json.dumps(asdict(timeline)) + "\n"
+                )
             code = exit_code
         finally:
             self.record_stage(case, StageKind.COMMAND, started, code)

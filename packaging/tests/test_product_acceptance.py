@@ -5,11 +5,10 @@ from __future__ import annotations
 import hashlib
 import json
 import os
-import subprocess
 import sys
 import tempfile
 import unittest
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 from dataclasses import asdict, dataclass, replace
 from pathlib import Path
 from unittest.mock import patch
@@ -259,17 +258,19 @@ class AcceptanceTest(unittest.TestCase):
                 for status, raw in ((0, complete), (10, moved)):
                     with self.subTest(read=read, status=status):
                         replies = (
-                            subprocess.CompletedProcess[bytes]([], 10, moved, b"first"),
-                            subprocess.CompletedProcess[bytes]([], status, raw, b"second"),
+                            probe.CapturedRun(10, moved, b"first", (), False),
+                            probe.CapturedRun(status, raw, b"second", (), False),
                         )
-                        with patch.object(probe.subprocess, "run", side_effect=replies) as invoke:
+                        with patch.object(probe, "run_captured", side_effect=replies) as invoke:
                             if status == 0:
                                 self.assertEqual(raw, runner.read_after_restart(read, root))
                             else:
                                 with self.assertRaisesRegex(ValueError, "fresh-read"):
                                     _ = runner.read_after_restart(read, root)
                         self.assertEqual(2, invoke.call_count)
-                        self.assertEqual(invoke.call_args_list[0], invoke.call_args_list[1])
+                        # The same command, environment and input; only the start time differs.
+                        first, fresh = (call.args for call in invoke.call_args_list)
+                        self.assertEqual(first[:-1], fresh[:-1])
                         self.assertEqual(moved, (root / f"{read.value}.stdout").read_bytes())
                         self.assertEqual(
                             raw, (root / f"{read.value}-fresh-read.stdout").read_bytes()
@@ -1004,6 +1005,65 @@ class HostLogRetentionTest(unittest.TestCase):
         second = probe.retain_host_logs(self.home, self.evidence)
         self.assertEqual(first, second)
         self.assertEqual([b"before uninstall\n"], [path.read_bytes() for path in second.iterdir()])
+
+
+class StderrTimelineTest(unittest.TestCase):
+    """A real child, so arrival times bind to the actual pipes; only the clock is scripted."""
+
+    SCRIPT = "printf 'out'; printf 'one\\n' >&2; printf 'two\\n' >&2; printf 'tail' >&2"
+
+    def setUp(self) -> None:
+        temporary = tempfile.TemporaryDirectory()
+        self.addCleanup(temporary.cleanup)
+        self.root = Path(temporary.name).resolve()
+
+    @staticmethod
+    def clock(*ticks: int) -> Callable[[], int]:
+        values = iter(ticks)
+        return lambda: next(values)
+
+    def test_each_stderr_line_keeps_its_arrival_offset_and_the_output_is_exact(self) -> None:
+        captured = probe.run_captured(
+            ["/bin/sh", "-c", self.SCRIPT],
+            self.root,
+            {},
+            None,
+            60,
+            self.clock(3_000_000, 7_500_000, 9_000_000),
+            1_000_000,
+        )
+        self.assertEqual(
+            probe.CapturedRun(0, b"out", b"one\ntwo\ntail", (2, 6, 8), False), captured
+        )
+
+    def test_stdin_reaches_the_child(self) -> None:
+        captured = probe.run_captured(["/bin/cat"], self.root, {}, b"request", 60, self.clock(), 0)
+        self.assertEqual((0, b"request", b""), (captured.code, captured.stdout, captured.stderr))
+
+    def test_offsets_are_bounded_and_the_bound_is_reported(self) -> None:
+        with patch.object(probe, "MAXIMUM_STDERR_LINE_OFFSETS", 2):
+            captured = probe.run_captured(
+                ["/bin/sh", "-c", self.SCRIPT], self.root, {}, None, 60, self.clock(1, 2, 3), 0
+            )
+        self.assertEqual(b"one\ntwo\ntail", captured.stderr)
+        self.assertEqual(((0, 0), True), (captured.lineOffsetsMs, captured.truncated))
+
+    def test_a_probe_case_writes_its_stderr_timeline_beside_its_stderr(self) -> None:
+        runner = probe.Probe(
+            self.root,
+            self.root,
+            self.root,
+            self.root,
+            self.root,
+            {},
+            clock=self.clock(0, 4_000_000, 5_000_000, 6_000_000, 9_000_000),
+        )
+        _ = runner.run("lines", self.root, ("-c", self.SCRIPT), launcher=Path("/bin/sh"))
+        self.assertEqual(b"one\ntwo\ntail", (self.root / "lines.stderr").read_bytes())
+        self.assertEqual(
+            {"schemaVersion": 1, "lineOffsetsMs": [4, 5, 6], "truncated": False},
+            json.loads((self.root / "lines.stderr-timeline.json").read_text()),
+        )
 
 
 class StageTimingTest(unittest.TestCase):

@@ -151,7 +151,9 @@ def prepare_runtime(
     with zipfile.ZipFile(archive) as incoming:
         if incoming.read("manifest.json") != (admitted.runtime / "manifest.json").read_bytes():
             raise ValueError("runtime manifest changed after admission")
-    product.verify_runtime(admitted.runtime, admitted.manifest)
+    # The admitted extraction is read only to copy it. Publication verifies the copy's exact
+    # inventory and every digest, so a changed source file still rejects before the runtime
+    # becomes digest-addressed, and a reused runtime never reads the extraction at all.
     damaged: tuple[immutable_store.DamagedEntry, ...] = ()
     if admitted.base is not None:
         damaged = prepare_base(

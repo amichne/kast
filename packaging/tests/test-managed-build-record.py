@@ -816,6 +816,21 @@ class ProductActivationTest(unittest.TestCase):
         self.assertEqual(0, self.remove_product(path))
         self.assertFalse(active.exists())
 
+    def test_a_changed_admitted_runtime_file_never_publishes_the_runtime(self) -> None:
+        # Publication verifies the copied bytes, so a change after admission still rejects.
+        admitted = self.admitted()
+        item = next(item for item in admitted.manifest.files if isinstance(item, RuntimeFile))
+        changed = admitted.runtime / item.path
+        changed.chmod(0o600)
+        _ = changed.write_bytes(b"changed after admission")
+        with patch.object(install, "run_child", side_effect=AssertionError("no process")):
+            result = activation.activate(self.root, self.home, admitted)
+        self.assertIsInstance(result, contract.Rejected)
+        runtimes = self.home / "kast-workspaces/runtimes"
+        self.assertFalse((runtimes / self.record.targets[1].runtime.sha256).exists())
+        self.assertEqual([], [path for path in runtimes.glob("*") if not path.name.startswith(".")])
+        self.assertFalse((self.root / "installation").exists())
+
     def test_corrupt_qualified_archive_rejects_before_installation_effects(self) -> None:
         name = self.record.targets[1].runtime.name
         self.source.values[f"{release.RELEASE_URL}/v1.2.3/{name}"] = b"wrong bytes"
@@ -1413,7 +1428,6 @@ class ProductActivationTest(unittest.TestCase):
             self.assertEqual(1, callback.call_count)
         self.assertFalse((self.root / "shutdown.json").exists())
         self.assertFalse((self.root / "recovery/replacement").exists())
-
 
     def test_invalid_provisioning_rejects_before_retirement_or_journal_publication(self) -> None:
         admitted = self.admitted()
@@ -2466,7 +2480,6 @@ class ProductActivationTest(unittest.TestCase):
                 _ = record.write_bytes(self.raw)
                 runtime.unlink(missing_ok=True)
                 _ = runtime.write_bytes(original)
-
 
     def test_replacement_interruption_retains_prior_payload_and_foreign_command(self) -> None:
         admitted = self.admitted()
