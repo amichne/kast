@@ -40,8 +40,7 @@ internal data class ProductRemovalProof(
 
 internal fun requireProductRemovalProof(journal: UninstallRetirementJournal) {
     val proof = journal.productRemoval ?: return
-    if (journal.product == null || proof.schemaVersion != 1)
-        throw ManagementRejected("uninstall-recovery", "product removal evidence is invalid")
+    if (proof.schemaVersion != 1) throw ManagementRejected("uninstall-recovery", "product removal evidence is invalid")
     val phaseMatches =
         when (proof.phase) {
             ProductRemovalPhase.PREPARING -> journal.type == UninstallRetirementType.REMOVAL_REQUESTED

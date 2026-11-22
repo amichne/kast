@@ -11,7 +11,8 @@
     "channel",
     "managedRootIdentity",
     "recoveryProof",
-    "controlIdentity"
+    "controlIdentity",
+    "product"
   ],
   "additionalProperties": false,
   "properties": {
@@ -54,6 +55,9 @@
     },
     "controlIdentity": {
       "$ref": "#/$defs/FilesystemIdentity"
+    },
+    "product": {
+      "$ref": "#/$defs/ProductReference"
     }
   },
   "examples": [
@@ -75,6 +79,22 @@
         "device": 1,
         "inode": 3,
         "owner": 501
+      },
+      "product": {
+        "releaseTag": "v1.2.3",
+        "publicVersion": "1.2.3",
+        "version": "1.2.3",
+        "sourceRevision": "0123456789abcdef0123456789abcdef01234567",
+        "sourceTree": "89abcdef0123456789abcdef0123456789abcdef",
+        "buildRecordSha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "target": "macos-aarch64",
+        "bundleSha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "qualificationSha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+        "runtimeRoot": "/home/user/.local/share/kast-runtimes/runtime",
+        "runtimeArchiveSha256": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+        "runtimeManifestSha256": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+        "policy": "TrackStable",
+        "schemaVersion": 1
       }
     },
     {
@@ -95,6 +115,22 @@
         "device": 1,
         "inode": 3,
         "owner": 501
+      },
+      "product": {
+        "releaseTag": "v1.2.3",
+        "publicVersion": "1.2.3",
+        "version": "1.2.3",
+        "sourceRevision": "0123456789abcdef0123456789abcdef01234567",
+        "sourceTree": "89abcdef0123456789abcdef0123456789abcdef",
+        "buildRecordSha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "target": "macos-aarch64",
+        "bundleSha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "qualificationSha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+        "runtimeRoot": "/home/user/.local/share/kast-runtimes/runtime",
+        "runtimeArchiveSha256": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+        "runtimeManifestSha256": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+        "policy": "TrackStable",
+        "schemaVersion": 1
       }
     },
     {
@@ -115,10 +151,110 @@
         "device": 1,
         "inode": 3,
         "owner": 501
+      },
+      "product": {
+        "releaseTag": "v1.2.3",
+        "publicVersion": "1.2.3",
+        "version": "1.2.3",
+        "sourceRevision": "0123456789abcdef0123456789abcdef01234567",
+        "sourceTree": "89abcdef0123456789abcdef0123456789abcdef",
+        "buildRecordSha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "target": "macos-aarch64",
+        "bundleSha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "qualificationSha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+        "runtimeRoot": "/home/user/.local/share/kast-runtimes/runtime",
+        "runtimeArchiveSha256": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+        "runtimeManifestSha256": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+        "policy": "TrackStable",
+        "schemaVersion": 1
       }
     }
   ],
   "$defs": {
+    "Sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "ProductReference": {
+      "type": "object",
+      "required": [
+        "releaseTag",
+        "publicVersion",
+        "version",
+        "sourceRevision",
+        "sourceTree",
+        "buildRecordSha256",
+        "target",
+        "bundleSha256",
+        "qualificationSha256",
+        "runtimeRoot",
+        "runtimeArchiveSha256",
+        "runtimeManifestSha256",
+        "policy",
+        "schemaVersion"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "releaseTag": {
+          "type": "string",
+          "minLength": 1
+        },
+        "publicVersion": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "version": {
+          "type": "string",
+          "minLength": 1
+        },
+        "sourceRevision": {
+          "type": "string",
+          "minLength": 1
+        },
+        "sourceTree": {
+          "type": "string",
+          "minLength": 1
+        },
+        "buildRecordSha256": {
+          "$ref": "#/$defs/Sha256"
+        },
+        "target": {
+          "type": "string",
+          "minLength": 1
+        },
+        "bundleSha256": {
+          "$ref": "#/$defs/Sha256"
+        },
+        "qualificationSha256": {
+          "$ref": "#/$defs/Sha256"
+        },
+        "runtimeRoot": {
+          "type": "string",
+          "pattern": "^/",
+          "minLength": 2,
+          "maxLength": 4096
+        },
+        "runtimeArchiveSha256": {
+          "$ref": "#/$defs/Sha256"
+        },
+        "runtimeManifestSha256": {
+          "$ref": "#/$defs/Sha256"
+        },
+        "policy": {
+          "type": "string",
+          "enum": [
+            "TrackStable",
+            "TrackMain",
+            "PinnedBuild"
+          ]
+        },
+        "schemaVersion": {
+          "const": 1
+        }
+      }
+    },
     "FilesystemIdentity": {
       "type": "object",
       "required": [

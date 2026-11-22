@@ -10,6 +10,7 @@ import java.nio.file.LinkOption
 import java.nio.file.Path
 import java.nio.file.StandardCopyOption
 import java.nio.file.StandardOpenOption
+import kotlinx.serialization.MissingFieldException
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.encodeToString
@@ -31,8 +32,7 @@ internal data class UninstallRetirementJournal(
     val managedRootIdentity: InstallationFilesystemIdentity,
     val recoveryProof: ManagedRecoveryRemovalProof,
     val controlIdentity: InstallationFilesystemIdentity,
-    @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
-    val product: InstalledProductReference? = null,
+    val product: InstalledProductReference,
     @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
     val workspaceRemovals: List<ManagedWorkspaceRemoval> = emptyList(),
     @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
@@ -89,19 +89,14 @@ internal fun admittedUninstallReceipt(root: Path): ManagementReceipt =
     }
 
 private fun retiredManagementReceipt(journal: UninstallRetirementJournal): ManagementReceipt =
-    when (val product = journal.product) {
-        // Only product installations are managed; a pre-product retirement record is not admitted.
-        null -> throw ManagementRejected("uninstall-retirement", "pre-product retirement record")
-        else ->
-            ProductManagementReceipt(
-                    PRODUCT_MANAGEMENT_SCHEMA_VERSION,
-                    journal.installationRoot,
-                    journal.executable,
-                    journal.executableSha256,
-                    product,
-                )
-                .refine()
-    }
+    ProductManagementReceipt(
+            PRODUCT_MANAGEMENT_SCHEMA_VERSION,
+            journal.installationRoot,
+            journal.executable,
+            journal.executableSha256,
+            journal.product,
+        )
+        .refine()
 
 internal fun readUninstallRetirement(root: Path): UninstallRetirementJournal {
     val path = uninstallJournalPath(root)
@@ -129,9 +124,13 @@ private fun requireRetirementFileOwnership(path: Path, root: Path) {
         throw ManagementRejected("uninstall-retirement", "retirement proof ownership is unproven")
 }
 
-private fun decodeUninstallRetirement(raw: String): UninstallRetirementJournal =
+internal fun decodeUninstallRetirement(raw: String): UninstallRetirementJournal =
     try {
         managementJson.decodeFromString<UninstallRetirementJournal>(raw)
+    } catch (missing: MissingFieldException) {
+        if ("product" in missing.missingFields)
+            throw ManagementRejected("uninstall-retirement", "retirement proof lacks its product identity")
+        throw ManagementRejected("uninstall-retirement", "retirement proof is invalid; retained cleanup receipt")
     } catch (_: SerializationException) {
         throw ManagementRejected("uninstall-retirement", "retirement proof is invalid; retained cleanup receipt")
     }
