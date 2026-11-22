@@ -335,6 +335,11 @@ jobs:
     needs: [scope, composed-macos]
     runs-on: ubuntu-24.04
     timeout-minutes: 30
+    # Each product artifact carries the attempt of the job that produced it. A rerun of
+    # failed jobs copies a successful producer with its outputs, so consumers name the
+    # producer's attempt rather than their own.
+    outputs:
+      run_attempt: ${{ github.run_attempt }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -346,7 +351,7 @@ jobs:
           install: false
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
         with:
-          name: kast-qualified-product-macos-aarch64-${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}
+          name: kast-qualified-product-macos-aarch64-${{ github.sha }}-${{ github.run_id }}-${{ needs.composed-macos.outputs.run_attempt }}
           path: build/product-inputs/macos-aarch64
       - name: Seal the complete immutable build record
         run: mise run ci:seal
@@ -363,6 +368,9 @@ jobs:
     needs: sealed-product
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 180
+    # One matrix target, so this output is unambiguous.
+    outputs:
+      run_attempt: ${{ github.run_attempt }}
     strategy:
       fail-fast: false
       matrix:
@@ -380,7 +388,7 @@ jobs:
       - uses: jdx/mise-action@5228313ee0372e111a38da051671ca30fc5a96db # v3
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
         with:
-          name: ci-product-sealed-${{ github.sha }}-${{ github.run_attempt }}
+          name: ci-product-sealed-${{ github.sha }}-${{ needs.sealed-product.outputs.run_attempt }}
           path: build/product-candidate
       - name: Read the checked-in acceptance baseline pin
         id: baseline
@@ -441,17 +449,18 @@ jobs:
           install: false
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
         with:
-          name: ci-product-sealed-${{ github.sha }}-${{ github.run_attempt }}
+          name: ci-product-sealed-${{ github.sha }}-${{ needs.sealed-product.outputs.run_attempt }}
           path: build/product-sealed
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
         with:
-          name: kast-installed-product-macos-aarch64-${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}
+          name: kast-installed-product-macos-aarch64-${{ github.sha }}-${{ github.run_id }}-${{ needs.installed-product.outputs.run_attempt }}
           path: build/product-acceptance
       - name: Join installed acceptance to the sealed record
         run: mise run ci:join
+      # The candidate carries its sealed record's attempt, so admission derives its name.
       - uses: actions/upload-artifact@v7.0.2
         with:
-          name: ci-product-candidate-${{ github.sha }}-${{ github.run_attempt }}
+          name: ci-product-candidate-${{ github.sha }}-${{ needs.sealed-product.outputs.run_attempt }}
           path: build/product-candidate/
           if-no-files-found: error
           compression-level: 0

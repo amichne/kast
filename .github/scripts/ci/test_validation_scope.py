@@ -690,11 +690,16 @@ class SourceInventoryTest(unittest.TestCase):
         self.assertIn("needs: [scope, composed-macos]", joined)
         self.assertNotIn("always()", joined)
         self.assertNotIn("run-id:", joined)
+        # A rerun of failed jobs copies successful producers with their outputs, so every
+        # product handoff names its producer's attempt, never the consumer's.
         self.assertIn(
             "name: kast-qualified-product-macos-aarch64-"
-            "${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}",
+            "${{ github.sha }}-${{ github.run_id }}-${{ needs.composed-macos.outputs.run_attempt }}",
             joined,
         )
+        for producer in ("sealed-product", "installed-product"):
+            self.assertIn("outputs:\n      run_attempt: ${{ github.run_attempt }}", jobs[producer])
+        self.assertIn("name: ci-product-sealed-${{ github.sha }}-${{ github.run_attempt }}", joined)
         self.assertIn("path: build/product-inputs/macos-aarch64", joined)
         self.assertIn("run: mise run ci:seal", joined)
         self.assertIn("product_producer.py seal", task_run("ci:seal"))
@@ -706,9 +711,18 @@ class SourceInventoryTest(unittest.TestCase):
         self.assertIn("product_producer.py accept", task_run("ci:join"))
         self.assertIn(
             "name: kast-installed-product-macos-aarch64-"
-            "${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}", accepted
+            "${{ github.sha }}-${{ github.run_id }}-${{ needs.installed-product.outputs.run_attempt }}",
+            accepted,
+        )
+        self.assertIn(
+            "name: ci-product-sealed-${{ github.sha }}-${{ needs.sealed-product.outputs.run_attempt }}",
+            accepted,
         )
         installed = jobs["installed-product"]
+        self.assertIn(
+            "name: ci-product-sealed-${{ github.sha }}-${{ needs.sealed-product.outputs.run_attempt }}",
+            installed,
+        )
         self.assertIn("needs: sealed-product", installed)
         self.assertNotIn("linux-x86_64", installed + joined + accepted)
         self.assertIn("runner: macos-15", installed)
@@ -730,9 +744,14 @@ class SourceInventoryTest(unittest.TestCase):
         self.assertLess(installed.index("run: mise run ci:acceptance-baseline"), accepted_baseline)
         self.assertLess(legacy_baseline, installed.index("run: mise run ci:acceptance-inputs"))
         self.assertIn("acceptance_inputs.py admit", task_run("ci:acceptance-inputs"))
+        # The candidate carries its sealed record's attempt, so admission derives its name.
         self.assertIn(
-            "name: ci-product-candidate-${{ github.sha }}-${{ github.run_attempt }}", accepted
+            "name: ci-product-candidate-${{ github.sha }}-${{ needs.sealed-product.outputs.run_attempt }}",
+            accepted,
         )
+        reusable = (workflows / "composed-linux.yml").read_text()
+        self.assertIn("value: ${{ jobs.candidate.outputs.run_attempt }}", reusable)
+        self.assertIn("outputs:\n      run_attempt: ${{ github.run_attempt }}", reusable)
         self.assertIn(
             "needs: [scope, source, documentation, portable, kotlin, complete-product]", required
         )

@@ -199,6 +199,37 @@ class ProductProducerTest(unittest.TestCase):
                 ),
             )
 
+    def test_a_baseline_sealed_after_a_rerun_admits_its_earlier_qualification(self) -> None:
+        import json
+
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            inputs, _ = captured(root)
+            directory = root / "sealed"
+            # Qualification ran in attempt 1; a rerun of failed jobs sealed it in attempt 2.
+            record = producer.seal(
+                inputs,
+                directory,
+                "a" * 40,
+                "b" * 40,
+                "0.0.123",
+                product.ProductProducer(123, 2, producer.CI_WORKFLOW),
+            )
+            accepted_fixture(directory, record)
+            digest = product.file_digest(directory / "build-record.json")
+            run = asdict(ReusableRun(run_attempt=2))
+            jobs = product.document(json.dumps(asdict(Jobs())).encode())
+            self.assertEqual(
+                record,
+                candidate.admit_baseline(directory, digest, "a" * 40, record.producer, run, jobs),
+            )
+            # The pin must name the sealing attempt itself, not an earlier one.
+            earlier = replace(record.producer, runAttempt=1)
+            self.assertEqual(
+                producer.Failure.WRONG_PRODUCER,
+                candidate.admit_baseline(directory, digest, "a" * 40, earlier, run, jobs),
+            )
+
     def test_acceptance_join_preserves_record_and_rejects_partial_or_rebound_evidence(self) -> None:
         for fault in (
             "none",
@@ -435,6 +466,62 @@ class ProductProducerTest(unittest.TestCase):
                 self.assertFalse(output.exists())
                 self.assertEqual([], list(root.glob("kast-product-seal-*")))
 
+    def test_a_rerun_reseals_qualification_kept_from_an_earlier_attempt(self) -> None:
+        # Re-running failed jobs copies successful qualification into attempt 2.
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            inputs, targets = captured(root)
+            sealed = producer.seal(
+                inputs,
+                root / "complete",
+                "a" * 40,
+                "b" * 40,
+                "0.0.123",
+                product.ProductProducer(123, 2, ".github/workflows/ci.yml"),
+            )
+            self.assertEqual(
+                product.ProductProducer(123, 2, ".github/workflows/ci.yml"), sealed.producer
+            )
+            self.assertEqual(
+                {product.ProductProducer(123, 1, producer.NATIVE_WORKFLOW)},
+                {item.target.qualification.producer for item in targets},
+            )
+            self.assertEqual(tuple(item.target for item in targets), sealed.targets)
+
+    def test_the_join_accepts_a_record_sealed_in_this_or_an_earlier_attempt(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            record = fixture(Path(temporary) / "candidate")
+            revision, tree = record.sourceRevision, record.sourceTree
+            run, sealed = record.producer.runId, record.producer.runAttempt
+            self.assertTrue(producer.joinable(record, revision, tree, run, sealed))
+            self.assertTrue(producer.joinable(record, revision, tree, run, sealed + 1))
+            for arguments in (
+                (revision, tree, run, sealed - 1),
+                (revision, tree, run + 1, sealed),
+                ("c" * 40, tree, run, sealed),
+                (revision, "c" * 40, run, sealed),
+            ):
+                with self.subTest(arguments=arguments):
+                    self.assertFalse(producer.joinable(record, *arguments))
+            foreign = replace(record, producer=replace(record.producer, workflow="other.yml"))
+            self.assertFalse(producer.joinable(foreign, revision, tree, run, sealed))
+
+    def test_qualification_from_another_run_never_seals(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            inputs, _ = captured(root)
+            with self.assertRaises(producer.Rejected) as rejection:
+                _ = producer.seal(
+                    inputs,
+                    root / "complete",
+                    "a" * 40,
+                    "b" * 40,
+                    "0.0.123",
+                    product.ProductProducer(124, 2, ".github/workflows/ci.yml"),
+                )
+            self.assertEqual(producer.Failure.WRONG_PRODUCER, rejection.exception.failure)
+            self.assertFalse((root / "complete").exists())
+
     def test_target_capture_rejects_control_bytes_different_from_the_assembly_receipt(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
@@ -525,7 +612,7 @@ class ProductProducerTest(unittest.TestCase):
                         )
                     ]
                 ),
-                ReusableRun(run_attempt=2),
+                ReusableRun(run_attempt=0),
                 ReusableRun(id=456),
                 ReusableRun(event="pull_request"),
             ):
@@ -534,6 +621,19 @@ class ProductProducerTest(unittest.TestCase):
                         producer.Failure.WRONG_PRODUCER,
                         candidate.admit_producer(record, native, asdict(observed)),
                     )
+            # A later successful final attempt keeps the earlier qualification.
+            self.assertEqual(
+                product.Admission.ADMITTED,
+                candidate.admit_producer(record, native, asdict(ReusableRun(run_attempt=2))),
+            )
+            # Qualification never follows the seal that admitted it.
+            later = product.ProductProducer(
+                123, record.producer.runAttempt + 1, producer.NATIVE_WORKFLOW
+            )
+            self.assertEqual(
+                producer.Failure.WRONG_PRODUCER,
+                candidate.admit_producer(record, later, asdict(ReusableRun(run_attempt=2))),
+            )
 
     def test_untrusted_cli_context_rejects_before_checkout_or_output(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
@@ -586,8 +686,8 @@ class ProductProducerTest(unittest.TestCase):
         join = jobs["sealed-product"]
         self.assertIn("needs: [scope, composed-macos]", join)
         self.assertIn(
-            "name: kast-qualified-product-macos-aarch64-"
-            "${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}",
+            "name: kast-qualified-product-macos-aarch64-${{ github.sha }}-${{ github.run_id }}-"
+            "${{ needs.composed-macos.outputs.run_attempt }}",
             join,
         )
         self.assertIn("name: ci-product-sealed-${{ github.sha }}-${{ github.run_attempt }}", join)

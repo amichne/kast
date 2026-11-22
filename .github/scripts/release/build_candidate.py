@@ -256,6 +256,29 @@ def listing(document: dict, field: str) -> tuple[dict, ...]:
     return tuple(document[field])
 
 
+def produced_artifact(artifacts: tuple[dict, ...], prefix: str, attempt: int) -> tuple[str, int]:
+    """Select the artifact `prefix<n>` from the latest producing attempt no later than `attempt`.
+
+    A rerun of failed jobs copies the jobs it does not execute again, outputs included, so
+    their artifacts keep the attempt that produced them. A later execution supersedes an
+    earlier one. Two live artifacts for the latest attempt are ambiguous and reject.
+    """
+    produced: dict[int, list[str]] = {}
+    for artifact in artifacts:
+        name = artifact.get("name")
+        if artifact.get("expired") is not False or not isinstance(name, str) or not name.startswith(prefix):
+            continue
+        suffix = name.removeprefix(prefix)
+        if suffix.isascii() and suffix.isdecimal() and suffix[0] != "0" and int(suffix) <= attempt:
+            produced.setdefault(int(suffix), []).append(name)
+    if not produced:
+        raise Rejected(Failure.INVALID_RECORD)
+    latest = max(produced)
+    if len(produced[latest]) != 1:
+        raise Rejected(Failure.INVALID_RECORD)
+    return produced[latest][0], latest
+
+
 def tree(repository: str, revision: str) -> str:
     document = observe(f"repos/{repository}/git/commits/{revision}", ObservationStage.SOURCE_TREE)
     value = document.get("tree", {}).get("sha") if isinstance(document, dict) else None
@@ -311,11 +334,8 @@ def reusable_run(run: dict, repository: str, revision: str) -> bool:
 
 
 def admit_validation(repository: str, revision: str, run: dict[object, object], expected_tree: str):
-    name = f"ci-validation-outcome-{revision}-{run['run_attempt']}"
     artifacts = listing(observe(f"repos/{repository}/actions/runs/{run['id']}/artifacts?per_page=100", ObservationStage.RUN_ARTIFACTS), "artifacts")
-    matches = tuple(artifact for artifact in artifacts if artifact.get("name") == name and artifact.get("expired") is False)
-    if len(matches) != 1:
-        raise Rejected(Failure.INVALID_RECORD)
+    name, produced = produced_artifact(artifacts, f"ci-validation-outcome-{revision}-", run["run_attempt"])
     with tempfile.TemporaryDirectory(prefix="kast-validation-") as temporary:
         destination = Path(temporary)
         execute(["gh", "run", "download", str(run["id"]), "--repo", repository, "--name", name,
@@ -325,6 +345,8 @@ def admit_validation(repository: str, revision: str, run: dict[object, object], 
         outcome = validation.read(destination / "validation.json")
     if isinstance(outcome, validation.Failure):
         raise Rejected(Failure(outcome.value))
+    if outcome.runAttempt != produced:
+        raise Rejected(Failure.WRONG_PRODUCER)
     admitted = validation.admit(outcome, run, repository, revision, expected_tree)
     if isinstance(admitted, validation.Failure):
         raise Rejected(Failure(admitted.value))
@@ -441,11 +463,10 @@ def promote_product(repository: str, revision: str, run_id: int, run_attempt: in
         return
     if not isinstance(outcome, validation.ProductValidated):
         raise Rejected(Failure.SOURCE_NOT_QUALIFIED)
-    name = f"ci-product-candidate-{revision}-{run['run_attempt']}"
     artifacts = listing(observe(f"repos/{repository}/actions/runs/{run_id}/artifacts?per_page=100",
                                 ObservationStage.RUN_ARTIFACTS), "artifacts")
-    if len([item for item in artifacts if item.get("name") == name and item.get("expired") is False]) != 1:
-        raise Rejected(Failure.INVALID_RECORD)
+    # The join names the candidate after its sealed record's attempt, which a partial rerun keeps.
+    name, sealed = produced_artifact(artifacts, f"ci-product-candidate-{revision}-", run["run_attempt"])
     bundle.mkdir(parents=True, exist_ok=True)
     execute(["gh", "run", "download", str(run_id), "--repo", repository, "--name", name,
              "--dir", str(bundle)], Failure.DOWNLOAD_FAILED)
@@ -456,7 +477,7 @@ def promote_product(repository: str, revision: str, run_id: int, run_attempt: in
     if isinstance(record, product_candidate.candidate.Failure):
         raise Rejected(Failure(record.value))
     if (record.sourceRevision != revision or record.sourceTree != expected_tree
-            or record.producer.runId != run_id or record.producer.runAttempt != run["run_attempt"]):
+            or record.producer.runId != run_id or record.producer.runAttempt != sealed):
         raise Rejected(Failure.WRONG_PRODUCER)
     output(github_output, publication=PublicationState.PUBLISH.value,
            version=record.version, source_revision=record.sourceRevision)

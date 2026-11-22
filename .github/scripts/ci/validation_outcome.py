@@ -150,7 +150,8 @@ def admit(
                 or record.sourceRevision != revision
                 or run_id != record.runId
                 or number != record.runNumber
-                or attempt != record.runAttempt
+                # A rerun of failed jobs keeps a successful gate from an earlier attempt.
+                or record.runAttempt > attempt
                 or any(type(value) is not int for value in (run_id, number, attempt))
             ):
                 return Failure.WRONG_PRODUCER
