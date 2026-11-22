@@ -796,6 +796,39 @@ class Probe:
                     _ = process.wait(timeout=60)
 
 
+HOST_LOG_NAMES = frozenset({"idea.log", "launcher.log"})
+# IDE caches and scratch space hold no Host logs; skipping them keeps the walk small.
+HOST_LOG_PRUNED_DIRECTORIES = frozenset({"system", "tmp"})
+MAXIMUM_RETAINED_HOST_LOGS = 16
+MAXIMUM_RETAINED_HOST_LOG_BYTES = 512 * 1024
+
+
+def retain_host_logs(home: Path, evidence: Path) -> Path:
+    """Copy the tail of each Host log under the disposable home into evidence.
+
+    Uninstall deletes the logs on success and the disposable root is not uploaded on failure,
+    so this is the only durable copy. The first call wins; later calls keep its result.
+    """
+    destination = evidence / "host-logs"
+    if destination.exists():
+        return destination
+    destination.mkdir()
+    found: list[Path] = []
+    for directory, children, files in os.walk(home):
+        children[:] = sorted(name for name in children if name not in HOST_LOG_PRUNED_DIRECTORIES)
+        found.extend(Path(directory) / name for name in sorted(files) if name in HOST_LOG_NAMES)
+    for index, path in enumerate(found[:MAXIMUM_RETAINED_HOST_LOGS]):
+        if path.is_symlink() or not path.is_file():
+            continue
+        with path.open("rb") as source:
+            size = source.seek(0, os.SEEK_END)
+            _ = source.seek(max(0, size - MAXIMUM_RETAINED_HOST_LOG_BYTES))
+            tail = source.read(MAXIMUM_RETAINED_HOST_LOG_BYTES)
+        name = f"{index:02d}-" + "-".join(path.relative_to(home).parts)
+        _ = (destination / name).write_bytes(tail)
+    return destination
+
+
 def require_baseline(directory: Path, record: product.ProductRecord) -> product.ProductRecord:
     baseline = candidate.read_baseline(directory)
     if isinstance(baseline, candidate.candidate.Failure):
@@ -977,6 +1010,7 @@ def execute(
             if probe.query("edited", roots[0], "acceptanceEditedDeclaration") != restarted:
                 raise ValueError("new-file edit replaced the compiler workspace lifetime")
             probe.completed.add(acceptance.Case.EDIT)
+            _ = retain_host_logs(home, evidence)
             _ = probe.run("uninstall", roots[0], ("uninstall",))
             if (
                 root.exists()
@@ -992,6 +1026,8 @@ def execute(
             if probe.control.exists():
                 with contextlib.suppress(OSError, ValueError, subprocess.SubprocessError):
                     _ = probe.run("failure-stop", roots[0], ("stop", "--all", "--json"))
+            with contextlib.suppress(OSError):
+                _ = retain_host_logs(home, evidence)
             os.environ.clear()
             os.environ.update(before)
         if probe.completed != set(acceptance.Case):
