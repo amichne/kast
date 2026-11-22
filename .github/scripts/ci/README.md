@@ -228,8 +228,9 @@ Other macOS jobs, including complete-product qualification and installed accepta
 The manual component release uses `macos-15`. Stable promotion uses retained bytes.
 
 The `kotlin` and `composed-macos` jobs start after release assembly and run beside complete source validation.
-Sealing and the `CI required checks` aggregate still require `source-work` success, so a source failure still blocks the product.
-A failed source run can therefore leave completed Mac jobs without a sealed product.
+Sealing and installed acceptance also run beside it, because sealing reads only the qualified Mac product inputs.
+The join that produces the candidate and the `CI required checks` aggregate still require `source-work` success.
+A source failure therefore still blocks the product, and a failed source run can leave a sealed product that no join accepts.
 On the hosted 3-core, 7 GB Mac, the native compile took 26 minutes and spent 31% of it in GC.
 The same image compiled in about 3 minutes on the 16 GB Linux runner and in under 2 minutes on the local Mac.
 
