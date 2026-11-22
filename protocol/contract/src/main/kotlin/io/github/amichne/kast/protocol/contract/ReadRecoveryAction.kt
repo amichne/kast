@@ -78,6 +78,7 @@ fun QueryRunFailure.recoveryAction(): ReadRecoveryAction =
                 QueryExecutionRejectionDocument.UNKNOWN_BINDING_NAME,
                 QueryExecutionRejectionDocument.OUTPUT_KIND_MISMATCH,
                 QueryExecutionRejectionDocument.REQUEST_REJECTED,
+                QueryExecutionRejectionDocument.RELATION_SEED_EMPTY,
                 QueryExecutionRejectionDocument.BUDGET_REJECTED -> ReadRecoveryAction.CORRECT_REQUEST
                 QueryExecutionRejectionDocument.CONTINUATION_IN_USE -> ReadRecoveryAction.WAIT_FOR_CHECKPOINT
                 QueryExecutionRejectionDocument.CONTINUATION_CAPACITY_EXCEEDED,

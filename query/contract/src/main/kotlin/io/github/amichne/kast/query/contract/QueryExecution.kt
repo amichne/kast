@@ -264,6 +264,8 @@ enum class QueryExecutionRejection {
     REFERENCE_STALE,
     BUDGET_REJECTED,
     TEXT_MATCH_LIMIT_EXCEEDED,
+    /** The first relation-bearing stage received no input symbol, so no relation absence was examined. */
+    RELATION_SEED_EMPTY,
     INTERNAL_CONTRACT_VIOLATION,
 }
 

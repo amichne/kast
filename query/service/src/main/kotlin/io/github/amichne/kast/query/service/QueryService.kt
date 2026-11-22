@@ -71,6 +71,8 @@ class QueryService(
         private val emittedBefore = checkpoint?.emittedCount ?: 0.queryCount()
         private val state = QueryExecutionState(request, clock, branchObservation, presentation)
         private var seed: PipelineSeed = checkpoint?.seed ?: PipelineSeed.Unmeasured
+        private var relationSeed: QueryRelationSeed =
+            checkpoint?.relationSeed ?: QueryRelationSeed.initial(request.plan)
         private val tasks = ArrayDeque(checkpoint?.tasks ?: initialTasks(request.plan))
         private val identityRows = QueryIdentityRows(checkpoint?.identityRows.orEmpty())
         private val joinStage = QueryJoinStage(request, state, tasks, checkpoint?.joinState)
@@ -144,7 +146,7 @@ class QueryService(
                     } else callbackOutput.relation(task) { relationObservations += task.value }
                 is PipelineTask.WalkRecord -> emit(task.value.projectedUtf8Size()) { symbols += task.value }
                 is PipelineTask.Candidate -> candidate(task)
-                is PipelineTask.Symbol -> symbol(task)
+                is PipelineTask.Symbol -> symbol(task).also { if (it) relationSeed = relationSeed.entered(task.stage) }
                 is PipelineTask.Binding ->
                     QueryBindingTasks.advance(task, state, tasks, ::emit, joinStage::recordBinding)
                 is PipelineTask.Related -> related(task)
@@ -221,14 +223,7 @@ class QueryService(
                     is Refinement.Rejected -> return identityRejected(merged.failure)
                 }
             tasks.removeFirst()
-            val values =
-                rows.map { PipelineTask.Symbol(it, stage.next) } +
-                    stage.right.failures.map(PipelineTask::Failure) +
-                    stage.right.omissions.map(PipelineTask::Omission) +
-                    stage.right.walkObservations.map(PipelineTask::WalkObservation) +
-                    stage.right.referenceObservations.map(PipelineTask::ReferenceObservation) +
-                    stage.right.discoveryObservations.map { PipelineTask.DiscoveryObservation(it) } +
-                    stage.right.relationObservations.map(PipelineTask::RelationObservation)
+            val values = rows.map { PipelineTask.Symbol(it, stage.next) } + stage.right.evidenceTasks()
             values.asReversed().forEach(tasks::addFirst)
             return true
         }
@@ -366,7 +361,9 @@ class QueryService(
             return when (result) {
                 is Refinement.Rejected -> QueryExecutionResult.ImpactRejected(result.failure)
                 is Refinement.Refined ->
-                    state.completePage(result.value, tasks, emittedBefore, pageCount, ::continuation)
+                    relationSeed.admit(
+                        state.completePage(result.value, tasks, emittedBefore, pageCount, ::continuation)
+                    )
             }
         }
 
@@ -395,6 +392,7 @@ class QueryService(
                 } + state.upstreamLimitations,
                 emittedCount,
                 if (request.plan is AdmittedQueryPlan.Impact) impactTasks.snapshot() else null,
+                relationSeed,
             )
     }
 }

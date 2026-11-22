@@ -89,6 +89,7 @@ internal enum class QueryExecutionRejectionWireDocument {
     @SerialName("invocation-retained-bytes-limit") INVOCATION_RETAINED_BYTES_LIMIT,
     @SerialName("invocation-cancelled") INVOCATION_CANCELLED,
     @SerialName("budget-rejected") BUDGET_REJECTED,
+    @SerialName("relation-seed-empty") RELATION_SEED_EMPTY,
     @SerialName("internal-contract-violation") INTERNAL_CONTRACT_VIOLATION,
 }
 

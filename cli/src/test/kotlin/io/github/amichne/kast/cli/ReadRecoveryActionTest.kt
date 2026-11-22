@@ -83,6 +83,10 @@ class ReadRecoveryActionTest {
             QueryRunRejection.ExecutionRejected(QueryExecutionRejectionDocument.TEXT_MATCH_LIMIT_EXCEEDED)
                 .recoveryAction(),
         )
+        assertEquals(
+            ReadRecoveryAction.CORRECT_REQUEST,
+            QueryRunRejection.ExecutionRejected(QueryExecutionRejectionDocument.RELATION_SEED_EMPTY).recoveryAction(),
+        )
     }
 
     @Test

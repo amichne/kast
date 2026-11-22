@@ -43,5 +43,6 @@ enum class QueryExecutionRejectionDocument {
     DISCOVERY_REJECTED,
     REFERENCE_STALE,
     BUDGET_REJECTED,
+    RELATION_SEED_EMPTY,
     INTERNAL_CONTRACT_VIOLATION,
 }
