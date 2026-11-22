@@ -3,6 +3,7 @@
 import os
 import stat
 import sys
+from collections.abc import Iterable
 from dataclasses import dataclass
 from enum import StrEnum
 from pathlib import Path
@@ -27,13 +28,25 @@ class InvocationStateAdmitted:
 @dataclass(frozen=True)
 class InvocationStateRejected:
     reason: InvocationStateFailure
+    # Names of the offending entries under state/run, bounded; never their contents.
+    entries: tuple[str, ...]
     outcome: Literal["REJECTED"] = "REJECTED"
     component: Literal["kast-invocation-state"] = "kast-invocation-state"
 
 
-def reject_invocation_state(reason: InvocationStateFailure) -> None:
+MAXIMUM_REPORTED_ENTRIES = 8
+MAXIMUM_REPORTED_NAME_CHARACTERS = 64
+
+
+def reported_entries(names: Iterable[str]) -> tuple[str, ...]:
+    """Sorted, bounded entry names: enough to identify the cause without unbounded output."""
+    ordered = sorted(name[:MAXIMUM_REPORTED_NAME_CHARACTERS] for name in names)
+    return tuple(ordered[:MAXIMUM_REPORTED_ENTRIES])
+
+
+def reject_invocation_state(reason: InvocationStateFailure, entries: tuple[str, ...]) -> None:
     print(
-        install.encoded(InvocationStateRejected(reason)).decode(),
+        install.encoded(InvocationStateRejected(reason, entries)).decode(),
         end="",
         file=sys.stderr,
     )
@@ -52,7 +65,7 @@ def admit_coordinator_socket_state(run: Path) -> None:
     if os.path.lexists(socket):
         observed = socket.lstat()
         if not stat.S_ISSOCK(observed.st_mode) or observed.st_uid != os.getuid():
-            reject_invocation_state(InvocationStateFailure.UNKNOWN_DIRECTORY)
+            reject_invocation_state(InvocationStateFailure.UNKNOWN_DIRECTORY, (COORDINATOR_SOCKET,))
     lock = run / COORDINATOR_SOCKET_LOCK
     if os.path.lexists(lock):
         observed = lock.lstat()
@@ -62,7 +75,9 @@ def admit_coordinator_socket_state(run: Path) -> None:
             or stat.S_IMODE(observed.st_mode) != 0o600
             or observed.st_size != 0
         ):
-            reject_invocation_state(InvocationStateFailure.UNKNOWN_DIRECTORY)
+            reject_invocation_state(
+                InvocationStateFailure.UNKNOWN_DIRECTORY, (COORDINATOR_SOCKET_LOCK,)
+            )
 
 
 def empty_invocation_directories(
@@ -83,8 +98,11 @@ def empty_invocation_directories(
     store.physical(run)
     coordinator: frozenset[str] = COORDINATOR_ENTRIES if live_coordinator else frozenset()
     admitted = INVOCATION_DIRECTORIES | coordinator
-    if {child.name for child in run.iterdir()} - admitted:
-        reject_invocation_state(InvocationStateFailure.UNKNOWN_DIRECTORY)
+    unexpected = {child.name for child in run.iterdir()} - admitted
+    if unexpected:
+        reject_invocation_state(
+            InvocationStateFailure.UNKNOWN_DIRECTORY, reported_entries(unexpected)
+        )
     if live_coordinator:
         admit_coordinator_socket_state(run)
     directories: list[tuple[Path, journal.Identity]] = []
@@ -92,7 +110,7 @@ def empty_invocation_directories(
         store.physical(child)
         identity = journal.Identity.observe(child)
         if any(child.iterdir()):
-            reject_invocation_state(InvocationStateFailure.UNSETTLED_INVOCATIONS)
+            reject_invocation_state(InvocationStateFailure.UNSETTLED_INVOCATIONS, (child.name,))
         directories.append((child, identity))
     directories.append((run, journal.Identity.observe(run)))
     print(install.encoded(InvocationStateAdmitted()).decode(), end="", file=sys.stderr)
