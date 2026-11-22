@@ -61,6 +61,41 @@ class PortableSkipInventoryTest(unittest.TestCase):
                 else:
                     self.assertIn("1 suites passed", result.stdout)
 
+    def test_arguments_select_inventory_suites_and_reject_other_paths(self) -> None:
+        passing = (
+            "import unittest\nclass Case(unittest.TestCase):\n"
+            " def test_case(self): self.assertEqual(1, 1)\n"
+            "unittest.main()\n"
+        )
+        with tempfile.TemporaryDirectory() as temporary:
+            packaging = Path(temporary) / "packaging"
+            (packaging / "internal/verification").mkdir(parents=True)
+            (packaging / "tests").mkdir()
+            runner = packaging / "internal/verification/run-portable-tests.py"
+            _ = runner.write_bytes((Path(__file__).parents[1] / "internal/verification" / runner.name).read_bytes())
+            selected = packaging / "tests/test-selected.py"
+            _ = selected.write_text(passing)
+            _ = (packaging / "tests/test-unselected.py").write_text("raise SystemExit(1)\n")
+            outside = packaging / "outside.py"
+            _ = outside.write_text(passing)
+
+            result = subprocess.run(
+                [sys.executable, str(runner), str(selected)], capture_output=True, text=True, check=False
+            )
+            self.assertEqual(0, result.returncode, result.stderr)
+            self.assertIn("test-selected.py: passed", result.stdout)
+            self.assertNotIn("test-unselected.py", result.stdout + result.stderr)
+            self.assertIn("1 suites passed", result.stdout)
+
+            for foreign in (outside, packaging / "tests/test-missing.py"):
+                with self.subTest(foreign=foreign.name):
+                    rejected = subprocess.run(
+                        [sys.executable, str(runner), str(foreign)], capture_output=True, text=True, check=False
+                    )
+                    self.assertEqual(2, rejected.returncode, rejected.stdout)
+                    self.assertIn("select packaging/tests/test-*.py suites only", rejected.stderr)
+                    self.assertEqual("", rejected.stdout)
+
     def admitted_skips(self, system: str, machine: str) -> dict[str, int]:
         with (
             patch.object(platform, "system", return_value=system),

@@ -23,6 +23,18 @@ class LifecycleIngressTest {
     }
 
     @Test
+    fun `stop report names each stopped workspace`() {
+        assertEquals(
+            "Stopped 2 workspace Hosts; the next semantic request may start them.\n  /work/alpha\n  /work/beta",
+            workspaceStopReport(WorkspaceStopOutcome.Stopped(listOf("/work/alpha", "/work/beta"))),
+        )
+        assertEquals(
+            "Stopped 0 workspace Hosts; the next semantic request may start them.",
+            workspaceStopReport(WorkspaceStopOutcome.Stopped(emptyList())),
+        )
+    }
+
+    @Test
     fun `kill is no longer a public command`() {
         val removed = parseManagementCommand(listOf("kill")) as ManagementParsing.Print
         assertTrue(removed.error)

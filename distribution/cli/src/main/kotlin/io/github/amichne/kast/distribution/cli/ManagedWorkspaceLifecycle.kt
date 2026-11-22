@@ -114,12 +114,15 @@ internal fun executeWorkspaceStop(
     if (output.structured(command.json)) output.publish(managementJson.encodeToString<WorkspaceStopOutcome>(document))
     else
         when (document) {
-            is WorkspaceStopOutcome.Stopped ->
-                output.message(
-                    "Stopped ${document.workspaces.size} workspace Hosts; the next semantic request may start them."
-                )
+            is WorkspaceStopOutcome.Stopped -> output.message(workspaceStopReport(document))
             is WorkspaceStopOutcome.Rejected ->
                 System.err.println("kast: stop: ${document.failure}; select --workspace PATH or --all")
         }
     if (result is Refinement.Rejected) kotlin.system.exitProcess(result.failure.exit)
+}
+
+/** Names every stopped workspace so a broad stop shows which Hosts the next request must start again. */
+internal fun workspaceStopReport(outcome: WorkspaceStopOutcome.Stopped): String = buildString {
+    append("Stopped ${outcome.workspaces.size} workspace Hosts; the next semantic request may start them.")
+    for (workspace in outcome.workspaces) append("\n  ").append(workspace)
 }
