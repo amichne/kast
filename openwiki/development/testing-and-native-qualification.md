@@ -43,7 +43,7 @@ sources:
 generated: { by: "codex", at: "2026-11-22T20:53:36.158Z" }
 verified:
   - by: openwiki/0.9.0
-    at: 2026-11-22T20:53:36.158Z
+    at: 2026-11-22T21:18:16.148Z
 ---
 
 # Tests and native qualification

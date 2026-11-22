@@ -19,6 +19,8 @@ sources:
     resource: repo://.github/scripts/ci/verify_documentation.py
   - id: openwiki-source-6c3c32c8e0fc1de5046d2785
     resource: repo://.github/scripts/code_kb.py
+  - id: openwiki-source-b1617b9b6b347abc78b21af4
+    resource: repo://.github/scripts/test_code_kb.py
   - id: openwiki-source-6d4b4e707b8d60b6ccfa3425
     resource: repo://.github/workflows/openwiki-update.yml
   - id: openwiki-source-8037e2358a2c4f9b2c722a11
@@ -45,12 +47,14 @@ sources:
     resource: repo://docs/internal/tooling/reader_contracts.py
   - id: openwiki-source-4edb49b58f63dd3eba3235c3
     resource: repo://docs/internal/tooling/test_knowledge_refresh.py
+  - id: openwiki-source-c6fb06f576343a335a209590
+    resource: repo://docs/internal/tooling/test_okf_public.py
   - id: openwiki-source-2dd53ab2c56b5f60be2b07d4
     resource: repo://docs/internal/tooling/test_publication.py
-generated: { by: "amp", at: "2026-11-15T20:10:47.711Z" }
+generated: { by: "codex", at: "2026-11-22T21:18:16.148Z" }
 verified:
   - by: openwiki/0.9.0
-    at: 2026-11-22T20:53:36.158Z
+    at: 2026-11-22T21:18:16.148Z
 ---
 
 # Knowledge upkeep and coverage assessment
@@ -117,7 +121,12 @@ Author review, actual reader evaluation, and native task execution remain separa
 
 `knowledgeImpact` reports concepts affected by changed cited sources.
 `verifyKnowledgeBase` examines Markdown links, source paths, and exact declaration citations.
+A `code_sources` path that no longer exists is a blocking finding in every mode, so a source move must update or retire that citation.
+A missing `sources` resource and a link to a cited or previously recorded source file remain advisory route findings that request a native refresh.
 Kotlin declaration checks use an isolated PSI parser. Python declaration checks use the AST.
+
+Public projection reads every `docs/public` text page as it will be published, projected snippets included.
+It rejects a GitHub `blob` link to an untracked file or a `tree` link to a directory without tracked files with `OKF_REPOSITORY_LINK`, before any write.
 Declaration presence does not prove compiler identity or installed runtime behavior.
 
 The checked-in OpenWiki workflow uses `workflow_dispatch`.

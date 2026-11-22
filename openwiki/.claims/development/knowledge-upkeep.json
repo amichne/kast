@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:c0019db4123f831797bce91b247c3afaf087f70f2e9d5c7a3e88c9f804dab14f",
+  "pageVersion": "sha256:06a2c75e7f1851fb1bb4b6da2f21c1535990630eac6a375119a6556e60fd78a6",
   "claims": [
     {
       "id": "claim_f1f223d6ff6c46a1a8c1642d015d3929",
@@ -8,7 +8,7 @@
       "evidence": [
         {
           "resource": "repo://.github/scripts/code_kb.py",
-          "version": "repo-file-v1:sha256:8e141ed74c8c120f13a3bcc92ba41fc904267a491ae93664591e7c3a33b9bb85"
+          "version": "repo-file-v1:sha256:e6daf5d861a4febf3e8d802fdc1481de641c67c535dae5f4e5e19f8c0e4237dd"
         },
         {
           "resource": "repo://build.gradle.kts",
@@ -60,7 +60,7 @@
         },
         {
           "resource": "repo://docs/internal/tooling/okf_public.py",
-          "version": "repo-file-v1:sha256:800e35c5255292aab87bce3f83e945b14f92005d96c7cc8c36867f25b78c4b5a"
+          "version": "repo-file-v1:sha256:4a971001793b29a2298a89ad484d660dc9c137406a73e8197ccc3a40b5b3b240"
         }
       ]
     },
@@ -137,10 +137,38 @@
           "version": "repo-file-v1:sha256:ad80bfe1f1ca73987240e6c1e3927452948ff2a1b4394988a5bba90598bfffb1"
         }
       ]
+    },
+    {
+      "id": "claim_38dad8f80446456b9078e3cc0421e979",
+      "statement": "verifyKnowledgeBase reports a missing code_sources path as a blocking issue in every mode, while missing OpenWiki sources resources and links to cited or recorded source files remain advisory resolution findings.",
+      "evidence": [
+        {
+          "resource": "repo://.github/scripts/code_kb.py",
+          "version": "repo-file-v1:sha256:e6daf5d861a4febf3e8d802fdc1481de641c67c535dae5f4e5e19f8c0e4237dd"
+        },
+        {
+          "resource": "repo://.github/scripts/test_code_kb.py",
+          "version": "repo-file-v1:sha256:630bde95c2311425fffdfe12a2cc40eb8ccc166c0f57823348d32ad38888f58c"
+        }
+      ]
+    },
+    {
+      "id": "claim_771279acf3df45f3981af42be5875d52",
+      "statement": "Public OKF projection reads every docs/public text page as it will be published and rejects a GitHub blob link to an untracked file or a tree link to a directory without tracked files with OKF_REPOSITORY_LINK before any write.",
+      "evidence": [
+        {
+          "resource": "repo://docs/internal/tooling/okf_public.py",
+          "version": "repo-file-v1:sha256:4a971001793b29a2298a89ad484d660dc9c137406a73e8197ccc3a40b5b3b240"
+        },
+        {
+          "resource": "repo://docs/internal/tooling/test_okf_public.py",
+          "version": "repo-file-v1:sha256:264984b9d5a8329ccae7956d6c8bc2583ecf74655e592bd6a5c3f4cbbe6f80ba"
+        }
+      ]
     }
   ],
   "verification": {
     "by": "openwiki/0.9.0",
-    "at": "2026-11-22T20:53:36.158Z"
+    "at": "2026-11-22T21:18:16.148Z"
   }
 }

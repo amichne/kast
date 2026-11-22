@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:5d694ade08af4e42dc3ebd72605b0fbe2b59891fd87044741a0800a88263be7d",
+  "pageVersion": "sha256:398139d18e3b71db75725cde3aedce8372c17ad092ec9999789e69f1ea51090c",
   "claims": [
     {
       "id": "claim_b360f4c00a974d9fa3febbb40e81500c",
@@ -8,7 +8,7 @@
       "evidence": [
         {
           "resource": "repo://docs/development.md",
-          "version": "repo-file-v1:sha256:2fb1cc9f9758fa08dc4b0a434f08b49a69d293ab74e98447871e16b5d63a7e01"
+          "version": "repo-file-v1:sha256:372fd667776a9ec034e5615b7edd15ddfdb827ca65e98f10f96009ad961ac999"
         }
       ]
     },
@@ -46,7 +46,7 @@
       "evidence": [
         {
           "resource": "repo://docs/development.md",
-          "version": "repo-file-v1:sha256:2fb1cc9f9758fa08dc4b0a434f08b49a69d293ab74e98447871e16b5d63a7e01"
+          "version": "repo-file-v1:sha256:372fd667776a9ec034e5615b7edd15ddfdb827ca65e98f10f96009ad961ac999"
         },
         {
           "resource": "repo://packaging/internal/verification/local_product_probe.py",
@@ -94,7 +94,7 @@
       "evidence": [
         {
           "resource": "repo://docs/development.md",
-          "version": "repo-file-v1:sha256:2fb1cc9f9758fa08dc4b0a434f08b49a69d293ab74e98447871e16b5d63a7e01"
+          "version": "repo-file-v1:sha256:372fd667776a9ec034e5615b7edd15ddfdb827ca65e98f10f96009ad961ac999"
         },
         {
           "resource": "repo://packaging/internal/verification/run-installed-product.py",
@@ -122,7 +122,7 @@
       "evidence": [
         {
           "resource": "repo://docs/development.md",
-          "version": "repo-file-v1:sha256:2fb1cc9f9758fa08dc4b0a434f08b49a69d293ab74e98447871e16b5d63a7e01"
+          "version": "repo-file-v1:sha256:372fd667776a9ec034e5615b7edd15ddfdb827ca65e98f10f96009ad961ac999"
         },
         {
           "resource": "repo://packaging/internal/verification/harness_launchd.py",
@@ -141,6 +141,6 @@
   ],
   "verification": {
     "by": "openwiki/0.9.0",
-    "at": "2026-11-22T20:53:36.158Z"
+    "at": "2026-11-22T21:18:16.148Z"
   }
 }
