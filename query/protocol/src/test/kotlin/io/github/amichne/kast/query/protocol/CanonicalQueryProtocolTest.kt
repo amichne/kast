@@ -197,6 +197,35 @@ class CanonicalQueryProtocolTest {
     }
 
     @Test
+    fun `every finite execution rejection keeps its own reason through the protocol projection`() = runTest {
+        for (reason in QueryExecutionRejection.entries) {
+            val projected =
+                CanonicalQueryProtocol(
+                        QueryOperations { QueryExecutionResult.Rejected(reason) },
+                        CanonicalQueryReferences(),
+                    )
+                    .executePage(request(), lease, budget)
+            val rejected = assertInstanceOf(OperationOutcome.Rejected::class.java, projected)
+            assertEquals(
+                QueryRunRejection.ExecutionRejected(QueryExecutionRejectionDocument.valueOf(reason.name)),
+                rejected.reason,
+            )
+        }
+        val seedEmpty =
+            CanonicalQueryProtocol(
+                    QueryOperations { QueryExecutionResult.Rejected(QueryExecutionRejection.RELATION_SEED_EMPTY) },
+                    CanonicalQueryReferences(),
+                )
+                .executePage(request(), lease, budget)
+        assertEquals(
+            OperationOutcome.Rejected(
+                QueryRunRejection.ExecutionRejected(QueryExecutionRejectionDocument.RELATION_SEED_EMPTY)
+            ),
+            seedEmpty,
+        )
+    }
+
+    @Test
     fun `constrained candidate reference restores scope and preserves published authority`() {
         val constraints =
             SymbolDiscoveryConstraints(

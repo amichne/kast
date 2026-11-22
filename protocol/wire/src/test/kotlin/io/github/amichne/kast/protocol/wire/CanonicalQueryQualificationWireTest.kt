@@ -133,6 +133,7 @@ class CanonicalQueryQualificationWireTest {
             QueryExecutionRejectionDocument.RESULT_FIELD_UNAVAILABLE to "result-field-unavailable",
             QueryExecutionRejectionDocument.TEXT_MATCH_LIMIT_EXCEEDED to "text-match-limit-exceeded",
             QueryExecutionRejectionDocument.RIGHT_INPUT_INCOMPLETE to "right-input-incomplete",
+            QueryExecutionRejectionDocument.RELATION_SEED_EMPTY to "relation-seed-empty",
             QueryExecutionRejectionDocument.UNKNOWN_BINDING_NAME to "unknown-binding-name",
             QueryExecutionRejectionDocument.OUTPUT_KIND_MISMATCH to "output-kind-mismatch",
             QueryExecutionRejectionDocument.CONTINUATION_IN_USE to "continuation-in-use",

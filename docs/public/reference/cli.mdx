@@ -164,6 +164,10 @@ Pipeline flags apply in the order that you write them:
 The set flags compare declarations by compiler identity.
 `--minus` and `--without` need a complete right side. A qualified right side rejects the stage.
 A complete, empty result proves absence only within its scope and the static compiler model.
+If the selection before the first `--relation` hop or `--terminal trace` selects no declaration, the query rejects with `RELATION_SEED_EMPTY`.
+Correct the selection before you read the relation as absent.
+A selection without a relation hop can still return a complete, empty result for its declaration kinds.
+A name that matches only an enum entry selects nothing, because an enum entry is not a selectable declaration.
 Retained results expire. A source change can invalidate their basis.
 
 Restrict where relation hops search with `--relation-in`:

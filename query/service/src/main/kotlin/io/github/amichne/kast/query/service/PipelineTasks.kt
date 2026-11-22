@@ -123,3 +123,12 @@ internal fun PipelineTask.needsWork(): Boolean =
         is PipelineTask.Binding -> false
         else -> false
     }
+
+/** Retained evidence re-enters the pipeline in one fixed order beside its rows. */
+internal fun io.github.amichne.kast.query.contract.QueryRetainedResult.evidenceTasks(): List<PipelineTask> =
+    failures.map(PipelineTask::Failure) +
+        omissions.map(PipelineTask::Omission) +
+        walkObservations.map(PipelineTask::WalkObservation) +
+        referenceObservations.map(PipelineTask::ReferenceObservation) +
+        discoveryObservations.map { PipelineTask.DiscoveryObservation(it) } +
+        relationObservations.map(PipelineTask::RelationObservation)

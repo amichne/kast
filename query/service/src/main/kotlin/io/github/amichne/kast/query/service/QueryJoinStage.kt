@@ -30,14 +30,7 @@ internal class QueryJoinStage(
         tasks.removeFirst()
         val right = task.stage.right
         state.inheritRetainedLimitations(right)
-        val evidence =
-            right.failures.map(PipelineTask::Failure) +
-                right.omissions.map(PipelineTask::Omission) +
-                right.walkObservations.map(PipelineTask::WalkObservation) +
-                right.referenceObservations.map(PipelineTask::ReferenceObservation) +
-                right.discoveryObservations.map { PipelineTask.DiscoveryObservation(it) } +
-                right.relationObservations.map(PipelineTask::RelationObservation)
-        evidence.asReversed().forEach(tasks::addFirst)
+        right.evidenceTasks().asReversed().forEach(tasks::addFirst)
         return true
     }
 

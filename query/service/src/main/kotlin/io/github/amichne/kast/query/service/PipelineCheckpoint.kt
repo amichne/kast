@@ -45,6 +45,7 @@ internal data class PipelineCheckpoint(
     val limitations: Set<QueryLimitation>,
     val emittedCount: io.github.amichne.kast.query.contract.QueryCount,
     val impact: QueryImpactSnapshot? = null,
+    val relationSeed: QueryRelationSeed = QueryRelationSeed.initial(seed.plan),
 ) : QueryCheckpointPartialSymbols {
     // Summaries select equality candidates; only full equality establishes a repeated state.
     override fun hashCode(): Int = 31 * (31 * emittedCount.hashCode() + tasks.size) + (impact?.progressHash() ?: 0)
@@ -180,13 +181,7 @@ internal fun PipelineTask.Feed.expand(): List<PipelineTask> =
         is QueryCompositionInput.ExactReferences ->
             input.references.values.map { PipelineTask.Revalidate(it, stage.next) }
         is QueryCompositionInput.Retained ->
-            input.result.symbols.map { PipelineTask.Symbol(it, stage.next) } +
-                input.result.failures.map(PipelineTask::Failure) +
-                input.result.omissions.map(PipelineTask::Omission) +
-                input.result.walkObservations.map(PipelineTask::WalkObservation) +
-                input.result.referenceObservations.map(PipelineTask::ReferenceObservation) +
-                input.result.discoveryObservations.map { PipelineTask.DiscoveryObservation(it) } +
-                input.result.relationObservations.map(PipelineTask::RelationObservation)
+            input.result.symbols.map { PipelineTask.Symbol(it, stage.next) } + input.result.evidenceTasks()
     }
 
 /** A record output keeps each established occurrence as a separate retained row. */
@@ -227,13 +222,7 @@ private fun sourceTasks(plan: AdmittedQueryPlan): List<PipelineTask> =
                 is QueryRetainedResult.Bindings -> source.bindingRows.map { PipelineTask.Binding(it, plan.stage) }
                 is QueryRetainedResult.Occurrences -> source.occurrences.map(PipelineTask::Occurrence)
                 is QueryRetainedResult.ValuePaths -> source.valuePaths.map(PipelineTask::ValuePath)
-            }) +
-                plan.source.failures.map(PipelineTask::Failure) +
-                plan.source.omissions.map(PipelineTask::Omission) +
-                plan.source.walkObservations.map(PipelineTask::WalkObservation) +
-                plan.source.referenceObservations.map(PipelineTask::ReferenceObservation) +
-                plan.source.discoveryObservations.map { PipelineTask.DiscoveryObservation(it) } +
-                plan.source.relationObservations.map(PipelineTask::RelationObservation)
+            }) + plan.source.evidenceTasks()
     }
 
 private fun boundaryTasks(plan: AdmittedQueryPlan): List<PipelineTask> =

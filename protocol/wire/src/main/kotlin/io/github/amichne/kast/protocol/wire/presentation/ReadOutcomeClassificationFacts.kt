@@ -94,6 +94,7 @@ private fun QueryRejectionCliDocument.invocationStop(): QueryInvocationStop? =
                 QueryExecutionRejectionDocument.DISCOVERY_REJECTED,
                 QueryExecutionRejectionDocument.REFERENCE_STALE,
                 QueryExecutionRejectionDocument.BUDGET_REJECTED,
+                QueryExecutionRejectionDocument.RELATION_SEED_EMPTY,
                 QueryExecutionRejectionDocument.INTERNAL_CONTRACT_VIOLATION -> null
             }
         is QueryRejectionCliDocument.CompletionUnsupported,
