@@ -548,8 +548,8 @@ class SourceInventoryTest(unittest.TestCase):
         self.assertIn("    needs: scope\n", assembly)
         self.assertIn("run: mise run ci:assembly", assembly)
         self.assertIn("release_handoff.py assemble --version", task_run("ci:assembly"))
-        # Mac qualification runs beside source validation. The sealed product and the
-        # required aggregate keep the complete source proof as a precondition.
+        # Mac qualification, sealing, and installed acceptance run beside source validation.
+        # The joined candidate and the required aggregate keep the complete source proof.
         for job in ("kotlin", "composed-macos"):
             body = re.split(r"\n  (?=\S)", workflow.split(f"\n  {job}:\n", 1)[1], maxsplit=1)[0]
             self.assertNotIn("needs.source-work", body)
@@ -557,7 +557,9 @@ class SourceInventoryTest(unittest.TestCase):
         required = re.split(r"\n  (?=\S)", workflow.split("\n  required:\n", 1)[1], maxsplit=1)[0]
         self.assertIn("    needs: [scope, source, documentation, portable, kotlin, complete-product]\n", required)
         sealed = re.split(r"\n  (?=\S)", workflow.split("\n  sealed-product:\n", 1)[1], maxsplit=1)[0]
-        self.assertIn("    needs: [scope, source-work, composed-macos]\n", sealed)
+        self.assertIn("    needs: [scope, composed-macos]\n", sealed)
+        joined = re.split(r"\n  (?=\S)", workflow.split("\n  complete-product:\n", 1)[1], maxsplit=1)[0]
+        self.assertIn("    needs: [source-work, sealed-product, installed-product]\n", joined)
 
     def test_product_pr_and_main_use_the_same_mac_gate(self):
         workflow = (Path(__file__).resolve().parents[2] / "workflows/ci.yml").read_text()
@@ -685,7 +687,7 @@ class SourceInventoryTest(unittest.TestCase):
         self.assertIn("uses: ./.github/workflows/composed-linux.yml", mac)
         self.assertIn("complete_product: true", mac)
         self.assertIn("release_target: macos-aarch64", mac)
-        self.assertIn("needs: [scope, source-work, composed-macos]", joined)
+        self.assertIn("needs: [scope, composed-macos]", joined)
         self.assertNotIn("always()", joined)
         self.assertNotIn("run-id:", joined)
         self.assertIn(
@@ -698,7 +700,7 @@ class SourceInventoryTest(unittest.TestCase):
         self.assertIn("product_producer.py seal", task_run("ci:seal"))
         self.assertNotIn("name: ci-product-candidate-", joined)
         accepted = jobs["complete-product"]
-        self.assertIn("needs: [sealed-product, installed-product]", accepted)
+        self.assertIn("needs: [source-work, sealed-product, installed-product]", accepted)
         self.assertNotIn("always()", accepted)
         self.assertIn("run: mise run ci:join", accepted)
         self.assertIn("product_producer.py accept", task_run("ci:join"))

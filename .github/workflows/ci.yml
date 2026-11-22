@@ -330,7 +330,9 @@ jobs:
 
   sealed-product:
     name: Seal the qualified Mac product
-    needs: [scope, source-work, composed-macos]
+    # Sealing reads only the qualified Mac product inputs. Source proof gates the join,
+    # so installed acceptance starts as soon as the product is sealed.
+    needs: [scope, composed-macos]
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     steps:
@@ -425,7 +427,7 @@ jobs:
 
   complete-product:
     name: Join installed acceptance without rewriting the build record
-    needs: [sealed-product, installed-product]
+    needs: [source-work, sealed-product, installed-product]
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     steps:

@@ -578,13 +578,13 @@ class ProductProducerTest(unittest.TestCase):
         )
         self.assertNotIn("composed-products", jobs)
         mac = jobs["composed-macos"]
-        # Qualification runs beside source validation; sealing keeps the source proof.
+        # Qualification and sealing run beside source validation; the join keeps the source proof.
         self.assertIn("needs: [scope, assembly]", mac)
         self.assertNotIn("needs.source-work", mac)
         self.assertIn("complete_product: true", mac)
         self.assertIn("release_target: macos-aarch64", mac)
         join = jobs["sealed-product"]
-        self.assertIn("needs: [scope, source-work, composed-macos]", join)
+        self.assertIn("needs: [scope, composed-macos]", join)
         self.assertIn(
             "name: kast-qualified-product-macos-aarch64-"
             "${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}",
@@ -592,7 +592,7 @@ class ProductProducerTest(unittest.TestCase):
         )
         self.assertIn("name: ci-product-sealed-${{ github.sha }}-${{ github.run_attempt }}", join)
         accepted = jobs["complete-product"]
-        self.assertIn("needs: [sealed-product, installed-product]", accepted)
+        self.assertIn("needs: [source-work, sealed-product, installed-product]", accepted)
         self.assertIn("run: mise run ci:join", accepted)
         self.assertIn("product_producer.py accept", task_run("ci:join"))
         self.assertIn("name: ci-product-candidate-", accepted)
