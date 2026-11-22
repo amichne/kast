@@ -252,7 +252,7 @@ def managed_tree(path, live_coordinator=False):
         relative = current.relative_to(path).as_posix()
         coordinator = live_coordinator and relative == LIVE_COORDINATOR_SOCKET and stat.S_ISSOCK(attributes.st_mode)
         if attributes.st_uid != os.getuid() or not (stat.S_ISDIR(attributes.st_mode) or stat.S_ISREG(attributes.st_mode) or coordinator):
-            raise Rejected(Failure.OWNERSHIP)
+            raise Rejected(Failure.OWNERSHIP, relative)
         identity = Identity(attributes.st_dev, attributes.st_ino, attributes.st_uid)
         content = 'socket' if coordinator else ''
         if stat.S_ISREG(attributes.st_mode):

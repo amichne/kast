@@ -7,24 +7,24 @@ import tempfile
 import unittest
 from pathlib import Path
 
+import managed_installation as install
 import product_state_removal as state
 
 
 def rejection(run: Path, *, live_coordinator: bool) -> dict[str, object]:
     """The single structured rejection that admission prints before it raises."""
     observations = io.StringIO()
-    with contextlib.redirect_stderr(observations), _raises(ValueError):
-        _ = state.empty_invocation_directories(run.parent.parent, live_coordinator=live_coordinator)
-    return json.loads(observations.getvalue())
-
-
-@contextlib.contextmanager
-def _raises(kind: type[BaseException]):
-    try:
-        yield
-    except kind:
-        return
-    raise AssertionError(f"{kind.__name__} not raised")
+    with contextlib.redirect_stderr(observations):
+        try:
+            _ = state.empty_invocation_directories(
+                run.parent.parent, live_coordinator=live_coordinator
+            )
+        except install.StateRejected as problem:
+            observed = json.loads(observations.getvalue())
+            # The raised rejection and its single observation carry the same evidence.
+            assert observed == json.loads(install.encoded(problem.rejection)), observed
+            return observed
+    raise AssertionError("StateRejected not raised")
 
 
 class InvocationStateEvidenceTest(unittest.TestCase):
@@ -42,10 +42,10 @@ class InvocationStateEvidenceTest(unittest.TestCase):
         (self.run_directory / "alpha").mkdir(mode=0o700)
         self.assertEqual(
             {
-                "reason": "UNKNOWN_DIRECTORY",
-                "entries": ["alpha", "u.sock.stale"],
-                "outcome": "REJECTED",
+                "reason": "UNOWNED_STATE_ENTRY",
                 "component": "kast-invocation-state",
+                "entries": ["state/run/alpha", "state/run/u.sock.stale"],
+                "outcome": "REJECTED",
             },
             rejection(self.run_directory, live_coordinator=False),
         )
@@ -53,7 +53,7 @@ class InvocationStateEvidenceTest(unittest.TestCase):
     def test_coordinator_entries_without_a_live_coordinator_are_named(self) -> None:
         _ = (self.run_directory / "c.sock.lock").write_bytes(b"")
         self.assertEqual(
-            ["c.sock.lock"], rejection(self.run_directory, live_coordinator=False)["entries"]
+            ["state/run/c.sock.lock"], rejection(self.run_directory, live_coordinator=False)["entries"]
         )
 
     def test_a_non_empty_coordinator_lock_names_the_lock(self) -> None:
@@ -62,10 +62,10 @@ class InvocationStateEvidenceTest(unittest.TestCase):
         os.chmod(lock, 0o600)
         self.assertEqual(
             {
-                "reason": "UNKNOWN_DIRECTORY",
-                "entries": ["c.sock.lock"],
-                "outcome": "REJECTED",
+                "reason": "UNOWNED_STATE_ENTRY",
                 "component": "kast-invocation-state",
+                "entries": ["state/run/c.sock.lock"],
+                "outcome": "REJECTED",
             },
             rejection(self.run_directory, live_coordinator=True),
         )
@@ -73,7 +73,7 @@ class InvocationStateEvidenceTest(unittest.TestCase):
     def test_a_coordinator_socket_that_is_not_a_socket_names_the_socket(self) -> None:
         _ = (self.run_directory / "c.sock").write_bytes(b"")
         self.assertEqual(
-            ["c.sock"], rejection(self.run_directory, live_coordinator=True)["entries"]
+            ["state/run/c.sock"], rejection(self.run_directory, live_coordinator=True)["entries"]
         )
 
     def test_a_live_coordinator_socket_and_empty_lock_are_admitted(self) -> None:
@@ -113,7 +113,7 @@ class InvocationStateEvidenceTest(unittest.TestCase):
     def test_an_alias_receipt_without_a_live_coordinator_is_named(self) -> None:
         _ = self.alias_receipt(b'{"schemaVersion":1}')
         self.assertEqual(
-            ["endpoint-alias.json"],
+            ["state/run/endpoint-alias.json"],
             rejection(self.run_directory, live_coordinator=False)["entries"],
         )
 
@@ -126,17 +126,32 @@ class InvocationStateEvidenceTest(unittest.TestCase):
             with self.subTest(size=len(content), mode=oct(mode)):
                 receipt = self.alias_receipt(content, mode)
                 self.assertEqual(
-                    ["endpoint-alias.json"],
+                    ["state/run/endpoint-alias.json"],
                     rejection(self.run_directory, live_coordinator=True)["entries"],
                 )
                 receipt.unlink()
 
+    def test_a_non_empty_invocation_directory_is_unsettled(self) -> None:
+        one_shot = self.run_directory / "one-shot"
+        one_shot.mkdir(mode=0o700)
+        _ = (one_shot / "pending").write_bytes(b"")
+        self.assertEqual(
+            {
+                "reason": "UNSETTLED_INVOCATIONS",
+                "component": "kast-invocation-state",
+                "entries": ["state/run/one-shot"],
+                "outcome": "REJECTED",
+            },
+            rejection(self.run_directory, live_coordinator=False),
+        )
+
     def test_reported_entries_are_sorted_and_bounded(self) -> None:
+        contract = state.contract
         names = [f"entry-{index:02d}-" + "x" * 80 for index in range(12)]
-        reported = state.reported_entries(reversed(names))
-        self.assertEqual(state.MAXIMUM_REPORTED_ENTRIES, len(reported))
+        reported = contract.reported_entries(reversed(names))
+        self.assertEqual(contract.MAXIMUM_REPORTED_ENTRIES, len(reported))
         self.assertTrue(
-            all(len(name) == state.MAXIMUM_REPORTED_NAME_CHARACTERS for name in reported)
+            all(len(name) == contract.MAXIMUM_REPORTED_NAME_CHARACTERS for name in reported)
         )
         self.assertEqual(sorted(reported), list(reported))
 

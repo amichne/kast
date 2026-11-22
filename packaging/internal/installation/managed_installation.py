@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import argparse
 import ctypes
+import errno
 import fcntl
 import hashlib
 import importlib.util
@@ -27,9 +28,11 @@ import stat
 import subprocess
 import sys
 import tempfile
-from collections.abc import Iterator
+import zipfile
+from collections.abc import Iterable, Iterator
 from contextlib import contextmanager
 from dataclasses import asdict, dataclass, is_dataclass
+from enum import Enum
 from pathlib import Path
 from types import ModuleType
 from typing import TYPE_CHECKING, Literal, Protocol
@@ -143,6 +146,93 @@ class StageRejected(Exception):
     def __init__(self, failure: contract.Rejected) -> None:
         self.failure = failure
         super().__init__(failure.reason.value)
+
+
+class StateRejected(Exception):
+    """A state admission check refused named entries; the owning flow binds its stage."""
+
+    def __init__(self, rejection: contract.StateRejection) -> None:
+        self.rejection = rejection
+        super().__init__(rejection.reason.value)
+
+    def failure(self, stage: contract.Stage) -> contract.Rejected:
+        rejection = self.rejection
+        return contract.Rejected(
+            stage,
+            rejection.reason,
+            state=contract.StateEntries(rejection.component, rejection.entries),
+        )
+
+
+def reject_state(
+    component: contract.StateComponent, reason: contract.Failure, entries: Iterable[str]
+) -> StateRejected:
+    """Emit the check's single bounded observation, then return its typed rejection."""
+    rejection = contract.StateRejection(reason, component, contract.reported_entries(entries))
+    print(encoded(rejection).decode(), end="", file=sys.stderr)
+    return StateRejected(rejection)
+
+
+def rejection(problem: BaseException) -> contract.Rejected:
+    """Map one caught failure to its outcome without erasing an adapter's own code.
+
+    Checks that raise ValueError still report OWNERSHIP_UNPROVEN. Anything no check
+    owns is an installer defect, reported with its exception class name only.
+    An AssertionError is never an outcome: it is re-raised, so a broken invariant or a
+    test double's fixture violation stays a failure rather than a product result.
+    """
+    if isinstance(problem, AssertionError):
+        raise problem
+    preparation = contract.Stage.PREPARATION
+    failure = contract.Failure
+    if isinstance(problem, StageRejected):
+        return problem.failure
+    if isinstance(problem, StateRejected):
+        return problem.failure(preparation)
+    if isinstance(problem, KeyboardInterrupt):
+        return contract.Rejected(preparation, failure.CANCELLED)
+    if isinstance(problem, journal_types.Rejected):
+        code = problem.failure.value
+        if problem.failure is journal_types.Failure.CONTROL_LIMIT:
+            return contract.Rejected(preparation, failure.CONTROL_REJECTED, code)
+        if problem.failure is journal_types.Failure.FILESYSTEM:
+            return contract.Rejected(preparation, failure.FILESYSTEM_REJECTED, code)
+        if problem.entry is not None:
+            return contract.Rejected(
+                preparation,
+                failure.UNOWNED_STATE_ENTRY,
+                code,
+                contract.StateEntries(
+                    contract.StateComponent.CONTROL_PAYLOAD_TREE,
+                    contract.reported_entries((problem.entry,)),
+                ),
+            )
+        return contract.Rejected(preparation, failure.OWNERSHIP_UNPROVEN, code)
+    if isinstance(problem, LIFECYCLE.Rejected):
+        # The lifecycle adapter is loaded by path and untyped; admit its closed code here.
+        observed: object = getattr(problem, "failure", None)
+        lifecycle: type[Enum] = LIFECYCLE.Failure
+        if not isinstance(observed, lifecycle) or not isinstance(observed.value, str):
+            return contract.Rejected(preparation, failure.INSTALLATION_DEFECT, "LifecycleRejected")
+        code: str = observed.value
+        if observed is lifecycle["CONTROL_LIMIT_EXCEEDED"]:
+            return contract.Rejected(preparation, failure.CONTROL_REJECTED, code)
+        if observed is lifecycle["FILESYSTEM_REJECTED"]:
+            return contract.Rejected(preparation, failure.FILESYSTEM_REJECTED, code)
+        return contract.Rejected(preparation, failure.OWNERSHIP_UNPROVEN, code)
+    if isinstance(problem, OSError) and problem.errno is not None:
+        if problem.errno == errno.ENOSPC:
+            return contract.Rejected(preparation, failure.STORAGE_EXHAUSTED)
+        return contract.Rejected(
+            preparation, failure.FILESYSTEM_REJECTED, errno.errorcode.get(problem.errno)
+        )
+    if isinstance(problem, (OSError, ValueError, zipfile.BadZipFile)):
+        return contract.Rejected(preparation, failure.OWNERSHIP_UNPROVEN)
+    return contract.Rejected(
+        preparation,
+        failure.INSTALLATION_DEFECT,
+        type(problem).__name__[: contract.MAXIMUM_REPORTED_NAME_CHARACTERS],
+    )
 
 
 def transfer_message(failure: release.TransferRejected) -> str:
@@ -456,26 +546,10 @@ def main(
                         ):
                             raise ValueError("private interpreter inputs must be paired")
                         outcome = activate(root, home, admitted, args.dry_run, interpreter, runner)
-    except (
-        StageRejected,
-        OSError,
-        ValueError,
-        RECOVERY.Rejected,
-        LIFECYCLE.Rejected,
-        KeyboardInterrupt,
-    ) as problem:
-        if isinstance(problem, KeyboardInterrupt):
-            if state.exit_code is None:
-                state.exit_code = 130
-            outcome = contract.Rejected(contract.Stage.PREPARATION, contract.Failure.CANCELLED)
-        else:
-            outcome = (
-                problem.failure
-                if isinstance(problem, StageRejected)
-                else contract.Rejected(
-                    contract.Stage.PREPARATION, contract.Failure.OWNERSHIP_UNPROVEN
-                )
-            )
+    except (Exception, KeyboardInterrupt) as problem:
+        if isinstance(problem, KeyboardInterrupt) and state.exit_code is None:
+            state.exit_code = 130
+        outcome = rejection(problem)
     if args.json:
         print(encoded(outcome).decode().rstrip())
     else:

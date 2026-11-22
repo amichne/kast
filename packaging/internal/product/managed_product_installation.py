@@ -9,6 +9,7 @@ import re
 import shutil
 import stat
 import subprocess
+import sys
 import tempfile
 import uuid
 import zipfile
@@ -304,6 +305,19 @@ def publish_base(admitted: product.AdmittedProduct, parent: Path) -> None:
     _ = prepare_base(admitted, parent, immutable_store.RepairPolicy.REJECT)
 
 
+INSTALLATION_ENTRIES = frozenset({"bin", "lib", "share", "config", "state", "installation.json"})
+
+
+def verify_layout(control: Path) -> None:
+    """A Control payload holds only its own top-level entries."""
+    if unowned := {path.name for path in control.iterdir()} - INSTALLATION_ENTRIES:
+        raise install.reject_state(
+            contract.StateComponent.INSTALLATION_LAYOUT,
+            contract.Failure.UNOWNED_STATE_ENTRY,
+            unowned,
+        )
+
+
 def admit_prior(root: Path) -> journal.NoPrevious | journal.PhysicalPrevious:
     active = root / "installation"
     if not os.path.lexists(active):
@@ -314,15 +328,7 @@ def admit_prior(root: Path) -> journal.NoPrevious | journal.PhysicalPrevious:
     _ = install.LIFECYCLE.Installation.admit(str(active))
     _ = reference_at(active, root)
     # A legacy runtime/state requires its lifecycle owner's retirement proof, not a guess.
-    if {path.name for path in active.iterdir()} - {
-        "bin",
-        "lib",
-        "share",
-        "config",
-        "state",
-        "installation.json",
-    }:
-        raise ValueError("legacy or live installation state requires retirement")
+    verify_layout(active)
     verify_replacement_state(active, live_coordinator=True)
     slot = root / "recovery/replacement"
     return journal.PhysicalPrevious(
@@ -340,13 +346,23 @@ def workspace_overlays(configuration: Path) -> Iterator[tuple[Path, bytes | None
     if not os.path.lexists(workspaces):
         return
     immutable_store.physical(workspaces)
-    for workspace in workspaces.iterdir():
-        if re.fullmatch(r"[0-9a-f]{64}", workspace.name) is None:
-            raise ValueError("unrecognized workspace configuration directory")
+    component = contract.StateComponent.WORKSPACE_CONFIGURATION
+    children = list(workspaces.iterdir())
+    if unknown := [
+        "config/workspaces/" + workspace.name
+        for workspace in children
+        if re.fullmatch(r"[0-9a-f]{64}", workspace.name) is None
+    ]:
+        raise install.reject_state(component, contract.Failure.UNOWNED_STATE_ENTRY, unknown)
+    for workspace in children:
         immutable_store.physical(workspace)
         names = {entry.name for entry in workspace.iterdir()}
-        if names - {"environment"}:
-            raise ValueError("unrecognized workspace configuration")
+        if unowned := names - {"environment"}:
+            raise install.reject_state(
+                component,
+                contract.Failure.UNOWNED_STATE_ENTRY,
+                (f"config/workspaces/{workspace.name}/{name}" for name in unowned),
+            )
         # A failed first save or interrupted removal can leave the owned directory empty.
         yield workspace, install.read_record(workspace / "environment", 65_536) if names else None
 
@@ -358,8 +374,15 @@ def verify_client_configuration(control: Path, *, partial: bool = False) -> set[
         return directories
     immutable_store.physical(configuration)
     entries = {path.name for path in configuration.iterdir()}
-    if entries - {"environment", "workspaces"} or (not partial and "environment" not in entries):
-        raise ValueError("unrecognized installation configuration")
+    component = contract.StateComponent.CLIENT_CONFIGURATION
+    if unowned := entries - {"environment", "workspaces"}:
+        raise install.reject_state(
+            component, contract.Failure.UNOWNED_STATE_ENTRY, ("config/" + name for name in unowned)
+        )
+    if not partial and "environment" not in entries:
+        raise install.reject_state(
+            component, contract.Failure.MISSING_STATE_ENTRY, ("config/environment",)
+        )
     if "environment" in entries:
         _ = install.read_record(configuration / "environment", 262_144)
     if "workspaces" in entries:
@@ -373,6 +396,7 @@ def verify_client_configuration(control: Path, *, partial: bool = False) -> set[
 # Until the prior Control settles retirement, its semantic coordinator may still own state.
 PRE_RETIREMENT_PHASES = frozenset({journal.ManagedPhase.PREPARED, journal.ManagedPhase.FENCED})
 SEMANTIC_PROFILE = re.compile(r"[0-9a-f]{16}")
+MAXIMUM_SEMANTIC_PROFILES = 16
 SEMANTIC_PROFILE_FILES = frozenset(
     {
         "semantic-service.log",
@@ -385,14 +409,23 @@ SEMANTIC_PROFILE_FILES = frozenset(
 
 def admit_live_semantic_broker(broker: Path) -> None:
     """Admit only the files a semantic coordinator publishes; its retirement removes them."""
+    component = contract.StateComponent.SEMANTIC_COORDINATOR_STATE
     immutable_store.physical(broker)
     profiles = list(broker.iterdir())
-    if len(profiles) > 16:
-        raise ValueError("unrecognized semantic coordinator state")
+    if len(profiles) > MAXIMUM_SEMANTIC_PROFILES:
+        raise install.reject_state(
+            component, contract.Failure.STATE_ENTRY_LIMIT_EXCEEDED, ("state/broker",)
+        )
+    unknown = [
+        "state/broker/" + profile.name
+        for profile in profiles
+        if not SEMANTIC_PROFILE.fullmatch(profile.name)
+    ]
+    if unknown:
+        raise install.reject_state(component, contract.Failure.UNOWNED_STATE_ENTRY, unknown)
     for profile in profiles:
-        if not SEMANTIC_PROFILE.fullmatch(profile.name):
-            raise ValueError("unrecognized semantic coordinator state")
         immutable_store.physical(profile)
+        unowned: list[str] = []
         for entry in profile.iterdir():
             observed = entry.lstat()
             if (
@@ -400,7 +433,9 @@ def admit_live_semantic_broker(broker: Path) -> None:
                 or not stat.S_ISREG(observed.st_mode)
                 or observed.st_uid != os.getuid()
             ):
-                raise ValueError("unrecognized semantic coordinator state")
+                unowned.append(f"state/broker/{profile.name}/{entry.name}")
+        if unowned:
+            raise install.reject_state(component, contract.Failure.UNOWNED_STATE_ENTRY, unowned)
 
 
 def verify_replacement_state(control: Path, *, live_coordinator: bool = False) -> None:
@@ -413,8 +448,13 @@ def verify_replacement_state(control: Path, *, live_coordinator: bool = False) -
     if not os.path.lexists(state):
         return
     admitted = {"run", "broker"} if live_coordinator else {"run"}
-    if {child.name for child in state.iterdir()} - admitted:
-        raise ValueError("unrecognized replacement state")
+    if unowned := {child.name for child in state.iterdir()} - admitted:
+        # After retirement a coordinator's state/broker is no longer admitted, and names itself.
+        raise install.reject_state(
+            contract.StateComponent.INSTALLATION_STATE,
+            contract.Failure.UNOWNED_STATE_ENTRY,
+            ("state/" + name for name in unowned),
+        )
     if live_coordinator and os.path.lexists(state / "broker"):
         admit_live_semantic_broker(state / "broker")
 
@@ -468,16 +508,21 @@ def require_empty_workspaces(root: Path) -> None:
         raise ValueError("workspace store ownership")
     # Runtime bytes alone need no process retirement. Unknown or interrupted workspace
     # entries do; never infer that a non-admitted entry has no live Host.
-    if {entry.name for entry in store.iterdir()} - {"runtimes", "containers"}:
-        raise ValueError("unrecognized workspace store")
+    component = contract.StateComponent.WORKSPACE_STORE
+    if unowned := {entry.name for entry in store.iterdir()} - {"runtimes", "containers"}:
+        raise install.reject_state(component, contract.Failure.UNOWNED_STATE_ENTRY, unowned)
     containers = store / "containers"
-    if os.path.lexists(containers) and (
+    if not os.path.lexists(containers):
+        return
+    if (
         containers.resolve() != containers
         or not containers.is_dir()
         or containers.stat().st_uid != os.getuid()
-        or any(containers.iterdir())
     ):
-        raise ValueError("workspace retirement requires prior qualified Control")
+        raise ValueError("workspace container ownership")
+    if live := ["containers/" + entry.name for entry in containers.iterdir()]:
+        # Workspace retirement requires the prior qualified Control.
+        raise install.reject_state(component, contract.Failure.UNRETIRED_WORKSPACE_ENTRY, live)
 
 
 def read_management(raw: bytes, root: Path, command: Path, prior: Path) -> ProductManagement:
@@ -643,15 +688,8 @@ def activate(
                 install.RECOVERY.sync(slot.parent)
                 install.RECOVERY.sync(root.parent)
             return resume_locked(root, home, record, runner)
-    except (
-        OSError,
-        ValueError,
-        install.StageRejected,
-        install.RECOVERY.Rejected,
-        install.LIFECYCLE.Rejected,
-        zipfile.BadZipFile,
-        KeyboardInterrupt,
-    ) as problem:
+    except (Exception, KeyboardInterrupt) as problem:
+        # install.rejection keeps each typed failure and reports anything else as a defect.
         return failed(root, problem)
 
 
@@ -771,22 +809,17 @@ def prepared_preimage(
 
 
 def failed(root: Path, problem: BaseException) -> contract.Rejected | contract.RecoveryRequired:
-    if isinstance(problem, install.StageRejected):
-        failure = problem.failure
-    elif isinstance(problem, journal.Rejected) and problem.failure is journal.Failure.CONTROL_LIMIT:
-        failure = contract.Rejected(
-            contract.Stage.PREPARATION,
-            contract.Failure.CONTROL_REJECTED,
-            journal.Failure.CONTROL_LIMIT.value,
-        )
-    elif isinstance(problem, OSError) and problem.errno == errno.ENOSPC:
-        failure = contract.Rejected(contract.Stage.PREPARATION, contract.Failure.STORAGE_EXHAUSTED)
-    else:
-        failure = contract.Rejected(
-            contract.Stage.PREPARATION,
-            contract.Failure.CANCELLED
-            if isinstance(problem, KeyboardInterrupt)
-            else contract.Failure.OWNERSHIP_UNPROVEN,
+    failure = install.rejection(problem)
+    if isinstance(problem, journal.Rejected) and failure.state is not None:
+        # The recovery adapter cannot emit; its rejected tree entry is observed here, once.
+        print(
+            install.encoded(
+                contract.StateRejection(
+                    failure.reason, failure.state.component, failure.state.entries
+                )
+            ).decode(),
+            end="",
+            file=sys.stderr,
         )
     install.emit(failure.stage, "REJECTED", failure.reason)
     if os.path.lexists(root / "recovery/replacement"):
@@ -809,14 +842,7 @@ def resume(
                 )
             )
             return resume_locked(root, home, record, runner)
-    except (
-        OSError,
-        ValueError,
-        install.StageRejected,
-        install.RECOVERY.Rejected,
-        install.LIFECYCLE.Rejected,
-        KeyboardInterrupt,
-    ) as problem:
+    except (Exception, KeyboardInterrupt) as problem:
         return failed(root, problem)
 
 
@@ -1053,10 +1079,9 @@ def verify_previous(
     if (
         manifest_sha256 is None
         or release.file_digest(path / "installation.json") != manifest_sha256
-        or {entry.name for entry in path.iterdir()}
-        - {"bin", "lib", "share", "config", "state", "installation.json"}
     ):
         raise ValueError("previous payload changed")
+    verify_layout(path)
     verify_replacement_state(path, live_coordinator=live_coordinator)
     install.LIFECYCLE.verify_payload(
         path, release.document(install.read_record(path / "installation.json", 67_108_864))

@@ -1247,7 +1247,54 @@ class ProductActivationTest(unittest.TestCase):
         result = activation.activate(self.root, self.home, admitted, runner=self.retire)
         self.assertIsInstance(result, contract.RecoveryRequired)
         assert isinstance(result, contract.RecoveryRequired)
-        self.assertEqual(contract.Failure.OWNERSHIP_UNPROVEN, result.failure.reason)
+        # The post-retirement capture names the socket that survived, with the adapter's code.
+        self.assertEqual(
+            contract.Rejected(
+                contract.Stage.PREPARATION,
+                contract.Failure.UNOWNED_STATE_ENTRY,
+                journal.Failure.OWNERSHIP.value,
+                contract.StateEntries(
+                    contract.StateComponent.CONTROL_PAYLOAD_TREE, ("state/run/c.sock",)
+                ),
+            ),
+            result.failure,
+        )
+        self.assertTrue((profile / "semantic-service.plist").exists())
+
+    def test_coordinator_broker_left_after_clean_exit_names_state_broker(self) -> None:
+        admitted = self.admitted()
+        self.assertIsInstance(
+            activation.activate(self.root, self.home, admitted), activation.ProductInstalled
+        )
+        profile, run = self.live_coordinator()
+        # The #1311 sequence: the coordinator exited and its socket and lock are gone,
+        # but retirement left state/broker behind.
+        (run / "c.sock").unlink()
+        (run / "c.sock.lock").unlink()
+        observations = io.StringIO()
+        with contextlib.redirect_stderr(observations):
+            result = activation.activate(self.root, self.home, admitted, runner=self.retire)
+        assert isinstance(result, contract.RecoveryRequired), result
+        self.assertEqual(
+            contract.Rejected(
+                contract.Stage.PREPARATION,
+                contract.Failure.UNOWNED_STATE_ENTRY,
+                state=contract.StateEntries(
+                    contract.StateComponent.INSTALLATION_STATE, ("state/broker",)
+                ),
+            ),
+            result.failure,
+        )
+        self.assertIn(
+            {
+                "reason": "UNOWNED_STATE_ENTRY",
+                "component": "kast-installation-state",
+                "entries": ["state/broker"],
+                "outcome": "REJECTED",
+            },
+            [json.loads(line) for line in observations.getvalue().splitlines()],
+        )
+        self.assertNotIn(str(self.home), observations.getvalue())
         self.assertTrue((profile / "semantic-service.plist").exists())
 
     def test_unknown_coordinator_state_rejects_before_retirement(self) -> None:
@@ -1264,9 +1311,16 @@ class ProductActivationTest(unittest.TestCase):
         ) -> subprocess.CompletedProcess[bytes]:
             raise AssertionError("retirement must not run for unknown coordinator state")
 
-        self.assertIsInstance(
+        self.assertEqual(
+            contract.Rejected(
+                contract.Stage.PREPARATION,
+                contract.Failure.UNOWNED_STATE_ENTRY,
+                state=contract.StateEntries(
+                    contract.StateComponent.SEMANTIC_COORDINATOR_STATE,
+                    (f"state/broker/{profile.name}/foreign.json",),
+                ),
+            ),
             activation.activate(self.root, self.home, admitted, runner=unexpected),
-            contract.Rejected,
         )
         self.assertTrue((profile / "foreign.json").exists())
 
@@ -1291,7 +1345,7 @@ class ProductActivationTest(unittest.TestCase):
             {
                 "outcome": "REJECTED",
                 "reason": "UNSETTLED_INVOCATIONS",
-                "entries": ["one-shot"],
+                "entries": ["state/run/one-shot"],
                 "component": "kast-invocation-state",
             },
             [json.loads(line) for line in observations.getvalue().splitlines()],
@@ -1352,6 +1406,31 @@ class ProductActivationTest(unittest.TestCase):
         self.assertTrue(Path(record.product.runtimeRoot).exists())
         partial.rmdir()
         self.assertEqual(0, self.remove_product(path))
+
+    def test_removal_capture_names_the_unowned_state_entry(self) -> None:
+        path, record = self.removal_journal()
+        raw_journal = path.read_bytes()
+        broker = self.root / "installation/state/broker"
+        broker.mkdir(parents=True, mode=0o700)
+        with contextlib.redirect_stderr(io.StringIO()):
+            result = removal.remove(self.root, path)
+        self.assertEqual(
+            {
+                "failure": "REMOVAL_ADMISSION_REJECTED",
+                "stage": "RETAIN_EXECUTION",
+                "state": {
+                    "reason": "UNOWNED_STATE_ENTRY",
+                    "component": "kast-installation-state",
+                    "entries": ["state/broker"],
+                    "outcome": "REJECTED",
+                },
+                "status": "REMOVAL_REJECTED",
+            },
+            json.loads(install.encoded(result)),
+        )
+        self.assertEqual(raw_journal, path.read_bytes())
+        self.assertTrue(broker.is_dir())
+        self.assertTrue(Path(record.product.runtimeRoot).exists())
 
     def test_product_removal_rejects_swapped_identity_product_and_recovery(self) -> None:
         path, record = self.removal_journal()
@@ -1821,7 +1900,9 @@ class ProductActivationTest(unittest.TestCase):
                 ):
                     result = activation.activate(self.root, self.home, admitted)
                 self.assertEqual(
-                    '{"stage":"PREPARATION",' + reason + ',"adapterCode":null,"type":"REJECTED"}\n',
+                    '{"stage":"PREPARATION",'
+                    + reason
+                    + ',"adapterCode":null,"state":null,"type":"REJECTED"}\n',
                     install.encoded(result).decode(),
                 )
                 self.assertIn(reason, evidence.getvalue())
@@ -1853,7 +1934,8 @@ class ProductActivationTest(unittest.TestCase):
         ):
             result = activation.activate(self.root, self.home, admitted)
         self.assertEqual(
-            '{"stage":"PREPARATION","reason":"STORAGE_EXHAUSTED","adapterCode":null,"type":"REJECTED"}\n',
+            '{"stage":"PREPARATION","reason":"STORAGE_EXHAUSTED","adapterCode":null,'
+            '"state":null,"type":"REJECTED"}\n',
             install.encoded(result).decode(),
         )
         self.assertNotIn(str(self.home), evidence.getvalue())
@@ -2034,6 +2116,7 @@ class ProductActivationTest(unittest.TestCase):
             {
                 "failure": "PUBLICATION_INTERRUPTED_RETRY_SAME_SELECTION",
                 "stage": "RETAIN_EXECUTION",
+                "state": None,
                 "status": "REMOVAL_REJECTED",
             },
             json.loads(install.encoded(result)),

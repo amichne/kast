@@ -17,6 +17,7 @@ import managed_installation as install
 import managed_product as product
 import managed_product_installation as activation
 import managed_release as release
+import managed_update_contract as contract
 import managed_update_journal as journal
 import product_removal_recovery as recovery
 import product_state_removal
@@ -45,6 +46,8 @@ class Removed:
 class Rejected:
     failure: Failure
     stage: Stage
+    # The refusing state check and its bounded entries, when one rejected admission.
+    state: contract.StateRejection | None = None
     status: Literal["REMOVAL_REJECTED"] = "REMOVAL_REJECTED"
 
 
@@ -173,6 +176,8 @@ def remove(root: Path, path: Path) -> Removed | Rejected:
         if problem.failure.adapterCode == immutable_store.RecoveryAction.PUBLICATION_INTERRUPTED:
             return Rejected(Failure.PUBLICATION_RETRY, stage)
         raise
+    except install.StateRejected as problem:
+        return Rejected(Failure.ADMISSION, stage, problem.rejection)
     except OSError:
         return Rejected(Failure.FILESYSTEM, stage)
     except (
