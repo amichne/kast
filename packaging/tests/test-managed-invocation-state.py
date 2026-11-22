@@ -91,6 +91,46 @@ class InvocationStateEvidenceTest(unittest.TestCase):
             state.empty_invocation_directories(self.root / "installation", live_coordinator=True),
         )
 
+    def alias_receipt(self, content: bytes, mode: int = 0o600) -> Path:
+        receipt = self.run_directory / "endpoint-alias.json"
+        _ = receipt.write_bytes(content)
+        os.chmod(receipt, mode)
+        return receipt
+
+    def test_a_live_coordinator_alias_receipt_is_admitted(self) -> None:
+        # A runner's long socket path binds through a /tmp alias and leaves this receipt.
+        _ = self.alias_receipt(b'{"schemaVersion":1}')
+        observations = io.StringIO()
+        with contextlib.redirect_stderr(observations):
+            admitted = state.empty_invocation_directories(
+                self.root / "installation", live_coordinator=True
+            )
+        self.assertEqual(
+            ((self.run_directory, state.journal.Identity.observe(self.run_directory)),), admitted
+        )
+        self.assertEqual("ADMITTED", json.loads(observations.getvalue())["outcome"])
+
+    def test_an_alias_receipt_without_a_live_coordinator_is_named(self) -> None:
+        _ = self.alias_receipt(b'{"schemaVersion":1}')
+        self.assertEqual(
+            ["endpoint-alias.json"],
+            rejection(self.run_directory, live_coordinator=False)["entries"],
+        )
+
+    def test_a_malformed_alias_receipt_is_named(self) -> None:
+        for content, mode in (
+            (b'{"schemaVersion":1}', 0o644),
+            (b"", 0o600),
+            (b"x" * (state.MAXIMUM_ENDPOINT_ALIAS_RECEIPT_BYTES + 1), 0o600),
+        ):
+            with self.subTest(size=len(content), mode=oct(mode)):
+                receipt = self.alias_receipt(content, mode)
+                self.assertEqual(
+                    ["endpoint-alias.json"],
+                    rejection(self.run_directory, live_coordinator=True)["entries"],
+                )
+                receipt.unlink()
+
     def test_reported_entries_are_sorted_and_bounded(self) -> None:
         names = [f"entry-{index:02d}-" + "x" * 80 for index in range(12)]
         reported = state.reported_entries(reversed(names))
