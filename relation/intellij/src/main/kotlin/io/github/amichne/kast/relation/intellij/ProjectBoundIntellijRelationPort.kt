@@ -38,9 +38,7 @@ object ProjectBoundIntellijRelationPort {
             }
             val query =
                 IntellijRelationCompilerQuery(
-                    IntellijRelationScopeCompiler { path ->
-                        fileAdmission.admits(path, request.searchConstraints.sourceSets)
-                    },
+                    IntellijRelationScopeCompiler(fileAdmission::admits),
                     observation,
                     limits,
                     summaries,

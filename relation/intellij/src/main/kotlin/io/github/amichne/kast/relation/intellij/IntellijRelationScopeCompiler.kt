@@ -74,7 +74,13 @@ internal enum class RelationProviderScopeAdmission {
     UNAVAILABLE,
 }
 
-internal class IntellijRelationScopeCompiler(private val fileAdmission: (Path) -> Boolean = { true }) {
+/**
+ * [fileAdmission] receives the source sets of the scope being compiled. A subject scope and its destination domain are
+ * compiled separately, so one request's destination source sets must never restrict its subject's file.
+ */
+internal class IntellijRelationScopeCompiler(
+    private val fileAdmission: (Path, SymbolDiscoverySourceSets) -> Boolean = { _, _ -> true }
+) {
     /**
      * Proof transition: `(Project, RelationRequest, WorkspaceSearchScopeModelCompilation) ->
      * IntellijRelationScopeCompilation`.
@@ -163,7 +169,7 @@ internal class IntellijRelationScopeCompiler(private val fileAdmission: (Path) -
                     observation = observation,
                     fileAdmission = { path ->
                         matchesDirectory(path, request.subject.lease.workspaceRoot.value, constraints) &&
-                            fileAdmission(path)
+                            fileAdmission(path, constraints.sourceSets)
                     },
                 ),
                 RelationSourceDomainMembership(
@@ -184,7 +190,7 @@ internal class IntellijRelationScopeCompiler(private val fileAdmission: (Path) -
                     constraints,
                     admitsPath = { path ->
                         pathPolicy.contains(path, observation) &&
-                            fileAdmission(path) &&
+                            fileAdmission(path, constraints.sourceSets) &&
                             matchesDirectory(path, model.workspaceRoot.value, constraints)
                     },
                 ),

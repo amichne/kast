@@ -108,7 +108,7 @@ class CallbackEvidenceAccessTest {
     @Test
     fun `callback evidence rejects unowned files and preserves injected source admission`() {
         val sdk = RelationScopeSdkFixture(sourceContains = { true })
-        val compiler = IntellijRelationScopeCompiler { it.fileName.toString() != "Denied.kt" }
+        val compiler = IntellijRelationScopeCompiler { path, _ -> path.fileName.toString() != "Denied.kt" }
         val evidence = evidence(sdk, compile(sdk, base, compiler), compiler).sources
         for ((index, path) in listOf("unowned/Other.kt", "client/Denied.kt").withIndex()) {
             assertEquals(
