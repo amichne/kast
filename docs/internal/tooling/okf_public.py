@@ -9,6 +9,7 @@ import os
 import re
 import shutil
 import subprocess
+import urllib.parse
 from dataclasses import asdict, dataclass
 from enum import StrEnum
 from pathlib import Path, PurePosixPath
@@ -32,12 +33,15 @@ class Code(StrEnum):
     MARKDOWN = "OKF_MARKDOWN"
     DRIFT = "OKF_PROJECTION_DRIFT"
     IO = "OKF_IO"
+    LINK = "OKF_REPOSITORY_LINK"
 
 
 @dataclass(frozen=True, slots=True)
 class Failure:
     code: Code
     path: str
+    # Only OKF_REPOSITORY_LINK names a target: the repository path that the page links to.
+    target: str | None = None
 
 
 class EvidenceStatus(StrEnum):
@@ -596,6 +600,65 @@ def _public_routes(root: Path) -> tuple[str, ...] | Failure:
     return tuple(routes)
 
 
+REPOSITORY_LINK = re.compile(r"https://github\.com/amichne/kast/(blob|tree)/main/([^\s)\]\"'<>`]*)")
+PUBLIC_TEXT_SUFFIXES = frozenset({".md", ".mdx", ".js", ".jsx", ".json", ".txt"})
+
+
+def _link_target(raw: str) -> str:
+    """The repository-relative path of a blob or tree URL, without query, fragment or prose punctuation."""
+    path = re.split(r"[?#]", raw, maxsplit=1)[0].rstrip(".,;:")
+    return urllib.parse.unquote(path).rstrip("/")
+
+
+def _public_texts(root: Path, artifacts: tuple[Artifact, ...]) -> dict[str, str] | Failure:
+    """Every public text page as it will be published: projected artifacts replace their old bytes."""
+    public = root / "docs/public"
+    texts: dict[str, str] = {}
+    try:
+        for directory, folders, files in os.walk(public, onerror=_walk_error):
+            folders[:] = sorted(
+                name for name in folders if not name.startswith(".") and name != "node_modules"
+            )
+            for name in sorted(files):
+                if name.startswith(".") or Path(name).suffix not in PUBLIC_TEXT_SUFFIXES:
+                    continue
+                relative = (Path(directory) / name).relative_to(root).as_posix()
+                if relative.startswith(OUTPUT + "/"):
+                    # Generated snippets are published only as projected below.
+                    continue
+                content = _read(root, relative)
+                if isinstance(content, Failure):
+                    return content
+                texts[relative] = content
+    except OSError:
+        return Failure(Code.IO, "docs/public")
+    for item in artifacts:
+        if item.path.startswith("docs/public/") and Path(item.path).suffix in PUBLIC_TEXT_SUFFIXES:
+            texts[item.path] = item.text
+    return texts
+
+
+def broken_repository_link(texts: dict[str, str], tracked: frozenset[str]) -> Failure | None:
+    """Reject the first public link to a path that the repository's main branch does not serve.
+
+    A blob link must name a tracked file and a tree link a directory of tracked files;
+    anything else is a published 404.
+    """
+    directories = {""} | {
+        str(parent)
+        for name in tracked
+        for parent in PurePosixPath(name).parents
+        if str(parent) != "."
+    }
+    for page in sorted(texts):
+        for match in REPOSITORY_LINK.finditer(texts[page]):
+            kind, target = match.group(1), _link_target(match.group(2))
+            exists = target in tracked if kind == "blob" else target in directories
+            if not exists:
+                return Failure(Code.LINK, page, target)
+    return None
+
+
 def project(
     root: Path, manifest: Manifest, tracked: frozenset[str], recorded_revision: str = ""
 ) -> Projection | Failure:
@@ -735,6 +798,14 @@ def run(root: Path, write: bool, *, current: bool = False) -> ProjectionAssessme
     )
     if isinstance(projection, Failure):
         return projection
+    # A public link to a moved or removed repository path is a published 404.
+    # The check reads the pages as they will be published and precedes every write.
+    texts = _public_texts(root, projection.artifacts)
+    if isinstance(texts, Failure):
+        return texts
+    broken = broken_repository_link(texts, tracked)
+    if broken is not None:
+        return broken
     expected = {item.path for item in projection.artifacts if item.path.startswith(OUTPUT + "/")}
     existing = {
         path.relative_to(root).as_posix() for path in (root / OUTPUT).rglob("*") if path.is_file()
