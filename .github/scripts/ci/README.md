@@ -98,9 +98,10 @@ That duplication adds unmeasured work to full runs.
 ## Cache ownership
 
 Gradle cache transport remains owned by the pinned `setup-gradle` action.
-Every run from this repository writes entries; only pull requests from forks stay read-only.
-Main entries serve every ref. A pull request entry serves later pushes to that pull request.
-More writers spend more of the repository cache quota, and GitHub evicts the least recently used entries.
+Only runs on `main` write entries; pull request runs restore them read-only.
+Main entries serve every ref, while a pull request entry serves only that pull request.
+Each pull request run wrote 4 to 5 GB, so the 10 GB repository quota evicted main's shared entries.
+Most runs then started cold and downloaded Gradle, plugins, and dependencies from public registries.
 Cleanup runs after successful builds, and existing encrypted configuration-cache handling stays in place.
 
 The Linux source job stores source task outputs.

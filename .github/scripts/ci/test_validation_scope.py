@@ -873,12 +873,12 @@ class SourceInventoryTest(unittest.TestCase):
             " ".join(commands[0].split()),
         )
 
-    def test_trusted_runs_write_caches_and_a_dispatched_seed_shares_the_source_key(self):
+    def test_only_main_writes_caches_and_a_dispatched_seed_shares_the_source_key(self):
         workflows = Path(__file__).resolve().parents[2] / "workflows"
-        trusted = (
-            "cache-read-only: ${{ github.event_name == 'pull_request' && "
-            "github.event.pull_request.head.repo.full_name != github.repository }}"
-        )
+        # Pull request entries are unreadable by other pull requests and evict main's shared entries.
+        trusted = "cache-read-only: ${{ github.ref != 'refs/heads/main' }}"
+        self.assertNotIn("head.repo.full_name != github.repository }}", (workflows / "ci.yml").read_text())
+        self.assertNotIn("head.repo.full_name != github.repository }}", (workflows / "docs.yml").read_text())
         key = (
             "GRADLE_BUILD_ACTION_CACHE_KEY_JOB: source-work\n"
             "          GRADLE_BUILD_ACTION_CACHE_KEY_JOB_INSTANCE: linux-source\n"
