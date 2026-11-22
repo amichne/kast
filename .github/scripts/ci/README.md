@@ -259,6 +259,18 @@ Installed acceptance exercises the shipped Control, coordinator, and Host agains
 A missing or failed Mac receipt blocks the required check and preview publication.
 Linux product qualification is paused. Earlier two-platform records still need both receipts.
 
+### Rerun failed product jobs
+
+**Re-run failed jobs** completes a product. GitHub copies each job that it does not run again into the new attempt, and the copy keeps the job's outputs.
+Each product job publishes the attempt that produced its artifact, and its consumers download by that attempt, not their own.
+
+- Sealing admits qualification from the same run at its own or an earlier attempt.
+- The join admits a record sealed at its own or an earlier attempt.
+- The candidate artifact carries its sealed record's attempt.
+- Admission observes each producer's run at its final attempt, which must succeed.
+  A producer attempt cannot follow that final attempt.
+- Promotion selects the validation outcome and the candidate from the latest producing attempt at or before the final attempt.
+
 Run `43453960426` took 2 hours 20 minutes before these changes.
 Its hosted Mac spent almost 44 minutes generating Control a second time.
 That is measured duplicate work, not a promised wall-time saving.

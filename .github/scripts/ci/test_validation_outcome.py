@@ -148,13 +148,18 @@ class ValidationOutcomeTest(unittest.TestCase):
                          outcome.admit(value, run, REPOSITORY, SOURCE, TREE))
         for changes in (
             {"event": "push"}, {"event": "pull_request"}, {"event": "merge_group"},
-            {"event": "unknown"}, {"head_branch": "feature"}, {"run_attempt": 2},
+            {"event": "unknown"}, {"head_branch": "feature"},
             {"head_sha": BASE}, {"repository": {"full_name": "foreign/kast"}},
             {"path": "foreign.yml"},
         ):
             with self.subTest(changes=changes):
                 self.assertEqual(outcome.Failure.WRONG_PRODUCER,
                                  outcome.admit(value, run | changes, REPOSITORY, SOURCE, TREE))
+        # A rerun of failed jobs keeps this gate; its successful final attempt admits it.
+        self.assertEqual(outcome.ProductValidated(value),
+                         outcome.admit(value, run | {"run_attempt": 2}, REPOSITORY, SOURCE, TREE))
+        self.assertEqual(outcome.Failure.WRONG_PRODUCER,
+                         outcome.admit(replace(value, runAttempt=2), run, REPOSITORY, SOURCE, TREE))
         for changes in ({"status": "in_progress"}, {"conclusion": "failure"}):
             with self.subTest(changes=changes):
                 self.assertEqual(outcome.Failure.PRODUCER_NOT_SUCCESSFUL,
@@ -190,7 +195,8 @@ class ValidationOutcomeTest(unittest.TestCase):
         for changes in (
             {"id": 457},
             {"run_number": 124},
-            {"run_attempt": 2},
+            # An observed attempt cannot precede the attempt that recorded the gate.
+            {"run_attempt": 0},
             {"run_attempt": True},
             {"repository": {"full_name": "foreign/kast"}},
             {"repository": None},

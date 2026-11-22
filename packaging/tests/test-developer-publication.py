@@ -313,8 +313,10 @@ class DeveloperPublicationTest(unittest.TestCase):
 
     def admission_calls(self) -> list[GhCall]:
         native = replace(Run(), id=456, run_attempt=2, path=".github/workflows/composed-linux.yml")
+        # Admission observes each producer's run at its final attempt, whose success
+        # covers jobs a rerun of failed jobs kept from an earlier attempt.
         calls = [
-            GhCall.observation(f"repos/{REPOSITORY}/actions/runs/123/attempts/1", Run()),
+            GhCall.observation(f"repos/{REPOSITORY}/actions/runs/123", Run()),
             GhCall.observation(
                 f"repos/{REPOSITORY}/actions/runs/123/artifacts?per_page=100",
                 ArtifactListing(1, (ValidationArtifact(),)),
@@ -332,8 +334,8 @@ class DeveloperPublicationTest(unittest.TestCase):
                 ],
                 retained_validation=str(self.validation),
             ),
-            GhCall.observation(f"repos/{REPOSITORY}/actions/runs/456/attempts/2", native),
-            GhCall.observation(f"repos/{REPOSITORY}/actions/runs/456/attempts/2", native),
+            GhCall.observation(f"repos/{REPOSITORY}/actions/runs/456", native),
+            GhCall.observation(f"repos/{REPOSITORY}/actions/runs/456", native),
             GhCall.observation(f"repos/{REPOSITORY}/git/commits/{REVISION}", GitCommit(REVISION)),
         ]
         retained = [(123, f"ci-product-candidate-{REVISION}-1", (str(self.identity),))]

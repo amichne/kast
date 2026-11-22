@@ -179,14 +179,19 @@ def admit_producer_identity(
     if not product.mapping(value):
         return candidate.Failure.WRONG_PRODUCER
     repository = value.get("repository")
+    observed = value.get("run_attempt")
     if (
         not product.mapping(repository)
         or repository.get("full_name") != record.repository
         or not producer_workflow(record, producer, value)
         or value.get("id") != producer.runId
         or type(value.get("id")) is not int
-        or type(value.get("run_attempt")) is not int
-        or value.get("run_attempt") != producer.runAttempt
+        # isinstance narrows the type; the exact type check also rejects a boolean.
+        or not isinstance(observed, int)
+        or type(observed) is not int
+        # The observed attempt may follow the producer's: a rerun of failed jobs keeps
+        # the jobs it does not execute again, with their artifacts and attempt.
+        or observed < producer.runAttempt
         or value.get("head_sha") != record.sourceRevision
         or value.get("head_branch") != "main"
         or value.get("event") not in ("push", "workflow_dispatch")
@@ -222,8 +227,9 @@ def admit_baseline(
         or product.file_digest(directory / "build-record.json") != digest
     ):
         return candidate.Failure.WRONG_PRODUCER
+    # The pin names the sealing attempt; qualification may come from an earlier attempt.
     for owner in (record.producer, *(owner for _, owner in targets)):
-        if (owner.runId, owner.runAttempt) != (producer.runId, producer.runAttempt):
+        if owner.runId != producer.runId or owner.runAttempt > producer.runAttempt:
             return candidate.Failure.WRONG_PRODUCER
         admitted = admit_producer_identity(record, owner, observed_run)
         if isinstance(admitted, candidate.Failure):
@@ -275,8 +281,9 @@ def producer_workflow(
     if (
         producer.workflow != ".github/workflows/composed-linux.yml"
         or run.get("path") != ".github/workflows/ci.yml"
-        or (producer.runId, producer.runAttempt)
-        != (record.producer.runId, record.producer.runAttempt)
+        or producer.runId != record.producer.runId
+        # Qualification precedes the seal that admits it, in the same run.
+        or producer.runAttempt > record.producer.runAttempt
         or not product.sequence(references)
     ):
         return False
@@ -292,8 +299,13 @@ def producer_workflow(
 
 
 def observe(producer: product.ProductProducer) -> object:
+    """The producer's run at its final attempt, whose success covers every retained job.
+
+    A producing attempt need not succeed as a whole: after a rerun of failed jobs, the
+    final attempt reuses the producer's successful jobs and must itself succeed.
+    """
     return candidate.observe(
-        f"repos/{product.REPOSITORY}/actions/runs/{producer.runId}/attempts/{producer.runAttempt}",
+        f"repos/{product.REPOSITORY}/actions/runs/{producer.runId}",
         candidate.ObservationStage.WORKFLOW_RUN,
     )
 

@@ -463,8 +463,16 @@ class ProductCandidateTest(unittest.TestCase):
                 product.Admission.ADMITTED,
                 candidate.admit_producer(record, record.producer, asdict(Run())),
             )
+            # After a rerun of failed jobs, the successful final attempt covers this producer.
+            self.assertEqual(
+                product.Admission.ADMITTED,
+                candidate.admit_producer(
+                    record, record.producer, asdict(replace(Run(), run_attempt=2))
+                ),
+            )
             for run in (
-                replace(Run(), run_attempt=2),
+                # An observed attempt cannot precede the producing attempt.
+                replace(Run(), run_attempt=0),
                 replace(Run(), head_sha="c" * 40),
                 replace(Run(), event="pull_request"),
                 replace(Run(), path="other.yml"),

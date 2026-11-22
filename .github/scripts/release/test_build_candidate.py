@@ -145,6 +145,42 @@ class SourceAdmissionTest(unittest.TestCase):
                 candidate.listing(document, "workflow_runs")
 
 
+class ProducedArtifactTest(unittest.TestCase):
+    """A rerun of failed jobs keeps artifacts named by the attempt that produced them."""
+
+    PREFIX = f"ci-product-candidate-{BUILD}-"
+
+    @staticmethod
+    def live(*names: str, expired: tuple[str, ...] = ()) -> tuple[dict, ...]:
+        return (*({"name": name, "expired": False} for name in names),
+                *({"name": name, "expired": True} for name in expired))
+
+    def test_an_artifact_kept_from_an_earlier_attempt_is_selected(self):
+        artifacts = self.live(self.PREFIX + "1", f"ci-validation-outcome-{BUILD}-2")
+        self.assertEqual((self.PREFIX + "1", 1), candidate.produced_artifact(artifacts, self.PREFIX, 2))
+
+    def test_the_latest_producing_attempt_supersedes_an_earlier_one(self):
+        artifacts = self.live(self.PREFIX + "1", self.PREFIX + "2")
+        self.assertEqual((self.PREFIX + "2", 2), candidate.produced_artifact(artifacts, self.PREFIX, 3))
+
+    def test_an_artifact_from_after_the_observed_attempt_is_not_evidence_for_it(self):
+        artifacts = self.live(self.PREFIX + "1", self.PREFIX + "3")
+        self.assertEqual((self.PREFIX + "1", 1), candidate.produced_artifact(artifacts, self.PREFIX, 2))
+
+    def test_missing_expired_malformed_or_ambiguous_artifacts_reject(self):
+        for artifacts in (
+            (),
+            self.live(expired=(self.PREFIX + "1",)),
+            self.live(self.PREFIX + "01", self.PREFIX + "x", self.PREFIX, self.PREFIX + "1-extra"),
+            self.live(self.PREFIX + "3"),
+            self.live(self.PREFIX + "2", self.PREFIX + "2"),
+            ({"name": self.PREFIX + "1"},),
+        ):
+            with self.subTest(artifacts=artifacts), self.assertRaises(candidate.Rejected) as rejection:
+                candidate.produced_artifact(artifacts, self.PREFIX, 2)
+            self.assertEqual(candidate.Failure.INVALID_RECORD, rejection.exception.failure)
+
+
 class PayloadAdmissionTest(unittest.TestCase):
     def setUp(self):
         self.temporary = tempfile.TemporaryDirectory()

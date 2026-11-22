@@ -264,13 +264,17 @@ def seal(
             raise Rejected(Failure.INVALID_RECORD)
         record = read_target(source / f"target-record-{target}.json")
         facts = record.target
+        qualified = facts.qualification.producer
         if (
             record.sourceRevision != revision
             or record.sourceTree != tree
             or record.version != version
             or facts.target != target
-            or facts.qualification.producer
-            != product.ProductProducer(producer.runId, producer.runAttempt, NATIVE_WORKFLOW)
+            or not isinstance(qualified, product.ProductProducer)
+            or qualified.workflow != NATIVE_WORKFLOW
+            or qualified.runId != producer.runId
+            # A rerun of failed jobs reseals qualification kept from an earlier attempt.
+            or qualified.runAttempt > producer.runAttempt
         ):
             raise Rejected(Failure.WRONG_PRODUCER)
         if {path.name for path in source.iterdir()} != {
@@ -317,6 +321,19 @@ def seal(
             raise Rejected(Failure.PAYLOAD_MISMATCH)
         staged.rename(output)
     return complete
+
+
+def joinable(
+    record: product.ProductRecord, revision: str, tree: str, run: int, attempt: int
+) -> bool:
+    """The join may run in a later attempt than the seal: a rerun of failed jobs keeps it."""
+    return (
+        record.sourceRevision == revision
+        and record.sourceTree == tree
+        and record.producer.workflow == CI_WORKFLOW
+        and record.producer.runId == run
+        and record.producer.runAttempt <= attempt
+    )
 
 
 def accept(directory: Path, receipts: Path, output: Path) -> product.ProductRecord:
@@ -410,12 +427,7 @@ def main() -> int:
             if args.output is None or args.receipt is None:
                 raise Rejected(Failure.INVALID_IDENTITY)
             record = candidate.read(args.directory)
-            if (
-                isinstance(record, Failure)
-                or record.sourceRevision != revision
-                or record.sourceTree != tree
-                or record.producer != product.ProductProducer(run, attempt, CI_WORKFLOW)
-            ):
+            if isinstance(record, Failure) or not joinable(record, revision, tree, run, attempt):
                 raise Rejected(Failure.WRONG_PRODUCER)
             _ = accept(args.directory, args.receipt, args.output)
         else:

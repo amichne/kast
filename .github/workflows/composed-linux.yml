@@ -39,6 +39,10 @@ on:
         description: Retired archive-action input; must be empty
         required: false
         type: string
+    outputs:
+      run_attempt:
+        description: The attempt that qualified the product and named its artifact
+        value: ${{ jobs.candidate.outputs.run_attempt }}
 
 permissions:
   contents: read
@@ -53,6 +57,10 @@ jobs:
     name: Build and qualify ${{ matrix.target }}
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 180
+    # A caller selects one target, so this output is unambiguous. A rerun of failed jobs
+    # copies this job with its outputs when qualification already succeeded.
+    outputs:
+      run_attempt: ${{ github.run_attempt }}
     strategy:
       fail-fast: false
       matrix:
