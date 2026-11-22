@@ -166,7 +166,6 @@ val installerSupportDirectory = layout.buildDirectory.dir("generated/installer-s
 val generateInstallerSupport = tasks.register<Exec>("generateInstallerSupport") {
     group = "distribution"
     description = "Projects installer support from the bootstrap generator's inventory."
-    inputs.file("install.sh")
     inputs.files(fileTree("packaging") { include("composed_bundle.py", "managed_headless.py", "internal/*/*.py", "internal/*/*.sh", "internal/*/*.lock", "*.lock", "*-v1") })
     outputs.dir(installerSupportDirectory)
     commandLine("python3", "packaging/internal/bootstrap/generate_bootstrap.py", "--support-directory",

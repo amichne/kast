@@ -105,7 +105,8 @@ abstract class VerifyControlDistributionTask : DefaultTask() {
         check(entries.none { entry -> entry.endsWith(".class") || (entry.endsWith(".jar") && !entry.startsWith("lib/")) }) {
             "control product contains JVM bytecode outside lib"
         }
-        val retiredPayloadRoots = setOf("share/kast/container", "share/kast/task-vm", "share/kast/knowledge")
+        val retiredPayloadRoots =
+            setOf("share/kast/container", "share/kast/task-vm", "share/kast/knowledge", "share/kast/install.sh")
         check(entries.none { entry -> retiredPayloadRoots.any { entry == it || entry.startsWith("$it/") } }) {
             "control product contains a retired payload"
         }
@@ -159,7 +160,6 @@ abstract class VerifyControlDistributionTask : DefaultTask() {
             "share/kast/libexec/kast-service",
             "share/kast/libexec/kast-management",
             "share/kast/frontend.json",
-            "share/kast/install.sh",
             "share/kast/jvm-control-v1",
             "share/kast/operation-registry.json",
             "share/kast/provider-catalog.json",

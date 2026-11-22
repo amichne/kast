@@ -101,7 +101,7 @@ def validate_members(names: Iterable[str]) -> tuple[str, ...]:
 
 
 def support_files() -> tuple[tuple[str, Path], ...]:
-    names = validate_members((*SOURCES, *RETAINED, *FIXED, "install.sh"))
+    names = validate_members((*SOURCES, *RETAINED, *FIXED))
     files = tuple((name, source_file(name)) for name in names)
     if any(path.is_symlink() or not path.is_file() for _, path in files):
         raise ValueError("missing installer support member")
@@ -109,8 +109,6 @@ def support_files() -> tuple[tuple[str, Path], ...]:
 
 
 def source_file(name: str) -> Path:
-    if name == "install.sh":
-        return REPOSITORY / name
     # These two embedded assembly modules retain repository-relative paths.
     # Moving them needs a separately authorized bootstrap-byte change.
     if name in FIXED or name in {"composed_bundle.py", "managed_headless.py", "uv.lock"}:

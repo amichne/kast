@@ -116,6 +116,10 @@ class VerifyControlDistributionTaskTest {
                 assertThrows(IllegalStateException::class.java, task::verify).message)
             Files.delete(directory)
         }
+        // The component installer's bootstrap copy has no product reader.
+        Files.write(root.resolve("share/kast/install.sh"), byteArrayOf())
+        assertEquals("control product contains a retired payload",
+            assertThrows(IllegalStateException::class.java, task::verify).message)
     }
 
     @Test
@@ -158,7 +162,7 @@ class VerifyControlDistributionTaskTest {
         val entries = listOf(
             "bin/kast", "bin/kast-codex", "bin/kast-mcp", "bin/kast-query",
             "share/kast/libexec/kast-daemon", "share/kast/libexec/kast-service", "share/kast/libexec/kast-management",
-            "share/kast/install.sh", "share/kast/operation-registry.json", "share/kast/provider-catalog.json",
+            "share/kast/operation-registry.json", "share/kast/provider-catalog.json",
             "share/kast/configuration-schema.json", "share/kast/wire-schema.json", "share/kast/ide-host.json",
             "share/kast/licenses/LICENSE", "share/kast/frontend.json", "lib/kast-cli.jar",
         ) + listOf("", "compositions/mcp/").flatMap { composition ->

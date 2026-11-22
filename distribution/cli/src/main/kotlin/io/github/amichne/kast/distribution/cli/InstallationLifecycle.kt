@@ -214,52 +214,7 @@ private constructor(
                     InstallationLifecycle(root, installation, home, environment, read.manifest, execution)
                 )
         }
-
-        fun admit(
-            root: Path,
-            home: Path,
-            environment: Map<String, String>,
-            execution: LifecycleExecution,
-        ): LifecycleAdmission =
-            try {
-                requireOwnedExecutable(root)
-                val installation = selectedInstallation(root)
-                val read = readBundledManifest(installation)
-                val required =
-                    listOf(INSTALLATION_SHUTDOWN_CAPABILITY, "share/kast/libexec/kast-service", "share/kast/install.sh")
-                if (
-                    read !is BundledManifestRead.Read ||
-                        !supportsShutdown(installation, read.manifest) ||
-                        required.any { !payloadOwned(installation, read.manifest, it) }
-                )
-                    LifecycleAdmission.Rejected
-                else
-                    LifecycleAdmission.Admitted(
-                        InstallationLifecycle(
-                            root,
-                            installation,
-                            home,
-                            environment,
-                            read.manifest,
-                            execution,
-                        )
-                    )
-            } catch (_: Exception) {
-                LifecycleAdmission.Rejected
-            }
     }
-}
-
-private sealed interface ClientRetirement {
-    data object Completed : ClientRetirement
-
-    data class Rejected(val stage: LifecycleStage, val failure: LifecycleFailure) : ClientRetirement
-}
-
-internal sealed interface LifecycleAdmission {
-    data class Admitted(val lifecycle: InstallationLifecycle) : LifecycleAdmission
-
-    data object Rejected : LifecycleAdmission
 }
 
 private sealed interface FenceAttributes {

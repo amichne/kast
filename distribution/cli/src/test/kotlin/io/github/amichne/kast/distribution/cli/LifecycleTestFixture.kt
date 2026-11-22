@@ -1,12 +1,24 @@
 package io.github.amichne.kast.distribution.cli
 
+import io.github.amichne.kast.kernel.Refinement
 import java.nio.file.Files
 import java.nio.file.Path
 import java.time.Duration
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
 
-internal data class LifecycleFixture(val root: Path, val installation: Path, val home: Path)
+internal data class LifecycleFixture(
+    val root: Path,
+    val installation: Path,
+    val home: Path,
+    val platform: ContainerPlatform,
+)
+
+internal fun LifecycleFixture.admitLifecycle(execution: LifecycleExecution): InstallationLifecycle =
+    when (val admitted = InstallationLifecycle.admitProduct(root, home, emptyMap(), platform, execution)) {
+        is Refinement.Refined -> admitted.value
+        is Refinement.Rejected -> error("lifecycle fixture was rejected: ${admitted.failure}")
+    }
 
 internal fun closedHostProcesses() =
     object : LifecycleProcesses {
@@ -35,7 +47,6 @@ internal fun createLifecycleFixture(temporary: Path): LifecycleFixture {
                 "lib/kast.jar",
                 "share/kast/lifecycle-fence-v1",
                 "share/kast/reset-fence-v1",
-                "share/kast/install.sh",
             )
             .map { relative ->
                 val path = installation.resolve(relative)
@@ -59,7 +70,7 @@ internal fun createLifecycleFixture(temporary: Path): LifecycleFixture {
     val native = temporary.toRealPath().resolve("kast-command")
     Files.writeString(native, "native-fixture")
     writeTestManagementReceipt(root, native, product.reference)
-    return LifecycleFixture(root, installation, home)
+    return LifecycleFixture(root, installation, home, product.runtime.manifest.platform)
 }
 
 private fun createSelectedHost(temporary: Path, config: Path) {

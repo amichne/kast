@@ -40,7 +40,7 @@ class ForceInstallationResetTest {
                 "management.lock",
                 "shutdown.json",
                 "installation/installation.json",
-                "installation/share/kast/install.sh",
+                "installation/share/kast/install-candidate.sh",
             )
             .forEach { Files.writeString(root.resolve(it), "invalid ownership") }
         Files.createSymbolicLink(root.resolve("foreign-link"), protected)
