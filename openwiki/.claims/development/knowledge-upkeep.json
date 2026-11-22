@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:06a2c75e7f1851fb1bb4b6da2f21c1535990630eac6a375119a6556e60fd78a6",
+  "pageVersion": "sha256:cfc9d4b02410ee34a16069f464757e530995c7a9f946ffb2fb2669ef8be8c03a",
   "claims": [
     {
       "id": "claim_f1f223d6ff6c46a1a8c1642d015d3929",
@@ -154,7 +154,7 @@
     },
     {
       "id": "claim_771279acf3df45f3981af42be5875d52",
-      "statement": "Public OKF projection reads every docs/public text page as it will be published and rejects a GitHub blob link to an untracked file or a tree link to a directory without tracked files with OKF_REPOSITORY_LINK before any write.",
+      "statement": "Public OKF projection reads every text page of the public site as it will be published and rejects a GitHub blob link to an untracked file or a tree link to a directory without tracked files with OKF_REPOSITORY_LINK before any write.",
       "evidence": [
         {
           "resource": "repo://docs/internal/tooling/okf_public.py",
@@ -169,6 +169,6 @@
   ],
   "verification": {
     "by": "openwiki/0.9.0",
-    "at": "2026-11-22T21:18:16.148Z"
+    "at": "2026-11-22T21:26:32.672Z"
   }
 }

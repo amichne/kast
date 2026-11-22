@@ -51,10 +51,10 @@ sources:
     resource: repo://docs/internal/tooling/test_okf_public.py
   - id: openwiki-source-2dd53ab2c56b5f60be2b07d4
     resource: repo://docs/internal/tooling/test_publication.py
-generated: { by: "codex", at: "2026-11-22T21:18:16.148Z" }
+generated: { by: "codex", at: "2026-11-22T21:26:32.672Z" }
 verified:
   - by: openwiki/0.9.0
-    at: 2026-11-22T21:18:16.148Z
+    at: 2026-11-22T21:26:32.672Z
 ---
 
 # Knowledge upkeep and coverage assessment
@@ -125,7 +125,7 @@ A `code_sources` path that no longer exists is a blocking finding in every mode,
 A missing `sources` resource and a link to a cited or previously recorded source file remain advisory route findings that request a native refresh.
 Kotlin declaration checks use an isolated PSI parser. Python declaration checks use the AST.
 
-Public projection reads every `docs/public` text page as it will be published, projected snippets included.
+Public projection reads every text page of the public site as it will be published, projected snippets included.
 It rejects a GitHub `blob` link to an untracked file or a `tree` link to a directory without tracked files with `OKF_REPOSITORY_LINK`, before any write.
 Declaration presence does not prove compiler identity or installed runtime behavior.
 
