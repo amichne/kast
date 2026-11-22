@@ -36,7 +36,10 @@ from collections.abc import Mapping
 from dataclasses import asdict, dataclass
 from enum import StrEnum
 from pathlib import Path
-from typing import Literal
+from typing import TYPE_CHECKING, Literal
+
+if TYPE_CHECKING:
+    from harness_launchd import Launchctl
 
 MARKER = "local-product.json"
 SCHEMA_VERSION = 1
@@ -80,6 +83,7 @@ class Failure(StrEnum):
     COMMAND_FAILED = "COMMAND_FAILED"
     INSTALLATION_REJECTED = "INSTALLATION_REJECTED"
     PROCESSES_REMAIN = "PROCESSES_REMAIN"
+    LAUNCHD_JOBS_REMAIN = "LAUNCHD_JOBS_REMAIN"
 
 
 class Rejected(Exception):
@@ -561,14 +565,24 @@ def remaining_processes(root: Path) -> list[str]:
     return [line.strip() for line in listing.splitlines() if str(root / "home") in line]
 
 
-def remove(arguments: argparse.Namespace) -> dict[str, str]:
+def remove(arguments: argparse.Namespace, launchctl: Launchctl | None = None) -> dict[str, str]:
+    """`launchctl=None` selects the native supervisor on macOS and no supervisor elsewhere."""
+    sys.path.append(str(Path(__file__).resolve().parents[1] / "verification"))
+    from harness_launchd import LaunchdTeardownRejected, retiring_semantic_jobs
+
     root, launcher, version = admit_owned_root(arguments.root)
     event(Stage.REMOVAL, "STARTED", root=str(root))
-    if (root / "home/.local/bin/kast").exists():
-        for step in (["stop", "--all", "--json"], ["uninstall"]):
-            # Child reports go to stderr; this command's stdout carries only its own receipt.
-            if subprocess.run([str(launcher), *step], stdout=sys.stderr).returncode:
-                raise Rejected(Stage.REMOVAL, Failure.COMMAND_FAILED)
+    try:
+        # The isolated HOME registers its coordinator in the user's launchd domain; retire it
+        # even when stop or uninstall fails, and prove no job remains below this root.
+        with retiring_semantic_jobs(root, launchctl):
+            if (root / "home/.local/bin/kast").exists():
+                for step in (["stop", "--all", "--json"], ["uninstall"]):
+                    # Child reports go to stderr; this command's stdout carries only its receipt.
+                    if subprocess.run([str(launcher), *step], stdout=sys.stderr).returncode:
+                        raise Rejected(Stage.REMOVAL, Failure.COMMAND_FAILED)
+    except LaunchdTeardownRejected:
+        raise Rejected(Stage.REMOVAL, Failure.LAUNCHD_JOBS_REMAIN) from None
     if remaining_processes(root):
         raise Rejected(Stage.REMOVAL, Failure.PROCESSES_REMAIN)
     discard_tree(root)
@@ -576,7 +590,7 @@ def remove(arguments: argparse.Namespace) -> dict[str, str]:
     return {"type": "removed", "root": str(root), "version": version}
 
 
-def main(argv: list[str]) -> int:
+def main(argv: list[str], launchctl: Launchctl | None = None) -> int:
     parser = argparse.ArgumentParser(
         description="Build a qualified local product or install an isolated contributor product."
     )
@@ -600,7 +614,7 @@ def main(argv: list[str]) -> int:
             case "install":
                 result = asdict(install(arguments))
             case "remove":
-                result = remove(arguments)
+                result = remove(arguments, launchctl)
             case _:
                 parser.error("unknown local product command")
     except Rejected as rejected:

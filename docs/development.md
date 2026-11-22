@@ -346,6 +346,31 @@ prove public network acquisition, `kast upgrade --repair` selection, a different
 upgrade, Linux behavior, or complete product qualification. Failure retains the
 disposable root named in `disposable-root.txt`; inspect it before cleanup.
 
+### Retire leaked harness launchd jobs
+
+A harness that overrides HOME still submits its semantic coordinator to your own
+`gui/<uid>` launchd domain. The local product probe and the installed-product
+lifecycle probe retire every `io.github.amichne.kast.semantic.*` job under their
+disposable root, after a failure too. Then they check that no such job remains.
+A job that leaked before this check, or from a one-off experiment HOME, keeps a
+headless Host resident. To list such jobs, run:
+
+```shell
+python3 packaging/internal/verification/harness_launchd.py
+```
+
+Add `--retire` to boot out the listed jobs. The command selects a job only when
+its job definition, executable and working directory all lie under one recognized
+harness root:
+
+- `~/.cache/kast-exp-home*`
+- `~/.local/share/kast-local/<name>`
+- `kast-installed-native-*` and `kast-local-installed-*` in the temporary directory
+- `/private/tmp/kast-local-install-*` and `/private/tmp/kn -*`
+
+It never selects the real installation under `~/.local/share/kast`. A kept
+`kast-local` product starts a new coordinator on its next query.
+
 ### Install a checkout as an isolated managed product
 
 On macOS ARM64, `packaging/internal/product/local_product_install.py` installs one clean committed
@@ -377,8 +402,9 @@ HOME changes, the product does not read your global Git or Gradle configuration
 unless you set them explicitly.
 
 Remove the root with `local_product_install.py remove --root ROOT`. It stops every
-Host, uninstalls, checks that no process remains below the isolated HOME, then
-deletes the root. A failed install keeps its work directory under `/private/tmp`
+Host, uninstalls, and retires any semantic coordinator launchd job whose files lie under the root.
+It checks that no such job and no process remains below the isolated HOME, then deletes the root.
+A failed stop or uninstall still retires those jobs and keeps the root. A failed install keeps its work directory under `/private/tmp`
 and reports the failed stage and its log. The receipt records
 `releaseQualification=NOT_ESTABLISHED`.
 

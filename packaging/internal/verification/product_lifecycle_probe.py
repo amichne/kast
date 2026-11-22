@@ -52,6 +52,7 @@ from composed_host_probe import (
     complete as compiler_complete,
 )
 from composition_platform import HostPlatform, host_platform
+from harness_launchd import retiring_semantic_jobs
 from private_interpreter import PrivateInterpreter
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3] / ".github/scripts/release"))
@@ -1004,8 +1005,9 @@ def execute(
     repository = Path(__file__).resolve().parents[3]
     # Failed native retirement retains its owned tree for investigation. Never
     # recursively erase a runtime under a Host whose exit was not established.
-    with tempfile.TemporaryDirectory(prefix="kast-installed-native-", delete=False) as temporary:
-        work = Path(temporary).resolve()
+    work = Path(tempfile.mkdtemp(prefix="kast-installed-native-")).resolve()
+    # The overridden HOME still registers coordinators in the user's launchd domain.
+    with retiring_semantic_jobs(work):
         _ = (evidence / "disposable-root.txt").write_text(str(work) + "\n")
         home = work / "home"
         home.mkdir(mode=0o700)
