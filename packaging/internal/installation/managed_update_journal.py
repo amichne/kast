@@ -24,8 +24,10 @@ class Failure(str, Enum):
 
 
 class Rejected(Exception):
-    def __init__(self, failure: Failure) -> None:
+    # entry: the rejected tree entry, relative to the captured tree root; never its contents.
+    def __init__(self, failure: Failure, entry: Optional[str] = None) -> None:
         self.failure = failure
+        self.entry = entry
 
 
 @dataclass(frozen=True)
