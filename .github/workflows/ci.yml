@@ -305,6 +305,7 @@ jobs:
             build/test-results/publicLauncherTest/
             build/reports/tests/publicLauncherTest/
             build/reports/native/reset-checks/
+            build/reports/native/qualification/
             distribution/cli/build/test-results/
           if-no-files-found: warn
           retention-days: 14

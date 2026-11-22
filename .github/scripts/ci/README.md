@@ -246,6 +246,10 @@ The runner `.path` must include uv.
 
 ## Compile once and join qualification late
 
+Release assembly and Mac qualification run Gradle through `gradle_graph.run` with budgets below their job timeouts.
+A stage that exceeds its budget stops with a process snapshot and Gradle daemon thread dumps in `build/reports/native/<stage>/`.
+The failure is `GRADLE_TIMED_OUT`, not a silent job cancellation.
+
 Ubuntu assembles the shared release and runs source validation.
 The hosted Mac restores the exact assembled release and qualifies the macOS ARM64 runtime.
 The sealed record identifies the Mac archives and their digests.
