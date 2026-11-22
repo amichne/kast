@@ -1005,6 +1005,91 @@ class ProductActivationTest(unittest.TestCase):
         original.chmod(0o444)
         self.assertEqual(0, self.remove_product(path))
 
+    def published_runtime_file(self) -> tuple[Path, immutable_store.Evidence, Path]:
+        _, record = self.removal_journal()
+        runtime = Path(record.product.runtimeRoot)
+        evidence = immutable_store.admit(runtime, "RUNTIME", runtime.name)
+        return runtime, evidence, runtime / self.nonempty_file(evidence).path
+
+    @staticmethod
+    def nonempty_file(evidence: immutable_store.Evidence) -> RuntimeFile:
+        # A same-size rewrite of an empty file changes nothing, so it proves nothing.
+        return next(
+            item for item in evidence.files if isinstance(item, RuntimeFile) and item.bytes > 0
+        )
+
+    @staticmethod
+    def rewrite(path: Path, raw: bytes) -> None:
+        mode = stat.S_IMODE(path.stat().st_mode)
+        path.chmod(0o600)
+        _ = path.write_bytes(raw)
+        path.chmod(mode)
+
+    def test_structural_proof_reads_no_bytes_but_content_proof_does(self) -> None:
+        runtime, evidence, changed = self.published_runtime_file()
+        size = changed.stat().st_size
+        self.rewrite(changed, b"x" * size)
+        with self.assertRaisesRegex(ValueError, "immutable file changed"):
+            immutable_store.verify(
+                runtime, evidence, partial=False, proof=immutable_store.Proof.CONTENT
+            )
+        immutable_store.verify(
+            runtime, evidence, partial=False, proof=immutable_store.Proof.STRUCTURE
+        )
+
+    def test_structural_proof_rejects_changed_size_mode_or_inventory(self) -> None:
+        runtime, evidence, changed = self.published_runtime_file()
+        raw = changed.read_bytes()
+        mode = stat.S_IMODE(changed.stat().st_mode)
+        parent_mode = stat.S_IMODE(changed.parent.stat().st_mode)
+        extra = changed.parent / "foreign"
+
+        def larger() -> None:
+            self.rewrite(changed, raw + b"x")
+
+        def mode_change() -> None:
+            changed.chmod(0o644)
+
+        def survivor() -> None:
+            changed.parent.chmod(0o755)
+            _ = extra.write_bytes(b"preserve")
+            changed.parent.chmod(parent_mode)
+
+        def restore() -> None:
+            self.rewrite(changed, raw)
+            changed.chmod(mode)
+            if extra.exists():
+                changed.parent.chmod(0o755)
+                extra.unlink()
+                changed.parent.chmod(parent_mode)
+
+        for alteration in (larger, mode_change, survivor):
+            with self.subTest(alteration=alteration.__name__):
+                alteration()
+                with self.assertRaises(ValueError):
+                    immutable_store.verify(
+                        runtime, evidence, partial=False, proof=immutable_store.Proof.STRUCTURE
+                    )
+                restore()
+        immutable_store.verify(
+            runtime, evidence, partial=False, proof=immutable_store.Proof.CONTENT
+        )
+
+    def test_removal_still_proves_content_once_before_deleting(self) -> None:
+        path, record = self.removal_journal()
+        runtime = Path(record.product.runtimeRoot)
+        evidence = immutable_store.admit(runtime, "RUNTIME", runtime.name)
+        changed = runtime / self.nonempty_file(evidence).path
+        raw = changed.read_bytes()
+        self.rewrite(changed, b"x" * len(raw))
+        raw_journal = path.read_bytes()
+        self.assertEqual(1, self.remove_product(path))
+        self.assertEqual(raw_journal, path.read_bytes())
+        self.assertEqual(b"x" * len(raw), changed.read_bytes())
+        self.rewrite(changed, raw)
+        self.assertEqual(0, self.remove_product(path))
+        self.assertFalse(runtime.exists())
+
     def test_immutable_partial_removal_keeps_manifest_and_rejects_new_survivors(self) -> None:
         path, record = self.removal_journal()
         runtime = Path(record.product.runtimeRoot)

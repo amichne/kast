@@ -91,6 +91,17 @@ class RepairPolicy(StrEnum):
     PREPARE = "PREPARE"
 
 
+class Proof(StrEnum):
+    """How much of an immutable entry a check proves."""
+
+    # Every file's bytes match their published digest. Required before Kast publishes,
+    # reuses, or runs an entry, and once when removal first captures an entry's evidence.
+    CONTENT = "CONTENT"
+    # The exact inventory, entry types, sizes, modes, owner, and link targets, without
+    # reading file bytes. Enough to delete only what Kast published in its private store.
+    STRUCTURE = "STRUCTURE"
+
+
 @dataclass(frozen=True)
 class DamagedEntry:
     root: Path
@@ -283,7 +294,7 @@ def original(raw: bytes, record: bytes, qualification: bytes, manifest: bytes) -
 
 def admit(root: Path, kind: str, archive_sha: str, *, destination: Path | None = None) -> Evidence:
     result = original_entry(root, kind, archive_sha)
-    verify(root, result, partial=False, destination=destination)
+    verify(root, result, partial=False, proof=Proof.CONTENT, destination=destination)
     return result
 
 
@@ -380,7 +391,7 @@ def reset_layout(root: Path, selected: Evidence) -> None:
 def reusable(root: Path, kind: str, archive_sha: str) -> Evidence:
     selected = repairable(root, kind, archive_sha)
     try:
-        verify(root, selected, partial=False)
+        verify(root, selected, partial=False, proof=Proof.CONTENT)
     except ValueError:
         code = RecoveryAction.RUNTIME_DAMAGED if kind == "RUNTIME" else RecoveryAction.BASE_DAMAGED
         raise install.StageRejected(
@@ -398,7 +409,7 @@ def deferred_reuse(
     witness = journal.Identity.observe(root)
     selected = repairable(root, kind, archive_sha, source=source)
     try:
-        verify(root, selected, partial=False)
+        verify(root, selected, partial=False, proof=Proof.CONTENT)
     except ValueError:
         if journal.Identity.observe(root) != witness:
             raise ValueError("immutable root changed during admission") from None
@@ -940,7 +951,12 @@ def metadata(root: Path, selected: Evidence) -> dict[str, bytes]:
 
 
 def verify(
-    root: Path, selected: Evidence, *, partial: bool, destination: Path | None = None
+    root: Path,
+    selected: Evidence,
+    *,
+    partial: bool,
+    proof: Proof,
+    destination: Path | None = None,
 ) -> None:
     physical(root)
     if stat.S_IMODE(root.stat().st_mode) != 0o700:
@@ -970,7 +986,7 @@ def verify(
             or path.is_symlink()
             or not path.is_file()
             or path.stat().st_size != item.bytes
-            or release.file_digest(path) != item.sha256
+            or (proof is Proof.CONTENT and release.file_digest(path) != item.sha256)
             or stat.S_IMODE(path.stat().st_mode) != (0o555 if item.executable else 0o444)
         ):
             raise ValueError("immutable file changed")
@@ -995,7 +1011,9 @@ def erase(root: Path, selected: Evidence, proof: ImmutableRemoval) -> None:
         return
     if journal.Identity.observe(root) != proof.identity:
         raise ValueError("immutable entry replaced")
-    verify(root, selected, partial=True)
+    # Deletion needs proof of what Kast published here, not of its bytes: removal already
+    # proved this entry's content when it captured the entry's evidence.
+    verify(root, selected, partial=True, proof=Proof.STRUCTURE)
     marker = root / ("manifest.json" if proof.kind == "RUNTIME" else "base-manifest.json")
     paths = sorted(root.rglob("*"), key=lambda path: len(path.parts), reverse=True)
     # Directory permissions may be relaxed for erasure; file modes and bytes never are.
