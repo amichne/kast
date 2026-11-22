@@ -7,7 +7,6 @@ import java.nio.file.Path
 import kotlinx.serialization.encodeToString
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
-import org.junit.jupiter.api.Assertions.assertInstanceOf
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
@@ -27,18 +26,14 @@ class CompletedInstallationResumeTest {
                 processes = closedHostProcesses(),
                 observe = {},
             )
-        val admitted =
-            assertInstanceOf(
-                LifecycleAdmission.Admitted::class.java,
-                InstallationLifecycle.admit(fixture.root, fixture.home, emptyMap(), execution),
-            )
-        assertEquals(Refinement.Refined(Unit), admitted.lifecycle.fenceManagedProduct())
+        val lifecycle = fixture.admitLifecycle(execution)
+        assertEquals(Refinement.Refined(Unit), lifecycle.fenceManagedProduct())
         val fence = fixture.root.resolve(SHUTDOWN_FENCE)
         val bytes = Files.readString(fence)
         Files.move(fence, fixture.root.resolve("previous-fence"))
         Files.writeString(fence, bytes)
 
-        assertEquals(LifecycleEffect.Rejected(LifecycleFailure.FENCE_REJECTED), admitted.lifecycle.resume())
+        assertEquals(LifecycleEffect.Rejected(LifecycleFailure.FENCE_REJECTED), lifecycle.resume())
         assertTrue(remaining.isEmpty(), "Unconsumed child executions")
         assertEquals(bytes, Files.readString(fence))
     }
@@ -65,13 +60,9 @@ class CompletedInstallationResumeTest {
                 processes = closedHostProcesses(),
                 observe = {},
             )
-        val admitted =
-            assertInstanceOf(
-                LifecycleAdmission.Admitted::class.java,
-                InstallationLifecycle.admit(fixture.root, fixture.home, emptyMap(), execution),
-            )
+        val lifecycle = fixture.admitLifecycle(execution)
 
-        assertEquals(LifecycleEffect.Completed, admitted.lifecycle.resume())
+        assertEquals(LifecycleEffect.Completed, lifecycle.resume())
         assertTrue(remaining.isEmpty(), "Unconsumed child executions")
         assertFalse(Files.exists(fence))
     }

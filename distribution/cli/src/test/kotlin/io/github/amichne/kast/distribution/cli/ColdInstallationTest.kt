@@ -6,7 +6,6 @@ import java.nio.file.Path
 import kotlinx.serialization.encodeToString
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
-import org.junit.jupiter.api.Assertions.assertInstanceOf
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
 
@@ -20,26 +19,20 @@ internal class ColdInstallationTest {
             managementJson.encodeToString(InstallationShutdownRequest(fixture.installation.toString())),
         )
         val effects = mutableListOf<String>()
-        val admitted =
-            assertInstanceOf(
-                LifecycleAdmission.Admitted::class.java,
-                InstallationLifecycle.admit(
-                    fixture.root,
-                    fixture.home,
-                    emptyMap(),
-                    LifecycleExecution(
-                        child =
-                            LifecycleChildExecutor { command, _, _ ->
-                                effects += command.last()
-                                LifecycleChildObservation.Exited(0)
-                            },
-                        processes = closedHostProcesses(),
-                        observe = {},
-                    ),
-                ),
+        val lifecycle =
+            fixture.admitLifecycle(
+                LifecycleExecution(
+                    child =
+                        LifecycleChildExecutor { command, _, _ ->
+                            effects += command.last()
+                            LifecycleChildObservation.Exited(0)
+                        },
+                    processes = closedHostProcesses(),
+                    observe = {},
+                )
             )
 
-        assertEquals(LifecycleEffect.Completed, admitted.lifecycle.resume())
+        assertEquals(LifecycleEffect.Completed, lifecycle.resume())
         assertEquals(emptyList<String>(), effects)
         assertFalse(Files.exists(fence))
     }

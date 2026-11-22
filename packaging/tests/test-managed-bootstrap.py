@@ -39,7 +39,7 @@ def script(path: Path, source: str) -> None:
 class BootstrapTest(unittest.TestCase):
     def test_private_source_paths_do_not_change_delivered_member_names(self) -> None:
         files = dict(generator.support_files())
-        repository = files["install.sh"].parent
+        repository = generator.REPOSITORY
         expected = {
             "bootstrap_entry.py": "packaging/internal/bootstrap/bootstrap_entry.py",
             "private_interpreter.py": "packaging/internal/bootstrap/private_interpreter.py",
@@ -80,13 +80,13 @@ class BootstrapTest(unittest.TestCase):
             ),
             "managed-install-v1": "packaging/managed-install-v1",
             "install-completion-v1": "packaging/install-completion-v1",
-            "install.sh": "install.sh",
         }
         self.assertEqual(
             {name: repository / relative for name, relative in expected.items()}, files
         )
-        with self.assertRaises(ValueError):
-            _ = generator.source_file("unknown.py")
+        for unknown in ("unknown.py", "install.sh"):
+            with self.subTest(unknown=unknown), self.assertRaises(ValueError):
+                _ = generator.source_file(unknown)
 
     def test_retained_support_has_one_exact_inventory(self) -> None:
         expected = {
@@ -110,7 +110,6 @@ class BootstrapTest(unittest.TestCase):
             "managed_headless.py",
             "runtime_archive.py",
             "runtime_base.py",
-            "install.sh",
             "install-candidate.sh",
             "managed_installation.py.lock",
             "managed-install-v1",

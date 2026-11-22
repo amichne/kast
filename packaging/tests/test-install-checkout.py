@@ -32,13 +32,13 @@ class InstallerRetirementTest(unittest.TestCase):
             with self.subTest(name=name):
                 self.assertFalse(os.path.lexists(ROOT / "packaging" / name))
 
-    def test_installed_support_uses_the_root_bootstrap(self) -> None:
+    def test_installed_support_carries_no_bootstrap_copy(self) -> None:
         files = dict(bootstrap.support_files())
-        self.assertEqual(ROOT / "install.sh", files["install.sh"])
         self.assertFalse(
-            {"install-legacy.sh", "install-local.sh", "install-checkout.sh"} & files.keys()
+            {"install.sh", "install-legacy.sh", "install-local.sh", "install-checkout.sh"}
+            & files.keys()
         )
-        self.assertTrue(files["install.sh"].is_file())
+        self.assertTrue(files["install-candidate.sh"].is_file())
 
 
 class ControlDistributionLimitTest(unittest.TestCase):

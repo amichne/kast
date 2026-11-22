@@ -17,6 +17,22 @@
       "device": 1,
       "inode": 3,
       "owner": 501
+    },
+    "product": {
+      "releaseTag": "v1.2.3",
+      "publicVersion": "1.2.3",
+      "version": "1.2.3",
+      "sourceRevision": "0123456789abcdef0123456789abcdef01234567",
+      "sourceTree": "89abcdef0123456789abcdef0123456789abcdef",
+      "buildRecordSha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "target": "macos-aarch64",
+      "bundleSha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+      "qualificationSha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+      "runtimeRoot": "/home/user/.local/share/kast-runtimes/runtime",
+      "runtimeArchiveSha256": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+      "runtimeManifestSha256": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+      "policy": "TrackStable",
+      "schemaVersion": 1
     }
   },
   {
@@ -37,6 +53,22 @@
       "device": 1,
       "inode": 3,
       "owner": 501
+    },
+    "product": {
+      "releaseTag": "v1.2.3",
+      "publicVersion": "1.2.3",
+      "version": "1.2.3",
+      "sourceRevision": "0123456789abcdef0123456789abcdef01234567",
+      "sourceTree": "89abcdef0123456789abcdef0123456789abcdef",
+      "buildRecordSha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "target": "macos-aarch64",
+      "bundleSha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+      "qualificationSha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+      "runtimeRoot": "/home/user/.local/share/kast-runtimes/runtime",
+      "runtimeArchiveSha256": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+      "runtimeManifestSha256": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+      "policy": "TrackStable",
+      "schemaVersion": 1
     }
   },
   {
@@ -57,6 +89,22 @@
       "device": 1,
       "inode": 3,
       "owner": 501
+    },
+    "product": {
+      "releaseTag": "v1.2.3",
+      "publicVersion": "1.2.3",
+      "version": "1.2.3",
+      "sourceRevision": "0123456789abcdef0123456789abcdef01234567",
+      "sourceTree": "89abcdef0123456789abcdef0123456789abcdef",
+      "buildRecordSha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "target": "macos-aarch64",
+      "bundleSha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+      "qualificationSha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+      "runtimeRoot": "/home/user/.local/share/kast-runtimes/runtime",
+      "runtimeArchiveSha256": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+      "runtimeManifestSha256": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+      "policy": "TrackStable",
+      "schemaVersion": 1
     }
   }
 ]
