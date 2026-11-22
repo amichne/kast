@@ -31,7 +31,7 @@ internal class KastRootCommand : KastCommand("kast") {
         "Query the existing IDEA index; inspect and change a workspace through its Kast plugin."
 
     override fun helpEpilog(context: Context): String =
-        "Semantic results are one JSON document on stdout. Diagnostics are one JSON document on stderr. Bootstrap commands: kast config show|explain|validate|schema; kast installation inspect|recover-read-only|reset|remove. Use kast config --help or kast installation --help for options. The release bootstrap runs kast installation install; install.sh --force resets and reinstalls the complete suite."
+        "Semantic results are one JSON document on stdout. Diagnostics are one JSON document on stderr. Configuration commands: kast config show|explain|validate|schema; use kast config --help for options. install.sh installs one complete product selected by --channel stable|preview, --version X.Y.Z, --commit SHA or --local-artifact DIRECTORY. Afterwards, kast upgrade updates it, kast upgrade --repair restores the installed product, and kast uninstall removes it."
 
     override fun resolveAction(): CliNodeResolution =
         if (currentContext.invokedSubcommand == null) {
