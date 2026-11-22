@@ -32,6 +32,7 @@ import managed_product_installation as activation
 import managed_release as product
 from composed_host_probe import HostIdentity, live_host
 from composition_platform import HostPlatform
+from harness_launchd import retiring_semantic_jobs
 from private_interpreter import PrivateInterpreter
 from product_lifecycle_probe import INVOCATION_FILE, LocalSource, Probe
 
@@ -336,6 +337,12 @@ def execute(args: argparse.Namespace) -> LocalReport:
     )
     args.evidence.mkdir(parents=True, exist_ok=False)
     work = Path(tempfile.mkdtemp(prefix="kast-local-installed-")).resolve()
+    # The overridden HOME still registers coordinators in the user's launchd domain.
+    with retiring_semantic_jobs(work):
+        return run_trials(args, work)
+
+
+def run_trials(args: argparse.Namespace, work: Path) -> LocalReport:
     _ = (work / "LOCAL_ACCEPTANCE_V1").write_bytes(b"local-only\n")
     _ = (args.evidence / "disposable-root.txt").write_text(str(work) + "\n")
     record = prepare_inputs(args.bundle, args.runtime, args.qualification, work)

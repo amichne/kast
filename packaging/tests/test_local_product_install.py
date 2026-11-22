@@ -10,6 +10,7 @@ from pathlib import Path
 import pytest
 
 import local_product_install as local
+from harness_launchd import Invocation
 from managed_release import VERSION
 
 INHERITED = {
@@ -191,7 +192,17 @@ def test_removal_stdout_carries_only_its_own_receipt(
     empty_path.mkdir()
     monkeypatch.setenv("PATH", str(empty_path))
 
-    assert local.main(["remove", "--root", str(root)]) == 0
+    # The launchd domain holds no semantic job before or after teardown.
+    observations: list[tuple[str, ...]] = []
+
+    def launchctl(arguments: tuple[str, ...]) -> Invocation:
+        observations.append(arguments)
+        if arguments != ("list",) or len(observations) > 2:
+            raise AssertionError(f"unexpected launchctl {arguments}")
+        return Invocation(0, "PID\tStatus\tLabel\n")
+
+    assert local.main(["remove", "--root", str(root)], launchctl) == 0
+    assert observations == [("list",), ("list",)]
 
     captured = capfd.readouterr()
     assert [json.loads(line) for line in captured.out.splitlines()] == [
