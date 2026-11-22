@@ -24,6 +24,8 @@ sources:
     resource: repo://experiments/host-observation/mcp_replay.py
   - id: openwiki-source-10bd98a55172871e1d97ee95
     resource: repo://experiments/host-observation/promptfoo/README.md
+  - id: openwiki-source-9947fbfd711e87d328509a2c
+    resource: repo://packaging/internal/verification/harness_launchd.py
   - id: openwiki-source-afb4001831005bbe57e5aab3
     resource: repo://packaging/internal/verification/local_product_probe.py
   - id: openwiki-source-6904899612d0ede016a5965a
@@ -38,10 +40,10 @@ sources:
     resource: repo://relation/intellij/NATIVE_FIXTURES.md
   - id: openwiki-source-a1bf1d8cd4e32016c6593087
     resource: repo://runtime/hosted/NATIVE_FIXTURES.md
-generated: { by: "codex", at: "2026-11-21T22:16:17.145Z" }
+generated: { by: "codex", at: "2026-11-22T20:53:36.158Z" }
 verified:
   - by: openwiki/0.9.0
-    at: 2026-11-21T22:16:17.145Z
+    at: 2026-11-22T20:53:36.158Z
 ---
 
 # Tests and native qualification
@@ -87,6 +89,7 @@ Its MCP replay, `mcp_replay.py`, admits each MCP wire reply and records it as a 
 Campaign results measure agent outcomes; they do not qualify a product release.
 
 The portable packaging runner enumerates the checked-in offline Python suites under owned state.
+Suite path arguments select only those suites from that inventory; a path outside it is rejected.
 Its container form adds a read-only checkout and disabled network access.
 The runner requires one nonempty test summary for each suite.
 It scans summary lines throughout the log so buffered output cannot hide the test count.
@@ -110,6 +113,10 @@ The last trial damages an owned runtime file under a live Host.
 Repair must preserve the damaged bytes through actual native retirement, restore the original digest, and start a fresh Host.
 Protected workspace, profile, and external Gradle files must survive the lifecycle.
 Final uninstall must leave neither managed state nor a live Host.
+
+An overridden HOME still registers semantic coordinators in the user's launchd domain.
+The local probe and the installed-product lifecycle probe retire every semantic coordinator job under their disposable root, also after a failure.
+`harness_launchd.py` lists, and with `--retire` removes, jobs that leaked earlier.
 
 Only release acquisition uses a local schema fixture; the other target has no payload and its CI producer identity is not real evidence.
 The report records `LOCAL_INSTALLED_ACCEPTANCE` and `releaseQualification=NOT_ESTABLISHED`.

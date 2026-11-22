@@ -121,6 +121,12 @@ more than 1000 distinct lexical match exemplars for one owner with the finite
 keep that reason and its `ADJUST_BUDGET_OR_SCOPE` recovery action; they do not
 turn it into an unknown or internal failure.
 
+A relation hop, walk, or `TRACE` whose first relation-bearing stage received no
+input symbol examined no relation. A complete run in that state is rejected with
+the `RELATION_SEED_EMPTY` execution reason and its `CORRECT_REQUEST` recovery
+action, rather than reported as complete absence. A bare selection that matches
+nothing remains a complete, empty result.
+
 `OperationOutcome` is exhaustive:
 
 - `Complete` carries an evidence envelope with no limitation.

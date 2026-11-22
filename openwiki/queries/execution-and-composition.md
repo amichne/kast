@@ -23,24 +23,30 @@ sources:
     resource: repo://query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryRowAdmission.kt
   - id: openwiki-source-8bba742d3ecbc32c906815e6
     resource: repo://query/service/src/main/kotlin/io/github/amichne/kast/query/service/PipelineCheckpoint.kt
+  - id: openwiki-source-b5e71f2c45d6bb077c875f18
+    resource: repo://query/service/src/main/kotlin/io/github/amichne/kast/query/service/PipelineTasks.kt
   - id: openwiki-source-2055be6c2f31ab5f9c9cda31
     resource: repo://query/service/src/main/kotlin/io/github/amichne/kast/query/service/QueryImpactTasks.kt
   - id: openwiki-source-22c063698f200893b9da9c83
     resource: repo://query/service/src/main/kotlin/io/github/amichne/kast/query/service/QueryJoins.kt
   - id: openwiki-source-4b8532fbc1b8ccbdd0176d20
     resource: repo://query/service/src/main/kotlin/io/github/amichne/kast/query/service/QueryJoinStage.kt
+  - id: openwiki-source-5375037d8d30411d737a482d
+    resource: repo://query/service/src/main/kotlin/io/github/amichne/kast/query/service/QueryRelationSeed.kt
   - id: openwiki-source-0968f2c7eeb2df4c3eb5a5c3
     resource: repo://query/service/src/main/kotlin/io/github/amichne/kast/query/service/QueryService.kt
   - id: openwiki-source-884fbecd15a59fc68fc423de
     resource: repo://query/service/src/main/kotlin/io/github/amichne/kast/query/service/QueryTraceTasks.kt
+  - id: openwiki-source-0067c9defd82b5074e02a680
+    resource: repo://query/service/src/test/kotlin/io/github/amichne/kast/query/service/QueryRelationSeedTest.kt
   - id: openwiki-source-7fb52b2012eb836868d8299c
     resource: repo://relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/IntellijReferenceInventoryReuse.kt
   - id: openwiki-source-d681a34840e8a5d442cc3f25
     resource: repo://symbol/intellij/src/main/kotlin/io/github/amichne/kast/symbol/intellij/IntellijExactNameCandidateFiles.kt
-generated: { by: "codex", at: "2026-11-03T05:45:59.282Z" }
+generated: { by: "codex", at: "2026-11-22T20:53:36.158Z" }
 verified:
   - by: openwiki/0.9.0
-    at: 2026-11-21T22:16:17.145Z
+    at: 2026-11-22T20:53:36.158Z
 ---
 
 # Query stages and composition
@@ -67,7 +73,12 @@ The interpreter owns task order, emitted rows, work and byte accounting, qualifi
 It does not keep PSI objects or create a second execution owner.
 
 Failures, omissions, relation observations, and traversal observations travel through explicit tasks.
+Retained evidence re-enters the pipeline in one fixed order beside its rows, whether it comes from a stage result, the plan source, or a join's right input.
 Their output costs remain visible under the same grant.
+
+The interpreter also tracks whether the first relation-bearing stage has received an input symbol.
+That obligation is part of the checkpoint, so it survives resume.
+A run that completes with the obligation unmet rejects with `RELATION_SEED_EMPTY` instead of reporting complete relation absence.
 A result limit cannot discard inconvenient failure evidence and claim complete coverage.
 Deadline, work, byte, and checkpoint limits keep their finite qualifications or rejection.
 

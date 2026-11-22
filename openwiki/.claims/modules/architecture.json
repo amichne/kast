@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:363b1ac9236be72983ad87367d46bfd30af023327f68f2fb2b105f794cc6a162",
+  "pageVersion": "sha256:44a691a632ff6f2c9c0ce0481945539b7189ec4ada1dab0b0981e789cce4fea5",
   "claims": [
     {
       "id": "claim_41de94c8265f45e4a3cd6c25c4c9c2a1",
@@ -22,7 +22,7 @@
         },
         {
           "resource": "repo://runtime/hosted/build.gradle.kts",
-          "version": "repo-file-v1:sha256:b9e11a4ce440b3c30df1f9a0cda1a935263a5b2c67c7214f0495f9dfd7b58dd7"
+          "version": "repo-file-v1:sha256:0efb3b28b04a3819cbf9f959e1a0420ca45fc81dedc30e553cab65d18a90cfaa"
         },
         {
           "resource": "repo://topology/service/build.gradle.kts",
@@ -39,7 +39,7 @@
           "version": "repo-file-v1:sha256:12e27674a2a1f6ef2b813416321419c648d6753e095bd14ddc5398ce456452a8"
         },
         {
-          "resource": "repo://build.gradle.kts#L111-L126",
+          "resource": "repo://build.gradle.kts#L112-L127",
           "version": "repo-lines-v1:sha256:8827cf6868290fe80e2f32c4f122356b30709b377be8fc911be93ec3ffeaa00a:eyJzZWxlY3RlZExpbmVDb3VudCI6MTYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjdjM2Q1YjJhMGY5Y2JkMjk2NTVlMGQ1YjYwMmI1ZjBmZTZhMDhmODQ4NDE0NDA2ZTU2NzBkYTIxYmRkMzE1YTUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImM3NjhiNDM2M2I5MzNiYzlkMzk5NTZkNjE4NjQ4YjQ1MGVmYTBlZThkMGU5MzJhYzU0ODA4MzI4OTFlZDc0Y2EiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjZkYjE2MGE0MzhhMzcyZDg4MDU1YWVmNzIxMWNmYjNkNDU3ZDUxMmUwOWY4MmU4ZDkxODI5M2M4MjBkMzczNTIifQ"
         },
         {
@@ -48,7 +48,7 @@
         },
         {
           "resource": "repo://runtime/hosted/build.gradle.kts",
-          "version": "repo-file-v1:sha256:b9e11a4ce440b3c30df1f9a0cda1a935263a5b2c67c7214f0495f9dfd7b58dd7"
+          "version": "repo-file-v1:sha256:0efb3b28b04a3819cbf9f959e1a0420ca45fc81dedc30e553cab65d18a90cfaa"
         }
       ]
     },
@@ -57,16 +57,12 @@
       "statement": "When semantic fixtures are enabled, root check enforces reviewed resource identity, FIR inventory accounting, and exact successful execution of declared native cases.",
       "evidence": [
         {
-          "resource": "repo://build.gradle.kts#L821-L858",
-          "version": "repo-lines-v1:sha256:d98b03b4641c6a8e451b9d31975a15ced93352d9b77de74d679249862564e437:eyJzZWxlY3RlZExpbmVDb3VudCI6MzgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjdmMGNlMGU2ODgyNTJlNDdkMWMxMDQ2Y2ZkNDQwMmUyYWFkYWEyZTFhMTQ0NjljZjFiYjM1YmFiZGE4ZTE2YjgiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjE0OGY5YmI1NThjY2UyMjU3MGE3YzJiNTczMTYzNTMyYjNhZjRiY2FiOWRkZGJiM2YxMjIyOWJiMjdjMDliMjkiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjZiYWRiZjMyMTcyMTFjOGMxYTYzYWYxZWQyNzU3NmE1MTdiNDBmMTQ1NmE0ZjlkMzRjNTgwZWI3YWNlMDU3YzciLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImM2YzgzZmJhZjkyYjljMmU3Yjg1YTljY2Q1NzUwZThlZjQxMjZmMjc4ZWNmYjJhYTU3MTY3MDU2YmFiZThiMTgifQ"
-        },
-        {
-          "resource": "repo://build.gradle.kts#L854-L891",
-          "version": "repo-lines-v1:sha256:4cb84fde55c21798f2a13b871307945f837c2a5e7364b6c76eaa9408417f96c1:eyJzZWxlY3RlZExpbmVDb3VudCI6MzgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjNjYzAyOWJkYWJiMWEwM2RkNzUyMjQ0MGM4MGU3YTlkMzlmNjhiZTA1OTUzZDA4Y2NjZTA0MjI0OGM0YmQ2YTMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjgwYTU1Y2M1ZGIyODA5NmM3ZmQ4MzYxZmEwNTFmYTRmNGJjMjM2YjI0ZDQ0M2I0NTBkZGU3YWIxOGJhMjkxNjEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImQzMmRlYzFiZDA1NTEyYTEzNDBkZjkyNTI3YWQ0NWQzNWI1NmQ1MjA0ZjU3YmQ3MjA4NDI2M2UzYWQ1OGRkZmMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjkxOTIwNTE1MzMzN2JjMzEwNGE4ZDBiNmMwYWM0NTg1YzliNzcxOTRjZGU5NDk3ZDBlZjgwMDhhNjI4NzNhMTIifQ"
+          "resource": "repo://build.gradle.kts",
+          "version": "repo-file-v1:sha256:7becc191584d7cfc5d62346345959afb8bf403b9d8fc489c6200a9b05f802183"
         },
         {
           "resource": "repo://runtime/hosted/build.gradle.kts",
-          "version": "repo-file-v1:sha256:b9e11a4ce440b3c30df1f9a0cda1a935263a5b2c67c7214f0495f9dfd7b58dd7"
+          "version": "repo-file-v1:sha256:0efb3b28b04a3819cbf9f959e1a0420ca45fc81dedc30e553cab65d18a90cfaa"
         }
       ]
     },
@@ -80,7 +76,7 @@
         },
         {
           "resource": "repo://runtime/hosted/build.gradle.kts",
-          "version": "repo-file-v1:sha256:b9e11a4ce440b3c30df1f9a0cda1a935263a5b2c67c7214f0495f9dfd7b58dd7"
+          "version": "repo-file-v1:sha256:0efb3b28b04a3819cbf9f959e1a0420ca45fc81dedc30e553cab65d18a90cfaa"
         },
         {
           "resource": "repo://topology/service/build.gradle.kts",
@@ -120,7 +116,7 @@
         },
         {
           "resource": "repo://build.gradle.kts",
-          "version": "repo-file-v1:sha256:aaac0674d99471e186c80d15874f2421a620789f28c033e5e2ba8176e9a8b6af"
+          "version": "repo-file-v1:sha256:7becc191584d7cfc5d62346345959afb8bf403b9d8fc489c6200a9b05f802183"
         },
         {
           "resource": "repo://cli/build.gradle.kts",
@@ -137,7 +133,7 @@
       "statement": "The headless bootstrap packages only its bundled descriptor. Implementation classes remain in the existing hosted plugin and no second semantic runtime module is added.",
       "evidence": [
         {
-          "resource": "repo://runtime/hosted/build.gradle.kts#L218-L239",
+          "resource": "repo://runtime/hosted/build.gradle.kts#L219-L240",
           "version": "repo-lines-v1:sha256:be87f4f1c05f9b5d7fc5cbd3b4ffc879d4affd9e302495db86734ca4b8096105:eyJzZWxlY3RlZExpbmVDb3VudCI6MjIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjM2NDQ3YTlkNWU1YTBhOGE4OThiM2NlYTk0ZWRiNTY2ZWY0YzU5NGI4YzlmMTVmNGIxZGFjZWExZjk0ZTE0ZjciLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjU0M2M5NDI1NzA4MjRkZWI2OTQxN2EzNDc4OTg0ZTNjNDRjZDc0NDAyNzM4MDk4Y2Y2ZDE5NTNhZTAzYzIxMTEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImZmYzk1MmNlNDI1NzM4YjNhNDgzMjM0NTI3ZWUyNWIwZjM1YWFiMzFkNDk4ZTQ0NjgyZWU1OGI0ZTZiNDM4ZjkifQ"
         },
         {
@@ -159,7 +155,7 @@
       "statement": "Host packaging uses Gradle resolved project artifacts for its local runtime dependency closure instead of a parallel filename list, while SQLite and serialization remain explicitly selected external libraries.",
       "evidence": [
         {
-          "resource": "repo://runtime/hosted/build.gradle.kts#L143-L181",
+          "resource": "repo://runtime/hosted/build.gradle.kts#L144-L182",
           "version": "repo-lines-v1:sha256:e97a9279cef42e48afcbbd43186bc1a2fc410cf617f77065a5ee74ae7f4eb528:eyJzZWxlY3RlZExpbmVDb3VudCI6MzksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImFkZmE5MWZiOTZmMmJkZGY3OGIxMWMxNWJiOGM0ODMzNWY5OTAxZTQ3YTg3NWE0MDQyZWYyNGIyMjRkYjNmOTAiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjRjY2I5ZDNkMWI1ZDhkY2QzZWFjMDljNjkwOTQ2MTc4NDUwNTY2ZDI1MzhkODYyZjExNzU5MDU0NTAyYWNmYmMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjZiZjMwMzc4MTk1MDI5ODEwODQ0ZjM0ZTA5Y2ZiZjJlNzhjODAyNDljZGE2MjFjMDc0NTU0MWU0YWM4ZTMwYTYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjE2MjliMDA5YzhjNjM0OGIwZTgzMTRiMjkwMDg0YzdlZWI0YTI5ZDQyYmY1YjhkZTEzNDM0M2M0YzY2OWI4NzcifQ"
         }
       ]
@@ -167,6 +163,6 @@
   ],
   "verification": {
     "by": "openwiki/0.9.0",
-    "at": "2026-11-21T22:16:17.145Z"
+    "at": "2026-11-22T20:53:36.158Z"
   }
 }

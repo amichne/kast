@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:13d680dff15ae4cdbcf0574abeaeee032f74f663bacf2fbec006b1956b35c9d7",
+  "pageVersion": "sha256:aba427315b4174f931098e6f8d70a72b947f3787b8437bafa84067dd22340060",
   "claims": [
     {
       "id": "claim_06e2aac3fd894966a82caf7cfced11b7",
@@ -140,7 +140,7 @@
         },
         {
           "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/InstallationLifecycle.kt",
-          "version": "repo-file-v1:sha256:1da4adce07a0f42cb25d16c907c6b3c606c77978d87cd1b889b38e5a2df58932"
+          "version": "repo-file-v1:sha256:aaacaa9da754fd4497712c10ad047867efb6889daed954ccdcefa68327b625c0"
         }
       ]
     },
@@ -185,6 +185,6 @@
   ],
   "verification": {
     "by": "openwiki/0.9.0",
-    "at": "2026-11-21T22:16:17.145Z"
+    "at": "2026-11-22T20:53:36.158Z"
   }
 }

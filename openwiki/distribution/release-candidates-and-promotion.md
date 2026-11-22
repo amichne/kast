@@ -66,10 +66,10 @@ sources:
     resource: repo://packaging/internal/verification/product_lifecycle_probe.py
   - id: openwiki-source-56b11a0b6d3644e3f2024856
     resource: repo://packaging/tests/test_product_acceptance.py
-generated: { by: "codex", at: "2026-11-21T22:51:07.455Z" }
+generated: { by: "codex", at: "2026-11-22T20:53:36.158Z" }
 verified:
   - by: openwiki/0.9.0
-    at: 2026-11-21T22:51:07.455Z
+    at: 2026-11-22T20:53:36.158Z
 ---
 
 # Release candidates and promotion
@@ -80,7 +80,12 @@ The complete-product producer verifies component assembly before it seals each t
 Each schema 2 `COMPONENT_ASSEMBLY` receipt binds source, Control, runtime, and bundle identities without a test-only native binary.
 The producer hashes the supplied shipped Control itself and requires the receipt to match it.
 Published schema 1 `COMPONENT_NATIVE` receipts retain their original admission contract.
-Current CI seals a Mac-only schema 5 record with `product_producer.py seal --macos-only`; that join requires the macOS ARM64 target from the exact producer attempt.
+Current CI seals a Mac-only schema 5 record with `product_producer.py seal --macos-only`; that join requires the macOS ARM64 target from the same producer run.
+A rerun of failed jobs keeps the jobs it does not execute again, with their artifacts and attempt.
+Each product job therefore publishes the attempt that produced its artifact, and consumers download by that attempt.
+Sealing admits qualification from the same run at an earlier or equal attempt, and the join admits an earlier seal.
+The candidate carries its sealed record's attempt.
+Admission observes the run's final attempt, which must succeed, and no producer attempt may follow it.
 Schema 2 and 3 records instead join both macOS ARM64 and Linux x86-64.
 It records source revision, source tree, toolchain inputs, and asset names, sizes, and digests without rebuilding those assets.
 
@@ -120,7 +125,8 @@ Only the reviewed authored site inputs can select documentation-only validation.
 Installer examples, generated schemas, scripts, build configuration, protected paths, and unknown or mixed inputs keep full validation.
 The documentation lane runs Mintlify, the Markdown parser, glossary tests, and glossary projection checks.
 
-Developer promotion needs the outcome record from the exact successful main push or manual CI run and attempt.
+Developer promotion needs the outcome record from the exact successful main push or manual CI run.
+It selects the validation outcome and the candidate from the latest producing attempt at or before the run's final attempt.
 The record and producer must agree on the workflow event.
 Manual CI selects full validation and needs an explicit developer publication dispatch.
 `DOCS_VALIDATED` completes without a candidate, promotion record, product release, or developer pointer update.

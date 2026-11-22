@@ -36,7 +36,12 @@ The interpreter owns task order, emitted rows, work and byte accounting, qualifi
 It does not keep PSI objects or create a second execution owner.
 
 Failures, omissions, relation observations, and traversal observations travel through explicit tasks.
+Retained evidence re-enters the pipeline in one fixed order beside its rows, whether it comes from a stage result, the plan source, or a join's right input.
 Their output costs remain visible under the same grant.
+
+The interpreter also tracks whether the first relation-bearing stage has received an input symbol.
+That obligation is part of the checkpoint, so it survives resume.
+A run that completes with the obligation unmet rejects with `RELATION_SEED_EMPTY` instead of reporting complete relation absence.
 A result limit cannot discard inconvenient failure evidence and claim complete coverage.
 Deadline, work, byte, and checkpoint limits keep their finite qualifications or rejection.
 

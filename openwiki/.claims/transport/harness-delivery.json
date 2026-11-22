@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:bc9e1a485cf41a0e58c6a878d8944643a0f0364acaf52948af97288d219158f3",
+  "pageVersion": "sha256:6da895480d90241863c62b9b7dd249829cdc832fc57b8c3ff3bfd89814b979a9",
   "claims": [
     {
       "id": "claim_62e9689fb94d439cb56fc70a8129fcb6",
@@ -16,7 +16,7 @@
         },
         {
           "resource": "repo://build-logic/src/main/kotlin/support/tasks/verification/VerifyDistributionTasks.kt",
-          "version": "repo-file-v1:sha256:a3cc2cb7ffafb609ff6cb850ac191ce5f4e6ff2397f4e06bc76171a4d82701ff"
+          "version": "repo-file-v1:sha256:216822e59c6c89c44e474ae062ca3ed4878ceacd3900bf38a342c71c0a2d1a1f"
         }
       ]
     },
@@ -105,6 +105,6 @@
   ],
   "verification": {
     "by": "openwiki/0.9.0",
-    "at": "2026-11-21T22:16:17.145Z"
+    "at": "2026-11-22T20:53:36.158Z"
   }
 }

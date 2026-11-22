@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:74f225f8dd88b0e39761077d8935f4b67af4bde407e7fcd47067ccbfaba0ccb9",
+  "pageVersion": "sha256:9cbd056cafe658e322c82e3f3e6082b4755abe33577ecce831d5e2270223d477",
   "claims": [
     {
       "id": "claim_1659f69613e74465ad0aac5e87bc6a8f",
@@ -21,8 +21,8 @@
       "statement": "Control distribution verification rejects the retired share/kast/knowledge payload and all descendants; installed documentation resources are not a current product interface.",
       "evidence": [
         {
-          "resource": "repo://build-logic/src/main/kotlin/support/tasks/verification/VerifyDistributionTasks.kt#L108-L111",
-          "version": "repo-lines-v1:sha256:962c796c27b3643db2cf26d1e845827fd735d599e3cfbd18e409c462c3c84daf:eyJzZWxlY3RlZExpbmVDb3VudCI6NCwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiYWY2NTRiY2U0NGExNDQ0MGMwODk1NWQyODQ4ZjA1Njc3MDczODMwNzNlMDQyMGFiYTc3ZmZhODlkNmJmZTcxZiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiZTZiMDQ0OTE0Njk3MjJlODM2M2E5NGU0MDQ0NTM4ZTAxM2EyYTIxN2UzNmIxZTU2OGJhNjBhY2I3YjRjOGYyZSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiNzI3MTNlMjRjMGI3NzRmOTA3NGMwYjkzZmVlNjJlNzNkNjczMTMxODYxYzliOWMyY2I3NGE4N2VmZGFmNjdkYyIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiNDE5ZDhmOWViNWE5ZmQ4YjJiMzZiMzE0NzE3OTk2MmIzMmQ0NDQ3M2VhNDFmMmQ1OWQzNjBiYjQ2N2Y0YjNhMyJ9"
+          "resource": "repo://build-logic/src/main/kotlin/support/tasks/verification/VerifyDistributionTasks.kt",
+          "version": "repo-file-v1:sha256:216822e59c6c89c44e474ae062ca3ed4878ceacd3900bf38a342c71c0a2d1a1f"
         }
       ]
     },
@@ -77,6 +77,6 @@
   ],
   "verification": {
     "by": "openwiki/0.9.0",
-    "at": "2026-11-21T22:16:17.145Z"
+    "at": "2026-11-22T20:53:36.158Z"
   }
 }

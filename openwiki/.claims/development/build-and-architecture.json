@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:3c321f7e9a4a08083c7bd109fbc72e7f7b9f19da6814b2cecffcf95fdec58724",
+  "pageVersion": "sha256:40612e2420fa24491f81018fb99234d3d3b7ce671eab0be7ae8a102100dfae51",
   "claims": [
     {
       "id": "claim_546361d120424763b6b92ed63548328f",
@@ -36,13 +36,13 @@
       "evidence": [
         {
           "resource": "repo://.github/scripts/ci/validation_scope.py",
-          "version": "repo-file-v1:sha256:aecabd9750c16cfcb0f103db7cf95783424636bd182b3f1ed92fc9f8a07be92e"
+          "version": "repo-file-v1:sha256:403d694a43a3d9d235c3b6925a4f9ae2b16e9b1e0820be812a815e0c7003dd0b"
         }
       ]
     }
   ],
   "verification": {
     "by": "openwiki/0.9.0",
-    "at": "2026-11-21T22:16:17.145Z"
+    "at": "2026-11-22T20:53:36.158Z"
   }
 }

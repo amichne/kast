@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:e2df8823aba42003c6c5e72f8d1bc3111d83ae54f539571575e10fbd5607b9c9",
+  "pageVersion": "sha256:c0019db4123f831797bce91b247c3afaf087f70f2e9d5c7a3e88c9f804dab14f",
   "claims": [
     {
       "id": "claim_f1f223d6ff6c46a1a8c1642d015d3929",
@@ -12,7 +12,7 @@
         },
         {
           "resource": "repo://build.gradle.kts",
-          "version": "repo-file-v1:sha256:aaac0674d99471e186c80d15874f2421a620789f28c033e5e2ba8176e9a8b6af"
+          "version": "repo-file-v1:sha256:7becc191584d7cfc5d62346345959afb8bf403b9d8fc489c6200a9b05f802183"
         }
       ]
     },
@@ -32,7 +32,7 @@
       "evidence": [
         {
           "resource": "repo://AGENTS.md",
-          "version": "repo-file-v1:sha256:ef92c491513b911e84c5b79ef25a0a58cb7b354ce2f0db0fa6d4b4e485f5d54b"
+          "version": "repo-file-v1:sha256:80a01d6c2217dba64a9988623d96457d0f14ed2e235a9650eadc7035de99c7e8"
         }
       ]
     },
@@ -80,7 +80,7 @@
       "evidence": [
         {
           "resource": "repo://docs/internal/tooling/publication.py",
-          "version": "repo-file-v1:sha256:56573ed917fdaaf1bd3e822ce7b2b63930cb189062b46a104f56d5321b6b2dd9"
+          "version": "repo-file-v1:sha256:0d9c9f2a86e71ac0384832633eb2c168f5f5732529e19831026c25dd13fb2aea"
         }
       ]
     },
@@ -112,7 +112,7 @@
       "evidence": [
         {
           "resource": "repo://docs/internal/tooling/publication.py",
-          "version": "repo-file-v1:sha256:56573ed917fdaaf1bd3e822ce7b2b63930cb189062b46a104f56d5321b6b2dd9"
+          "version": "repo-file-v1:sha256:0d9c9f2a86e71ac0384832633eb2c168f5f5732529e19831026c25dd13fb2aea"
         },
         {
           "resource": "repo://docs/internal/tooling/test_publication.py",
@@ -141,6 +141,6 @@
   ],
   "verification": {
     "by": "openwiki/0.9.0",
-    "at": "2026-11-21T22:16:17.145Z"
+    "at": "2026-11-22T20:53:36.158Z"
   }
 }

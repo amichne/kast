@@ -157,10 +157,16 @@ sources:
     resource: repo://query/service/src/main/kotlin/io/github/amichne/kast/query/service/QueryImpactTasks.kt
   - id: openwiki-source-22c063698f200893b9da9c83
     resource: repo://query/service/src/main/kotlin/io/github/amichne/kast/query/service/QueryJoins.kt
-generated: { by: "codex", at: "2026-11-21T22:16:17.145Z" }
+  - id: openwiki-source-5375037d8d30411d737a482d
+    resource: repo://query/service/src/main/kotlin/io/github/amichne/kast/query/service/QueryRelationSeed.kt
+  - id: openwiki-source-0968f2c7eeb2df4c3eb5a5c3
+    resource: repo://query/service/src/main/kotlin/io/github/amichne/kast/query/service/QueryService.kt
+  - id: openwiki-source-0067c9defd82b5074e02a680
+    resource: repo://query/service/src/test/kotlin/io/github/amichne/kast/query/service/QueryRelationSeedTest.kt
+generated: { by: "codex", at: "2026-11-22T20:53:36.158Z" }
 verified:
   - by: openwiki/0.9.0
-    at: 2026-11-21T22:16:17.145Z
+    at: 2026-11-22T20:53:36.158Z
 ---
 
 # Semantic query
@@ -304,6 +310,12 @@ items, so output paging cannot reduce that minimum. Retained-result reads look
 up existing producer checkpoints; they never recreate an evicted or expired
 checkpoint. An unavailable producer checkpoint becomes terminal upstream
 incompleteness while detached output remains readable.
+
+Each checkpoint also carries a relation seed obligation. It records whether the
+first relation-bearing stage of a hop, walk, or `TRACE` has received an input
+symbol. A run that completes while that obligation is still awaiting input
+rejects with `RELATION_SEED_EMPTY`, because no relation absence was examined.
+Impact sources keep their own empty-seed accounting.
 
 Returned native discovery pages are observed after the restartable read action
 produces detached discovery evidence. Qualified pages count as returned pages;

@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:27e36bce253b9c71054b433d33e531783646a977ed2fa28696e971bda4c8d69a",
+  "pageVersion": "sha256:ddfc979145912dcfb53ca8096ef6a4cc4c9dcbfe83da6c9442082e2fa1452d36",
   "claims": [
     {
       "id": "claim_0fe7af4106b045dd82c65489eb808ff3",
@@ -8,11 +8,11 @@
       "evidence": [
         {
           "resource": "repo://.github/scripts/release/product_producer.py",
-          "version": "repo-file-v1:sha256:442435a5160da4e8b62538e34fb5fdbac8a89b7189d883d7901228b45bfb57bf"
+          "version": "repo-file-v1:sha256:7c3c6e5c107028014e4e30ddb7a2c85ddeb010fd55cf1c1c8d19ff00a81e70bf"
         },
         {
           "resource": "repo://.github/workflows/ci.yml",
-          "version": "repo-file-v1:sha256:a2e41be5dec3363779c75bf38061f2bc4aa1cd510c3a92e72681560926de717f"
+          "version": "repo-file-v1:sha256:61f87cd8d46269a7290cb7a8564544b081a691d9a4fe7b34a1dc88f6ed0ae0b2"
         },
         {
           "resource": "repo://packaging/internal/composition/composed_release.py",
@@ -26,11 +26,11 @@
       "evidence": [
         {
           "resource": "repo://.github/scripts/release/build_candidate.py",
-          "version": "repo-file-v1:sha256:be13f11eafcd0536e600c08c019e47653f559d28136b711821e21a8a99bd330e"
+          "version": "repo-file-v1:sha256:dcbcf1068cae571259bf0fc879126ce3c6b01cd7c34b8ca41559a56f2219eec6"
         },
         {
           "resource": "repo://.github/workflows/ci.yml",
-          "version": "repo-file-v1:sha256:a2e41be5dec3363779c75bf38061f2bc4aa1cd510c3a92e72681560926de717f"
+          "version": "repo-file-v1:sha256:61f87cd8d46269a7290cb7a8564544b081a691d9a4fe7b34a1dc88f6ed0ae0b2"
         },
         {
           "resource": "repo://.github/workflows/developer-release.yml",
@@ -72,7 +72,7 @@
       "evidence": [
         {
           "resource": "repo://packaging/internal/installation/managed_release.py",
-          "version": "repo-file-v1:sha256:471e28f5edf60d29744193ab64442f586628070bd2b01f9290d307bba12c03c7"
+          "version": "repo-file-v1:sha256:f77c414fd5fb7eea33876f3163e62a7d5a3e4ad3df01a96fecccdb50bf7e37bb"
         },
         {
           "resource": "repo://packaging/internal/product/managed_product.py",
@@ -86,23 +86,23 @@
       "evidence": [
         {
           "resource": "repo://.github/scripts/ci/test_validation_outcome.py",
-          "version": "repo-file-v1:sha256:142db616b65b423f35d973c6271238376be876ce9f1aca21912168142780b7bb"
+          "version": "repo-file-v1:sha256:6e359f38603624ce781543ff225d1a042647992e502e1adcf0bf6ed5b282485e"
         },
         {
           "resource": "repo://.github/scripts/ci/validation_outcome.py",
-          "version": "repo-file-v1:sha256:24a30aefa486182b37f74dd54a2e2345536e283163e046ac60bdc2fa3804760b"
+          "version": "repo-file-v1:sha256:fef3f914425b0af9028bbac8bc43d32cee10472da72a947ab78d7989e7f59400"
         },
         {
           "resource": "repo://.github/scripts/ci/validation_scope.py",
-          "version": "repo-file-v1:sha256:aecabd9750c16cfcb0f103db7cf95783424636bd182b3f1ed92fc9f8a07be92e"
+          "version": "repo-file-v1:sha256:403d694a43a3d9d235c3b6925a4f9ae2b16e9b1e0820be812a815e0c7003dd0b"
         },
         {
           "resource": "repo://.github/scripts/release/build_candidate.py",
-          "version": "repo-file-v1:sha256:be13f11eafcd0536e600c08c019e47653f559d28136b711821e21a8a99bd330e"
+          "version": "repo-file-v1:sha256:dcbcf1068cae571259bf0fc879126ce3c6b01cd7c34b8ca41559a56f2219eec6"
         },
         {
           "resource": "repo://.github/scripts/release/test_build_candidate.py",
-          "version": "repo-file-v1:sha256:9368ec6002250f9ce0e37a4e48baf72d4b6a6f4c80b5762eb793ecc43bbb0ff2"
+          "version": "repo-file-v1:sha256:fb1f66193b3e17a03b5eba784f12653c6736cfbd3ab03e6c72cb8cdd421d5d3a"
         },
         {
           "resource": "repo://.github/workflows/developer-release.yml",
@@ -116,11 +116,11 @@
       "evidence": [
         {
           "resource": "repo://.github/scripts/release/product_candidate.py",
-          "version": "repo-file-v1:sha256:188b5b71cfd5d066ee40a5e1660739b98edaaea483bc411c8b2ececd9091bc0a"
+          "version": "repo-file-v1:sha256:12b52a3b6fbee1c5037665f3f5de0a667b6facc3e1265667c4f323f2fbee478d"
         },
         {
           "resource": "repo://packaging/internal/verification/product_lifecycle_probe.py",
-          "version": "repo-file-v1:sha256:ef2f0407a4e29c52f582836c9492121dcfc407d4e222e5679e1ef74a8a33262b"
+          "version": "repo-file-v1:sha256:457353ed8ae88ef7683d354ba1bc5f539bf7507548906b09fb548ae151d3a2d5"
         }
       ]
     },
@@ -134,11 +134,11 @@
         },
         {
           "resource": "repo://packaging/internal/verification/product_lifecycle_probe.py",
-          "version": "repo-file-v1:sha256:ef2f0407a4e29c52f582836c9492121dcfc407d4e222e5679e1ef74a8a33262b"
+          "version": "repo-file-v1:sha256:457353ed8ae88ef7683d354ba1bc5f539bf7507548906b09fb548ae151d3a2d5"
         },
         {
           "resource": "repo://packaging/tests/test_product_acceptance.py",
-          "version": "repo-file-v1:sha256:3b1ba9238e8e37fcac834c564f9413863d3a355b4436151a39fd3ba1c77cd951"
+          "version": "repo-file-v1:sha256:5c3760facdf2213dc366fd3b731c1af83983e0de07c59ad5eb7e9d83306bd994"
         }
       ]
     },
@@ -148,11 +148,11 @@
       "evidence": [
         {
           "resource": "repo://.github/scripts/ci/test_validation_scope.py",
-          "version": "repo-file-v1:sha256:4bb8bc7dbc9741fcf0cb5ba4aa8ca4be4046f13851f2b6b039624dd1cca9f9bd"
+          "version": "repo-file-v1:sha256:d3e01ed5dcb651bc1bfd2342d1d102d3191b807c74debee078bef474382d2582"
         },
         {
           "resource": "repo://.github/workflows/ci.yml",
-          "version": "repo-file-v1:sha256:a2e41be5dec3363779c75bf38061f2bc4aa1cd510c3a92e72681560926de717f"
+          "version": "repo-file-v1:sha256:61f87cd8d46269a7290cb7a8564544b081a691d9a4fe7b34a1dc88f6ed0ae0b2"
         }
       ]
     },
@@ -162,15 +162,15 @@
       "evidence": [
         {
           "resource": "repo://.github/scripts/ci/release_handoff.py",
-          "version": "repo-file-v1:sha256:9583f5c710c07bdbdb2eda3d2721f8da266bd1de07d99ff872e953a7b758b58c"
+          "version": "repo-file-v1:sha256:aab08715413a8b4acf81d3aa6317426dc50c256dc965f69c058cdcf6aa8fdea8"
         },
         {
           "resource": "repo://.github/workflows/ci.yml",
-          "version": "repo-file-v1:sha256:a2e41be5dec3363779c75bf38061f2bc4aa1cd510c3a92e72681560926de717f"
+          "version": "repo-file-v1:sha256:61f87cd8d46269a7290cb7a8564544b081a691d9a4fe7b34a1dc88f6ed0ae0b2"
         },
         {
           "resource": "repo://.github/workflows/composed-linux.yml",
-          "version": "repo-file-v1:sha256:f035ece1026bc4c621be542ca8e53119e778ca9fb2ca3c93fa8d1e5b4d0020ac"
+          "version": "repo-file-v1:sha256:8891bc399ebf1a7a62cbd05fe9bbc521e74b0f23a77c989b47bd5858b7de6580"
         }
       ]
     },
@@ -180,21 +180,47 @@
       "evidence": [
         {
           "resource": "repo://.github/scripts/release/product_producer.py",
-          "version": "repo-file-v1:sha256:442435a5160da4e8b62538e34fb5fdbac8a89b7189d883d7901228b45bfb57bf"
+          "version": "repo-file-v1:sha256:7c3c6e5c107028014e4e30ddb7a2c85ddeb010fd55cf1c1c8d19ff00a81e70bf"
         },
         {
           "resource": "repo://packaging/internal/installation/managed_release.py",
-          "version": "repo-file-v1:sha256:471e28f5edf60d29744193ab64442f586628070bd2b01f9290d307bba12c03c7"
+          "version": "repo-file-v1:sha256:f77c414fd5fb7eea33876f3163e62a7d5a3e4ad3df01a96fecccdb50bf7e37bb"
         },
         {
           "resource": "repo://packaging/internal/product/local_product_install.py",
-          "version": "repo-file-v1:sha256:c9073793bace5ed86bbf711c558c6969c8e4c11b0358529878e9e8c3b217ec97"
+          "version": "repo-file-v1:sha256:d112830f722b9e4f78e4eb07882475e55b63dccfeca5fb70e9eea35a0d286308"
+        }
+      ]
+    },
+    {
+      "id": "claim_55992b032a68405fb76118466ffa7ef4",
+      "statement": "After a rerun of failed jobs, sealing admits qualification from the same run at an earlier or equal attempt, the join admits an earlier seal, and promotion selects the validation outcome and candidate from the latest producing attempt at or before the run's final attempt, which must succeed.",
+      "evidence": [
+        {
+          "resource": "repo://.github/scripts/ci/validation_outcome.py",
+          "version": "repo-file-v1:sha256:fef3f914425b0af9028bbac8bc43d32cee10472da72a947ab78d7989e7f59400"
+        },
+        {
+          "resource": "repo://.github/scripts/release/build_candidate.py",
+          "version": "repo-file-v1:sha256:dcbcf1068cae571259bf0fc879126ce3c6b01cd7c34b8ca41559a56f2219eec6"
+        },
+        {
+          "resource": "repo://.github/scripts/release/product_candidate.py",
+          "version": "repo-file-v1:sha256:12b52a3b6fbee1c5037665f3f5de0a667b6facc3e1265667c4f323f2fbee478d"
+        },
+        {
+          "resource": "repo://.github/scripts/release/product_producer.py",
+          "version": "repo-file-v1:sha256:7c3c6e5c107028014e4e30ddb7a2c85ddeb010fd55cf1c1c8d19ff00a81e70bf"
+        },
+        {
+          "resource": "repo://.github/workflows/ci.yml",
+          "version": "repo-file-v1:sha256:61f87cd8d46269a7290cb7a8564544b081a691d9a4fe7b34a1dc88f6ed0ae0b2"
         }
       ]
     }
   ],
   "verification": {
     "by": "openwiki/0.9.0",
-    "at": "2026-11-21T22:51:07.455Z"
+    "at": "2026-11-22T20:53:36.158Z"
   }
 }

@@ -1,35 +1,7 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:fa0a7351b3356f618893e65e580a698f0fea54f3cafcd262f484862d5681eca1",
+  "pageVersion": "sha256:638319ea6a328daa584ceb747acbc172587fee46bc8c0284110c9cc5c3df7062",
   "claims": [
-    {
-      "id": "claim_2c9e43d8ffac41339c5ff59e614427da",
-      "statement": "Control installation and Host plugin installation have independent effect owners, receipts, and compatibility evidence.",
-      "evidence": [
-        {
-          "resource": "repo://packaging/internal/installation/host-installation.py",
-          "version": "repo-file-v1:sha256:d9a8a14a4595fb5989b2bd278fe5a61a13d1082bf639253e27c14b4d7843e2a0"
-        },
-        {
-          "resource": "repo://packaging/internal/installation/managed_installation.py",
-          "version": "repo-file-v1:sha256:17c4c50b8c594a8f8d1079829b2a5ceec26b12e84b46626d9b40ddca02a523d2"
-        },
-        {
-          "resource": "repo://packaging/internal/product/managed_product_installation.py",
-          "version": "repo-file-v1:sha256:fc8fada835ab693aacf4d03da320dbc510c89ae94b298bb5771529d42fac508e"
-        }
-      ]
-    },
-    {
-      "id": "claim_7a3df1d6acce4a28ab3756a890afffc5",
-      "statement": "Host active-receipt admission qualifies device changes with stable root inode and owner evidence and distinguishes exact reinstall inventory from protected removal of remaining entries.",
-      "evidence": [
-        {
-          "resource": "repo://packaging/internal/installation/host-installation.py",
-          "version": "repo-file-v1:sha256:d9a8a14a4595fb5989b2bd278fe5a61a13d1082bf639253e27c14b4d7843e2a0"
-        }
-      ]
-    },
     {
       "id": "claim_1d06d658c78b456b960fba22b9053804",
       "statement": "Managed destructive-recovery trees need exact physical installation scope before deletion.",
@@ -41,20 +13,6 @@
         {
           "resource": "repo://distribution/managed/src/main/kotlin/io/github/amichne/kast/distribution/managed/ManagedInstallationOwnedTree.kt#L17-L17",
           "version": "repo-lines-v1:sha256:061dc306856bd8c34cc998253497184426e84a6f5faa216ebe3c4b47586be696:eyJzZWxlY3RlZExpbmVDb3VudCI6MSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiMDYxZGMzMDY4NTZiZDhjMzRjYzk5ODI1MzQ5NzE4NDQyNmU4NGE2ZjVmYWEyMTZlYmUzYzRiNDc1ODZiZTY5NiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiMDYxZGMzMDY4NTZiZDhjMzRjYzk5ODI1MzQ5NzE4NDQyNmU4NGE2ZjVmYWEyMTZlYmUzYzRiNDc1ODZiZTY5NiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZjEyZTIwYjdhZDZhMDYyOGFlNmE5M2ViNTNkZDVjMmNkMGZhZWMxZTk4YzljMDYxZmRjNzFmZGRhYzQ3MDA0OCIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiNjljNjA5YzRjNTIxYzljODVhNTgxNWE3MTQyOTQ0YTlmMzRkOTA0YjYyZjBkZDNhMWMxZTNjZjBkYzgyMGQwMyJ9"
-        }
-      ]
-    },
-    {
-      "id": "claim_ebf354104beb4909bb0ebaebdfe55831",
-      "statement": "Host preflight examines the selected target. Ordinary installation keeps legacy backups and unselected recovery entries. Removal keeps legacy backups and rejects unknown recovery entries. Force installation can remove known recovery entries without traversing symbolic links.",
-      "evidence": [
-        {
-          "resource": "repo://packaging/internal/installation/host-installation.py",
-          "version": "repo-file-v1:sha256:d9a8a14a4595fb5989b2bd278fe5a61a13d1082bf639253e27c14b4d7843e2a0"
-        },
-        {
-          "resource": "repo://packaging/tests/test-host-installation.py",
-          "version": "repo-file-v1:sha256:61056ebbe4912726497ee5c00421fcf28284ea77364b17f3a229e44c40356282"
         }
       ]
     },
@@ -73,52 +31,16 @@
       ]
     },
     {
-      "id": "claim_41fc68777f5c43989b02b4e0d1839807",
-      "statement": "The retained legacy composition coordinator captures file and Host preimages in the replacement journal, fences calls before settlement, and commits Control and Host under admitted locks. A stopped Host stays stopped; recorded recovery retains unresolved fences. New complete products use the separate product branch of that journal.",
-      "evidence": [
-        {
-          "resource": "repo://packaging/internal/installation/host-installation.py",
-          "version": "repo-file-v1:sha256:d9a8a14a4595fb5989b2bd278fe5a61a13d1082bf639253e27c14b4d7843e2a0"
-        },
-        {
-          "resource": "repo://packaging/internal/installation/managed_installation.py",
-          "version": "repo-file-v1:sha256:17c4c50b8c594a8f8d1079829b2a5ceec26b12e84b46626d9b40ddca02a523d2"
-        },
-        {
-          "resource": "repo://packaging/internal/installation/managed_update_journal.py",
-          "version": "repo-file-v1:sha256:aa1c8b22137c1199ea082ac655c1d73260bc4b845a9b074df0f2a9e0615177f2"
-        }
-      ]
-    },
-    {
-      "id": "claim_7f8b703b12a04252b705fcd372bb6440",
-      "statement": "Terminal Host cleanup admits selected or restored Host files and active receipts before moving complete admitted garbage outside the pending journal with a native no-replace operation. Partial recursive deletion preserves terminal retry and reserved-lock release. Foreign destinations remain protected. Cleanup failure emits a typed finite diagnostic.",
-      "evidence": [
-        {
-          "resource": "repo://packaging/internal/installation/host-installation.py",
-          "version": "repo-file-v1:sha256:d9a8a14a4595fb5989b2bd278fe5a61a13d1082bf639253e27c14b4d7843e2a0"
-        },
-        {
-          "resource": "repo://packaging/internal/installation/host_directory_exchange.py",
-          "version": "repo-file-v1:sha256:7eeb5e9549e60f4e201ecd119655caa9c2a65dd7f11ddcc8380f9acf2a677d03"
-        },
-        {
-          "resource": "repo://packaging/tests/test-host-installation.py",
-          "version": "repo-file-v1:sha256:61056ebbe4912726497ee5c00421fcf28284ea77364b17f3a229e44c40356282"
-        }
-      ]
-    },
-    {
       "id": "claim_e3338f0a02284cc1b32f0b8ffa297bd8",
-      "statement": "The Control payload has one native executable at share/kast/libexec/kast-management that must equal its Go producer. The jvm-control-v1 layout runs one JVM entry from JARs under lib; verification rejects class files, JARs outside lib, a second native executable, retired task payloads and share/kast/knowledge with its descendants. Release admission also accepts the native-control-v1 and historical layouts.",
+      "statement": "The Control payload has one native executable at share/kast/libexec/kast-management that must equal its Go producer. The jvm-control-v1 layout runs one JVM entry from JARs under lib; verification rejects class files, JARs outside lib, a second native executable, retired task payloads, share/kast/install.sh and share/kast/knowledge with its descendants. Release admission also accepts the native-control-v1 and historical layouts.",
       "evidence": [
         {
           "resource": "repo://build-logic/src/main/kotlin/support/tasks/verification/VerifyDistributionTasks.kt",
-          "version": "repo-file-v1:sha256:a3cc2cb7ffafb609ff6cb850ac191ce5f4e6ff2397f4e06bc76171a4d82701ff"
+          "version": "repo-file-v1:sha256:216822e59c6c89c44e474ae062ca3ed4878ceacd3900bf38a342c71c0a2d1a1f"
         },
         {
           "resource": "repo://packaging/internal/installation/managed_release.py",
-          "version": "repo-file-v1:sha256:471e28f5edf60d29744193ab64442f586628070bd2b01f9290d307bba12c03c7"
+          "version": "repo-file-v1:sha256:f77c414fd5fb7eea33876f3163e62a7d5a3e4ad3df01a96fecccdb50bf7e37bb"
         }
       ]
     },
@@ -128,25 +50,11 @@
       "evidence": [
         {
           "resource": "repo://packaging/internal/installation/managed_installation.py",
-          "version": "repo-file-v1:sha256:17c4c50b8c594a8f8d1079829b2a5ceec26b12e84b46626d9b40ddca02a523d2"
+          "version": "repo-file-v1:sha256:7343a3e74578f263b8b9861bdbaab153690e350570a13830da0bc6c1e176b9fb"
         },
         {
           "resource": "repo://packaging/tests/test-managed-installation.py",
-          "version": "repo-file-v1:sha256:ec79de460b9113c2f32c8973c467e61876ca56be46c3c982b1aecc60f80be99c"
-        }
-      ]
-    },
-    {
-      "id": "claim_b6557785fd8647bea9337e26a2e28626",
-      "statement": "A force dry run accepts a user-owned recovery directory with mode 0755 and keeps that mode. Force installation restores mode 0700 under the Host lock. Both force modes reject group-writable recovery directories.",
-      "evidence": [
-        {
-          "resource": "repo://packaging/internal/installation/host-installation.py",
-          "version": "repo-file-v1:sha256:d9a8a14a4595fb5989b2bd278fe5a61a13d1082bf639253e27c14b4d7843e2a0"
-        },
-        {
-          "resource": "repo://packaging/tests/test-host-installation.py",
-          "version": "repo-file-v1:sha256:61056ebbe4912726497ee5c00421fcf28284ea77364b17f3a229e44c40356282"
+          "version": "repo-file-v1:sha256:f9584a0d7e48563c52365087a0207b6931cea84dc3db35b1578713988f47bb19"
         }
       ]
     },
@@ -156,11 +64,11 @@
       "evidence": [
         {
           "resource": "repo://packaging/internal/installation/managed_installation.py",
-          "version": "repo-file-v1:sha256:17c4c50b8c594a8f8d1079829b2a5ceec26b12e84b46626d9b40ddca02a523d2"
+          "version": "repo-file-v1:sha256:7343a3e74578f263b8b9861bdbaab153690e350570a13830da0bc6c1e176b9fb"
         },
         {
           "resource": "repo://packaging/internal/product/managed_product_installation.py",
-          "version": "repo-file-v1:sha256:fc8fada835ab693aacf4d03da320dbc510c89ae94b298bb5771529d42fac508e"
+          "version": "repo-file-v1:sha256:85b174d534c99d75bd439593419e20290070e31816d32775ce48c46e1c4dc4ee"
         }
       ]
     },
@@ -170,11 +78,11 @@
       "evidence": [
         {
           "resource": "repo://packaging/internal/bootstrap/bootstrap.sh.in",
-          "version": "repo-file-v1:sha256:2496b219bbd6ad4b9e7a3045813f6647a31acfc055b04ba247d0ef69ecb1688d"
+          "version": "repo-file-v1:sha256:d99120b9b85faf6ddf81f5b5ad42d92257923e84f3cd89b4d33f5121f71c3c14"
         },
         {
           "resource": "repo://packaging/internal/installation/managed_release.py",
-          "version": "repo-file-v1:sha256:471e28f5edf60d29744193ab64442f586628070bd2b01f9290d307bba12c03c7"
+          "version": "repo-file-v1:sha256:f77c414fd5fb7eea33876f3163e62a7d5a3e4ad3df01a96fecccdb50bf7e37bb"
         }
       ]
     },
@@ -184,19 +92,19 @@
       "evidence": [
         {
           "resource": "repo://packaging/internal/installation/immutable_store.py",
-          "version": "repo-file-v1:sha256:74118e12dd9d19350571cdef529854caa15485455278a73c8ddd4d5c0c7cdad5"
+          "version": "repo-file-v1:sha256:d573adbdce52ebb982599eab5b87978e7f419a5dcf38e48d7ae661a900735b06"
         },
         {
           "resource": "repo://packaging/internal/product/managed_product_installation.py",
-          "version": "repo-file-v1:sha256:fc8fada835ab693aacf4d03da320dbc510c89ae94b298bb5771529d42fac508e"
+          "version": "repo-file-v1:sha256:85b174d534c99d75bd439593419e20290070e31816d32775ce48c46e1c4dc4ee"
         },
         {
           "resource": "repo://packaging/internal/product/product_removal_recovery.py",
-          "version": "repo-file-v1:sha256:52c43478e4b88b0d32375304ceac47238fb193ee9ed3d2d4523549ae021b1fcf"
+          "version": "repo-file-v1:sha256:b4d6c3e9273ae9a142525b1fa52072ab47d54e54c7a010ff41ca8744aa6f1bbb"
         },
         {
           "resource": "repo://packaging/tests/test-managed-build-record.py",
-          "version": "repo-file-v1:sha256:d247c5e000fb1332b11d49a26a37d2111764bfcf744c054b31ea04cb4a45ff35"
+          "version": "repo-file-v1:sha256:57f6c9d4f690fdc4d3f698578fcf92dcc617a53c2a2d5caa1b3ff0952da6f9db"
         }
       ]
     },
@@ -206,15 +114,15 @@
       "evidence": [
         {
           "resource": "repo://packaging/internal/installation/immutable_store.py",
-          "version": "repo-file-v1:sha256:74118e12dd9d19350571cdef529854caa15485455278a73c8ddd4d5c0c7cdad5"
+          "version": "repo-file-v1:sha256:d573adbdce52ebb982599eab5b87978e7f419a5dcf38e48d7ae661a900735b06"
         },
         {
           "resource": "repo://packaging/internal/product/managed_product_installation.py",
-          "version": "repo-file-v1:sha256:fc8fada835ab693aacf4d03da320dbc510c89ae94b298bb5771529d42fac508e"
+          "version": "repo-file-v1:sha256:85b174d534c99d75bd439593419e20290070e31816d32775ce48c46e1c4dc4ee"
         },
         {
           "resource": "repo://packaging/tests/test-managed-build-record.py",
-          "version": "repo-file-v1:sha256:d247c5e000fb1332b11d49a26a37d2111764bfcf744c054b31ea04cb4a45ff35"
+          "version": "repo-file-v1:sha256:57f6c9d4f690fdc4d3f698578fcf92dcc617a53c2a2d5caa1b3ff0952da6f9db"
         }
       ]
     },
@@ -228,7 +136,7 @@
         },
         {
           "resource": "repo://packaging/internal/product/managed_product_installation.py",
-          "version": "repo-file-v1:sha256:fc8fada835ab693aacf4d03da320dbc510c89ae94b298bb5771529d42fac508e"
+          "version": "repo-file-v1:sha256:85b174d534c99d75bd439593419e20290070e31816d32775ce48c46e1c4dc4ee"
         }
       ]
     },
@@ -246,7 +154,7 @@
         },
         {
           "resource": "repo://packaging/internal/product/managed_product_installation.py",
-          "version": "repo-file-v1:sha256:fc8fada835ab693aacf4d03da320dbc510c89ae94b298bb5771529d42fac508e"
+          "version": "repo-file-v1:sha256:85b174d534c99d75bd439593419e20290070e31816d32775ce48c46e1c4dc4ee"
         }
       ]
     },
@@ -260,19 +168,19 @@
         },
         {
           "resource": "repo://packaging/internal/product/managed_product_installation.py",
-          "version": "repo-file-v1:sha256:fc8fada835ab693aacf4d03da320dbc510c89ae94b298bb5771529d42fac508e"
+          "version": "repo-file-v1:sha256:85b174d534c99d75bd439593419e20290070e31816d32775ce48c46e1c4dc4ee"
         },
         {
           "resource": "repo://packaging/internal/product/managed_product_removal.py",
-          "version": "repo-file-v1:sha256:d6604b2fbb6e75b228e0f01d937ca116143992713c975298783bcd5572d8c094"
+          "version": "repo-file-v1:sha256:30e61bc10c2f26ca6e02352ba5d2b1510394ebd368a2d8a60f20589f4cca997b"
         },
         {
           "resource": "repo://packaging/internal/product/product_removal_recovery.py",
-          "version": "repo-file-v1:sha256:52c43478e4b88b0d32375304ceac47238fb193ee9ed3d2d4523549ae021b1fcf"
+          "version": "repo-file-v1:sha256:b4d6c3e9273ae9a142525b1fa52072ab47d54e54c7a010ff41ca8744aa6f1bbb"
         },
         {
           "resource": "repo://packaging/tests/test-managed-build-record.py",
-          "version": "repo-file-v1:sha256:d247c5e000fb1332b11d49a26a37d2111764bfcf744c054b31ea04cb4a45ff35"
+          "version": "repo-file-v1:sha256:57f6c9d4f690fdc4d3f698578fcf92dcc617a53c2a2d5caa1b3ff0952da6f9db"
         }
       ]
     },
@@ -290,43 +198,33 @@
         },
         {
           "resource": "repo://packaging/internal/product/product_state_removal.py",
-          "version": "repo-file-v1:sha256:44cdaa3bf0a7f3ae623dbdccaa6914bdb3b5abfcb436647a16cc669dac51c3ec"
+          "version": "repo-file-v1:sha256:a93275342a7d7c04ba3585f665a4e459e3f6ae00a50fafcdbbe54df6f0b1cf4a"
         },
         {
           "resource": "repo://packaging/tests/test-managed-build-record.py",
-          "version": "repo-file-v1:sha256:d247c5e000fb1332b11d49a26a37d2111764bfcf744c054b31ea04cb4a45ff35"
-        }
-      ]
-    },
-    {
-      "id": "claim_67d4349c2da442659e515959bc27eee2",
-      "statement": "The deprecated standalone desktop IDEA Host installation command warns on stderr before argument admission without changing stdout reports; importing its shared managed transaction helpers does not execute that warning.",
-      "evidence": [
-        {
-          "resource": "repo://packaging/internal/installation/host-installation.py",
-          "version": "repo-file-v1:sha256:d9a8a14a4595fb5989b2bd278fe5a61a13d1082bf639253e27c14b4d7843e2a0"
-        },
-        {
-          "resource": "repo://packaging/tests/test-host-installation.py",
-          "version": "repo-file-v1:sha256:61056ebbe4912726497ee5c00421fcf28284ea77364b17f3a229e44c40356282"
+          "version": "repo-file-v1:sha256:57f6c9d4f690fdc4d3f698578fcf92dcc617a53c2a2d5caa1b3ff0952da6f9db"
         }
       ]
     },
     {
       "id": "claim_ebad3ae25b454a038ae58e0d4203d275",
-      "statement": "The bootstrap generator owns embedded, retained and fixed installer support membership; Gradle stages that projection with the canonical root installer and retains the private candidate bridge, while competing shell entry points are removed.",
+      "statement": "The bootstrap generator owns embedded, retained and fixed installer support membership and rejects install.sh as a support member; Gradle stages that projection without a copy of the root installer and retains the private install-candidate.sh bridge, while competing shell entry points are removed.",
       "evidence": [
         {
           "resource": "repo://build.gradle.kts",
-          "version": "repo-file-v1:sha256:aaac0674d99471e186c80d15874f2421a620789f28c033e5e2ba8176e9a8b6af"
+          "version": "repo-file-v1:sha256:7becc191584d7cfc5d62346345959afb8bf403b9d8fc489c6200a9b05f802183"
         },
         {
           "resource": "repo://packaging/internal/bootstrap/generate_bootstrap.py",
-          "version": "repo-file-v1:sha256:387bf112fd63a823cbecc399677100d311c73aecb92456fe521135906113f475"
+          "version": "repo-file-v1:sha256:d588c4f04ae4355fdbecc14c48dcb0a062d3ecea0da8a33bf7640ac62c85a2ed"
         },
         {
           "resource": "repo://packaging/tests/test-install-checkout.py",
-          "version": "repo-file-v1:sha256:6f2ac874971de999808c713b6ebfc9734f9803c2e9c26e304d07cdeafa222eee"
+          "version": "repo-file-v1:sha256:5f0c80266608738a924b7f9b3e3bcae1c6dcdedee0b98854571c48fd14f7e8fc"
+        },
+        {
+          "resource": "repo://packaging/tests/test-managed-bootstrap.py",
+          "version": "repo-file-v1:sha256:13d67689824b5eecfc3742279be2727085eee86cea734ecf5b7ecb81879f5d7b"
         }
       ]
     },
@@ -336,7 +234,7 @@
       "evidence": [
         {
           "resource": "repo://packaging/internal/product/local_product_install.py",
-          "version": "repo-file-v1:sha256:c9073793bace5ed86bbf711c558c6969c8e4c11b0358529878e9e8c3b217ec97"
+          "version": "repo-file-v1:sha256:d112830f722b9e4f78e4eb07882475e55b63dccfeca5fb70e9eea35a0d286308"
         }
       ]
     },
@@ -346,15 +244,15 @@
       "evidence": [
         {
           "resource": "repo://packaging/internal/installation/managed_installation.py",
-          "version": "repo-file-v1:sha256:17c4c50b8c594a8f8d1079829b2a5ceec26b12e84b46626d9b40ddca02a523d2"
+          "version": "repo-file-v1:sha256:7343a3e74578f263b8b9861bdbaab153690e350570a13830da0bc6c1e176b9fb"
         },
         {
           "resource": "repo://packaging/internal/installation/managed_release.py",
-          "version": "repo-file-v1:sha256:471e28f5edf60d29744193ab64442f586628070bd2b01f9290d307bba12c03c7"
+          "version": "repo-file-v1:sha256:f77c414fd5fb7eea33876f3163e62a7d5a3e4ad3df01a96fecccdb50bf7e37bb"
         },
         {
           "resource": "repo://packaging/tests/test-managed-build-record.py",
-          "version": "repo-file-v1:sha256:d247c5e000fb1332b11d49a26a37d2111764bfcf744c054b31ea04cb4a45ff35"
+          "version": "repo-file-v1:sha256:57f6c9d4f690fdc4d3f698578fcf92dcc617a53c2a2d5caa1b3ff0952da6f9db"
         }
       ]
     },
@@ -364,11 +262,11 @@
       "evidence": [
         {
           "resource": "repo://packaging/internal/bootstrap/bootstrap.sh.in",
-          "version": "repo-file-v1:sha256:2496b219bbd6ad4b9e7a3045813f6647a31acfc055b04ba247d0ef69ecb1688d"
+          "version": "repo-file-v1:sha256:d99120b9b85faf6ddf81f5b5ad42d92257923e84f3cd89b4d33f5121f71c3c14"
         },
         {
           "resource": "repo://packaging/tests/test-managed-bootstrap.py",
-          "version": "repo-file-v1:sha256:4aa132f86114b8665b6322d06a4f90774af2b60d04bf794afff2d243beac0a90"
+          "version": "repo-file-v1:sha256:13d67689824b5eecfc3742279be2727085eee86cea734ecf5b7ecb81879f5d7b"
         }
       ]
     },
@@ -378,11 +276,11 @@
       "evidence": [
         {
           "resource": "repo://packaging/internal/installation/managed_release.py",
-          "version": "repo-file-v1:sha256:471e28f5edf60d29744193ab64442f586628070bd2b01f9290d307bba12c03c7"
+          "version": "repo-file-v1:sha256:f77c414fd5fb7eea33876f3163e62a7d5a3e4ad3df01a96fecccdb50bf7e37bb"
         },
         {
           "resource": "repo://packaging/tests/test-managed-build-record.py",
-          "version": "repo-file-v1:sha256:d247c5e000fb1332b11d49a26a37d2111764bfcf744c054b31ea04cb4a45ff35"
+          "version": "repo-file-v1:sha256:57f6c9d4f690fdc4d3f698578fcf92dcc617a53c2a2d5caa1b3ff0952da6f9db"
         }
       ]
     },
@@ -392,11 +290,11 @@
       "evidence": [
         {
           "resource": "repo://.github/scripts/release/product_producer.py",
-          "version": "repo-file-v1:sha256:442435a5160da4e8b62538e34fb5fdbac8a89b7189d883d7901228b45bfb57bf"
+          "version": "repo-file-v1:sha256:7c3c6e5c107028014e4e30ddb7a2c85ddeb010fd55cf1c1c8d19ff00a81e70bf"
         },
         {
           "resource": "repo://packaging/internal/product/local_product_install.py",
-          "version": "repo-file-v1:sha256:c9073793bace5ed86bbf711c558c6969c8e4c11b0358529878e9e8c3b217ec97"
+          "version": "repo-file-v1:sha256:d112830f722b9e4f78e4eb07882475e55b63dccfeca5fb70e9eea35a0d286308"
         }
       ]
     },
@@ -410,13 +308,101 @@
         },
         {
           "resource": "repo://packaging/internal/installation/managed_installation.py",
-          "version": "repo-file-v1:sha256:17c4c50b8c594a8f8d1079829b2a5ceec26b12e84b46626d9b40ddca02a523d2"
+          "version": "repo-file-v1:sha256:7343a3e74578f263b8b9861bdbaab153690e350570a13830da0bc6c1e176b9fb"
+        }
+      ]
+    },
+    {
+      "id": "claim_37cbf939f9c243e5810951d4b27bd8be",
+      "statement": "The standalone desktop Host installer is removed, and release admission requires the base inventory exactly, so a release that still carries host-installation.py rejects.",
+      "evidence": [
+        {
+          "resource": "repo://packaging/internal/bootstrap/generate_bootstrap.py",
+          "version": "repo-file-v1:sha256:d588c4f04ae4355fdbecc14c48dcb0a062d3ecea0da8a33bf7640ac62c85a2ed"
+        },
+        {
+          "resource": "repo://packaging/internal/installation/managed_release.py",
+          "version": "repo-file-v1:sha256:f77c414fd5fb7eea33876f3163e62a7d5a3e4ad3df01a96fecccdb50bf7e37bb"
+        }
+      ]
+    },
+    {
+      "id": "claim_7c36667f62904fe395d12f8d8852778a",
+      "statement": "Only product replacement journals are recoverable: a recorded journal with a product record resumes through managed_product_installation.resume, any other recorded journal fails closed as RECOVERY_REQUIRED with RECOVERY_UNPROVEN, and the product resume path rejects a record that carries a composition.",
+      "evidence": [
+        {
+          "resource": "repo://packaging/internal/installation/managed_installation.py",
+          "version": "repo-file-v1:sha256:7343a3e74578f263b8b9861bdbaab153690e350570a13830da0bc6c1e176b9fb"
+        },
+        {
+          "resource": "repo://packaging/internal/installation/managed_update_contract.py",
+          "version": "repo-file-v1:sha256:de6c4b890f2cca497fde6e5570ca4ee1350ddab977b297fc40fd62689a62bdda"
+        },
+        {
+          "resource": "repo://packaging/internal/product/managed_product_installation.py",
+          "version": "repo-file-v1:sha256:85b174d534c99d75bd439593419e20290070e31816d32775ce48c46e1c4dc4ee"
+        }
+      ]
+    },
+    {
+      "id": "claim_3b70b6202f264ec3abb156d4ee92f14a",
+      "statement": "A rejecting installation state check raises a typed rejection with a closed failure code and owning component, emits one observation naming at most eight sorted entry names without contents, and the installer outcome carries the same evidence in Rejected.state.",
+      "evidence": [
+        {
+          "resource": "repo://packaging/internal/installation/managed_installation.py",
+          "version": "repo-file-v1:sha256:7343a3e74578f263b8b9861bdbaab153690e350570a13830da0bc6c1e176b9fb"
+        },
+        {
+          "resource": "repo://packaging/internal/installation/managed_update_contract.py",
+          "version": "repo-file-v1:sha256:de6c4b890f2cca497fde6e5570ca4ee1350ddab977b297fc40fd62689a62bdda"
+        },
+        {
+          "resource": "repo://packaging/tests/test-managed-state-admission.py",
+          "version": "repo-file-v1:sha256:6bc1a60e186d15788b73e43888b3bc22a212a69da88eadf37631468a3b5f3c5b"
+        }
+      ]
+    },
+    {
+      "id": "claim_cd2925ed4b394ab7aecbb9c01d3a9b97",
+      "statement": "The installer rejection mapping reports an errno OSError as FILESYSTEM_REJECTED, keeps OWNERSHIP_UNPROVEN only for checks that raise ValueError, reports any other exception as INSTALLATION_DEFECT with its class name, and re-raises AssertionError.",
+      "evidence": [
+        {
+          "resource": "repo://packaging/internal/installation/managed_installation.py",
+          "version": "repo-file-v1:sha256:7343a3e74578f263b8b9861bdbaab153690e350570a13830da0bc6c1e176b9fb"
+        }
+      ]
+    },
+    {
+      "id": "claim_f2a9420f09e84022861aad17646c09a2",
+      "statement": "The bootstrap no longer accepts the --developer-latest alias; --channel preview selects preview.",
+      "evidence": [
+        {
+          "resource": "repo://packaging/internal/bootstrap/bootstrap.sh.in",
+          "version": "repo-file-v1:sha256:d99120b9b85faf6ddf81f5b5ad42d92257923e84f3cd89b4d33f5121f71c3c14"
+        },
+        {
+          "resource": "repo://packaging/tests/test-managed-bootstrap.py",
+          "version": "repo-file-v1:sha256:13d67689824b5eecfc3742279be2727085eee86cea734ecf5b7ecb81879f5d7b"
+        }
+      ]
+    },
+    {
+      "id": "claim_2cecfac2180c4ee7b6b1109200d5e421",
+      "statement": "Contributor removal retires the semantic coordinator launchd jobs registered under its root even when stop or uninstall fails, and reports LAUNCHD_JOBS_REMAIN when a job survives.",
+      "evidence": [
+        {
+          "resource": "repo://packaging/internal/product/local_product_install.py",
+          "version": "repo-file-v1:sha256:d112830f722b9e4f78e4eb07882475e55b63dccfeca5fb70e9eea35a0d286308"
+        },
+        {
+          "resource": "repo://packaging/internal/verification/harness_launchd.py",
+          "version": "repo-file-v1:sha256:ba6867ca166409ab6840f17959207a930e39ef21a0bac5be87fd746da1fdf65c"
         }
       ]
     }
   ],
   "verification": {
     "by": "openwiki/0.9.0",
-    "at": "2026-11-21T22:16:17.145Z"
+    "at": "2026-11-22T20:53:36.158Z"
   }
 }

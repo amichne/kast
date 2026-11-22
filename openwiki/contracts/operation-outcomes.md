@@ -68,16 +68,20 @@ sources:
     resource: repo://query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryImpactSiteAccounting.kt
   - id: openwiki-source-f59335e3d2864a9877a4b4c2
     resource: repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryCallbackCompletion.kt
+  - id: openwiki-source-5375037d8d30411d737a482d
+    resource: repo://query/service/src/main/kotlin/io/github/amichne/kast/query/service/QueryRelationSeed.kt
+  - id: openwiki-source-0067c9defd82b5074e02a680
+    resource: repo://query/service/src/test/kotlin/io/github/amichne/kast/query/service/QueryRelationSeedTest.kt
   - id: openwiki-source-c02d6c9ee1cca469a96beea5
     resource: repo://relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/CallbackFlowRetention.kt
   - id: openwiki-source-4c00982fad30a76a898b74f1
     resource: repo://relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/NativeStringContent.kt
   - id: openwiki-source-6b9226c3dcd93a43cae28064
     resource: repo://relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/NativeStringConversion.kt
-generated: { by: "codex", at: "2026-11-21T22:16:17.145Z" }
+generated: { by: "codex", at: "2026-11-22T20:53:36.158Z" }
 verified:
   - by: openwiki/0.9.0
-    at: 2026-11-21T22:16:17.145Z
+    at: 2026-11-22T20:53:36.158Z
 ---
 
 # Operation outcomes
@@ -182,6 +186,12 @@ more than 1000 distinct lexical match exemplars for one owner with the finite
 `TEXT_MATCH_LIMIT_EXCEEDED` execution reason. Wire and installed projections
 keep that reason and its `ADJUST_BUDGET_OR_SCOPE` recovery action; they do not
 turn it into an unknown or internal failure.
+
+A relation hop, walk, or `TRACE` whose first relation-bearing stage received no
+input symbol examined no relation. A complete run in that state is rejected with
+the `RELATION_SEED_EMPTY` execution reason and its `CORRECT_REQUEST` recovery
+action, rather than reported as complete absence. A bare selection that matches
+nothing remains a complete, empty result.
 
 `OperationOutcome` is exhaustive:
 

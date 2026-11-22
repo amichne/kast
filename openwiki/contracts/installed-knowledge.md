@@ -24,7 +24,7 @@ sources:
 generated: { by: "amp", at: "2026-11-15T20:10:47.711Z" }
 verified:
   - by: openwiki/0.9.0
-    at: 2026-11-21T22:16:17.145Z
+    at: 2026-11-22T20:53:36.158Z
 ---
 
 # Retired installed knowledge contract

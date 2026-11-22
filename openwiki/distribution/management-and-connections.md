@@ -71,6 +71,8 @@ sources:
     resource: repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/WorkspaceSeeding.kt
   - id: openwiki-source-e7fd130e6641f6c75e3cde3f
     resource: repo://distribution/cli/src/test/kotlin/io/github/amichne/kast/distribution/cli/BuildSelectionTest.kt
+  - id: openwiki-source-617221ff7ee3e7082b7ba9da
+    resource: repo://distribution/cli/src/test/kotlin/io/github/amichne/kast/distribution/cli/LifecycleIngressTest.kt
   - id: openwiki-source-d95d75ec0e14dda7faf63dbf
     resource: repo://distribution/cli/src/test/kotlin/io/github/amichne/kast/distribution/cli/ManagedUpgradeSelectionFileTest.kt
   - id: openwiki-source-1c6c64417570ecf53e6c68a2
@@ -85,10 +87,10 @@ sources:
     resource: repo://packaging/internal/verification/product_acceptance.py
   - id: openwiki-source-6904899612d0ede016a5965a
     resource: repo://packaging/internal/verification/product_lifecycle_probe.py
-generated: { by: "codex", at: "2026-11-21T22:51:07.455Z" }
+generated: { by: "codex", at: "2026-11-22T20:53:36.158Z" }
 verified:
   - by: openwiki/0.9.0
-    at: 2026-11-21T22:51:07.455Z
+    at: 2026-11-22T20:53:36.158Z
 ---
 
 # Native management and agent connections
@@ -130,6 +132,7 @@ Queries neither acquire release assets nor fall back to a desktop installation.
 `stop` selects the current workspace, an explicit workspace, or all recorded workspaces.
 It holds exclusive idle leases while retiring selected Hosts, but writes no persistent stop fence.
 The next explicit semantic request can start them again.
+Its text result names each stopped workspace, so a broad stop shows which Hosts a later request must start.
 
 Admission opportunistically reclaims vanished-root profiles only after exact generation retirement and private evidence checks.
 An exterior `.removing-ID.json` receipt survives interrupted deletion.
