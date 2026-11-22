@@ -744,7 +744,7 @@ val pythonTestExecutable = pythonTestEnvironment.map { it.file("bin/python3").as
 val preparePythonTestEnvironment = tasks.register<Exec>("preparePythonTestEnvironment") {
     group = "verification"
     description = "Provisions the pinned Python dependencies used by the routine test gate."
-    inputs.file(layout.projectDirectory.file("experiments/host-observation/requirements-test.txt"))
+    inputs.files("config/python/pyproject.toml", "config/python/uv.lock", "config/python/uv.toml")
     inputs.file(layout.projectDirectory.file("packaging/internal/verification/prepare-python-test-environment.py"))
     commandLine("python3", layout.projectDirectory.file("packaging/internal/verification/prepare-python-test-environment.py"))
 }

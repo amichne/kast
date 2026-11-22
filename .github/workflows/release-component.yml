@@ -51,7 +51,6 @@ jobs:
           python-version-file: .python-version
       - run: python3 -m pip install --disable-pip-version-check uv==0.12.9
 
-      - run: python3 -m pip install --disable-pip-version-check -r experiments/host-observation/requirements-test.txt
       - uses: ./.github/actions/jq-oracle
       - name: Resolve selected service version
         id: release_version
@@ -94,12 +93,12 @@ jobs:
             *) exit 1 ;;
           esac
           python3 distribution/release/test_resolve_version.py
-          python3 distribution/release/test_component_release.py
+          uv run --locked --project config/python python distribution/release/test_component_release.py
       - name: Admit selected component release
         env:
           RELEASE_VERSION: ${{ steps.release_version.outputs.version }}
         run: >-
-          python3 distribution/release/component_release.py --component "$RELEASE_COMPONENT"
+          uv run --locked --project config/python python distribution/release/component_release.py --component "$RELEASE_COMPONENT"
           --version "$RELEASE_VERSION" --source-revision "$GITHUB_SHA"
           --directory "build/release/${RELEASE_COMPONENT}-v${RELEASE_VERSION}"
       - name: Retain selected component candidate

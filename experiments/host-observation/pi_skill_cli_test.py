@@ -191,7 +191,7 @@ def live_workspace(tmp_path_factory: pytest.TempPathFactory) -> Iterator[Path]:
         yield Path(configured).resolve(strict=True)
         return
     workspace = tmp_path_factory.mktemp("kast-fixture").resolve()
-    shutil.copytree(HERE / "static-callback-fixture", workspace, dirs_exist_ok=True)
+    shutil.copytree(HERE.parents[1] / "fixtures/static-callback-fixture", workspace, dirs_exist_ok=True)
     root = HERE.parents[1]
     shutil.copytree(root / "gradle/wrapper", workspace / "gradle/wrapper")
     shutil.copy2(root / "gradlew", workspace / "gradlew")
@@ -229,7 +229,7 @@ def test_pi_skill_cli(case: str, tmp_path: Path, request: pytest.FixtureRequest)
     live = case in LIVE_NAMES or case == "callback"
     if live:
         workspace = request.getfixturevalue("live_workspace")
-        source = HERE / "static-callback-fixture"
+        source = HERE.parents[1] / "fixtures/static-callback-fixture"
         reference = {f.relative_to(source): f.read_bytes() for f in source.rglob("*.kt")}
         supplied = {f.relative_to(workspace): f.read_bytes() for f in workspace.rglob("*.kt")}
         assert supplied == reference and Path(LIVE_FILE) in reference

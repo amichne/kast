@@ -14,11 +14,12 @@ runs:
       with:
         python-version-file: ".python-version"
         cache: pip
-        cache-dependency-path: experiments/host-observation/requirements-test.txt
+        cache-dependency-path: config/python/uv.lock
 
-    - name: Install host protocol and semantic test tools
+    # Python test dependencies come from the locked uv project in config/python.
+    - name: Install uv
       shell: bash
-      run: python3 -m pip install --disable-pip-version-check -r experiments/host-observation/requirements-test.txt uv==0.12.9
+      run: python3 -m pip install --disable-pip-version-check uv==0.12.9
 
     - uses: ./.github/actions/jq-oracle
 

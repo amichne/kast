@@ -14,7 +14,7 @@ import { observePiTrial, projectPiTrial, snapshotPiCatalog } from './pi-accounti
 import { admitParticipantSurface, createParticipantDirectory } from './participant-surface.mjs';
 
 const root = fileURLToPath(new URL('../../../', import.meta.url));
-const fixture = fileURLToPath(new URL('../static-callback-fixture/', import.meta.url));
+const fixture = fileURLToPath(new URL('../../../fixtures/static-callback-fixture/', import.meta.url));
 const tool = fileURLToPath(new URL('./skill-tool.ts', import.meta.url));
 const guidanceTool = fileURLToPath(new URL('./kast-guidance-tool.ts', import.meta.url));
 const kastTools = new Set(['kast', 'read_previous_result', 'query_imported_main']);

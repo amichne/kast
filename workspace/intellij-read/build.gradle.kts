@@ -112,7 +112,7 @@ val hostedQueryPluginJar =
         archiveBaseName.set("kast-hosted-query")
         archiveVersion.set("0.1.0")
         from(sourceSets.main.get().output)
-        from(repositoryRoot.dir("experiments/host-observation/hosted-plugin")) {
+        from(repositoryRoot.dir("fixtures/hosted-plugin")) {
             expand(
                 "ideBuild" to ideHostBuild,
                 "kotlinBuild" to "$ideHostBuild-IJ",

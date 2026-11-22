@@ -9,7 +9,7 @@ The fixture manifest is authored source-text intent. Its offsets and named uses 
 
 ```sh
 build/python-tests/env/bin/python3 experiments/representation-impact/fixture_intent.py \
-  --source experiments/host-observation/semantic-fixture/value-flow/RepresentationImpactFixture.kt
+  --source fixtures/semantic-fixture/value-flow/RepresentationImpactFixture.kt
 build/python-tests/env/bin/python3 -m unittest discover \
   -s experiments/representation-impact -p 'test_*.py' -v
 ```

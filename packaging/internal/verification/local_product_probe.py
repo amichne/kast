@@ -348,7 +348,7 @@ def execute(args: argparse.Namespace) -> LocalReport:
     workspace = work / "workspace"
     repository = Path(__file__).resolve().parents[3]
     _ = shutil.copytree(
-        repository / "experiments/host-observation/static-callback-fixture", workspace
+        repository / "fixtures/static-callback-fixture", workspace
     )
     _ = shutil.copytree(repository / "gradle/wrapper", workspace / "gradle/wrapper")
     _ = shutil.copy2(repository / "gradlew", workspace / "gradlew")

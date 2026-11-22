@@ -12,7 +12,7 @@ REPO = HERE.parents[1]
 
 class FixtureIntentTest(unittest.TestCase):
     def test_authored_fixture_manifest_records_text_intent_and_never_live_handles(self):
-        source = REPO / 'experiments/host-observation/semantic-fixture/value-flow/RepresentationImpactFixture.kt'
+        source = REPO / 'fixtures/semantic-fixture/value-flow/RepresentationImpactFixture.kt'
         self.assertIsInstance(intent.verify_text(source), intent.SourceTextVerified)
         expected = json.loads((HERE / 'fixture-intent.expected.json').read_text())
         self.assertEqual(expected, json.loads(json.dumps(asdict(intent.manifest(source)))))

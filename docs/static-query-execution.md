@@ -147,7 +147,7 @@ negative controls.
 ### Static callback fixture
 
 The opt-in native acceptance fixture is
-`experiments/host-observation/static-callback-fixture`. Its three modules separate
+`fixtures/static-callback-fixture`. Its three modules separate
 lambda suppliers, the forwarding component, and a terminal parameter invocation.
 The component includes a self cycle, self recursion with a direct parameter
 invocation, and mutual recursion with a terminal route into the invocation module.
