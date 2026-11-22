@@ -118,5 +118,27 @@ class ManagedControlRecoveryTest(unittest.TestCase):
         self.assertEqual('selected', (self.stage / 'bin/kast-complete').read_text())
 
 
+RECEIPTS = Path(__file__).parents[2] / 'distribution/contract/src/test/resources/replacement-receipt'
+
+
+class ProductReplacementReceiptShapeTest(unittest.TestCase):
+    """The Kotlin contract fixtures must remain exactly what this journal writes and strictly decodes."""
+
+    def setUp(self):
+        specification = importlib.util.spec_from_file_location('kast_product_receipt_shape_fixture', SCRIPT)
+        self.recovery = importlib.util.module_from_spec(specification)
+        sys.modules[specification.name] = self.recovery
+        specification.loader.exec_module(self.recovery)
+
+    def test_kotlin_contract_fixtures_are_canonical_product_journals(self):
+        for name in ('product-install.json', 'product-upgrade.json'):
+            with self.subTest(name=name):
+                recorded = (RECEIPTS / name).read_text().removesuffix('\n')
+                record = self.recovery.decode(self.recovery.Replacement, json.loads(recorded))
+                self.assertIsNotNone(record.product)
+                self.assertIsNone(record.composition)
+                self.assertEqual(recorded, self.recovery.encode(record))
+
+
 if __name__ == '__main__':
     unittest.main()
