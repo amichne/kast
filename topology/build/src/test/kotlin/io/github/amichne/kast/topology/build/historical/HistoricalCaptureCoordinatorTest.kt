@@ -206,10 +206,12 @@ class HistoricalCaptureCoordinatorTest {
     @Test
     fun `unknown status and negative work are invalid input and have no effects`() {
         val input = input()
-        assertEquals(
-            HistoricalCaptureResult.InvalidAttribution,
-            noEffects().capture(plan(input), "{\"status\":\"unknown\"}"),
-        )
+        val attributed = attribution(input)
+        val attributedStatus = "\"status\":\"attributed\""
+        assertEquals(1, attributed.split(attributedStatus).size - 1)
+        // Only the discriminator differs from a document the codec admits.
+        val unknownStatus = attributed.replace(attributedStatus, "\"status\":\"unknown\"")
+        assertEquals(HistoricalCaptureResult.InvalidAttribution, noEffects().capture(plan(input), unknownStatus))
         val encoded =
             json.encodeToString<GitAttributionDocument>(
                 GitAttributionDocument.Rejected(HistoricalGitFailure.GIT_FAILED, GitWorkDocument(-1, 0, 0))

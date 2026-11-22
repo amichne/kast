@@ -14,7 +14,7 @@
         },
         {
             "path": "build-logic/src/main/kotlin/conventions/JsonContractVerification.kt",
-            "sha256": "717897a3aa97869a486c4cffbeb6e00e595b520c54a1a74a6033e164677bf7b7"
+            "sha256": "ddde493aee4cf413160eb5aa76a3c88318a51a523c2477c827e6b35cb1a47e01"
         },
         {
             "path": "build-logic/src/main/kotlin/conventions/KotlinFileLengthBaseline.kt",

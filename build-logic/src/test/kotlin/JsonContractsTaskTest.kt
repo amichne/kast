@@ -70,6 +70,32 @@ class JsonContractsTaskTest {
         assertFalse(root.resolve("build/reports/json-contracts/report.json").readText().contains("ready"))
     }
 
+    @Test
+    fun `a source module named build is scanned while gradle project outputs stay excluded`() {
+        val runner = fixture()
+        write("topology/build/build.gradle.kts", "")
+        write("build/Output.kt", "fun broken( {")
+        write("topology/build/build/Output.kt", "fun broken( {")
+        write(
+            "topology/build/src/main/kotlin/Contract.kt",
+            "import kotlinx.serialization.json.buildJsonObject\nfun encode() = buildJsonObject { put(\"status\", \"ready\") }",
+        )
+        baseline(emptyList())
+        val rejected = runner.withArguments("check", "--configuration-cache", "--console=plain").buildAndFail()
+        assertEquals(TaskOutcome.FAILED, rejected.task(":verifyJsonContracts")?.outcome)
+        assertEquals(
+            listOf("topology/build/src/main/kotlin/Contract.kt"),
+            report().findings.map { it.fingerprint.path },
+        )
+        assertTrue(report().violations.single() is JsonContractViolation.Unapproved)
+    }
+
+    private fun write(path: String, text: String) {
+        val file = root.resolve(path)
+        file.parent.createDirectories()
+        file.writeText(text)
+    }
+
     private fun fixture(): GradleRunner {
         val taskClasspath =
             listOf(
