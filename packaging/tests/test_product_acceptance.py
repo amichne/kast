@@ -664,7 +664,6 @@ class AcceptanceTest(unittest.TestCase):
                                 live.assert_not_called()
             self.assertEqual(set[acceptance.Case](), runner.completed)
 
-
     def test_local_fixture_keeps_real_native_binding_but_has_no_other_target_payload(self) -> None:
         native = record().targets[1]
         receipt = ComponentReceiptFixture(
@@ -957,6 +956,54 @@ class AcceptanceTest(unittest.TestCase):
                 source.download(base + "missing", root / "output", 100),
             )
             self.assertFalse((root / "output").exists())
+
+
+class HostLogRetentionTest(unittest.TestCase):
+    def setUp(self) -> None:
+        temporary = tempfile.TemporaryDirectory()
+        self.addCleanup(temporary.cleanup)
+        self.home = Path(temporary.name) / "home"
+        self.evidence = Path(temporary.name) / "evidence"
+        self.evidence.mkdir()
+
+    def write(self, relative: str, content: bytes) -> None:
+        path = self.home / relative
+        path.parent.mkdir(parents=True, exist_ok=True)
+        _ = path.write_bytes(content)
+
+    def test_host_logs_are_retained_by_path_and_caches_are_skipped(self) -> None:
+        self.write("lane/state/log/idea.log", b"host started\n")
+        self.write("lane/state/launcher.log", b"launch\n")
+        self.write("lane/state/system/log/idea.log", b"cache copy\n")
+        self.write("lane/state/log/idea.1.log", b"rotated\n")
+        retained = probe.retain_host_logs(self.home, self.evidence)
+        self.assertEqual(
+            {
+                "00-lane-state-launcher.log": b"launch\n",
+                "01-lane-state-log-idea.log": b"host started\n",
+            },
+            {path.name: path.read_bytes() for path in retained.iterdir()},
+        )
+
+    def test_a_long_log_keeps_only_its_bounded_tail(self) -> None:
+        limit = probe.MAXIMUM_RETAINED_HOST_LOG_BYTES
+        self.write("log/idea.log", b"h" * 10 + b"t" * limit)
+        (retained,) = probe.retain_host_logs(self.home, self.evidence).iterdir()
+        self.assertEqual(b"t" * limit, retained.read_bytes())
+
+    def test_the_number_of_retained_logs_is_bounded(self) -> None:
+        for index in range(probe.MAXIMUM_RETAINED_HOST_LOGS + 3):
+            self.write(f"lane-{index:02d}/log/idea.log", b"x\n")
+        retained = probe.retain_host_logs(self.home, self.evidence)
+        self.assertEqual(probe.MAXIMUM_RETAINED_HOST_LOGS, len(list(retained.iterdir())))
+
+    def test_the_first_retention_is_kept_after_uninstall_removes_the_logs(self) -> None:
+        self.write("log/idea.log", b"before uninstall\n")
+        first = probe.retain_host_logs(self.home, self.evidence)
+        (self.home / "log/idea.log").unlink()
+        second = probe.retain_host_logs(self.home, self.evidence)
+        self.assertEqual(first, second)
+        self.assertEqual([b"before uninstall\n"], [path.read_bytes() for path in second.iterdir()])
 
 
 if __name__ == "__main__":

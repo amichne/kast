@@ -517,7 +517,10 @@ def project_native(runtime: Path, setup: Path, work: Path) -> tuple[Path, Path, 
     projected_bundle = work / "native-setup.tar.gz"
     with (
         projected_bundle.open("xb") as stream,
-        gzip.GzipFile(filename="", fileobj=stream, mode="wb", mtime=0) as compressed,
+        # A transient qualification input: installers verify only the projected runtime's digest.
+        gzip.GzipFile(
+            filename="", fileobj=stream, mode="wb", compresslevel=1, mtime=0
+        ) as compressed,
         tarfile.open(fileobj=compressed, mode="w") as archive,
     ):
         for path in sorted(source.rglob("*")):

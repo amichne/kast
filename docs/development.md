@@ -515,6 +515,9 @@ mise exec -- ./gradlew installedProductTest \
   -PkastAcceptanceEvidence="$EVIDENCE" -PkastAcceptanceReceipt="$RECEIPT"
 ```
 
+The evidence directory keeps `host-logs/`, which holds the last 512 KiB of each Host `idea.log` and `launcher.log`, at most 16 files.
+The probe captures them before uninstall removes the logs on success and after the failure stop otherwise.
+
 Version-pinned archives must match the installer contract. To stage historical
 archives that require retired setup inputs, use their matching tagged installer.
 The adjacent-patch acceptance helper supports archives with the current contract.
