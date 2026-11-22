@@ -1783,11 +1783,7 @@ def admit_main_records(
     }
     if variant in hosts:
         bases |= {variant, f"kast-host-release-v{version}-idea-263.json"}
-    # Releases published before #1321 also carry the retired desktop installer and its checksum.
-    # Remove this tolerance once the acceptance baseline is a release without it (#1321).
-    retired = {"host-installation.py", "host-installation.py.sha256"}
-    names = set(inventory)
-    if names - retired != bases | {name + ".sha256" for name in bases} or names & retired not in (set(), retired):
+    if set(inventory) != bases | {name + ".sha256" for name in bases}:
         return Failure.ARTIFACT_INVALID
     return (
         Admission.ADMITTED

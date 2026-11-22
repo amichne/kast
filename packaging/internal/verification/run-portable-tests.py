@@ -2,7 +2,6 @@
 """Run every offline packaging test with an owned home, temp tree, and tool path."""
 from pathlib import Path
 import os
-import platform
 import re
 import subprocess
 import sys
@@ -15,10 +14,8 @@ CASE_SUMMARY = re.compile(r'\bRan ([0-9]+) tests? in\b')
 
 
 def expected_skips() -> dict[str, int]:
-    permitted = {}
-    if platform.system() != 'Darwin':
-        permitted['test-host-installation.py'] = 2
-    return permitted
+    """No portable suite skips cases on any platform."""
+    return {}
 
 
 def main() -> int:

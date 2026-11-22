@@ -433,8 +433,7 @@ tasks.named("check") { dependsOn(managedInstallationTest, developerPublicationTe
 val testCheckoutInstaller = tasks.register<VerificationReportTask>("testCheckoutInstaller") {
     group = "verification"
     description = "Verifies retired entrypoints and canonical product admission boundaries."
-    inputs.files("install.sh", "packaging/internal/bootstrap/generate_bootstrap.py",
-        "packaging/internal/installation/host-installation.py", "packaging/tests/test-install-checkout.py")
+    inputs.files("install.sh", "packaging/internal/bootstrap/generate_bootstrap.py", "packaging/tests/test-install-checkout.py")
     executableFile.set(validationExecutable("python3"))
     arguments.set(listOf(layout.projectDirectory.file("packaging/tests/test-install-checkout.py").asFile.absolutePath))
 }

@@ -410,9 +410,9 @@ class ReleaseAdmissionTest(unittest.TestCase):
     def test_main_release_without_the_retired_desktop_installer_is_admitted(self) -> None:
         self.assertIsInstance(self.admit_main(()), release.AdmittedComposition)
 
-    def test_published_release_with_the_retired_desktop_installer_is_admitted(self) -> None:
+    def test_release_carrying_the_retired_desktop_installer_rejects(self) -> None:
         retired = ("host-installation.py", "host-installation.py.sha256")
-        self.assertIsInstance(self.admit_main(retired), release.AdmittedComposition)
+        self.assertIsInstance(self.admit_main(retired), release.Rejected)
 
     def test_retired_installer_checksum_without_its_asset_rejects(self) -> None:
         self.assertIsInstance(
