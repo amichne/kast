@@ -117,18 +117,18 @@ def provision(root: Path, with_idea: bool, with_fixture: bool, with_control: boo
     quote = shlex.quote
     activation = (
         "# Generated; source in a shell. HOME and credentials stay untouched.\n"
-        f"export KAST_CLOUD_ROOT={quote(str(root))}\n"
+        f"export DEV_CLOUD_ROOT={quote(str(root))}\n"
         f"export JAVA_HOME={quote(str(root / pins['artifacts']['jdk']['directory']))}\n"
         f"export PATH={quote(str(node_bin))}:{quote(str(root / pins['artifacts']['uv']['directory']))}:"
         "\"$JAVA_HOME/bin:$PATH\"\n"
-        'export PATH="$KAST_CLOUD_ROOT/vale:$PATH"\n'
-        'export GRADLE_USER_HOME="$KAST_CLOUD_ROOT/gradle"\n'
-        'export UV_CACHE_DIR="$KAST_CLOUD_ROOT/uv-cache"\n'
-        'export UV_PYTHON_INSTALL_DIR="$KAST_CLOUD_ROOT/uv-python"\n'
-        'export npm_config_cache="$KAST_CLOUD_ROOT/npm-cache"\n'
-        'export KAST_CLOUD_GRADLE_BASE_OPTS="${KAST_CLOUD_GRADLE_BASE_OPTS-${GRADLE_OPTS-}}"\n'
-        'python3 "$KAST_CLOUD_ROOT/configure-gradle.py" || return 1\n'
-        'source "$KAST_CLOUD_ROOT/gradle-runtime.sh"\n'
+        'export PATH="$DEV_CLOUD_ROOT/vale:$PATH"\n'
+        'export GRADLE_USER_HOME="$DEV_CLOUD_ROOT/gradle"\n'
+        'export UV_CACHE_DIR="$DEV_CLOUD_ROOT/uv-cache"\n'
+        'export UV_PYTHON_INSTALL_DIR="$DEV_CLOUD_ROOT/uv-python"\n'
+        'export npm_config_cache="$DEV_CLOUD_ROOT/npm-cache"\n'
+        'export DEV_CLOUD_GRADLE_BASE_OPTS="${DEV_CLOUD_GRADLE_BASE_OPTS-${GRADLE_OPTS-}}"\n'
+        'python3 "$DEV_CLOUD_ROOT/configure-gradle.py" || return 1\n'
+        'source "$DEV_CLOUD_ROOT/gradle-runtime.sh"\n'
     )
     if with_control:
         # The pinned release equals frontend/go.mod's toolchain line, so Go never downloads another.
