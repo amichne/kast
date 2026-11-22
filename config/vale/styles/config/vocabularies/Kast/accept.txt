@@ -144,3 +144,4 @@ runtimes
 subprocess
 Temurin
 [Dd]otagents
+Mergify
