@@ -296,7 +296,7 @@ class RejectionMappingTest(unittest.TestCase):
         self.assertIs(failure, install.rejection(install.StageRejected(failure)))
 
     def test_an_unexpected_exception_is_a_defect(self) -> None:
-        for problem in (TypeError("x"), KeyError("y"), AssertionError()):
+        for problem in (TypeError("x"), KeyError("y"), RuntimeError("z")):
             with self.subTest(problem=type(problem).__name__):
                 self.assertEqual(
                     contract.Rejected(
@@ -306,6 +306,46 @@ class RejectionMappingTest(unittest.TestCase):
                     ),
                     install.rejection(problem),
                 )
+
+    def test_an_assertion_is_never_an_outcome(self) -> None:
+        violation = AssertionError("fixture violation")
+        with self.assertRaises(AssertionError) as raised:
+            _ = install.rejection(violation)
+        self.assertIs(violation, raised.exception)
+
+    def test_a_double_fixture_violation_escapes_activation(self) -> None:
+        # A scripted double that rejects an unexpected call must fail the test, not
+        # become INSTALLATION_DEFECT, even though activation catches every Exception.
+        temporary = tempfile.TemporaryDirectory()
+        self.addCleanup(temporary.cleanup)
+        root = Path(temporary.name).resolve() / "kast"
+        root.mkdir(mode=0o700)
+        violation = AssertionError("unexpected call to admit_prior")
+        with (
+            patch.object(activation, "admit_prior", side_effect=violation),
+            contextlib.redirect_stderr(io.StringIO()),
+            self.assertRaises(AssertionError) as raised,
+        ):
+            _ = activation.activate(root, root / "home", Mock())
+        self.assertIs(violation, raised.exception)
+
+    def test_entrypoint_lets_a_fixture_violation_escape(self) -> None:
+        violation = AssertionError("unexpected release source call")
+        source = Mock()
+        source.selection.side_effect = violation
+        with (
+            patch.object(install.release, "resolve_selection", side_effect=violation),
+            patch.object(install.platform, "system", return_value="Linux"),
+            patch.object(install.platform, "machine", return_value="x86_64"),
+            contextlib.redirect_stderr(io.StringIO()),
+            contextlib.redirect_stdout(io.StringIO()),
+            self.assertRaises(AssertionError) as raised,
+        ):
+            temporary = tempfile.TemporaryDirectory()
+            self.addCleanup(temporary.cleanup)
+            with patch.dict(os.environ, {"HOME": temporary.name}):
+                _ = install.main(["--channel", "stable"], source=source)
+        self.assertIs(violation, raised.exception)
 
     def test_activation_reports_an_unexpected_exception_as_a_defect(self) -> None:
         temporary = tempfile.TemporaryDirectory()

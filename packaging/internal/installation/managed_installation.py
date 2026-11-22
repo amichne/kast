@@ -178,7 +178,11 @@ def rejection(problem: BaseException) -> contract.Rejected:
 
     Checks that raise ValueError still report OWNERSHIP_UNPROVEN. Anything no check
     owns is an installer defect, reported with its exception class name only.
+    An AssertionError is never an outcome: it is re-raised, so a broken invariant or a
+    test double's fixture violation stays a failure rather than a product result.
     """
+    if isinstance(problem, AssertionError):
+        raise problem
     preparation = contract.Stage.PREPARATION
     failure = contract.Failure
     if isinstance(problem, StageRejected):
