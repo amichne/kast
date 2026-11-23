@@ -10,7 +10,8 @@ while [[ $# -gt 0 ]]; do
   case "$1" in
     --help|-h)
       printf '%s\n' 'Usage: install.sh [--channel stable|preview | --version X.Y.Z | --commit SHA | --local-artifact DIRECTORY] [--dry-run] [--json]' \
-        'Installs one complete private-runtime product. No Python, uv, or IDEA installation is required.' \
+        'Installs one complete private-runtime product. Without a selector, installs the latest preview build.' \
+        'No Python, uv, or IDEA installation is required.' \
         'Local products contain build-record.json and payload/; private bootstrap inputs still download.'
       exit 0 ;;
     --channel|--version|--commit|--local-artifact)
