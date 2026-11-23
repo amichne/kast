@@ -1,5 +1,6 @@
 package io.github.amichne.kast.distribution.cli
 
+import io.github.amichne.kast.distribution.contract.InstallationLayout
 import io.github.amichne.kast.distribution.contract.WorkspaceConfigurationConflict
 import io.github.amichne.kast.distribution.contract.configuration.ResolvedKastConfiguration
 import io.github.amichne.kast.distribution.contract.configuration.WorkspaceDependencySharing
@@ -45,7 +46,7 @@ internal fun inspectWorkspaceSharing(
     environment: Map<String, String>,
 ): WorkspaceSharingInspection {
     val recorded =
-        when (val store = containerStore(installation.parent.resolveSibling("kast-workspaces"))) {
+        when (val store = containerStore(InstallationLayout.of(installation).management.workspaceStore)) {
             is Refinement.Rejected -> return WorkspaceSharingInspection.Unavailable(store.failure)
             is Refinement.Refined -> store.value.workspace(workspace.path)
         }

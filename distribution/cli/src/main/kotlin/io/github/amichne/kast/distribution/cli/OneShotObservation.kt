@@ -1,5 +1,6 @@
 package io.github.amichne.kast.distribution.cli
 
+import io.github.amichne.kast.distribution.contract.InstallationLayout
 import io.github.amichne.kast.distribution.contract.InstalledToolInvocation
 import java.nio.file.Files
 import java.nio.file.LinkOption
@@ -47,13 +48,13 @@ internal fun observeOneShotRequests(
                 BundledManifestRead.Unavailable,
                 BundledManifestRead.Invalid -> return unavailable
             }
-        val marker = "share/kast/one-shot-observation-v1"
+        val layout = InstallationLayout.of(installation)
         if (
-            !payloadOwned(installation, manifest, marker) ||
-                readBoundedFile(installation.resolve(marker), MAXIMUM_MARKER_BYTES) != "1\n"
+            !payloadOwned(installation, manifest, InstallationLayout.Relative.ONE_SHOT_OBSERVATION_CAPABILITY.value) ||
+                readBoundedFile(layout.payload.oneShotObservationCapability, MAXIMUM_MARKER_BYTES) != "1\n"
         )
             return unavailable
-        val directory = installation.resolve("state/run/one-shot")
+        val directory = layout.state.run.oneShotInvocations
         if (Files.notExists(directory, LinkOption.NOFOLLOW_LINKS)) return Observation.verified(0)
         if (!Files.isDirectory(directory, LinkOption.NOFOLLOW_LINKS) || directory.toRealPath() != directory)
             return unavailable

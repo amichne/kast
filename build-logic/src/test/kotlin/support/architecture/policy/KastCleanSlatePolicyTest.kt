@@ -191,6 +191,8 @@ class KastCleanSlatePolicyTest {
                 ForbiddenEffect.ISOLATED_RUNTIME to emptySet(),
                 ForbiddenEffect.TOPOLOGY_BUILD_AUTHORITY to setOf(ModuleId.TOPOLOGY_BUILD),
                 ForbiddenEffect.TOPOLOGY_PUBLICATION to setOf(ModuleId.EVIDENCE_TOPOLOGY_SQLITE),
+                ForbiddenEffect.INSTALLATION_PATH_DERIVATION to
+                    setOf(ModuleId.DISTRIBUTION_CONTRACT, ModuleId.DISTRIBUTION_CLI),
             ),
             owners,
         )

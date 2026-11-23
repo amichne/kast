@@ -1,5 +1,6 @@
 package io.github.amichne.kast.distribution.cli
 
+import io.github.amichne.kast.distribution.contract.InstallationLayout
 import io.github.amichne.kast.distribution.contract.WorkspaceConfigurationConflict
 import io.github.amichne.kast.distribution.contract.configuration.ConfigurationParameter
 import io.github.amichne.kast.distribution.contract.configuration.ConfigurationSource
@@ -25,7 +26,7 @@ internal fun admitWorkspaceSharing(
                     InstalledWorkspaceConfigurationIngress.workspaceFile(installation, workspace.workspace).toString()
                 ConfigurationSource.SAVED_INSTALLATION ->
                     environment[ConfigurationParameter.CONFIGURATION_FILE.key]
-                        ?: installation.resolve("config/environment").toString()
+                        ?: InstallationLayout.of(installation).configuration.environment.toString()
                 else -> source.name
             }
         return Refinement.Rejected(

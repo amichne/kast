@@ -4,6 +4,7 @@ import io.github.amichne.kast.appserver.AdmittedAppServerConfiguration
 import io.github.amichne.kast.appserver.AppliedConfigurationInspection
 import io.github.amichne.kast.appserver.AppliedConfigurationUnavailable
 import io.github.amichne.kast.appserver.InstalledConfigurationAppliedInspection
+import io.github.amichne.kast.distribution.contract.InstallationLayout
 import io.github.amichne.kast.distribution.contract.configuration.ConfigurationInspection
 import io.github.amichne.kast.distribution.contract.configuration.ConfigurationParameter
 import io.github.amichne.kast.distribution.contract.configuration.ConfigurationSchemaDocument
@@ -224,18 +225,18 @@ internal object ConfigurationCliInspection {
                 )
         return try {
             val selected = Path.of(selector)
-            val root =
-                selected.parent?.parent
+            val installation =
+                InstallationLayout.ofConfigurationFile(selected)
                     ?: return AppliedConfigurationInspection.Unobserved(
                         AppliedConfigurationUnavailable.INSTALLATION_UNSELECTED
                     )
-            if (selected != root.resolve("config/environment"))
+            if (selected != installation.configuration.environment)
                 return AppliedConfigurationInspection.Unobserved(
                     AppliedConfigurationUnavailable.INSTALLATION_UNSELECTED
                 )
             runBlocking {
                 InstalledConfigurationAppliedInspection.read(
-                    root.resolve("bin/kast"),
+                    installation.payload.kast,
                     Path.of(home),
                     environment,
                     configuration,

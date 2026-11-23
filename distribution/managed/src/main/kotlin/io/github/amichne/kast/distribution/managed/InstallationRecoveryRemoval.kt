@@ -2,6 +2,7 @@ package io.github.amichne.kast.distribution.managed
 
 import com.sun.security.auth.module.UnixSystem
 import io.github.amichne.kast.distribution.contract.InstallationFilesystemIdentity
+import io.github.amichne.kast.distribution.contract.InstallationLayout
 import io.github.amichne.kast.kernel.Refinement
 import java.nio.file.Files
 import java.nio.file.LinkOption.NOFOLLOW_LINKS
@@ -15,7 +16,7 @@ val removalProcessUid: Long = UnixSystem().uid
 fun admitRecoveryRemoval(root: Path): Refinement<ManagedRecoveryRemovalProof, RecoveryRemovalFailure> =
     recoveryRemovalBoundary {
         if (!validRemovalRoot(root)) return@recoveryRemovalBoundary rejected(RecoveryRemovalFailure.ROOT_REJECTED)
-        admitEmptyRecovery(root, root.parent.resolve("recovery"), removalProcessUid)
+        admitEmptyRecovery(root, InstallationLayout.of(root).management.recovery, removalProcessUid)
     }
 
 private fun admitEmptyRecovery(
@@ -46,7 +47,7 @@ private fun removeAdmittedRecovery(
 ): Refinement<Unit, RecoveryRemovalFailure> {
     if (!validRemovalRoot(root)) return rejected(RecoveryRemovalFailure.ROOT_REJECTED)
     if (!Files.notExists(root, NOFOLLOW_LINKS)) return rejected(RecoveryRemovalFailure.INSTALLATION_NOT_RETIRED)
-    val directory = root.parent.resolve("recovery")
+    val directory = InstallationLayout.of(root).management.recovery
     return when (proof) {
         ManagedRecoveryRemovalProof.Absent ->
             if (Files.notExists(directory, NOFOLLOW_LINKS)) Refinement.Refined(Unit)

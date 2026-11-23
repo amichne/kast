@@ -1,5 +1,7 @@
 package io.github.amichne.kast.distribution.cli
 
+import io.github.amichne.kast.distribution.contract.InstallationLayout
+import io.github.amichne.kast.distribution.contract.InstallationRelativePath
 import io.github.amichne.kast.distribution.contract.InstalledToolInvocation
 import io.github.amichne.kast.distribution.contract.NativeControlEntry
 import io.github.amichne.kast.distribution.contract.admitNativeControlProcessInvocation
@@ -44,7 +46,7 @@ internal sealed class OwnedLifecycleProcess private constructor(val snapshot: Li
     ) : OwnedLifecycleProcess(snapshot) {
         override fun payloadUnchanged(): Boolean =
             try {
-                val executable = installation.resolve(payload.relative)
+                val executable = payload.path.under(installation)
                 sameExecutable(attributes, executable) &&
                     Files.isExecutable(executable) &&
                     payloadOwned(installation, manifest, payload.relative) &&
@@ -101,7 +103,11 @@ internal sealed class OwnedLifecycleProcess private constructor(val snapshot: Li
                         val classpath = snapshot.arguments.indexOfFirst { it == "-classpath" || it == "-cp" }
                         if (
                             snapshot.arguments[classpath + 1].split(':').all {
-                                payloadOwned(installation, manifest, "lib/" + Path.of(it).fileName)
+                                payloadOwned(
+                                    installation,
+                                    manifest,
+                                    InstallationLayout.Relative.library(Path.of(it).fileName.toString()).value,
+                                )
                             }
                         )
                             ShutdownProcessAdmission.Owned(Jvm(snapshot))
@@ -146,7 +152,7 @@ internal sealed class OwnedLifecycleProcess private constructor(val snapshot: Li
                 when (
                     val selected =
                         NativeToolPayload.entries.find {
-                            snapshot.command == installation.resolve(it.relative).toString()
+                            snapshot.command == it.path.under(installation).toString()
                         }
                 ) {
                     null -> return ShutdownProcessAdmission.Rejected
@@ -154,7 +160,7 @@ internal sealed class OwnedLifecycleProcess private constructor(val snapshot: Li
                 }
             if (payload == NativeToolPayload.CONTROL && !ownsClientEntry(snapshot.arguments))
                 return ShutdownProcessAdmission.Rejected
-            val executable = installation.resolve(payload.relative)
+            val executable = payload.path.under(installation)
             val attributes = Files.readAttributes(executable, BasicFileAttributes::class.java, NOFOLLOW_LINKS)
             val process = NativeTool(snapshot, installation, manifest, attributes, payload)
             return process.revalidate(LifecycleProcessObservation.Present(snapshot))
@@ -209,7 +215,7 @@ internal sealed class OwnedLifecycleProcess private constructor(val snapshot: Li
                         val path = Path.of(raw)
                         path.isAbsolute &&
                             path.normalize() == path &&
-                            path.parent == installation.resolve("lib") &&
+                            path.parent == InstallationLayout.of(installation).payload.libraries &&
                             path.fileName.toString().endsWith(".jar")
                     } catch (_: IllegalArgumentException) {
                         false
@@ -228,9 +234,12 @@ private val clientMainClasses =
         "io.github.amichne.kast.cli.mcp.KastMcpMain",
     )
 
-private enum class NativeToolPayload(val relative: String) {
-    LEGACY_QUERY("bin/kast-query"),
-    CONTROL("share/kast/libexec/kast-management"),
+private enum class NativeToolPayload(val path: InstallationRelativePath) {
+    LEGACY_QUERY(InstallationLayout.Relative.QUERY_EXECUTABLE),
+    CONTROL(InstallationLayout.Relative.MANAGEMENT_EXECUTABLE);
+
+    val relative: String
+        get() = path.value
 }
 
 internal sealed interface ShutdownProcessAdmission {
@@ -343,7 +352,7 @@ internal fun installationLifecycleEnvironment(
     } +
         mapOf(
             "HOME" to home.toString(),
-            "KAST_CONFIGURATION_FILE" to installation.resolve("config/environment").toString(),
+            "KAST_CONFIGURATION_FILE" to InstallationLayout.of(installation).configuration.environment.toString(),
             // JVM option quoting, not shell evaluation: preserve one property even for quotes or newlines.
             "JAVA_TOOL_OPTIONS" to "'-Duser.home=${home.toString().replace("'", "'\"'\"'")}'",
         )

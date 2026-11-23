@@ -3,6 +3,7 @@ package io.github.amichne.kast.appserver
 import io.github.amichne.kast.appserver.host.admission.CodexAppServerArguments
 import io.github.amichne.kast.appserver.host.admission.DesktopFacadeExecutables
 import io.github.amichne.kast.appserver.host.admission.UpstreamCodexExecutable
+import io.github.amichne.kast.distribution.contract.InstallationLayout
 import io.github.amichne.kast.distribution.contract.configuration.ConfigurationChild
 import io.github.amichne.kast.distribution.contract.configuration.ConfigurationOwner
 import io.github.amichne.kast.distribution.contract.configuration.ConfigurationPathSelection
@@ -259,8 +260,12 @@ private constructor(
     val publicSocket: Path
         get() = publicEndpoint.path
 
+    /** The installation that contains [kast]. */
+    val installation: InstallationLayout
+        get() = InstallationLayout.ofKastExecutable(kast)
+
     val daemonExecutable: Path
-        get() = kast.parent.parent.resolve("share/kast/libexec/kast-daemon")
+        get() = installation.payload.daemonExecutable
 
     companion object {
         fun resolveCoordinator(
@@ -414,7 +419,7 @@ private constructor(
                     jvmUserHomeOption,
                     codexHome,
                     stateDirectory,
-                    stateDirectory.resolve("service-readiness.json"),
+                    installation.readiness,
                     publicEndpoint,
                     stateDirectory.resolve("service.log"),
                     stateDirectory.resolve("launch-environment"),

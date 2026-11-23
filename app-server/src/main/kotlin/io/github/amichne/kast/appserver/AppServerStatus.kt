@@ -65,8 +65,8 @@ private fun statusDocument(
             StatusPaths(
                 command.serviceLog.toString(),
                 command.launchEnvironment.toString(),
-                command.kast.parent.parent.resolve("config/environment").toString(),
-                command.kast.parent.parent.resolve("config/workspaces.json").toString(),
+                command.installation.configuration.environment.toString(),
+                command.installation.configuration.workspaceRegistry.toString(),
             ),
         registry = registered.presentation(),
         enrollment =

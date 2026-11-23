@@ -135,6 +135,9 @@ internal constructor(
     val configuration: Path
         get() = profile.resolve("config/environment")
 
+    val selectedIde: Path
+        get() = profile.resolve("config/selected-ide.json")
+
     val stopped: Path
         get() = directory.resolve("stopped.json")
 

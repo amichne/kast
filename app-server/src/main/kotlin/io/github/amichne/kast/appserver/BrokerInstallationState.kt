@@ -1,6 +1,7 @@
 package io.github.amichne.kast.appserver
 
 import io.github.amichne.kast.appserver.protocol.ThreadBindingOwner
+import io.github.amichne.kast.distribution.contract.InstallationLayout
 import io.github.amichne.kast.distribution.managed.ControlInventoryAccepted
 import io.github.amichne.kast.distribution.managed.ControlInventoryAdmission
 import io.github.amichne.kast.distribution.managed.ControlInventoryBoundary
@@ -35,13 +36,14 @@ internal object BrokerInstallationState {
                 is Refinement.Rejected -> return payload
             }
         return try {
-            val state = root.resolve("state")
+            val installation = InstallationLayout.of(root).state
+            val state = installation.directory
             Files.createDirectories(state)
             if (state.toRealPath() != state || !Files.isDirectory(state, LinkOption.NOFOLLOW_LINKS)) {
                 return Refinement.Rejected(InstallationStateFailure.PATH_REJECTED)
             }
             Files.setPosixFilePermissions(state, PosixFilePermissions.fromString("rwx------"))
-            val epoch = state.resolve("epoch.json")
+            val epoch = installation.epoch
             if (!Files.exists(epoch, LinkOption.NOFOLLOW_LINKS)) {
                 val temporary = Files.createTempFile(state, ".epoch-", ".json")
                 try {
@@ -70,7 +72,7 @@ internal object BrokerInstallationState {
                     Files.deleteIfExists(temporary)
                 }
             }
-            readEpoch(state, identity)
+            readEpoch(installation, identity)
         } catch (_: Exception) {
             Refinement.Rejected(InstallationStateFailure.WRITE_REJECTED)
         }
@@ -100,13 +102,14 @@ internal object BrokerInstallationState {
     ): Refinement<ThreadBindingOwner.Installation, InstallationStateFailure> =
         when (val payload = identity(root, observeInventory)) {
             is Refinement.Rejected -> payload
-            is Refinement.Refined -> readEpoch(root.resolve("state"), payload.value)
+            is Refinement.Refined -> readEpoch(InstallationLayout.of(root).state, payload.value)
         }
 
     private fun readEpoch(
-        state: Path,
+        installation: InstallationLayout.State,
         identity: String,
     ): Refinement<ThreadBindingOwner.Installation, InstallationStateFailure> {
+        val state = installation.directory
         return try {
             if (
                 !Files.readAttributes(
@@ -117,7 +120,7 @@ internal object BrokerInstallationState {
                     .isDirectory || state.toRealPath() != state
             )
                 return Refinement.Rejected(InstallationStateFailure.EPOCH_REJECTED)
-            val epoch = state.resolve("epoch.json")
+            val epoch = installation.epoch
             val attributes =
                 Files.readAttributes(
                     epoch,

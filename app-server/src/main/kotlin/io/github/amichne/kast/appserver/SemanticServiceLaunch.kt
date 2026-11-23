@@ -1,5 +1,6 @@
 package io.github.amichne.kast.appserver
 
+import io.github.amichne.kast.distribution.contract.InstallationLayout
 import io.github.amichne.kast.distribution.contract.configuration.ConfigurationDisclosure
 import io.github.amichne.kast.distribution.contract.configuration.ConfigurationParameter
 import io.github.amichne.kast.kernel.Refinement
@@ -31,7 +32,7 @@ private constructor(
 
     companion object {
         fun admit(installation: Path, home: Path, environment: Map<String, String>): SemanticServiceLaunch? {
-            val executable = installation.resolve(MANAGEMENT_EXECUTABLE)
+            val executable = InstallationLayout.of(installation).payload.managementExecutable
             if (
                 !Files.isRegularFile(executable, NOFOLLOW_LINKS) ||
                     !Files.isExecutable(executable) ||

@@ -3,6 +3,7 @@ package io.github.amichne.kast.distribution.cli
 import io.github.amichne.kast.distribution.contract.ControlDistributionLimits
 import io.github.amichne.kast.distribution.contract.INSTALLATION_MANIFEST_SCHEMA_VERSION
 import io.github.amichne.kast.distribution.contract.InstallationFilesystemIdentity
+import io.github.amichne.kast.distribution.contract.InstallationLayout
 import io.github.amichne.kast.distribution.contract.InstallationShutdownRequest
 import io.github.amichne.kast.distribution.managed.removalProcessUid
 import java.nio.channels.FileChannel
@@ -43,7 +44,7 @@ internal fun cleanupUninstallActivationLock(root: Path, observe: (UninstallClean
 }
 
 private fun removeUninstallActivationLock(root: Path) {
-    val path = root.resolve("activation.lock")
+    val path = InstallationLayout.beneath(root).management.activationLock
     if (Files.notExists(path, NOFOLLOW_LINKS)) return
     if (
         !Files.isRegularFile(path, NOFOLLOW_LINKS) ||
@@ -131,12 +132,13 @@ private inline fun uninstallManagedRootEffect(
     observe(UninstallCleanupObservation.Completed(artifact))
 }
 
-internal fun productRemovalDirectory(root: Path): Path = root.resolve("recovery/installation/product-removal")
+internal fun productRemovalDirectory(root: Path): Path = InstallationLayout.beneath(root).management.productRemoval
 
 internal fun cleanupProductRemovalFence(root: Path) {
-    val fence = root.resolve(SHUTDOWN_FENCE)
+    val layout = InstallationLayout.beneath(root)
+    val fence = layout.management.shutdownFence
     if (Files.exists(fence, NOFOLLOW_LINKS)) {
-        requireRemoval(Files.notExists(root.resolve("installation"), NOFOLLOW_LINKS))
+        requireRemoval(Files.notExists(layout.root, NOFOLLOW_LINKS))
         requireRemovalPath(fence)
         val identity = uninstallFilesystemIdentity(fence)
         val raw =
@@ -144,7 +146,7 @@ internal fun cleanupProductRemovalFence(root: Path) {
                 ?: throw ManagementRejected("uninstall-recovery", "retirement fence is unavailable")
         requireRemoval(
             decodeRemovalDocument<InstallationShutdownRequest>(raw) ==
-                InstallationShutdownRequest(root.resolve("installation").toString())
+                InstallationShutdownRequest(layout.root.toString())
         )
         requireRemoval(uninstallFilesystemIdentity(fence) == identity)
         Files.delete(fence)
@@ -157,22 +159,23 @@ internal fun retainedProductInstaller(root: Path, proof: ProductRemovalProof): P
     requireRemovalIdentity(bundle, proof.executionIdentity)
     admitRetainedProductFiles(root, proof, complete = true)
     val control = bundle.resolve("control")
-    val interpreter = control.resolve("share/kast/private-python/bin/python3.12")
-    val script = control.resolve("share/kast/install-candidate.sh")
+    val interpreter = InstallationLayout.Relative.PRIVATE_PYTHON_INTERPRETER.under(control)
+    val script = InstallationLayout.Relative.INSTALL_CANDIDATE.under(control)
     requireRemoval(Files.isExecutable(interpreter) && Files.isRegularFile(script, NOFOLLOW_LINKS))
     return script
 }
 
 internal fun cleanupProductRemoval(root: Path, proof: ProductRemovalProof) {
     requireRemoval(
-        proof.phase == ProductRemovalPhase.PREPARED && Files.notExists(root.resolve("installation"), NOFOLLOW_LINKS)
+        proof.phase == ProductRemovalPhase.PREPARED &&
+            Files.notExists(InstallationLayout.beneath(root).root, NOFOLLOW_LINKS)
     )
-    removeEmptyProductStore(root.resolveSibling("kast-runtime-bases"), proof.baseStoreIdentity)
+    removeEmptyProductStore(InstallationLayout.beneath(root).management.runtimeBaseStore, proof.baseStoreIdentity)
     val bundle = productRemovalDirectory(root)
     if (Files.exists(bundle, NOFOLLOW_LINKS)) {
         requireRemovalIdentity(bundle, proof.executionIdentity)
         val files = admitRetainedProductFiles(root, proof, complete = false)
-        val manifest = bundle.resolve("control/installation.json")
+        val manifest = InstallationLayout.of(bundle.resolve("control")).payload.manifest
         for ((path, expected) in
             files.entries
                 .filter { it.key != manifest }
@@ -199,7 +202,7 @@ internal fun cleanupProductRemoval(root: Path, proof: ProductRemovalProof) {
 }
 
 internal fun requireProductRuntimeStore(root: Path, proof: ProductRemovalProof) {
-    val directory = root.resolveSibling("kast-workspaces").resolve("runtimes")
+    val directory = InstallationLayout.beneath(root).management.workspaceStore.resolve("runtimes")
     if (Files.exists(directory, NOFOLLOW_LINKS)) {
         requireRemovalIdentity(directory, proof.runtimeStoreIdentity)
         requireRemoval(Files.list(directory).use { it.findAny().isEmpty })
@@ -214,7 +217,8 @@ private fun removeEmptyProductStore(directory: Path, identity: InstallationFiles
 }
 
 private fun removeEmptyProductRecoveryParents(root: Path) {
-    for (directory in listOf(root.resolve("recovery/installation"), root.resolve("recovery"))) {
+    val management = InstallationLayout.beneath(root).management
+    for (directory in listOf(management.installationRecovery, management.recovery)) {
         if (Files.exists(directory, NOFOLLOW_LINKS)) {
             requireRemovalPath(directory)
             val empty = Files.list(directory).use { it.findAny().isEmpty }
@@ -260,7 +264,7 @@ private fun retainedPayloadInventory(
 ): MutableMap<Path, RetainedFile> {
     val bundle = productRemovalDirectory(root)
     val control = bundle.resolve("control")
-    val manifestPath = control.resolve("installation.json")
+    val manifestPath = InstallationLayout.of(control).payload.manifest
     val expected = linkedMapOf<Path, RetainedFile>()
     if (Files.exists(manifestPath, NOFOLLOW_LINKS)) {
         requireRemovalPath(manifestPath)
@@ -274,7 +278,7 @@ private fun retainedPayloadInventory(
             }
         requireRemoval(
             manifest.schemaVersion == INSTALLATION_MANIFEST_SCHEMA_VERSION &&
-                manifest.installationRoot == root.resolve("installation").toString()
+                manifest.installationRoot == InstallationLayout.beneath(root).root.toString()
         )
         for (entry in manifest.payloadFiles) {
             val relative = Path.of(entry.path)

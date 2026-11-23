@@ -1,5 +1,6 @@
 package io.github.amichne.kast.distribution.cli
 
+import io.github.amichne.kast.distribution.contract.InstallationLayout
 import io.github.amichne.kast.kernel.Refinement
 import java.nio.file.Files
 import java.nio.file.LinkOption.NOFOLLOW_LINKS
@@ -38,7 +39,7 @@ private constructor(
     /** Recheck the exact files covered by cold admission before workspace effects. */
     internal fun admitCurrent(): Refinement<Unit, ContainerFailure> = containerFiles {
         when {
-            !Files.notExists(installation.parent.resolve(SHUTDOWN_FENCE), NOFOLLOW_LINKS) ->
+            !Files.notExists(InstallationLayout.of(installation).management.shutdownFence, NOFOLLOW_LINKS) ->
                 Refinement.Rejected(ContainerFailure.FENCE_REJECTED)
             revisions.all { it.isCurrent() } -> Refinement.Refined(Unit)
             else -> Refinement.Rejected(ContainerFailure.RUNTIME_MISMATCH)
@@ -56,8 +57,9 @@ private constructor(
             installation: Path,
             platform: ContainerPlatform,
         ): Refinement<InstalledProductRuntime, ContainerFailure> = containerFiles {
+            val payload = InstallationLayout.of(installation).payload
             val revisions =
-                captureRevisions(installation, listOf("installation.json", PRODUCT_REFERENCE, BUILD_RECORD))
+                captureRevisions(listOf(payload.manifest, payload.productSelection, payload.buildRecord))
                     ?: return@containerFiles Refinement.Rejected(ContainerFailure.INVALID_RECORD)
             when (val selection = InstalledProductSelection.read(installation, platform)) {
                 is Refinement.Rejected -> selection
@@ -117,8 +119,11 @@ private data class ProductInputRevision(
     }
 }
 
-private fun captureRevisions(root: Path, names: List<String>): List<ProductInputRevision>? = names.map {
-    ProductInputRevision.capture(root.resolve(it)) ?: return null
+private fun captureRevisions(root: Path, names: List<String>): List<ProductInputRevision>? =
+    captureRevisions(names.map(root::resolve))
+
+private fun captureRevisions(paths: List<Path>): List<ProductInputRevision>? = paths.map {
+    ProductInputRevision.capture(it) ?: return null
 }
 
 /** Selection ownership is available for repair even when selected runtime bytes are missing. */
@@ -136,13 +141,19 @@ private constructor(
                 return@containerFiles Refinement.Rejected(ContainerFailure.INVALID_RECORD)
             val reference =
                 when (
-                    val read = readContainerRecord<InstalledProductReference>(installation.resolve(PRODUCT_REFERENCE))
+                    val read =
+                        readContainerRecord<InstalledProductReference>(
+                            InstallationLayout.of(installation).payload.productSelection
+                        )
                 ) {
                     is Refinement.Rejected -> return@containerFiles read
                     is Refinement.Refined -> read.value
                 }
             val record =
-                when (val read = readContainerRecord<ProductBuildRecord>(installation.resolve(BUILD_RECORD))) {
+                when (
+                    val read =
+                        readContainerRecord<ProductBuildRecord>(InstallationLayout.of(installation).payload.buildRecord)
+                ) {
                     is Refinement.Rejected -> return@containerFiles read
                     is Refinement.Refined -> read.value
                 }
@@ -158,7 +169,9 @@ private fun installedProductPayloadOwned(installation: Path): Boolean =
         BundledManifestRead.Invalid,
         BundledManifestRead.Unavailable -> false
         is BundledManifestRead.Read ->
-            listOf(PRODUCT_REFERENCE, BUILD_RECORD).all { payloadOwned(installation, manifest.manifest, it) }
+            listOf(InstallationLayout.Relative.PRODUCT_SELECTION, InstallationLayout.Relative.BUILD_RECORD).all {
+                payloadOwned(installation, manifest.manifest, it.value)
+            }
     }
 
 private fun validInstalledProduct(
@@ -170,8 +183,9 @@ private fun validInstalledProduct(
     if (!validInstalledProductRecord(record) || reference.schemaVersion != 1 || reference.target != platform.publicName)
         return false
     val target = record.targets.singleOrNull { it.target == reference.target } ?: return false
-    val runtimeRoot = installation.parent.resolveSibling("kast-workspaces").resolve("runtimes/${target.runtime.sha256}")
-    return reference.buildRecordSha256 == sha256(installation.resolve(BUILD_RECORD)) &&
+    val layout = InstallationLayout.of(installation)
+    val runtimeRoot = layout.management.workspaceStore.resolve("runtimes/${target.runtime.sha256}")
+    return reference.buildRecordSha256 == sha256(layout.payload.buildRecord) &&
         reference.bundleSha256 == target.bundle.sha256 &&
         reference.qualificationSha256 == target.qualification.receipt.sha256 &&
         reference.runtimeArchiveSha256 == target.runtime.sha256 &&
@@ -208,7 +222,7 @@ internal fun installedRepairSelection(root: Path): SelectionAdmission<ResolvedBu
             is Refinement.Rejected -> return SelectionAdmission.Rejected(BuildSelectionFailure.PLATFORM_UNAVAILABLE)
             is Refinement.Refined -> current.value
         }
-    return when (val selected = InstalledProductSelection.read(root.resolve("installation"), platform)) {
+    return when (val selected = InstalledProductSelection.read(InstallationLayout.beneath(root).root, platform)) {
         is Refinement.Rejected -> SelectionAdmission.Rejected(BuildSelectionFailure.ARTIFACT_INVALID)
         is Refinement.Refined -> {
             // Local product bytes exist only in their local directory; repair must not seek them remotely.
@@ -228,6 +242,3 @@ internal fun installedRepairSelection(root: Path): SelectionAdmission<ResolvedBu
         }
     }
 }
-
-private const val PRODUCT_REFERENCE = "share/kast/product-selection.json"
-private const val BUILD_RECORD = "share/kast/build-record.json"

@@ -5,6 +5,7 @@ import org.objectweb.asm.ClassVisitor
 import org.objectweb.asm.ConstantDynamic
 import org.objectweb.asm.FieldVisitor
 import org.objectweb.asm.Handle
+import org.objectweb.asm.Label
 import org.objectweb.asm.MethodVisitor
 import org.objectweb.asm.Opcodes
 import org.objectweb.asm.Type
@@ -202,28 +203,79 @@ private class EffectClassVisitor(
         recordDescriptorTypes(caller, descriptor)
         exceptions.orEmpty().forEach { record(caller, typeMember(it)) }
         return object : MethodVisitor(Opcodes.ASM9) {
+            // The string constant whose value reaches the next call as its first argument, if any.
+            private var operand: String? = null
+
             override fun visitMethodInsn(
                 opcode: Int,
                 owner: String,
                 name: String,
                 descriptor: String,
                 isInterface: Boolean,
-            ) = record(caller, JvmMember.of(owner, name, descriptor))
+            ) {
+                val target = JvmMember.of(owner, name, descriptor)
+                record(caller, target)
+                if (InstallationPathDerivationRule.derives(target, operand)) {
+                    effects += EffectObservation(module.id, ForbiddenEffect.INSTALLATION_PATH_DERIVATION, caller, target)
+                }
+                operand = null
+            }
 
             override fun visitFieldInsn(
                 opcode: Int,
                 owner: String,
                 name: String,
                 descriptor: String,
-            ) =
+            ) {
                 record(caller, JvmMember.of(owner, name, descriptor))
+                operand = null
+            }
 
             override fun visitTypeInsn(
                 opcode: Int,
                 type: String,
-            ) = record(caller, typeMember(type))
+            ) {
+                record(caller, typeMember(type))
+                // Kotlin passes an empty vararg array after the first `Path.of` argument.
+                if (opcode != Opcodes.ANEWARRAY || type != "java/lang/String") operand = null
+            }
 
-            override fun visitLdcInsn(value: Any?) = recordConstant(caller, value)
+            override fun visitLdcInsn(value: Any?) {
+                recordConstant(caller, value)
+                operand = value as? String
+            }
+
+            override fun visitInsn(opcode: Int) {
+                if (opcode != Opcodes.ICONST_0) operand = null
+            }
+
+            override fun visitIntInsn(opcode: Int, operand: Int) {
+                this.operand = null
+            }
+
+            override fun visitVarInsn(opcode: Int, varIndex: Int) {
+                operand = null
+            }
+
+            override fun visitJumpInsn(opcode: Int, label: Label) {
+                operand = null
+            }
+
+            override fun visitIincInsn(varIndex: Int, increment: Int) {
+                operand = null
+            }
+
+            override fun visitTableSwitchInsn(minimum: Int, maximum: Int, default: Label, vararg labels: Label) {
+                operand = null
+            }
+
+            override fun visitLookupSwitchInsn(default: Label, keys: IntArray, labels: Array<out Label>) {
+                operand = null
+            }
+
+            override fun visitMultiANewArrayInsn(descriptor: String, dimensions: Int) {
+                operand = null
+            }
 
             override fun visitInvokeDynamicInsn(
                 name: String,
@@ -234,9 +286,21 @@ private class EffectClassVisitor(
                 recordHandle(caller, bootstrapMethodHandle)
                 bootstrapMethodArguments.forEach { recordConstant(caller, it) }
                 recordDescriptorTypes(caller, descriptor)
+                operand = concatenationPrefix(bootstrapMethodHandle, bootstrapMethodArguments)
             }
         }
     }
+
+    /** The literal prefix of an indy string-concatenation recipe; `\u0001` and `\u0002` mark dynamic parts. */
+    private fun concatenationPrefix(bootstrap: Handle, arguments: Array<out Any>): String? =
+        if (
+            bootstrap.owner == "java/lang/invoke/StringConcatFactory" &&
+            bootstrap.name == "makeConcatWithConstants"
+        ) {
+            (arguments.firstOrNull() as? String)?.takeWhile { it != '\u0001' && it != '\u0002' }
+        } else {
+            null
+        }
 
     private fun recordConstant(
         caller: JvmMember,

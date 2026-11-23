@@ -8,6 +8,7 @@ import io.github.amichne.kast.distribution.cli.ControlStageOutcome
 import io.github.amichne.kast.distribution.cli.ControlStageTrace
 import io.github.amichne.kast.distribution.contract.ControlDistributionLimits
 import io.github.amichne.kast.distribution.contract.INSTALLATION_MANIFEST_SCHEMA_VERSION
+import io.github.amichne.kast.distribution.contract.InstallationLayout
 import io.github.amichne.kast.kernel.Refinement
 import java.io.IOException
 import java.net.URISyntaxException
@@ -78,13 +79,14 @@ private constructor(
         ): Refinement<InstalledClientBinding, ClientInstallationFailure> {
             if (!payload.isAbsolute || payload.normalize() != payload || payload.toRealPath() != payload)
                 return Refinement.Rejected(ClientInstallationFailure.PAYLOAD)
-            val installation =
+            val layout =
                 when (val selected = clientInstallation(payload)) {
                     is Refinement.Refined -> selected.value
                     is Refinement.Rejected -> return selected
                 }
+            val installation = layout.root
             val manifest =
-                when (val admitted = admitManifest(installation)) {
+                when (val admitted = admitManifest(layout)) {
                     is Refinement.Rejected -> return admitted
                     is Refinement.Refined -> admitted.value
                 }
@@ -113,13 +115,15 @@ private constructor(
             }
         }
 
-        private fun clientInstallation(payload: Path): Refinement<Path, ClientInstallationFailure> =
+        private fun clientInstallation(payload: Path): Refinement<InstallationLayout, ClientInstallationFailure> =
             when (payload.parent.fileName.toString()) {
                 "bin" ->
-                    if (payload.fileName.toString() == "kast-query") Refinement.Refined(payload.parent.parent)
+                    if (payload.fileName.toString() == "kast-query")
+                        Refinement.Refined(InstallationLayout.of(payload.parent.parent))
                     else Refinement.Rejected(ClientInstallationFailure.PAYLOAD)
                 "lib" ->
-                    if (payload.fileName.toString().endsWith(".jar")) Refinement.Refined(payload.parent.parent)
+                    if (payload.fileName.toString().endsWith(".jar"))
+                        Refinement.Refined(InstallationLayout.of(payload.parent.parent))
                     else Refinement.Rejected(ClientInstallationFailure.PAYLOAD)
                 else ->
                     when (val native = admitNativeControlRoot(payload)) {
@@ -128,8 +132,11 @@ private constructor(
                     }
             }
 
-        private fun admitManifest(installation: Path): Refinement<AdmittedClientManifest, ClientInstallationFailure> {
-            val manifestPath = installation.resolve("installation.json")
+        private fun admitManifest(
+            layout: InstallationLayout
+        ): Refinement<AdmittedClientManifest, ClientInstallationFailure> {
+            val installation = layout.root
+            val manifestPath = layout.payload.manifest
             val revision =
                 try {
                     ClientFileRevision.capture(manifestPath)
@@ -147,7 +154,7 @@ private constructor(
             return if (
                 manifest.schemaVersion != INSTALLATION_MANIFEST_SCHEMA_VERSION ||
                     manifest.installationRoot != installation.toString() ||
-                    manifest.configuration != installation.resolve("config/environment").toString()
+                    manifest.configuration != layout.configuration.environment.toString()
             )
                 Refinement.Rejected(ClientInstallationFailure.MANIFEST)
             else Refinement.Refined(AdmittedClientManifest(manifest, revision))

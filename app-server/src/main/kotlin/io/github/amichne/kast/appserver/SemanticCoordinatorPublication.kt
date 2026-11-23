@@ -2,6 +2,7 @@ package io.github.amichne.kast.appserver
 
 import io.github.amichne.kast.appserver.protocol.ThreadBindingOwner
 import io.github.amichne.kast.appserver.runtime.BrokerSocketPath
+import io.github.amichne.kast.distribution.contract.InstallationLayout
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.kernel.Validation
 import java.io.IOException
@@ -75,7 +76,7 @@ internal sealed interface SemanticPublicationState {
             val document =
                 when (val read = privateDocument(installation, path)) {
                     PrivateServiceDocument.Absent ->
-                        return if (Files.notExists(installation.resolve(SEMANTIC_SOCKET), NOFOLLOW_LINKS)) Missing
+                        return if (Files.notExists(semanticSocket(installation), NOFOLLOW_LINKS)) Missing
                         else Rejected(SemanticPublicationRejection.OWNERSHIP_REJECTED)
                     PrivateServiceDocument.Unadmitted ->
                         return Rejected(SemanticPublicationRejection.OWNERSHIP_REJECTED)
@@ -113,7 +114,7 @@ internal sealed interface SemanticPublicationState {
                 null,
                 SemanticPeerIncarnation.LIVE -> Starting(document.serviceInstanceId)
                 SemanticPeerIncarnation.EXITED ->
-                    if (Files.notExists(installation.resolve(SEMANTIC_SOCKET), NOFOLLOW_LINKS))
+                    if (Files.notExists(semanticSocket(installation), NOFOLLOW_LINKS))
                         Stale(installation, path, document, StaleSocket.Unrecorded)
                     else Rejected(SemanticPublicationRejection.OWNERSHIP_REJECTED)
                 SemanticPeerIncarnation.UNPROVEN -> Rejected(SemanticPublicationRejection.OWNERSHIP_REJECTED)
@@ -169,7 +170,7 @@ private constructor(
                     is Refinement.Rejected -> return null
                     is Refinement.Refined -> admitted.value
                 }
-            val physical = installation.resolve(SEMANTIC_SOCKET)
+            val physical = semanticSocket(installation)
             val endpoint = BrokerEndpointAliases.transportPath(physical)
             val socket =
                 when (val admitted = BrokerSocketPath.observe(endpoint)) {
@@ -193,7 +194,7 @@ private sealed interface PrivateServiceDocument {
 
 private fun privateDocument(installation: Path, path: Path): PrivateServiceDocument {
     if (
-        path.parent?.parent != installation.resolve("state/broker") ||
+        path.parent?.parent != InstallationLayout.of(installation).state.brokers ||
             path.fileName.toString() != "service-readiness.json"
     )
         return PrivateServiceDocument.Unadmitted
@@ -244,9 +245,6 @@ private fun ownedMode(path: Path, owner: UserPrincipal, mode: Set<PosixFilePermi
 private val privateDirectory = PosixFilePermissions.fromString("rwx------")
 private val privateFile = PosixFilePermissions.fromString("rw-------")
 
-/** The installed Control executable that launches every Control process, the semantic coordinator included. */
-internal const val MANAGEMENT_EXECUTABLE = "share/kast/libexec/kast-management"
-
 /**
  * The executable that launches the coordinator replaces itself with the installation's Host runtime, so a coordinator
  * peer runs that runtime's `java`, the one this process also runs. An unresolvable runtime matches no peer.
@@ -260,4 +258,4 @@ internal fun controlRuntimeExecutable(): Path {
     }
 }
 
-private const val SEMANTIC_SOCKET = "state/run/c.sock"
+private fun semanticSocket(installation: Path): Path = InstallationLayout.of(installation).state.run.coordinatorSocket

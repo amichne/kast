@@ -23,7 +23,14 @@ internal object KastCleanSlateModules {
             ModuleId.TRAVERSAL_CONTRACT,
             ModuleId.DIAGNOSTIC_CONTRACT,
         ),
-        target(ModuleId.DISTRIBUTION_CONTRACT, ModuleRole.CONTRACT, ModuleId.KERNEL),
+        target(
+            ModuleId.DISTRIBUTION_CONTRACT,
+            ModuleRole.CONTRACT,
+            ModuleId.KERNEL,
+            scopedEffects = mapOf(
+                ForbiddenEffect.INSTALLATION_PATH_DERIVATION to InstallationPathDerivationOwners.layout,
+            ),
+        ),
         target(ModuleId.DISTRIBUTION_OUTPUT, ModuleRole.TRANSPORT, ModuleId.DISTRIBUTION_CONTRACT),
         target(
             ModuleId.DISTRIBUTION_CLI,
@@ -64,7 +71,10 @@ internal object KastCleanSlateModules {
                 // The captured descriptor and inode scope shared socket retirement after process exit.
                 JvmClassName("io/github/amichne/kast/distribution/cli/ResetOwnedSharedSocket"),
                 JvmClassName("io/github/amichne/kast/distribution/cli/ResetDeletingVisitor"),
-            )),
+            ),
+                // Workspace container profiles, not the installation, own these `config` and `state` paths.
+                ForbiddenEffect.INSTALLATION_PATH_DERIVATION to InstallationPathDerivationOwners.containerProfile,
+            ),
         ),
         target(
             ModuleId.DISTRIBUTION_MANAGED,

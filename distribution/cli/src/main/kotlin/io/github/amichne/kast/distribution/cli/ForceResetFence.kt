@@ -1,5 +1,6 @@
 package io.github.amichne.kast.distribution.cli
 
+import io.github.amichne.kast.distribution.contract.InstallationLayout
 import io.github.amichne.kast.distribution.contract.InstallationResetRequest
 import io.github.amichne.kast.distribution.contract.InstallationResetStorage
 import io.github.amichne.kast.distribution.contract.installationResetFence
@@ -104,7 +105,10 @@ private constructor(
                 } catch (_: SerializationException) {
                     return ResetJournalAdmission.Rejected
                 }
-            if (record.schemaVersion != 1 || record.installationRoot != root.path.resolve("installation").toString())
+            if (
+                record.schemaVersion != 1 ||
+                    record.installationRoot != InstallationLayout.beneath(root.path).root.toString()
+            )
                 return ResetJournalAdmission.Rejected
             return when (val storage = record.storage) {
                 InstallationResetStorage.Fenced,
@@ -234,7 +238,7 @@ private constructor(
                 Files.writeString(
                     pending,
                     managementJson.encodeToString(
-                        InstallationResetRequest(root.path.resolve("installation").toString(), storage)
+                        InstallationResetRequest(InstallationLayout.beneath(root.path).root.toString(), storage)
                     ),
                     WRITE,
                     NOFOLLOW_LINKS,

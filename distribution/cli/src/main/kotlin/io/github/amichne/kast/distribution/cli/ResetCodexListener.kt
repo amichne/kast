@@ -1,5 +1,6 @@
 package io.github.amichne.kast.distribution.cli
 
+import io.github.amichne.kast.distribution.contract.InstallationLayout
 import io.github.amichne.kast.distribution.managed.endpoint.InstalledUpstreamDirectories
 import java.nio.file.Path
 
@@ -8,7 +9,7 @@ internal object ResetCodexListener {
     fun selects(command: Path, arguments: List<String>, root: Path): Boolean {
         if (!command.isAbsolute || command.normalize() != command || command.fileName.toString() != "codex")
             return false
-        val upstream = root.resolve("installation/state/run/u.sock")
+        val upstream = InstallationLayout.beneath(root).state.run.upstreamSocket
         val transports = setOf("unix://$upstream", "unix://${InstalledUpstreamDirectories.transportPath(upstream)}")
         val prefix =
             when {

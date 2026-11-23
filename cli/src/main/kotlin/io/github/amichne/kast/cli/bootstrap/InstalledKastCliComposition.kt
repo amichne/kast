@@ -11,6 +11,7 @@ import io.github.amichne.kast.cli.projection.CliLocalMetadata
 import io.github.amichne.kast.cli.projection.CliLocalMetadataAdmission
 import io.github.amichne.kast.cli.projection.CliLocalMetadataFailure
 import io.github.amichne.kast.distribution.cli.MANAGEMENT_VERSION
+import io.github.amichne.kast.distribution.contract.InstallationLayout
 import io.github.amichne.kast.distribution.contract.configuration.ConfigurationRejection
 import io.github.amichne.kast.distribution.contract.configuration.ResolvedKastConfiguration
 import io.github.amichne.kast.distribution.managed.FilesystemCanonicalRootDiscovery
@@ -159,8 +160,8 @@ private sealed interface InstalledLocalMetadataConstruction {
 }
 
 /** One control installation admitted from its process code and exact `share/kast` resources. */
-private class InstalledKastControlProduct private constructor(val root: Path) {
-    fun kastExecutable(): Path? = admittedFile(root.resolve("bin/kast"), executable = true)
+private class InstalledKastControlProduct private constructor(val installation: InstallationLayout) {
+    fun kastExecutable(): Path? = admittedFile(installation.payload.kast, executable = true)
 
     /**
      * Proof transition: `KastPluginVersion + InstalledProtocolResources + CliCommandSurface ->
@@ -251,7 +252,7 @@ private class InstalledKastControlProduct private constructor(val root: Path) {
      */
     fun readResource(resource: InstalledControlResource): InstalledControlResourceRead =
         try {
-            InstalledControlResourceRead.Read(Files.readString(root.resolve("share/kast/${resource.fileName}")))
+            InstalledControlResourceRead.Read(Files.readString(installation.payload.shareResource(resource.fileName)))
         } catch (_: IOException) {
             InstalledControlResourceRead.Rejected(resource)
         }
@@ -280,17 +281,17 @@ private class InstalledKastControlProduct private constructor(val root: Path) {
          * the same `share/kast` resources.
          */
         fun discover(): InstalledKastControlProductAdmission {
-            val root =
+            val installation =
                 when (val location = discoverInstalledControlRoot()) {
                     is Refinement.Refined -> location.value
                     is Refinement.Rejected -> return InstalledKastControlProductAdmission.Rejected(location.failure)
                 }
-            if (!Files.isDirectory(root.resolve("share/kast"))) {
+            if (!Files.isDirectory(installation.payload.share)) {
                 return InstalledKastControlProductAdmission.Rejected(
                     InstalledKastControlProductFailure.RESOURCE_DIRECTORY_UNAVAILABLE
                 )
             }
-            return InstalledKastControlProductAdmission.Admitted(InstalledKastControlProduct(root))
+            return InstalledKastControlProductAdmission.Admitted(InstalledKastControlProduct(installation))
         }
     }
 }

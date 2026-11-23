@@ -1,5 +1,6 @@
 package io.github.amichne.kast.distribution.cli
 
+import io.github.amichne.kast.distribution.contract.InstallationLayout
 import io.github.amichne.kast.distribution.managed.ControlInventoryAdmission
 import io.github.amichne.kast.distribution.managed.ControlPayloadInventory
 import java.io.IOException
@@ -184,7 +185,8 @@ private fun recoveryBridgeUnavailable(): ManagedUpgradeOutcome.RecoveryRequired 
 
 private fun admittedInstallerBridge(installation: Path): Path? {
     val manifest = readBundledManifest(installation)
-    val relative = "share/kast/install-candidate.sh"
+    val candidate = InstallationLayout.Relative.INSTALL_CANDIDATE
+    val relative = candidate.value
     if (manifest !is BundledManifestRead.Read) return null
     val inventory = ControlPayloadInventory.admit(installation)
     if (inventory !is ControlInventoryAdmission.Admitted) return null
@@ -195,7 +197,7 @@ private fun admittedInstallerBridge(installation: Path): Path? {
         inventory.files.map { installation.relativize(it).toString() }.toSet() == names &&
             expected.all { payloadOwned(installation, manifest.manifest, it.path) }
     )
-        installation.resolve(relative)
+        candidate.under(installation)
     else null
 }
 

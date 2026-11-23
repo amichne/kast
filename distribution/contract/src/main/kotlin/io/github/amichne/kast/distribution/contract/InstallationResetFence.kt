@@ -6,7 +6,7 @@ import kotlinx.serialization.Required
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
-const val INSTALLATION_RESET_CAPABILITY = "share/kast/reset-fence-v1"
+val INSTALLATION_RESET_CAPABILITY: String = InstallationLayout.Relative.RESET_CAPABILITY.value
 private const val RESET_ROOT_DIGEST_LENGTH = 32
 
 /** Stable outside the replaceable directory; callers pass the canonical management root. */

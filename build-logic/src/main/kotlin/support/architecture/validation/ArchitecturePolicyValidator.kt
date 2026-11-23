@@ -110,6 +110,8 @@ object ArchitecturePolicyValidator {
         ForbiddenEffect.TOPOLOGY_SOURCE_ROOT_VFS_SYNCHRONIZATION to
             setOf(ModuleId.TOPOLOGY_INTELLIJ),
         ForbiddenEffect.TOPOLOGY_PUBLICATION to setOf(ModuleId.EVIDENCE_TOPOLOGY_SQLITE),
+        ForbiddenEffect.INSTALLATION_PATH_DERIVATION to
+            setOf(ModuleId.DISTRIBUTION_CONTRACT, ModuleId.DISTRIBUTION_CLI),
     )
 
     private fun <T> topologicalOrder(

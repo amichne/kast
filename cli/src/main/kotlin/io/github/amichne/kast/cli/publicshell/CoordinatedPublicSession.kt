@@ -5,6 +5,7 @@ import io.github.amichne.kast.cli.direct.CoordinatedToolClient
 import io.github.amichne.kast.cli.direct.InstalledClientBinding
 import io.github.amichne.kast.cli.direct.InvocationWitness
 import io.github.amichne.kast.cli.direct.KastDirectToolSession
+import io.github.amichne.kast.distribution.contract.InstallationLayout
 import io.github.amichne.kast.distribution.managed.CanonicalRoot
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.protocol.registry.PublicToolCatalog
@@ -37,8 +38,6 @@ internal fun coordinatedHookPreparation(
         is Refinement.Refined -> prepareInstalledHook(root, wait, diagnostic, selected.value)
     }
 
-/** The installation's management payload; installation bindings are located from it. */
-internal const val MANAGEMENT_PAYLOAD = "share/kast/libexec/kast-management"
-
+/** Installation bindings are located from the installation's management payload. */
 private fun publicInstallation(installation: Path, environment: Map<String, String>) =
-    InstalledClientBinding.locate(installation.resolve(MANAGEMENT_PAYLOAD), environment)
+    InstalledClientBinding.locate(InstallationLayout.of(installation).payload.managementExecutable, environment)

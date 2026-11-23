@@ -2,8 +2,10 @@
 
 package io.github.amichne.kast.distribution.cli
 
+import io.github.amichne.kast.distribution.contract.CoordinatorHostProfile
 import io.github.amichne.kast.distribution.contract.HostedServiceStatus
 import io.github.amichne.kast.distribution.contract.INSTALLATION_MANIFEST_SCHEMA_VERSION
+import io.github.amichne.kast.distribution.contract.InstallationLayout
 import io.github.amichne.kast.kernel.Refinement
 import java.io.DataInputStream
 import java.net.StandardProtocolFamily
@@ -149,8 +151,9 @@ internal fun observeRuntime(
     installation: Path,
     exchange: (Path, String) -> String? = ::boundedExchange,
 ): PassiveRuntimeObservation {
+    val layout = InstallationLayout.of(installation)
     val epochRaw =
-        readBoundedFile(installation.resolve("state/epoch.json"), MAXIMUM_HEADER_BYTES.toLong())
+        readBoundedFile(layout.state.epoch, MAXIMUM_HEADER_BYTES.toLong())
             ?: return PassiveRuntimeObservation.Rejected(missingRuntimeEpoch(installation))
     val epoch =
         try {
@@ -165,7 +168,7 @@ internal fun observeRuntime(
     )
         return PassiveRuntimeObservation.Rejected(RuntimeObservationFailure.EPOCH_REJECTED)
     val manifestRaw =
-        readBoundedFile(installation.resolve("installation.json"), 67_108_864)
+        readBoundedFile(layout.payload.manifest, 67_108_864)
             ?: return PassiveRuntimeObservation.Rejected(RuntimeObservationFailure.MANIFEST_UNAVAILABLE)
     val manifest =
         try {
@@ -178,14 +181,9 @@ internal fun observeRuntime(
             manifest.installationRoot != installation.toString()
     )
         return PassiveRuntimeObservation.Rejected(RuntimeObservationFailure.MANIFEST_REJECTED)
-    val hostHash =
-        MessageDigest.getInstance("SHA-256")
-            .digest(manifest.codexHome.toByteArray())
-            .joinToString("") { "%02x".format(it) }
-            .take(16)
     val readinessRaw =
         readBoundedFile(
-            installation.resolve("state/broker/$hostHash/service-readiness.json"),
+            layout.state.readiness(CoordinatorHostProfile.of(manifest.codexHome)),
             MAXIMUM_HEADER_BYTES.toLong(),
         ) ?: return PassiveRuntimeObservation.Rejected(RuntimeObservationFailure.READINESS_UNAVAILABLE)
     val readiness =
@@ -249,8 +247,8 @@ internal fun observeRuntime(
 /** Missing broker receipts describe broker evidence, never project or compiler readiness. */
 private fun missingRuntimeEpoch(installation: Path): RuntimeObservationFailure =
     if (
-        !Files.notExists(installation.resolve("state/epoch.json"), LinkOption.NOFOLLOW_LINKS) ||
-            Files.notExists(installation.resolve("config/environment"), LinkOption.NOFOLLOW_LINKS)
+        !Files.notExists(InstallationLayout.of(installation).state.epoch, LinkOption.NOFOLLOW_LINKS) ||
+            Files.notExists(InstallationLayout.of(installation).configuration.environment, LinkOption.NOFOLLOW_LINKS)
     )
         RuntimeObservationFailure.EPOCH_UNAVAILABLE
     else

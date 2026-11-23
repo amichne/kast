@@ -2,6 +2,7 @@ package io.github.amichne.kast.cli.installation
 
 import io.github.amichne.kast.appserver.ide.IdeLifecycleClient
 import io.github.amichne.kast.appserver.ide.IdeLifecycleDeployment
+import io.github.amichne.kast.distribution.contract.InstallationLayout
 import io.github.amichne.kast.distribution.managed.ManagedHeadlessInstallation
 import io.github.amichne.kast.distribution.managed.SelectedIdeLaunch
 import io.github.amichne.kast.kernel.Refinement
@@ -37,7 +38,9 @@ internal fun shutdownManagedHeadless(installation: Path, home: Path, state: Path
     val launch =
         try {
             val bytes =
-                Files.newInputStream(installation.resolve("config/selected-ide.json")).use { it.readNBytes(4097) }
+                Files.newInputStream(InstallationLayout.of(installation).configuration.selectedIde).use {
+                    it.readNBytes(4097)
+                }
             if (bytes.size > 4096)
                 return ManagedHeadlessShutdownOutcome.Rejected(ManagedHeadlessShutdownFailure.ADMISSION_REJECTED)
             Json.decodeFromString<SelectedIdeLaunch>(bytes.decodeToString()) as? SelectedIdeLaunch.Resolved

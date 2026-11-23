@@ -1,5 +1,6 @@
 package io.github.amichne.kast.distribution.cli
 
+import io.github.amichne.kast.distribution.contract.InstallationLayout
 import io.github.amichne.kast.distribution.contract.NativeControlEntry
 import io.github.amichne.kast.distribution.contract.admitNativeControlProcessInvocation
 import io.github.amichne.kast.kernel.Refinement
@@ -191,7 +192,7 @@ internal class ResetScopedProcess private constructor(val snapshot: LifecyclePro
 internal fun isNativeControlProcessExecutable(command: Path): Boolean =
     command.isAbsolute &&
         command.normalize() == command &&
-        command.endsWith(Path.of("share/kast/libexec/kast-management"))
+        command.endsWith(InstallationLayout.Relative.MANAGEMENT_EXECUTABLE.asPath())
 
 internal sealed interface ResetProcessSelection {
     data class Selected(val process: ResetScopedProcess) : ResetProcessSelection
@@ -223,7 +224,7 @@ internal class ForceDaemonRetirement(
                 is ResetRetirementPreparation.Prepared -> preparation.processes
                 is ResetRetirementPreparation.Rejected -> return preparation.effect
             }
-        val label = ResetServiceLabel.selected(root.resolve("installation"))
+        val label = ResetServiceLabel.selected(InstallationLayout.beneath(root).root)
         for (variant in ResetLaunchVariant.entries) {
             when (val job = retireJob(label, variant, home)) {
                 ResetEffect.Completed -> Unit

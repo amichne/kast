@@ -3,6 +3,7 @@ package io.github.amichne.kast.cli.rpc
 import io.github.amichne.kast.cli.direct.InstalledClientBinding
 import io.github.amichne.kast.cli.direct.InstalledClientContext
 import io.github.amichne.kast.cli.direct.InstalledToolAdmission
+import io.github.amichne.kast.distribution.contract.InstallationLayout
 import io.github.amichne.kast.distribution.contract.InstalledToolInvocation
 import java.nio.file.Files
 import java.nio.file.LinkOption
@@ -40,11 +41,12 @@ internal class OneShotInvocationRecord private constructor(private val path: Pat
             try {
                 val installation = binding.installation
                 if (binding.observe() != InstalledToolAdmission.AVAILABLE) return null
-                val marker = installation.resolve("share/kast/one-shot-observation-v1")
+                val layout = InstallationLayout.of(installation)
+                val marker = layout.payload.oneShotObservationCapability
                 if (!Files.isRegularFile(marker, LinkOption.NOFOLLOW_LINKS) || Files.readString(marker) != "1\n")
                     return null
                 val start = ProcessHandle.current().info().startInstant().orElse(null) ?: return null
-                val directory = installation.resolve(kind.directory)
+                val directory = kind.directory(layout)
                 Files.createDirectories(
                     directory,
                     PosixFilePermissions.asFileAttribute(PosixFilePermissions.fromString("rwx------")),
@@ -82,7 +84,13 @@ internal class OneShotInvocationRecord private constructor(private val path: Pat
     }
 }
 
-internal enum class InvocationRecordKind(val directory: String) {
-    RPC("state/run/one-shot"),
-    MCP_SESSION("state/run/tool-sessions"),
+internal enum class InvocationRecordKind {
+    RPC,
+    MCP_SESSION;
+
+    fun directory(installation: InstallationLayout): Path =
+        when (this) {
+            RPC -> installation.state.run.oneShotInvocations
+            MCP_SESSION -> installation.state.run.toolSessions
+        }
 }

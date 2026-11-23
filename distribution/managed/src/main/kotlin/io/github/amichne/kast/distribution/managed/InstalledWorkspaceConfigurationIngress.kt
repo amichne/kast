@@ -1,5 +1,6 @@
 package io.github.amichne.kast.distribution.managed
 
+import io.github.amichne.kast.distribution.contract.InstallationLayout
 import io.github.amichne.kast.distribution.contract.configuration.ConfigurationParameter
 import io.github.amichne.kast.distribution.contract.configuration.ConfigurationRejection
 import io.github.amichne.kast.distribution.contract.configuration.ConfigurationSources
@@ -11,7 +12,6 @@ import java.nio.file.LinkOption.NOFOLLOW_LINKS
 import java.nio.file.NoSuchFileException
 import java.nio.file.Path
 import java.nio.file.attribute.BasicFileAttributes
-import java.security.MessageDigest
 
 sealed interface WorkspaceConfigurationRejection {
     class Source(val rejection: SavedConfigurationIngressRejection) : WorkspaceConfigurationRejection
@@ -40,7 +40,7 @@ object InstalledWorkspaceConfigurationIngress {
     fun load(installationRoot: Path, workspaceRoot: Path, environment: Map<String, String>): SavedConfigurationIngress {
         if (!physicalDirectory(installationRoot)) return rejected(SavedConfigurationIngressFailure.INVALID_INSTALLATION)
         if (!physicalDirectory(workspaceRoot)) return rejected(SavedConfigurationIngressFailure.INVALID_WORKSPACE)
-        val installationFile = installationRoot.resolve("config/environment")
+        val installationFile = InstallationLayout.of(installationRoot).configuration.environment
         val explicit = environment[ConfigurationParameter.CONFIGURATION_FILE.key]
         val installation =
             when (
@@ -70,13 +70,8 @@ object InstalledWorkspaceConfigurationIngress {
         )
     }
 
-    fun workspaceFile(installationRoot: Path, workspaceRoot: Path): Path {
-        val identity =
-            MessageDigest.getInstance("SHA-256")
-                .digest(workspaceRoot.toString().toByteArray(Charsets.UTF_8))
-                .joinToString("") { "%02x".format(it) }
-        return installationRoot.resolve("config/workspaces/$identity/environment")
-    }
+    fun workspaceFile(installationRoot: Path, workspaceRoot: Path): Path =
+        InstallationLayout.of(installationRoot).configuration.workspaceEnvironment(workspaceRoot)
 
     /** Inspect every existing component without following aliases; only a proven missing component means absent. */
     private fun optional(root: Path, file: Path, environment: Map<String, String>): SavedConfigurationIngress {

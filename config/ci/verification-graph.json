@@ -170,7 +170,7 @@
         },
         {
             "path": "build-logic/src/main/kotlin/support/architecture/ArchitectureModel.kt",
-            "sha256": "385de364a9e5390b77febeb166a2df0cabad4e8a8da2869ef46c556754f0901f"
+            "sha256": "9908f306da4150d1962b21df3f91c7fd61d42ca67011080132dcad8138f8010a"
         },
         {
             "path": "build-logic/src/main/kotlin/support/architecture/ArchitectureVerification.kt",
@@ -178,7 +178,7 @@
         },
         {
             "path": "build-logic/src/main/kotlin/support/architecture/JvmEffectScanner.kt",
-            "sha256": "30c3501043b3391c018553ad5cc61b77e477b6ebcc8ae883f1a2d7a9ff2e8b7f"
+            "sha256": "ba4d3b6d386faee74ec3e8f45910a080790391d82b0b0eddf8eca6d6b35ef491"
         },
         {
             "path": "build-logic/src/main/kotlin/support/architecture/ModuleImpact.kt",
@@ -221,12 +221,16 @@
             "sha256": "fe985036c9cff517f71f725f4d8b12d7856f35bce6c2e09c883f35477a62a472"
         },
         {
+            "path": "build-logic/src/main/kotlin/support/architecture/policy/InstallationPathDerivationRule.kt",
+            "sha256": "d9781f9cb4e4b0d39734f797745c7923391d5eb6dbbedcba37f72f70ec40c5a4"
+        },
+        {
             "path": "build-logic/src/main/kotlin/support/architecture/policy/JvmEffectRules.kt",
             "sha256": "22179c8f4890c23286b79a34f359100dc27f2722d92156f86cb3260ff321d8bc"
         },
         {
             "path": "build-logic/src/main/kotlin/support/architecture/policy/KastCleanSlateModules.kt",
-            "sha256": "6dd1b9485f82ca441749afab64aab905b44ebfcc13b2a3a4bffaef84877ae92e"
+            "sha256": "5709d340aee74922a6e16c06972fde6ad8b4f64a1c1e3bed70b3384929dc531b"
         },
         {
             "path": "build-logic/src/main/kotlin/support/architecture/policy/KastQueryModules.kt",
@@ -242,11 +246,11 @@
         },
         {
             "path": "build-logic/src/main/kotlin/support/architecture/validation/ArchitecturePolicyValidator.kt",
-            "sha256": "4b625160616ff153add12fc64f5195b8eb733416fa7cb4419e0bbe03f9c73c8a"
+            "sha256": "e0efb5ebf7947fc4ae0df5a7fbe19cfe6d5e15926ac406d70545286fa3604b42"
         },
         {
             "path": "build-logic/src/main/kotlin/support/architecture/validation/ModulePolicyValidator.kt",
-            "sha256": "e58359e73d8d46983b465e3febeb1c2b74dfd2d0fb8b365c296db46990bb9455"
+            "sha256": "041479ed6b16412bb700743de3f54fd96c4b6e211b0d8bb960a2aced3b75c369"
         },
         {
             "path": "build-logic/src/main/kotlin/support/tasks/DefaultTestTagSelection.kt",

@@ -1,6 +1,7 @@
 package io.github.amichne.kast.appserver
 
 import io.github.amichne.kast.appserver.runtime.*
+import io.github.amichne.kast.distribution.contract.InstallationLayout
 import io.github.amichne.kast.kernel.Refinement
 import java.nio.file.Files
 import java.nio.file.Path
@@ -128,19 +129,19 @@ internal constructor(
     ) : this(kast, userHome, environment, MacOsPersistentBrokerServiceHost())
 
     override fun execute(action: AppServerAction, workspace: Path): AppServerManagementResult {
-        val installationRoot =
+        val installation =
             try {
-                kast.toRealPath().parent.parent
+                InstallationLayout.ofKastExecutable(kast.toRealPath())
             } catch (_: Exception) {
                 return reject(AppServerManagementFailure.CONFIGURATION_REJECTED)
             }
         if (
             requiresLifecycleStart(action) &&
-                InstallationLifecycleFence.observe(installationRoot) != InstallationLifecycleStartAdmission.AVAILABLE
+                InstallationLifecycleFence.observe(installation.root) != InstallationLifecycleStartAdmission.AVAILABLE
         ) {
             return reject(AppServerManagementFailure.SERVICE_OWNERSHIP_UNPROVEN)
         }
-        val enrollment = WorkspaceEnrollmentStore(installationRoot.resolve("config/workspaces.json"))
+        val enrollment = WorkspaceEnrollmentStore(installation.configuration.workspaceRegistry)
         val command =
             when (val resolved = BrokerServiceLaunchCommand.resolveCoordinator(kast, userHome, environment)) {
                 is BrokerServiceLaunchCommandResolution.Resolved -> resolved.command
@@ -189,7 +190,7 @@ internal constructor(
                                 reset.failure,
                             )
                     }
-                    val registry = installationRoot.resolve("config/workspaces.json")
+                    val registry = installation.configuration.workspaceRegistry
                     Files.deleteIfExists(registry)
                     if (ServiceLoginAgent.remove(command) == ServiceLoginAgentChange.REJECTED)
                         return reject(AppServerManagementFailure.SERVICE_OWNERSHIP_UNPROVEN)

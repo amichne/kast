@@ -2,6 +2,7 @@ package io.github.amichne.kast.distribution.cli
 
 import io.github.amichne.kast.distribution.contract.ControlDistributionLimits
 import io.github.amichne.kast.distribution.contract.INSTALLATION_MANIFEST_SCHEMA_VERSION
+import io.github.amichne.kast.distribution.contract.InstallationLayout
 import java.nio.file.Files
 import java.nio.file.LinkOption
 import java.nio.file.Path
@@ -31,7 +32,7 @@ private val bundledManifestJson = Json { ignoreUnknownKeys = true }
 internal fun readBundledManifest(installation: Path): BundledManifestRead {
     val raw =
         readBoundedFile(
-            installation.resolve("installation.json"),
+            InstallationLayout.of(installation).payload.manifest,
             ControlDistributionLimits.maximumManifestBytes.toLong(),
         ) ?: return BundledManifestRead.Unavailable
     return try {
@@ -43,11 +44,12 @@ internal fun readBundledManifest(installation: Path): BundledManifestRead {
 
 @Suppress("ThrowsCount") // Each incomplete installation proof rejects before external commands run.
 internal fun selectedInstallation(root: Path): Path {
-    val payload = root.resolve("installation")
+    val layout = InstallationLayout.beneath(root)
+    val payload = layout.root
     if (
         Files.isSymbolicLink(payload) ||
             !Files.isDirectory(payload, LinkOption.NOFOLLOW_LINKS) ||
-            !Files.isRegularFile(payload.resolve("installation.json"), LinkOption.NOFOLLOW_LINKS)
+            !Files.isRegularFile(layout.payload.manifest, LinkOption.NOFOLLOW_LINKS)
     )
         throw ManagementRejected("installation-admission", "installation is unavailable")
     val selected =
@@ -56,7 +58,7 @@ internal fun selectedInstallation(root: Path): Path {
         } catch (_: Exception) {
             throw ManagementRejected("installation-admission", "installation is unavailable")
         }
-    if (selected != root.toRealPath().resolve("installation"))
+    if (selected != InstallationLayout.beneath(root.toRealPath()).root)
         throw ManagementRejected("installation-admission", "installation is invalid")
     val manifest =
         when (val read = readBundledManifest(selected)) {
