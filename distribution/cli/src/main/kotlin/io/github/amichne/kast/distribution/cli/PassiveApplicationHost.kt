@@ -70,6 +70,7 @@ internal enum class ApplicationHostFailure(val step: PassiveHostStep) {
     INSTALLATION_UNAVAILABLE(PassiveHostStep.SELECTION),
     SELECTION_UNAVAILABLE(PassiveHostStep.SELECTION),
     PROFILE_UNAVAILABLE(PassiveHostStep.SELECTION),
+    DESCRIPTOR_ABSENT(PassiveHostStep.DESCRIPTOR_READ),
     DESCRIPTOR_UNAVAILABLE(PassiveHostStep.DESCRIPTOR_READ),
     DESCRIPTOR_REJECTED(PassiveHostStep.DESCRIPTOR_ADMISSION),
     PROCESS_UNAVAILABLE(PassiveHostStep.PROCESS_LOOKUP),
@@ -199,6 +200,7 @@ private fun readApplicationAdvertisement(
     observeProcess: (Long) -> ApplicationProcessObservation,
 ): PassiveHostInspection {
     val descriptor = selection.directory.resolve("endpoint.json")
+    if (Files.notExists(descriptor, NOFOLLOW_LINKS)) return unavailable(ApplicationHostFailure.DESCRIPTOR_ABSENT)
     if (!physicalFile(descriptor)) return unavailable(ApplicationHostFailure.DESCRIPTOR_UNAVAILABLE)
     val attributes = Files.readAttributes(descriptor, BasicFileAttributes::class.java, NOFOLLOW_LINKS)
     val owner = Files.getOwner(home, NOFOLLOW_LINKS)

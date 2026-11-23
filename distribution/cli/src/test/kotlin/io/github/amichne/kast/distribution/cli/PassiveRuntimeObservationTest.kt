@@ -13,6 +13,7 @@ import java.security.MessageDigest
 import java.util.Base64
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
+import kotlinx.serialization.Required
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
@@ -237,7 +238,12 @@ private data class RuntimeFixtureManifest(val schemaVersion: Int, val installati
 private data class RuntimeFixtureEpoch(val schemaVersion: Int, val installation: String, val epoch: String)
 
 @Serializable
-private data class RuntimeFixtureReadiness(val state: String, val schemaVersion: Int, val serviceInstanceId: String)
+private data class RuntimeFixtureReadiness(
+    val state: String,
+    val schemaVersion: Int,
+    val serviceInstanceId: String,
+    @Required val serviceIdentity: String = "sha256:" + "b".repeat(64),
+)
 
 @Serializable
 private data class RuntimeFixtureCoordinator(
