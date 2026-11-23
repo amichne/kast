@@ -173,6 +173,21 @@ class InstalledPayloadAdmissionTest(unittest.TestCase):
                 self.assert_manifest_rejected()
                 self.manifest[key] = original
 
+    def test_versioned_manifest_schemas_are_rejected(self):
+        digest = self.manifest['payloadIdentity'][7:]
+        versioned = self.outer / 'versions' / ('1.2.3-' + digest)
+        versioned.parent.mkdir()
+        self.root.rename(versioned)
+        self.root = versioned
+        for key, suffix in (('installationRoot', ''), ('stateRoot', 'state'),
+                            ('configuration', 'config/environment'), ('workspaceRegistry', 'config/workspaces.json')):
+            self.manifest[key] = str(versioned / suffix) if suffix else str(versioned)
+        for schema in (1, 2):
+            with self.subTest(schema=schema):
+                self.manifest['schemaVersion'] = schema
+                self.save()
+                self.assert_manifest_rejected()
+
     def test_selector_anchor_is_rejected_and_foreign_entry_preserved(self):
         foreign = self.outer / 'current'
         foreign.write_text('protected foreign entry')
@@ -181,6 +196,38 @@ class InstalledPayloadAdmissionTest(unittest.TestCase):
         self.save()
         self.assert_manifest_rejected()
         self.assertEqual('protected foreign entry', foreign.read_text())
+
+
+class VersionedPayloadRecoveryTest(unittest.TestCase):
+    def setUp(self):
+        temporary = tempfile.TemporaryDirectory(prefix='kast-versioned-payload-')
+        self.addCleanup(temporary.cleanup)
+        digest = 'c' * 64
+        self.root = Path(temporary.name).resolve() / 'kast/versions' / ('1.2.3-' + digest)
+        (self.root / 'bin').mkdir(parents=True)
+        executable = self.root / 'bin/kast-complete'
+        executable.write_text('versioned')
+        executable.chmod(0o644)
+        self.manifest = asdict(ManagedControlManifestFixture(str(self.root), str(self.root / 'state'),
+            str(self.root / 'config/environment'), str(self.root / 'config/workspaces.json'),
+            (PayloadFileFixture('bin/kast-complete', 'sha256:' + hashlib.sha256(b'versioned').hexdigest(), 420),),
+            payloadIdentity='sha256:' + digest))
+        specification = importlib.util.spec_from_file_location('kast_versioned_payload_recovery_fixture', SCRIPT)
+        self.recovery = importlib.util.module_from_spec(specification)
+        sys.modules[specification.name] = self.recovery
+        specification.loader.exec_module(self.recovery)
+
+    def test_versioned_manifest_schemas_are_rejected_before_payload_admission(self):
+        r = self.recovery
+        for schema in (1, 2):
+            with self.subTest(schema=schema):
+                self.manifest['schemaVersion'] = schema
+                (self.root / 'installation.json').write_text(json.dumps(self.manifest))
+                evidence = io.StringIO()
+                with contextlib.redirect_stderr(evidence), self.assertRaises(r.Rejected) as rejected:
+                    r.managed_payload(self.root, self.root, r.Identity.observe(self.root))
+                self.assertEqual(r.Failure.RECEIPT, rejected.exception.failure)
+                self.assertEqual('', evidence.getvalue())
 
 
 RECEIPTS = Path(__file__).parents[2] / 'distribution/contract/src/test/resources/replacement-receipt'

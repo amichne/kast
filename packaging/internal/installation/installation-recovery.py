@@ -333,9 +333,7 @@ def managed_payload(path, expected_root, identity, reservation=None, live_coordi
         document = json.loads(raw, object_pairs_hook=unique)
     except (ValueError, UnicodeError):
         raise Rejected(Failure.RECEIPT) from None
-    if not isinstance(document, dict) or document.get('installationRoot') != str(expected_root) or document.get('schemaVersion') not in (1, 2, 3):
-        raise Rejected(Failure.RECEIPT)
-    if document['schemaVersion'] in (1, 2) and (expected_root.parent.name != 'versions' or expected_root.name != document.get('semanticVersion', '') + '-' + document.get('payloadIdentity', '')[7:]):
+    if not isinstance(document, dict) or document.get('installationRoot') != str(expected_root) or document.get('schemaVersion') != 3:
         raise Rejected(Failure.RECEIPT)
     if reservation is not None and (hashlib.sha256(raw).hexdigest() != reservation.manifestSha256 or document.get('semanticVersion') != reservation.version or document.get('controlSha256') != 'sha256:' + reservation.controlSha256):
         raise Rejected(Failure.RECEIPT)
