@@ -114,7 +114,7 @@ internal fun inspectApplicationHost(
 
 internal fun readWorkspaceApplicationHost(container: AdmittedContainer): PassiveHostInspection =
     observeSelectedApplication(container.home, ::observeApplicationProcess) {
-        readApplicationSelection(container.profile.resolve("config/selected-ide.json"), container.home)
+        readApplicationSelection(container.selectedIde, container.home)
     }
 
 private fun observeSelectedApplication(

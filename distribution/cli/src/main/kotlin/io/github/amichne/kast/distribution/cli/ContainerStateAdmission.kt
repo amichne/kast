@@ -190,7 +190,7 @@ internal fun selectedContainerPlugins(container: AdmittedContainer): Refinement<
         }
     val expected = SelectedIdeInstallation.recordInstalledHostTarget(launch, target)
     return when (
-        val saved = readContainerRecord<SelectedIdeLaunch>(container.profile.resolve("config/selected-ide.json"))
+        val saved = readContainerRecord<SelectedIdeLaunch>(container.selectedIde)
     ) {
         is Refinement.Rejected -> saved
         is Refinement.Refined ->

@@ -58,6 +58,7 @@ enum class ForbiddenEffect {
     ISOLATED_RUNTIME,
     TOPOLOGY_BUILD_AUTHORITY,
     TOPOLOGY_PUBLICATION,
+    INSTALLATION_PATH_DERIVATION,
 }
 
 enum class ModuleId(val projectPath: String) {
