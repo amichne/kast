@@ -277,27 +277,24 @@ class Installation:
             raise Rejected(Failure.MANIFEST_REJECTED)
         document = read_json(root / 'installation.json', CONTROL_MANIFEST_MAXIMUM_BYTES, Failure.MANIFEST_REJECTED)
         payload = document.get('payloadIdentity', '')
-        if (document.get('schemaVersion') not in {1, 2, 3} or document.get('installationRoot') != str(root)
+        if (document.get('schemaVersion') != 3 or document.get('installationRoot') != str(root)
                 or len(payload) != 71 or not payload.startswith('sha256:')
                 or any(c not in '0123456789abcdef' for c in payload[7:])
-                or (document['schemaVersion'] == 3 and root.name != 'installation')
-                or (document['schemaVersion'] in {1, 2} and (root.parent.name != 'versions'
-                    or root.name != document.get('semanticVersion', '') + '-' + payload[7:]))
+                or root.name != 'installation'
                 or any(document.get(key) != str(root / suffix) for key, suffix in (
                     ('stateRoot', 'state'), ('configuration', 'config/environment'),
                     ('workspaceRegistry', 'config/workspaces.json')))):
             raise Rejected(Failure.MANIFEST_REJECTED)
         if not isinstance(document.get('externalAnchors'), list) or len(document['externalAnchors']) > 16:
             raise Rejected(Failure.MANIFEST_REJECTED)
-        if document['schemaVersion'] == 3 and any(
-                not isinstance(anchor, dict) or anchor.get('kind') not in {'login', 'socket-alias', 'upstream-directory'}
+        if any(not isinstance(anchor, dict) or anchor.get('kind') not in {'login', 'socket-alias', 'upstream-directory'}
                 for anchor in document['externalAnchors']):
             raise Rejected(Failure.MANIFEST_REJECTED)
         verify_payload(root, document, retired_product=retired_product)
         return Installation(root, document, FileIdentity.observe(root))
     @property
     def managed_root(self):
-        return self.root.parent if self.manifest['schemaVersion'] == 3 else self.root.parent.parent
+        return self.root.parent
 
     def revalidate(self):
         if self.root.resolve(strict=True) != self.root or FileIdentity.observe(self.root) != self.identity:
