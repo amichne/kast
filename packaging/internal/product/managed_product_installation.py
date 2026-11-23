@@ -525,13 +525,13 @@ def require_empty_workspaces(root: Path) -> None:
 
 
 def read_management(raw: bytes, root: Path, command: Path, prior: Path) -> ProductManagement:
-    """Admit the prior schema 3 receipt; recorded agent registrations are not Kast's and are dropped."""
+    """Admit the prior schema 3 receipt with exactly its recorded fields."""
     value = release.document(raw)
     reference = reference_at(prior, root)
     if not release.mapping(value) or value.get("schemaVersion") != 3:
         raise ValueError("management schema")
     required = {"schemaVersion", "installationRoot", "executable", "executableSha256", "product"}
-    if not required <= set(value) or set(value) - required - {"registrations", "guidance", "providers"}:
+    if set(value) != required:
         raise ValueError("management fields")
     if value["product"] != release.document(install.encoded(reference)):
         raise ValueError("management product identity")

@@ -799,6 +799,20 @@ class ProductActivationTest(unittest.TestCase):
             all(url.startswith(f"{release.RELEASE_URL}/v1.2.3/") for url in self.source.calls)
         )
 
+    def test_management_receipt_rejects_retired_harness_fields(self) -> None:
+        result = activation.activate(self.root, self.home, self.admitted())
+        assert isinstance(result, activation.ProductInstalled), result
+        raw = (self.root / "management.json").read_bytes()
+        command, prior = Path(result.executable), self.root / "installation"
+        admitted = activation.read_management(raw, self.root, command, prior)
+        self.assertEqual(result.product, admitted.product)
+        for field in ("registrations", "guidance", "providers"):
+            with self.subTest(field=field):
+                document = json.loads(raw)
+                document[field] = []
+                with self.assertRaisesRegex(ValueError, "management fields"):
+                    _ = activation.read_management(json.dumps(document).encode(), self.root, command, prior)
+
     def test_workspace_overlay_survives_replacement_and_is_admitted_for_removal(self) -> None:
         admitted = self.admitted()
         result = activation.activate(self.root, self.home, admitted)
