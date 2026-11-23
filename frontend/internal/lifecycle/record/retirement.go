@@ -1,6 +1,7 @@
 package record
 
 import (
+	"math"
 	"slices"
 	"strings"
 
@@ -68,6 +69,14 @@ func (r RetirementReason) Removal() bool {
 
 // ProcessID is a positive process identifier.
 type ProcessID int32
+
+// ParseProcessID admits a positive identifier within the range, before it is narrowed.
+func ParseProcessID(value int64) (ProcessID, bool) {
+	if value <= 0 || value > math.MaxInt32 {
+		return 0, false
+	}
+	return ProcessID(value), true
+}
 
 // Incarnation is one process instance: its identifier and the start time the platform reports, in the platform's
 // own unit. A different start time under the same identifier is a different process.
@@ -190,8 +199,9 @@ func decodeRetired(object codec.Object) (Retired, error) {
 		if err := entry.Closed(); err != nil {
 			return Retired{}, err
 		}
-		host := Incarnation{ProcessID(pid), start}
-		if pid <= 0 || pid > 1<<31-1 || start < 0 || (i > 0 && !incarnationBefore(hosts[i-1], host)) {
+		process, ok := ParseProcessID(pid)
+		host := Incarnation{process, start}
+		if !ok || start < 0 || (i > 0 && !incarnationBefore(hosts[i-1], host)) {
 			return Retired{}, codec.Reject(codec.InvalidValue, member)
 		}
 		hosts = append(hosts, host)

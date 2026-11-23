@@ -1,6 +1,8 @@
 package failure
 
 import (
+	"math"
+
 	"github.com/amichne/kast/frontend/internal/lifecycle/codec"
 	"github.com/amichne/kast/frontend/internal/lifecycle/record"
 )
@@ -104,7 +106,7 @@ func decodeEvidence(kind EvidenceKind, object codec.Object) (evidence, error) {
 		if err != nil {
 			return nil, err
 		}
-		status, err := boundedInt(object, "httpStatus", 0, 599)
+		status, err := boundedInt(object, "httpStatus", 0, maximumHTTPStatus)
 		return TransferEvidence{asset, cause, status}, err
 	case KindHolder:
 		lockRange, err := codec.Text(object, "range", rangeNames.parse)
@@ -156,12 +158,13 @@ func decodeLocation(object codec.Object) (record.RootKind, record.RelativePath, 
 	return root, path, err
 }
 
+// boundedInt reads an integer within the caller's bounds, and always within 32 bits, before it is narrowed.
 func boundedInt(object codec.Object, member string, low, high int64) (int, error) {
 	value, err := object.Int(member)
 	if err != nil {
 		return 0, err
 	}
-	if value < low || value > high {
+	if value < low || value > high || value < math.MinInt32 || value > math.MaxInt32 {
 		return 0, codec.Reject(codec.InvalidValue, object.Member(member))
 	}
 	return int(value), nil

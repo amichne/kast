@@ -258,8 +258,10 @@ func (e FilesystemEvidence) valid() bool {
 		(e.Cause == CauseUnmappedErrno) == (e.Errno != 0)
 }
 func (e TransferEvidence) valid() bool {
-	return e.Asset.String() != "" && transferNames[e.Cause] != "" &&
-		(e.Cause == TransferHTTPStatus) == (e.HTTPStatus != 0)
+	if e.Cause == TransferHTTPStatus {
+		return e.Asset.String() != "" && e.HTTPStatus >= minimumHTTPStatus && e.HTTPStatus <= maximumHTTPStatus
+	}
+	return e.Asset.String() != "" && transferNames[e.Cause] != "" && e.HTTPStatus == 0
 }
 func (e HolderEvidence) valid() bool {
 	return rangeNames[e.Range] != "" && lockModeNames[e.Mode] != "" && e.Holder >= 0

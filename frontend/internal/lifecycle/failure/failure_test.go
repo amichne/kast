@@ -195,6 +195,7 @@ func TestDecoderRejectsEvidenceOfAnotherCode(t *testing.T) {
 			"PERMISSION", 1),
 		"status without HTTP_STATUS": strings.Replace(string(byCode["CATALOG_UNAVAILABLE"]), "HTTP_STATUS",
 			"TIMEOUT", 1),
+		"wrapping holder": strings.Replace(string(byCode["LOCK_HELD"]), `"holder":4242`, `"holder":4294967297`, 1),
 		"unknown code":    strings.Replace(string(byCode["SELECTOR_INVALID"]), "SELECTOR_INVALID", "SELECTOR_BAD", 1),
 		"unknown stage":   strings.Replace(string(byCode["SELECTOR_INVALID"]), "SELECTION", "SELECTING", 1),
 		"evidence member": strings.Replace(string(byCode["SELECTOR_INVALID"]), `{}`, `{"message":"x"}`, 1),

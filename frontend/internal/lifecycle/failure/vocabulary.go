@@ -178,9 +178,14 @@ func TransferFailed(cause TransferCause) (Transfer, bool) {
 	return Transfer{cause, 0}, true
 }
 
+const (
+	minimumHTTPStatus = 100
+	maximumHTTPStatus = 599
+)
+
 // TransferStatus is an HTTP status from 100 to 599.
 func TransferStatus(status int) (Transfer, bool) {
-	if status < 100 || status > 599 {
+	if status < minimumHTTPStatus || status > maximumHTTPStatus {
 		return Transfer{}, false
 	}
 	return Transfer{TransferHTTPStatus, status}, true

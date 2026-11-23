@@ -43,14 +43,18 @@ func TestDocumentAdmitsExactlyOneObject(t *testing.T) {
 }
 
 func TestNestingIsBounded(t *testing.T) {
+	// The document itself is the first of 32 levels.
 	for _, pair := range [][2]string{{"[", "]"}, {`{"a":`, "}"}} {
-		deep := `{"a":` + strings.Repeat(pair[0], 100_000) + "1" + strings.Repeat(pair[1], 100_000) + "}"
-		if _, err := Document([]byte(deep), 1<<20); cause(t, err) != Malformed {
-			t.Errorf("deep %s admitted: %v", pair[0], err)
+		nested := func(levels int) []byte {
+			return []byte(`{"a":` + strings.Repeat(pair[0], levels-1) + "1" + strings.Repeat(pair[1], levels-1) + "}")
 		}
-		shallow := `{"a":` + strings.Repeat(pair[0], 6) + "1" + strings.Repeat(pair[1], 6) + "}"
-		if _, err := Document([]byte(shallow), 1024); err != nil {
-			t.Errorf("shallow %s rejected: %v", pair[0], err)
+		if _, err := Document(nested(32), 1<<20); err != nil {
+			t.Errorf("32 levels of %s rejected: %v", pair[0], err)
+		}
+		for _, levels := range []int{33, 100_000} {
+			if _, err := Document(nested(levels), 1<<20); err == nil || cause(t, err) != Malformed {
+				t.Errorf("%d levels of %s: %v", levels, pair[0], err)
+			}
 		}
 	}
 }

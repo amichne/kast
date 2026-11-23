@@ -386,6 +386,8 @@ func TestRetirementDocumentDecodesStrictly(t *testing.T) {
 			codec.InvalidValue},
 		{"duplicate host", `{"pid":41,"startTime":9}`, `{"pid":41,"startTime":7}`, codec.InvalidValue},
 		{"zero pid", `{"pid":41,"startTime":7}`, `{"pid":0,"startTime":7}`, codec.InvalidValue},
+		// 4294967297 narrows to 1, so the range check must precede the conversion.
+		{"wrapping pid", `{"pid":41,"startTime":7}`, `{"pid":4294967297,"startTime":7}`, codec.InvalidValue},
 		{"missing hosts", `,"hosts":[{"pid":41,"startTime":7},{"pid":41,"startTime":9},{"pid":77,"startTime":3}]`, ``,
 			codec.MissingMember},
 	})
@@ -394,6 +396,59 @@ func TestRetirementDocumentDecodesStrictly(t *testing.T) {
 		{"unknown reason", `"ACTIVE_HOST"`, `"HOST_BUSY"`, codec.InvalidValue},
 		{"facts beside reason", `"reason":"ACTIVE_HOST"`, `"reason":"ACTIVE_HOST","hosts":[]`, codec.UnknownMember},
 	})
+}
+
+// TestRecordIntegersRejectOutsideTheirLimits decodes each integer at and just past each limit. A value outside is
+// the typed INVALID_VALUE rejection; 4294967297 narrows to 1, so a check after the conversion would admit it.
+func TestRecordIntegersRejectOutsideTheirLimits(t *testing.T) {
+	retirement := func(member string) func(string) error {
+		return func(value string) error {
+			host := map[string]string{"pid": "1", "startTime": "0"}
+			host[member] = value
+			_, err := DecodeRetirementDocument([]byte(`{"schemaVersion":1,"outcome":"RETIRED","semanticLabel":` +
+				`"io.github.amichne.kast.semantic.0123456789abcdef0123456789abcdef","brokerLabels":[],"hosts":[{"pid":` +
+				host["pid"] + `,"startTime":` + host["startTime"] + `}]}`))
+			return err
+		}
+	}
+	replaced := func(name, old string, decode func([]byte) error) func(string) error {
+		raw := fixture(t, name)
+		return func(value string) error {
+			return decode(replace(t, raw, old, strings.Replace(old, old[strings.LastIndex(old, ":")+1:], value, 1)))
+		}
+	}
+	cases := []struct {
+		name     string
+		decode   func(string) error
+		admitted []string
+		rejected []string
+	}{
+		{"host pid", retirement("pid"), []string{"1", "2147483647"},
+			[]string{"-1", "0", "2147483648", "4294967296", "4294967297", "9223372036854775808"}},
+		{"host start time", retirement("startTime"), []string{"0", "9223372036854775807"},
+			[]string{"-1", "9223372036854775808"}},
+		{"payload bytes", replaced("installation.json", `"bytes":10`,
+			func(b []byte) error { _, err := DecodePayloadManifest(b); return err }),
+			[]string{"0", "8589934591"}, []string{"-1", "8589934592", "9223372036854775808"}},
+		{"asset bytes", replaced("build-record.json", `"bytes": 1000`,
+			func(b []byte) error { _, err := DecodeBuildRecord(b); return err }),
+			[]string{"1", "2147483647"}, []string{"-1", "0", "2147483648", "9223372036854775808"}},
+	}
+	for _, c := range cases {
+		for _, value := range c.admitted {
+			if err := c.decode(value); err != nil {
+				t.Errorf("%s %s: %v", c.name, value, err)
+			}
+		}
+		for _, value := range c.rejected {
+			expectCause(t, c.name+" "+value, c.decode(value), codec.InvalidValue)
+		}
+	}
+	for value, want := range map[int64]bool{-1: false, 0: false, 1: true, 1<<31 - 1: true, 1 << 31: false, 1<<32 + 1: false} {
+		if process, ok := ParseProcessID(value); ok != want || (ok && int64(process) != value) || (!ok && process != 0) {
+			t.Errorf("process id %d: %d, %v", value, process, ok)
+		}
+	}
 }
 
 func TestUnadmittedValuesNeverEncode(t *testing.T) {
