@@ -1,5 +1,6 @@
 package io.github.amichne.kast.distribution.cli
 
+import io.github.amichne.kast.distribution.contract.InstallationLayout
 import io.github.amichne.kast.distribution.contract.InstalledToolInvocation
 import io.github.amichne.kast.distribution.contract.NativeControlEntry
 import io.github.amichne.kast.distribution.contract.admitNativeControlProcessInvocation
@@ -343,7 +344,7 @@ internal fun installationLifecycleEnvironment(
     } +
         mapOf(
             "HOME" to home.toString(),
-            "KAST_CONFIGURATION_FILE" to installation.resolve("config/environment").toString(),
+            "KAST_CONFIGURATION_FILE" to InstallationLayout.of(installation).configuration.environment.toString(),
             // JVM option quoting, not shell evaluation: preserve one property even for quotes or newlines.
             "JAVA_TOOL_OPTIONS" to "'-Duser.home=${home.toString().replace("'", "'\"'\"'")}'",
         )

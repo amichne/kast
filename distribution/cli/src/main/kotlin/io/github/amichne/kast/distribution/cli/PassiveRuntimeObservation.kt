@@ -4,6 +4,7 @@ package io.github.amichne.kast.distribution.cli
 
 import io.github.amichne.kast.distribution.contract.HostedServiceStatus
 import io.github.amichne.kast.distribution.contract.INSTALLATION_MANIFEST_SCHEMA_VERSION
+import io.github.amichne.kast.distribution.contract.InstallationLayout
 import io.github.amichne.kast.kernel.Refinement
 import java.io.DataInputStream
 import java.net.StandardProtocolFamily
@@ -249,8 +250,8 @@ internal fun observeRuntime(
 /** Missing broker receipts describe broker evidence, never project or compiler readiness. */
 private fun missingRuntimeEpoch(installation: Path): RuntimeObservationFailure =
     if (
-        !Files.notExists(installation.resolve("state/epoch.json"), LinkOption.NOFOLLOW_LINKS) ||
-            Files.notExists(installation.resolve("config/environment"), LinkOption.NOFOLLOW_LINKS)
+        !Files.notExists(InstallationLayout.of(installation).state.epoch, LinkOption.NOFOLLOW_LINKS) ||
+            Files.notExists(InstallationLayout.of(installation).configuration.environment, LinkOption.NOFOLLOW_LINKS)
     )
         RuntimeObservationFailure.EPOCH_UNAVAILABLE
     else

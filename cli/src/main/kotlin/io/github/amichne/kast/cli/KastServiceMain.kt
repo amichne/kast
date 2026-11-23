@@ -9,6 +9,7 @@ import io.github.amichne.kast.appserver.InstalledAppServerManager
 import io.github.amichne.kast.appserver.PersistentBrokerServiceFailure
 import io.github.amichne.kast.appserver.SemanticCoordinatorRetirement
 import io.github.amichne.kast.appserver.retireFencedSemanticCoordinator
+import io.github.amichne.kast.distribution.contract.InstallationLayout
 import io.github.amichne.kast.distribution.contract.configuration.ResolvedKastConfiguration
 import io.github.amichne.kast.distribution.managed.InstalledSavedConfigurationIngress
 import io.github.amichne.kast.distribution.managed.SavedConfigurationIngress
@@ -144,7 +145,10 @@ internal fun selectServiceControl(arguments: List<String>): ServiceControlSelect
 /** Match the installed wrapper's default while preserving an explicitly selected configuration. */
 internal fun serviceControlEnvironment(kast: Path, environment: Map<String, String>): Map<String, String> =
     if ("KAST_CONFIGURATION_FILE" in environment) environment
-    else environment + ("KAST_CONFIGURATION_FILE" to kast.parent.parent.resolve("config/environment").toString())
+    else
+        environment +
+            ("KAST_CONFIGURATION_FILE" to
+                InstallationLayout.ofKastExecutable(kast).configuration.environment.toString())
 
 internal sealed interface ServiceControlOutcome {
     data object Completed : ServiceControlOutcome

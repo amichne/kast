@@ -1,5 +1,6 @@
 package io.github.amichne.kast.distribution.cli
 
+import io.github.amichne.kast.distribution.contract.InstallationLayout
 import io.github.amichne.kast.distribution.contract.configuration.BrokerPublicEndpointMode
 import io.github.amichne.kast.distribution.contract.configuration.ConfigurationOwner
 import io.github.amichne.kast.distribution.contract.configuration.ConfigurationParameter
@@ -30,7 +31,7 @@ internal fun runtimeSocket(
 }
 
 internal fun runtimeEndpointMode(installation: Path): Refinement<BrokerPublicEndpointMode, RuntimeObservationFailure> {
-    val configuration = installation.resolve("config/environment")
+    val configuration = InstallationLayout.of(installation).configuration.environment
     val bytes =
         if (Files.notExists(configuration, NOFOLLOW_LINKS)) byteArrayOf()
         else

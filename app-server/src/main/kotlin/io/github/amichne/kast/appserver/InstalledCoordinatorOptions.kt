@@ -2,6 +2,7 @@ package io.github.amichne.kast.appserver
 
 import io.github.amichne.kast.appserver.runtime.BrokerSocketPath
 import io.github.amichne.kast.appserver.runtime.WorkspaceDemand
+import io.github.amichne.kast.distribution.contract.InstallationLayout
 import io.github.amichne.kast.distribution.contract.configuration.ResolvedKastConfiguration
 import java.nio.file.Path
 
@@ -9,7 +10,7 @@ internal class InstalledCoordinatorOptions(
     val kast: Path,
     val userHome: Path,
     val environment: Map<String, String>,
-    val installationRoot: Path,
+    val installation: InstallationLayout,
     val socket: BrokerSocketPath,
     val publicEndpoint: BrokerPublicEndpoint,
     val serviceDirectory: Path,

@@ -1,5 +1,6 @@
 package io.github.amichne.kast.appserver
 
+import io.github.amichne.kast.distribution.contract.InstallationLayout
 import java.io.ByteArrayInputStream
 import java.nio.charset.StandardCharsets
 import java.nio.file.Files
@@ -103,14 +104,15 @@ object PublishedBrokerServiceCommand {
     ): PublishedBrokerServiceEnvironment? =
         try {
             if (installationRoot.toRealPath() != installationRoot || userHome.toRealPath() != userHome) return null
-            val kast = installationRoot.resolve("bin/kast")
+            val installation = InstallationLayout.of(installationRoot)
+            val kast = installation.payload.kast
             if (Files.isSymbolicLink(kast) || kast.toRealPath() != kast || !Files.isExecutable(kast)) return null
             val baselineEnvironment =
                 mapOf(
                     "HOME" to userHome.toString(),
                     "PATH" to "/usr/bin:/bin",
                     "CODEX_HOME" to codexHome.toString(),
-                    "KAST_CONFIGURATION_FILE" to installationRoot.resolve("config/environment").toString(),
+                    "KAST_CONFIGURATION_FILE" to installation.configuration.environment.toString(),
                 )
             val observed =
                 when (
@@ -131,8 +133,7 @@ object PublishedBrokerServiceCommand {
             if (
                 environment["HOME"] != userHome.toString() ||
                     environment["CODEX_HOME"] != codexHome.toString() ||
-                    environment["KAST_CONFIGURATION_FILE"] !=
-                        installationRoot.resolve("config/environment").toString() ||
+                    environment["KAST_CONFIGURATION_FILE"] != installation.configuration.environment.toString() ||
                     environment["BROKER_READINESS_FILE"] != observed.readinessFile.toString()
             )
                 return null

@@ -1,6 +1,7 @@
 package io.github.amichne.kast.appserver
 
 import io.github.amichne.kast.appserver.core.Broker
+import io.github.amichne.kast.distribution.contract.InstallationLayout
 import io.github.amichne.kast.appserver.core.BrokerLimits
 import io.github.amichne.kast.appserver.core.JsonLineBrokerInvocationActivitySink
 import io.github.amichne.kast.appserver.core.ProviderDefinition
@@ -245,7 +246,7 @@ internal sealed interface InstalledBrokerServerConfiguration {
                     maximumConnections = BrokerOperationalLimits.maximumConnections,
                     maximumMessageBytes = MAXIMUM_MESSAGE_BYTES,
                     startupActivitySink = JsonLineBrokerStartupActivitySink(System.err),
-                    installationRoot = installation.root,
+                    installation = installation.installation,
                     configuration = configuration,
                 )
             )
@@ -327,7 +328,7 @@ internal data class InstalledBrokerServerOptions(
     val maximumConnections: Int,
     val maximumMessageBytes: Int,
     val startupActivitySink: BrokerStartupActivitySink,
-    val installationRoot: Path,
+    val installation: InstallationLayout,
     val configuration: ResolvedKastConfiguration,
 )
 
@@ -552,14 +553,14 @@ internal object InstalledBrokerHost {
             }
         val enrollment =
             when (
-                val read = WorkspaceEnrollmentStore(options.installationRoot.resolve("config/workspaces.json")).read()
+                val read = WorkspaceEnrollmentStore(options.installation.configuration.workspaceRegistry).read()
             ) {
                 is EnrollmentRead.Read -> read.enrollment
                 is EnrollmentRead.Rejected ->
                     return rejectHost(stage, InstalledBrokerServerFailure.THREAD_STORE_REJECTED)
             }
         val owner =
-            when (val admitted = BrokerInstallationState.admit(options.installationRoot)) {
+            when (val admitted = BrokerInstallationState.admit(options.installation.root)) {
                 is Refinement.Refined -> admitted.value
                 is Refinement.Rejected ->
                     return rejectHost(

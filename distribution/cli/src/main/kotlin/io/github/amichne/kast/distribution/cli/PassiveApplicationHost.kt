@@ -1,5 +1,6 @@
 package io.github.amichne.kast.distribution.cli
 
+import io.github.amichne.kast.distribution.contract.InstallationLayout
 import io.github.amichne.kast.distribution.contract.gradle.GradleImportEnvironmentIdentity
 import io.github.amichne.kast.distribution.managed.InstalledHostPluginTarget
 import io.github.amichne.kast.distribution.managed.SelectedIdeInstallation
@@ -108,7 +109,7 @@ internal fun inspectApplicationHost(
     observeProcess: (Long) -> ApplicationProcessObservation,
 ): PassiveHostInspection =
     observeSelectedApplication(home, observeProcess) {
-        readApplicationSelection(selectedInstallation(root).resolve("config/selected-ide.json"), home)
+        readApplicationSelection(InstallationLayout.of(selectedInstallation(root)).configuration.selectedIde, home)
     }
 
 internal fun readWorkspaceApplicationHost(container: AdmittedContainer): PassiveHostInspection =

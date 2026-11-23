@@ -8,6 +8,7 @@ import io.github.amichne.kast.distribution.cli.ControlStageOutcome
 import io.github.amichne.kast.distribution.cli.ControlStageTrace
 import io.github.amichne.kast.distribution.contract.ControlDistributionLimits
 import io.github.amichne.kast.distribution.contract.INSTALLATION_MANIFEST_SCHEMA_VERSION
+import io.github.amichne.kast.distribution.contract.InstallationLayout
 import io.github.amichne.kast.kernel.Refinement
 import java.io.IOException
 import java.net.URISyntaxException
@@ -129,7 +130,8 @@ private constructor(
             }
 
         private fun admitManifest(installation: Path): Refinement<AdmittedClientManifest, ClientInstallationFailure> {
-            val manifestPath = installation.resolve("installation.json")
+            val layout = InstallationLayout.of(installation)
+            val manifestPath = layout.payload.manifest
             val revision =
                 try {
                     ClientFileRevision.capture(manifestPath)
@@ -147,7 +149,7 @@ private constructor(
             return if (
                 manifest.schemaVersion != INSTALLATION_MANIFEST_SCHEMA_VERSION ||
                     manifest.installationRoot != installation.toString() ||
-                    manifest.configuration != installation.resolve("config/environment").toString()
+                    manifest.configuration != layout.configuration.environment.toString()
             )
                 Refinement.Rejected(ClientInstallationFailure.MANIFEST)
             else Refinement.Refined(AdmittedClientManifest(manifest, revision))

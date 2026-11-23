@@ -3,6 +3,7 @@ package io.github.amichne.kast.appserver
 import io.github.amichne.kast.appserver.protocol.ThreadBindingOwner
 import io.github.amichne.kast.appserver.provider.BrokerExecutable
 import io.github.amichne.kast.appserver.runtime.*
+import io.github.amichne.kast.distribution.contract.InstallationLayout
 import io.github.amichne.kast.distribution.contract.configuration.ConfigurationOwner
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.kernel.Validation
@@ -28,8 +29,8 @@ internal object InstalledCoordinatorConfiguration {
                 is Refinement.Rejected ->
                     return reject(InstalledBrokerServerConfigurationFailure.KAST_EXECUTABLE_REJECTED)
             }
-        val root = executable.parent.parent
-        if (InstallationLifecycleFence.observe(root) != InstallationLifecycleStartAdmission.AVAILABLE)
+        val installation = InstallationLayout.ofKastExecutable(executable)
+        if (InstallationLifecycleFence.observe(installation.root) != InstallationLifecycleStartAdmission.AVAILABLE)
             return reject(InstalledBrokerServerConfigurationFailure.STATE_DIRECTORY_REJECTED)
         val admittedConfiguration =
             when (val admission = InstalledBrokerConfigurationIngress.admit(environment)) {
@@ -71,7 +72,7 @@ internal object InstalledCoordinatorConfiguration {
                     executable,
                     user,
                     environment.toMap(),
-                    root,
+                    installation,
                     socket,
                     publicEndpoint,
                     layout.broker,
@@ -180,7 +181,7 @@ private constructor(
                     is BrokerServiceReadiness.Managed -> management.instanceId
                     BrokerServiceReadiness.Standalone -> BrokerServiceGeneration.fresh()
                 }
-            val installation = options.installationRoot
+            val installation = options.installation.root
             val ownership =
                 if (semantic == null) BrokerInstallationState.admit(installation)
                 else BrokerInstallationState.admitSemantic(installation, generation)
@@ -192,7 +193,7 @@ private constructor(
             activity.completed(stage)
             val preparation =
                 InstalledWorkspacePreparation(options.userHome, options.configuration, owner.installationId.value)
-            val registryPath = options.installationRoot.resolve("config/workspaces.json")
+            val registryPath = options.installation.configuration.workspaceRegistry
             val frontend = deferredFrontend(options, preparation, activity)
             val retirement = CompletableDeferred<Unit>()
             stage = BrokerStartupStage.WORKER_CONTROL
@@ -201,7 +202,7 @@ private constructor(
                 when (
                     val admission =
                         CoordinatorControl.create(
-                            options.installationRoot,
+                            options.installation,
                             owner,
                             generation,
                             options.configuration,

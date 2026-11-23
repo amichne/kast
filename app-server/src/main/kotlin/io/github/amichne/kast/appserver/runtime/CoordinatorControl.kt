@@ -18,6 +18,7 @@ import io.github.amichne.kast.appserver.WorkerControlFailure
 import io.github.amichne.kast.appserver.WorkspaceEnrollmentStore
 import io.github.amichne.kast.appserver.coordinatorConfigurationIdentity
 import io.github.amichne.kast.appserver.protocol.ThreadBindingOwner
+import io.github.amichne.kast.distribution.contract.InstallationLayout
 import io.github.amichne.kast.appserver.rejectedCoordinatorControl
 import io.github.amichne.kast.distribution.contract.HostedServiceStatus
 import io.github.amichne.kast.distribution.contract.configuration.ResolvedKastConfiguration
@@ -43,7 +44,7 @@ import kotlinx.serialization.json.Json
 /** Coordinator status only. The existing IDE exclusively owns semantic execution and project lifetime. */
 internal class CoordinatorControl
 private constructor(
-    private val installationRoot: Path,
+    private val installation: InstallationLayout,
     private val owner: ThreadBindingOwner.Installation,
     private val generation: BrokerServiceGeneration,
     private val configuration: ResolvedKastConfiguration,
@@ -58,7 +59,7 @@ private constructor(
 ) {
     private val closed = AtomicBoolean(false)
     // Capture once: replacing installed bytes cannot change this process's loaded version.
-    private val loadedVersion = captureLoadedControlVersion(installationRoot)
+    private val loadedVersion = captureLoadedControlVersion(installation)
     private val target =
         DaemonManagementTarget(
             owner.installationId.value,
@@ -80,7 +81,7 @@ private constructor(
                 when (val discovered = FilesystemCanonicalRootDiscovery.discover(root.path)) {
                     is CanonicalRootDiscovery.Discovered ->
                         if (discovered.root.path == root.path)
-                            WorkspaceEnrollmentStore(installationRoot.resolve("config/workspaces.json")).enroll(root)
+                            WorkspaceEnrollmentStore(installation.configuration.workspaceRegistry).enroll(root)
                         else Refinement.Rejected(EnrollmentFailure.PATH_REJECTED)
                     is CanonicalRootDiscovery.Rejected -> Refinement.Rejected(EnrollmentFailure.PATH_REJECTED)
                 }
@@ -127,7 +128,7 @@ private constructor(
     /** Only an installation lifecycle transition retires this generation; ordinary workspace stop never does. */
     private fun retire(): DaemonRetirementAdmission {
         if (
-            InstallationLifecycleFence.observe(installationRoot) !=
+            InstallationLifecycleFence.observe(installation.root) !=
                 InstallationLifecycleStartAdmission.TRANSITION_IN_PROGRESS
         )
             return DaemonRetirementAdmission.UNFENCED
@@ -188,7 +189,7 @@ private constructor(
 
     private fun available(): Boolean =
         !closed.get() &&
-            InstallationLifecycleFence.observe(installationRoot) == InstallationLifecycleStartAdmission.AVAILABLE &&
+            InstallationLifecycleFence.observe(installation.root) == InstallationLifecycleStartAdmission.AVAILABLE &&
             try {
                 Files.readAttributes(
                     stoppedMarker,
@@ -204,7 +205,7 @@ private constructor(
 
     companion object {
         fun create(
-            installationRoot: Path,
+            installation: InstallationLayout,
             owner: ThreadBindingOwner.Installation,
             generation: BrokerServiceGeneration,
             configuration: ResolvedKastConfiguration,
@@ -218,7 +219,8 @@ private constructor(
             requestRetirement: (() -> Unit)? = null,
         ): Refinement<CoordinatorControl, WorkerControlFailure> =
             try {
-                val legacy = installationRoot.resolve("state/workers")
+                val installationRoot = installation.root
+                val legacy = installation.state.legacyWorkers
                 when {
                     installationRoot.toRealPath() != installationRoot ||
                         InstallationLifecycleFence.observe(installationRoot) !=
@@ -231,7 +233,7 @@ private constructor(
                     else ->
                         Refinement.Refined(
                             CoordinatorControl(
-                                installationRoot,
+                                installation,
                                 owner,
                                 generation,
                                 configuration,
@@ -252,8 +254,8 @@ private constructor(
     }
 }
 
-internal fun captureLoadedControlVersion(installationRoot: Path): String? {
-    val manifest = installationRoot.resolve("installation.json")
+internal fun captureLoadedControlVersion(installation: InstallationLayout): String? {
+    val manifest = installation.payload.manifest
     return try {
         if (
             Files.isRegularFile(manifest, LinkOption.NOFOLLOW_LINKS) &&
