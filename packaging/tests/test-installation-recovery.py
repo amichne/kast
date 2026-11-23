@@ -248,8 +248,14 @@ class ProductReplacementReceiptShapeTest(unittest.TestCase):
                 recorded = (RECEIPTS / name).read_text().removesuffix('\n')
                 record = self.recovery.decode(self.recovery.Replacement, json.loads(recorded))
                 self.assertIsNotNone(record.product)
-                self.assertIsNone(record.composition)
                 self.assertEqual(recorded, self.recovery.encode(record))
+
+    def test_a_journal_that_still_records_a_null_composition_is_rejected(self):
+        document = json.loads((RECEIPTS / 'product-install.json').read_text())
+        document['composition'] = None
+        with self.assertRaises(self.recovery.Rejected) as rejected:
+            self.recovery.decode(self.recovery.Replacement, document)
+        self.assertEqual(self.recovery.Failure.RECEIPT, rejected.exception.failure)
 
 
 if __name__ == '__main__':

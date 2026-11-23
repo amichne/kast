@@ -3,7 +3,7 @@
 import os
 import re
 import sys
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
 from typing import Literal, Optional, Union
@@ -96,76 +96,6 @@ class ManagedFilePresent:
 
 
 @dataclass(frozen=True)
-class ManagedHostAbsent:
-    type: str
-
-
-@dataclass(frozen=True)
-class ManagedHostPresent:
-    identity: Identity
-    inventorySha256: str
-    receipt: str
-    receiptIdentity: Identity
-    receiptSha256: str
-    type: str
-
-
-@dataclass(frozen=True)
-class ManagedHostExistingLock:
-    identity: Identity
-    type: Literal["EXISTING"] = "EXISTING"
-
-    def __post_init__(self) -> None:
-        _tag(self.type, "EXISTING")
-
-
-@dataclass(frozen=True)
-class ManagedHostStagedLock:
-    identity: Identity
-    staged: str
-    retainedIdentity: Optional[Identity]
-    type: Literal["STAGED"] = "STAGED"
-
-    def __post_init__(self) -> None:
-        _tag(self.type, "STAGED")
-
-
-@dataclass(frozen=True)
-class ManagedHostReplacement:
-    pluginRoot: str
-    pluginRootIdentity: Optional[Identity]
-    retainedRootIdentity: Optional[Identity]
-    destination: str
-    candidate: str
-    candidateIdentity: Identity
-    candidateInventorySha256: str
-    backup: str
-    previous: Union[ManagedHostAbsent, ManagedHostPresent]
-    version: str
-    sha256: str
-    lock: Optional[Union[ManagedHostExistingLock, ManagedHostStagedLock]] = None
-
-
-@dataclass(frozen=True)
-class ManagedProfileMissing:
-    path: str
-    type: Literal["MISSING"]
-
-    def __post_init__(self) -> None:
-        _tag(self.type, "MISSING")
-
-
-@dataclass(frozen=True)
-class ManagedProfileCreated:
-    path: str
-    identity: Identity
-    type: Literal["CREATED"]
-
-    def __post_init__(self) -> None:
-        _tag(self.type, "CREATED")
-
-
-@dataclass(frozen=True)
 class BuildIdentity:
     releaseTag: str
     version: str
@@ -221,30 +151,6 @@ class PinnedBuild:
             raise Rejected(Failure.RECEIPT)
 
 
-ManagedBuildIdentity = BuildIdentity
-ManagedTrackStable = TrackStable
-ManagedTrackMain = TrackMain
-ManagedPinnedBuild = PinnedBuild
-UpdatePolicy = Union[TrackStable, TrackMain, PinnedBuild]
-
-
-@dataclass(frozen=True)
-class ManagedBinding:
-    identity: ManagedBuildIdentity
-    policy: Union[ManagedTrackStable, ManagedTrackMain, ManagedPinnedBuild]
-
-    def __post_init__(self) -> None:
-        if (
-            (isinstance(self.policy, ManagedTrackStable) and self.identity.mainRevision is not None)
-            or (isinstance(self.policy, ManagedTrackMain) and self.identity.mainRevision is None)
-            or (
-                isinstance(self.policy, ManagedPinnedBuild)
-                and self.policy.identity != self.identity
-            )
-        ):
-            raise Rejected(Failure.RECEIPT)
-
-
 class ManagedNotice(str, Enum):
     HARNESS_REFRESH_REQUIRED = "HARNESS_REFRESH_REQUIRED"
 
@@ -260,12 +166,6 @@ class ManagedPhase(str, Enum):
     RESTORED = "RESTORED"
 
 
-class ManagedStrategy(str, Enum):
-    STOPPED = "STOPPED"
-    HOT_RELOAD = "HOT_RELOAD"
-    NORMAL_RESTART = "NORMAL_RESTART"
-
-
 def _phase(value: object) -> ManagedPhase:
     if isinstance(value, str):
         try:
@@ -275,50 +175,9 @@ def _phase(value: object) -> ManagedPhase:
     raise Rejected(Failure.RECEIPT)
 
 
-def _strategy(value: object) -> ManagedStrategy:
-    if isinstance(value, str):
-        try:
-            return ManagedStrategy(value)
-        except ValueError:
-            pass
-    raise Rejected(Failure.RECEIPT)
-
-
 def _tag(value: object, expected: str) -> None:
     if value != expected:
         raise Rejected(Failure.RECEIPT)
-
-
-def _profile_directories() -> list[Union[ManagedProfileMissing, ManagedProfileCreated]]:
-    return []
-
-
-def _notices() -> list[ManagedNotice]:
-    return []
-
-
-@dataclass(frozen=True)
-class ManagedComposition:
-    phase: ManagedPhase
-    strategy: ManagedStrategy
-    ideaHome: str
-    profile: str
-    selection: ManagedFilePresent
-    management: Union[ManagedFileAbsent, ManagedFilePresent]
-    publicExecutable: Union[ManagedFileAbsent, ManagedFilePresent]
-    profileOptions: Union[ManagedFileAbsent, ManagedFilePresent]
-    host: ManagedHostReplacement
-    priorRuntime: Union[ManagedFileAbsent, ManagedFilePresent]
-    profileDirectories: list[Union[ManagedProfileMissing, ManagedProfileCreated]] = field(
-        default_factory=_profile_directories
-    )
-    binding: Optional[ManagedBinding] = None
-    notices: list[ManagedNotice] = field(default_factory=_notices)
-    priorRuntimeJson: Optional[str] = None
-
-    def __post_init__(self) -> None:
-        object.__setattr__(self, "phase", _phase(self.phase))
-        object.__setattr__(self, "strategy", _strategy(self.strategy))
 
 
 @dataclass(frozen=True)
@@ -344,13 +203,7 @@ class Replacement:
     installationIdentity: Identity
     previous: Union[NoPrevious, PhysicalPrevious]
     reservation: Optional[ManagedReservation] = None
-    composition: Optional[ManagedComposition] = None
     product: Optional[ProductReplacement] = None
-
-
-class ManagedControlResult(str, Enum):
-    RESTORED = "CONTROL_RESTORED"
-    SEALED = "CONTROL_SEALED"
 
 
 @dataclass(frozen=True)
@@ -366,8 +219,6 @@ class ManagedShutdownFence:
 
 
 ManagedFilePreimage = Union[ManagedFileAbsent, ManagedFilePresent]
-ManagedProfileDirectory = Union[ManagedProfileMissing, ManagedProfileCreated]
-ManagedHostPrevious = Union[ManagedHostAbsent, ManagedHostPresent]
 PreviousPayload = Union[NoPrevious, PhysicalPrevious]
 
 
@@ -376,15 +227,3 @@ def admit_replacement(value: object) -> Replacement:
     if not isinstance(value, Replacement):
         raise Rejected(Failure.RECEIPT)
     return value
-
-
-def admit_host_replacement(value: object) -> ManagedHostReplacement:
-    if not isinstance(value, ManagedHostReplacement):
-        raise Rejected(Failure.RECEIPT)
-    return value
-
-
-def managed_parts(value: Replacement) -> tuple[ManagedReservation, ManagedComposition]:
-    if value.reservation is None or value.composition is None:
-        raise Rejected(Failure.RECEIPT)
-    return value.reservation, value.composition

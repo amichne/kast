@@ -853,7 +853,6 @@ def resume_locked(
     if (
         selected is None
         or reservation is None
-        or record.composition is not None
         or record.installation != str(active)
         or record.schemaVersion != 1
         or str(uuid.UUID(reservation.transaction)) != reservation.transaction

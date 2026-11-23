@@ -116,6 +116,22 @@ class InstallationReplacementReceiptTest {
     }
 
     @Test
+    fun `a journal that still records a null composition rejects at decoding`() {
+        val retired =
+            json.encodeToString(
+                NullCompositionReceipt(
+                    stage = "PREPARED",
+                    installation = "/root/installation",
+                    installationIdentity = identity,
+                    previous = PreviousInstallationPayload.None,
+                    reservation = reservation(),
+                    product = product(),
+                )
+            )
+        assertThrows<SerializationException> { json.decodeFromString<InstallationReplacementReceipt>(retired) }
+    }
+
+    @Test
     fun `a journal without its product record rejects at decoding`() {
         val unrecorded =
             json.encodeToString(
@@ -219,7 +235,6 @@ private data class RetiredReceipt(
     val installationIdentity: InstallationFilesystemIdentity,
     val previous: RetiredLegacyPrevious,
     val reservation: ManagedControlReservation,
-    @Required val composition: Nothing? = null,
     val product: ProductReplacement,
 )
 
@@ -238,6 +253,19 @@ private data class CompositionReceipt(
     val product: ProductReplacement,
 )
 
+/** The retired journal shape that recorded an always-null `composition` beside the product record. */
+@Serializable
+private data class NullCompositionReceipt(
+    @Required val schemaVersion: Int = 1,
+    val stage: String,
+    val installation: String,
+    val installationIdentity: InstallationFilesystemIdentity,
+    val previous: PreviousInstallationPayload,
+    val reservation: ManagedControlReservation,
+    @Required val composition: Nothing? = null,
+    val product: ProductReplacement,
+)
+
 @Serializable
 private data class UnrecordedProductReceipt(
     @Required val schemaVersion: Int = 1,
@@ -246,7 +274,6 @@ private data class UnrecordedProductReceipt(
     val installationIdentity: InstallationFilesystemIdentity,
     val previous: PreviousInstallationPayload,
     val reservation: ManagedControlReservation,
-    @Required val composition: Nothing? = null,
 )
 
 @Serializable
@@ -267,6 +294,5 @@ private data class UnknownPhaseReceipt(
     val installationIdentity: InstallationFilesystemIdentity,
     val previous: PreviousInstallationPayload,
     val reservation: ManagedControlReservation,
-    @Required val composition: Nothing? = null,
     val product: UnknownPhaseProduct,
 )
