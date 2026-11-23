@@ -188,6 +188,30 @@ gh variable set KAST_NATIVE_COMPILATION --repo amichne/kast --body true
 An absent native-compilation variable also enables compilation when Mac checks are enabled.
 On eligible main runs, other native-compilation values reject the CI selection.
 
+## Native compiler fixture gate
+
+`check` and `scopedCheck` in `:relation:intellij`, `:symbol:intellij`, and `:runtime:hosted` depend on that module's `nativeFixtureTest`.
+Each suite runs every native test class of its module headless in the pinned IntelliJ Platform.
+The `Source obligations` job on Linux runs these suites, because it already provisions the native IDE home for the dependency fixtures.
+`source_validation.py` requires the three task paths in the complete source graph.
+
+Selection follows the affected-owner plan:
+
+- A plan adds `check` and `scopedCheck` for each affected owner, so an owner's suite runs when that owner or one of its dependencies changes.
+- An unaffected owner's suite does not run on that pull request.
+- Unknown ownership, a stale graph, or missing history selects the complete gate, which runs all three suites.
+- Main pushes and every other product change run the complete gate.
+
+The `KAST_SEMANTIC_FIXTURES` switch does not cover these suites.
+They run the semantic case classes too, but only the semantic accountant establishes the exact case population.
+
+On a 2026 Apple silicon laptop with warm compilation, the three suites took 5 minutes 54 seconds of wall time for 783 cases.
+Their test time was 319 seconds for 558 relation cases, 126 seconds for 201 hosted cases, and 57 seconds for 24 symbol cases.
+The relation suite runs in one fork and bounds the wall time.
+
+Each suite owns `build/native-test/<task>/` for its IDE configuration, system, and log directories.
+The configuration cache can run two suites of one project together, so they must not share those directories.
+
 ## Temporary semantic fixture switch
 
 Local runs and CI skip the three `semanticCoverageFixtureTest` suites by default.
@@ -407,6 +431,7 @@ This preserves type-resolved analysis and obligations that `scopedCheck` alone o
 | Root | JSON contracts, architecture, configuration ingress, knowledge, documentation, host protocol, component release tests |
 | Semantic manifest when enabled | Declared cases, exact inventory, input hashes, compiler witnesses, rejection controls |
 | Relation and hosted fixtures | Independent copies of the shared dependency archive |
+| Relation, symbol, and hosted IntelliJ owners | The complete `nativeFixtureTest` suite |
 | CLI | JVM native-adapter tests, query delivery contracts and schemas, callable reference, presentation |
 | App Server | Public query generation |
 | Installation scripts | Offline lifecycle, recovery, removal, cleanup, system Python, local installation and installer fixtures |
