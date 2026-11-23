@@ -257,6 +257,21 @@ class ProductReplacementReceiptShapeTest(unittest.TestCase):
             self.recovery.decode(self.recovery.Replacement, document)
         self.assertEqual(self.recovery.Failure.RECEIPT, rejected.exception.failure)
 
+    def test_an_unwritten_product_phase_or_stage_is_rejected(self):
+        recorded = json.loads((RECEIPTS / 'product-install.json').read_text())
+        for field, value in (
+            ('phase', 'HOST_COMMITTED'),
+            ('phase', 'RESTORING'),
+            ('phase', 'RESTORED'),
+            ('stage', 'RECOVERY_REQUIRED'),
+        ):
+            with self.subTest(value=value):
+                document = json.loads(json.dumps(recorded))
+                (document['product'] if field == 'phase' else document)[field] = value
+                with self.assertRaises(self.recovery.Rejected) as rejected:
+                    self.recovery.decode(self.recovery.Replacement, document)
+                self.assertEqual(self.recovery.Failure.RECEIPT, rejected.exception.failure)
+
 
 if __name__ == '__main__':
     unittest.main()

@@ -171,6 +171,37 @@ class InstallationReplacementReceiptTest {
     }
 
     @Test
+    fun `an unwritten product phase or stage rejects at decoding`() {
+        json.decodeFromString<InstallationReplacementReceipt>(json.encodeToString(unknownPhase("PREPARED", "PREPARED")))
+        val unwritten =
+            listOf("HOST_COMMITTED", "RESTORING", "RESTORED").map { unknownPhase("PREPARED", it) } +
+                unknownPhase("RECOVERY_REQUIRED", "PREPARED")
+        unwritten.forEach { receipt ->
+            assertThrows<SerializationException> {
+                json.decodeFromString<InstallationReplacementReceipt>(json.encodeToString(receipt))
+            }
+        }
+    }
+
+    private fun unknownPhase(stage: String, phase: String) =
+        UnknownPhaseReceipt(
+            stage = stage,
+            installation = "/root/installation",
+            installationIdentity = identity,
+            previous = PreviousInstallationPayload.None,
+            reservation = reservation(),
+            product =
+                UnknownPhaseProduct(
+                    ManagedFilePreimage.Absent("/root/management.json"),
+                    ManagedFilePreimage.Absent("/home/.local/bin/kast"),
+                    "a".repeat(64),
+                    null,
+                    phase,
+                    null,
+                ),
+        )
+
+    @Test
     fun `the retired legacy previous payload rejects at decoding`() {
         val retired =
             json.encodeToString(

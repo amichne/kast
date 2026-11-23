@@ -48,7 +48,6 @@ class ReplacementStage(str, Enum):
     PREPARED = "PREPARED"
     COMMITTED = "PAYLOAD_COMMITTED"
     FINALIZING = "FINALIZING"
-    RECOVERY_REQUIRED = "RECOVERY_REQUIRED"
 
 
 @dataclass(frozen=True)
@@ -160,10 +159,7 @@ class ManagedPhase(str, Enum):
     FENCED = "FENCED"
     SETTLED = "SETTLED"
     CONTROL_COMMITTED = "CONTROL_COMMITTED"
-    HOST_COMMITTED = "HOST_COMMITTED"
     ACTIVATION_PROVEN = "ACTIVATION_PROVEN"
-    RESTORING = "RESTORING"
-    RESTORED = "RESTORED"
 
 
 def _phase(value: object) -> ManagedPhase:

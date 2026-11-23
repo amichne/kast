@@ -11,7 +11,6 @@ enum class InstallationReplacementStage {
     PREPARED,
     PAYLOAD_COMMITTED,
     FINALIZING,
-    RECOVERY_REQUIRED,
 }
 
 /** One transient rollback baseline; it is removed only after the outer installer seals activation. */
@@ -53,10 +52,7 @@ enum class ManagedReplacementPhase {
     FENCED,
     SETTLED,
     CONTROL_COMMITTED,
-    HOST_COMMITTED,
     ACTIVATION_PROVEN,
-    RESTORING,
-    RESTORED,
 }
 
 /** Product selector publication; it shares the receipt's Control reservation and rollback slots. */
