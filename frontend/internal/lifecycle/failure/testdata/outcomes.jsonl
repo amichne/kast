@@ -1,0 +1,6 @@
+{"schemaVersion":1,"outcome":"INSTALLED","observations":[]}
+{"schemaVersion":1,"outcome":"UPGRADED","observations":[{"kind":"SUPERVISOR_UNAVAILABLE"}]}
+{"schemaVersion":1,"outcome":"REPAIRED","observations":[{"kind":"RESIDUE_RETAINED","name":".kast-removing-0123456789abcdef"}]}
+{"schemaVersion":1,"outcome":"ALREADY_CURRENT","observations":[]}
+{"schemaVersion":1,"outcome":"UNINSTALLED","observations":[{"kind":"LOGIN_AGENT_RETAINED","label":"io.github.amichne.kast.broker.00000000000000000000000000000001"},{"kind":"SUPERVISOR_UNAVAILABLE"}]}
+{"schemaVersion":1,"outcome":"UNINSTALLED_WITHOUT_USER_STATE","observations":[]}

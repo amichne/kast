@@ -1,0 +1,1 @@
+{"schemaVersion":1,"outcome":"RETIRED","semanticLabel":"io.github.amichne.kast.semantic.0123456789abcdef0123456789abcdef","brokerLabels":["io.github.amichne.kast.broker.00000000000000000000000000000001","io.github.amichne.kast.broker.00000000000000000000000000000002"],"hosts":[{"pid":41,"startTime":7},{"pid":41,"startTime":9},{"pid":77,"startTime":3}]}

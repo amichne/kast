@@ -1,0 +1,64 @@
+{
+  "schemaVersion": 3,
+  "repository": "amichne/kast",
+  "sourceRevision": "1111111111111111111111111111111111111111",
+  "sourceTree": "2222222222222222222222222222222222222222",
+  "version": "0.0.42",
+  "producer": {"runId": 5, "runAttempt": 2, "workflow": ".github/workflows/ci.yml"},
+  "targets": [
+    {
+      "target": "linux-x86_64",
+      "inputs": {
+        "javaReleaseSha256": "1111111111111111111111111111111111111111111111111111111111111111",
+        "dependencyLocksSha256": "2222222222222222222222222222222222222222222222222222222222222222",
+        "compositionRecipeSha256": "3333333333333333333333333333333333333333333333333333333333333333",
+        "donorSha256": "4444444444444444444444444444444444444444444444444444444444444444"
+      },
+      "bundle": {"name": "kast-composed-setup-v0.0.42-linux-x86_64.tar.gz", "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "bytes": 1000},
+      "runtime": {"name": "kast-runtime-v0.0.42-linux-x86_64.zip", "sha256": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee", "bytes": 2000},
+      "qualification": {
+        "receipt": {"name": "qualification-linux-x86_64.json", "sha256": "5555555555555555555555555555555555555555555555555555555555555555", "bytes": 300},
+        "producer": {"runId": 7, "runAttempt": 1, "workflow": ".github/workflows/composed-linux.yml"},
+        "bundleSha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "runtimeSha256": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+        "controlSha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "kind": "NATIVE",
+        "outcome": "COMPLETE",
+        "composition": {
+          "baseSha256": "9999999999999999999999999999999999999999999999999999999999999999",
+          "nativeRuntimeSha256": "6666666666666666666666666666666666666666666666666666666666666666",
+          "nativeBundleSha256": "7777777777777777777777777777777777777777777777777777777777777777",
+          "runtimeSha256": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+        }
+      },
+      "runtimeBase": {"name": "kast-runtime-base-linux-x86_64-9999999999999999999999999999999999999999999999999999999999999999.zip", "sha256": "9999999999999999999999999999999999999999999999999999999999999999", "bytes": 4000}
+    },
+    {
+      "target": "macos-aarch64",
+      "inputs": {
+        "javaReleaseSha256": "1111111111111111111111111111111111111111111111111111111111111111",
+        "dependencyLocksSha256": "2222222222222222222222222222222222222222222222222222222222222222",
+        "compositionRecipeSha256": "3333333333333333333333333333333333333333333333333333333333333333",
+        "donorSha256": "4444444444444444444444444444444444444444444444444444444444444444"
+      },
+      "bundle": {"name": "kast-composed-setup-v0.0.42-macos-aarch64.tar.gz", "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb", "bytes": 1000},
+      "runtime": {"name": "kast-runtime-v0.0.42-macos-aarch64.zip", "sha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd", "bytes": 2000},
+      "qualification": {
+        "receipt": {"name": "qualification-macos-aarch64.json", "sha256": "5555555555555555555555555555555555555555555555555555555555555555", "bytes": 300},
+        "producer": {"runId": 8, "runAttempt": 1, "workflow": ".github/workflows/composed-linux.yml"},
+        "bundleSha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "runtimeSha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+        "controlSha256": "0000000000000000000000000000000000000000000000000000000000000000",
+        "kind": "NATIVE",
+        "outcome": "COMPLETE",
+        "composition": {
+          "baseSha256": "8888888888888888888888888888888888888888888888888888888888888888",
+          "nativeRuntimeSha256": "6666666666666666666666666666666666666666666666666666666666666666",
+          "nativeBundleSha256": "7777777777777777777777777777777777777777777777777777777777777777",
+          "runtimeSha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+        }
+      },
+      "runtimeBase": {"name": "kast-runtime-base-macos-aarch64-8888888888888888888888888888888888888888888888888888888888888888.zip", "sha256": "8888888888888888888888888888888888888888888888888888888888888888", "bytes": 4000}
+    }
+  ]
+}
