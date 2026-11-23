@@ -195,8 +195,11 @@ func TestFixedStatusesMatchTheGeneratedCatalog(t *testing.T) {
 	if document.SchemaVersion != supportedCatalogSchema || document.InvocationProtocol != supportedInvocationProtocol {
 		t.Fatalf("generated catalog speaks schema %d protocol %d", document.SchemaVersion, document.InvocationProtocol)
 	}
-	if document.Exits["BOOTSTRAP"] != bootstrapStatus || document.Exits["PROTOCOL"] != protocolStatus {
-		t.Fatalf("fixed statuses diverge from %v", document.Exits)
+	for name, status := range map[string]int{"INPUT": inputStatus, "RUNTIME": runtimeStatus, "PROTOCOL": protocolStatus,
+		"BOOTSTRAP": bootstrapStatus, "INTERRUPTED": interruptedStatus, "TERMINATED": terminatedStatus} {
+		if document.Exits[name] != status {
+			t.Fatalf("fixed status %s diverges from %v", name, document.Exits)
+		}
 	}
 	for _, name := range requiredStatuses {
 		if _, ok := document.Exits[name]; !ok {

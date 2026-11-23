@@ -13,11 +13,15 @@ import (
 	"time"
 )
 
-// Fixed statuses. They are the public shell's published BOOTSTRAP and PROTOCOL codes and apply before an admitted
-// catalog supplies the full table; tests compare them with the generated catalog.
+// Fixed statuses. They are the public shell's published codes and apply before an admitted catalog supplies the full
+// table, or to a reset, which never reads it; tests compare them with the generated catalog.
 const (
-	bootstrapStatus = 9
-	protocolStatus  = 6
+	inputStatus       = 2
+	runtimeStatus     = 4
+	protocolStatus    = 6
+	bootstrapStatus   = 9
+	interruptedStatus = 130
+	terminatedStatus  = 143
 )
 
 // supportedCatalogSchema and supportedInvocationProtocol are the only versions this binary speaks. A coordinator that

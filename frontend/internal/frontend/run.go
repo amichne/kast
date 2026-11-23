@@ -10,6 +10,8 @@ import (
 	"strings"
 	"sync"
 	"syscall"
+
+	"github.com/amichne/kast/frontend/internal/reset"
 )
 
 // Process is the caller's process state, passed explicitly so tests control every effect.
@@ -25,12 +27,19 @@ type Process struct {
 	Signals <-chan os.Signal
 	// Exec replaces this process with the JVM entry; it returns only on failure.
 	Exec func(path string, argv []string, environment []string) error
+	// Reset performs `kast reset` on one home.
+	Reset func(home string, arguments []string, out io.Writer) error
 }
 
-// Run executes one invocation and returns the process status. The coordinator serves public queries; every other
-// invocation replaces this process with the installation's JVM entry.
+// Run executes one invocation and returns the process status. The coordinator serves public queries, a reset runs here,
+// and every other invocation replaces this process with the installation's JVM entry.
 func Run(process Process) int {
 	environment := environmentMap(process.Environment)
+	// A reset precedes every read of the installation, so damage there cannot block it.
+	if parsed := parseInvocation(process.Arguments); parsed.entry == "management" && len(parsed.arguments) > 0 &&
+		parsed.arguments[0] == "reset" {
+		return runReset(process, environment["HOME"], parsed.arguments[1:])
+	}
 	installation, err := locateInstallation(process.Executable, environment)
 	if err != nil {
 		diagnose(process.Stderr, "the Kast installation is unavailable. Reinstall Kast.")
@@ -67,6 +76,31 @@ func Run(process Process) int {
 			status = catalog.status("TERMINATED")
 		}
 		return owner.finish(status)
+	}
+}
+
+// runReset performs a reset beside the signal wait. A signal ends it between or inside deletions; running it again
+// finishes them.
+func runReset(process Process, home string, arguments []string) int {
+	finished := make(chan error, 1)
+	go func() { finished <- process.Reset(home, arguments, process.Stdout) }()
+	select {
+	case err := <-finished:
+		if err == nil {
+			return 0
+		}
+		diagnose(process.Stderr, "reset: "+err.Error())
+		var rejection *reset.Rejection
+		if errors.As(err, &rejection) && rejection.Failure == reset.UsageRejected {
+			return inputStatus
+		}
+		return runtimeStatus
+	case signal := <-process.Signals:
+		diagnose(process.Stderr, "reset: interrupted. Run `kast reset` again to see what remains.")
+		if signal == syscall.SIGTERM {
+			return terminatedStatus
+		}
+		return interruptedStatus
 	}
 }
 
