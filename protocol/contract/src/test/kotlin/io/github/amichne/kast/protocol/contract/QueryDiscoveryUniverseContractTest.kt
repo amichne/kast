@@ -4,6 +4,7 @@ import io.github.amichne.kast.kernel.Refinement
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -74,9 +75,33 @@ class QueryDiscoveryUniverseContractTest {
         }
     }
 
+    @Test
+    fun `an unselectable enum entry stop keeps its closed wire spelling`() {
+        val observation =
+            observation(
+                QueryMatchDocument.Name(text("MIGRATION_REJECTED"), SymbolDiscoveryMatchDocument.EXACT_NAME),
+                QueryDiscoveryProgressDocument.Exhausted,
+                listOf(QueryDiscoveryStopDocument.ENUM_ENTRY_UNSELECTABLE),
+            )
+        val encoded = json.encodeToString(observation)
+        assertEquals(
+            listOf("enum-entry-unselectable"),
+            json.parseToJsonElement(encoded).jsonObject.getValue("observed_stops").jsonArray.map {
+                it.jsonPrimitive.content
+            },
+        )
+        assertEquals(observation, json.decodeFromString<QueryDiscoveryObservationDocument>(encoded))
+        assertThrows(SerializationException::class.java) {
+            json.decodeFromString<QueryDiscoveryObservationDocument>(
+                encoded.replace("\"enum-entry-unselectable\"", "\"enum-entry-filtered\"")
+            )
+        }
+    }
+
     private fun observation(
         match: QueryMatchDocument,
         progress: QueryDiscoveryProgressDocument,
+        stops: List<QueryDiscoveryStopDocument> = emptyList(),
     ): QueryDiscoveryObservationDocument =
         QueryDiscoveryObservationDocument(
             QueryDiscoveryUniverseDocument(
@@ -93,7 +118,7 @@ class QueryDiscoveryUniverseContractTest {
             if (match is QueryMatchDocument.All) QueryDiscoveryOrderDocument.KOTLIN_FILE_SOURCE_V2
             else QueryDiscoveryOrderDocument.NAMED_CANDIDATE_V1,
             progress,
-            BoundedProtocolList.create(emptyList<QueryDiscoveryStopDocument>()).refined(),
+            BoundedProtocolList.create(stops).refined(),
             count(0),
             count(0),
             count(0),

@@ -92,6 +92,7 @@ enum class QueryDiscoveryStopDocument {
     @SerialName("unscoped-provider") UNSCOPED_PROVIDER,
     @SerialName("unsupported-item") UNSUPPORTED_ITEM,
     @SerialName("exact-definition-unavailable") EXACT_DEFINITION_UNAVAILABLE,
+    @SerialName("enum-entry-unselectable") ENUM_ENTRY_UNSELECTABLE,
 }
 
 @Serializable

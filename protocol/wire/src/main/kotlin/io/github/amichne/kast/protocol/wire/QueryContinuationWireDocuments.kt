@@ -107,6 +107,7 @@ internal enum class QueryLimitationWireDocument {
     @SerialName("work-limit-reached") WORK_LIMIT_REACHED,
     @SerialName("time-limit-reached") TIME_LIMIT_REACHED,
     @SerialName("discovery-incomplete") DISCOVERY_INCOMPLETE,
+    @SerialName("enum-entry-unselectable") ENUM_ENTRY_UNSELECTABLE,
     @SerialName("refinement-incomplete") REFINEMENT_INCOMPLETE,
     @SerialName("visibility-incomplete") VISIBILITY_INCOMPLETE,
     @SerialName("source-incomplete") SOURCE_INCOMPLETE,

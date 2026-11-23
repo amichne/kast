@@ -169,6 +169,11 @@ enum class SymbolDiscoveryQualification {
     UNSCOPED_PROVIDER,
     UNSUPPORTED_ITEM,
     EXACT_DEFINITION_UNAVAILABLE,
+    /**
+     * A name selection matched an enum entry. No compiler declaration kind selects an enum entry, so the matching
+     * declaration is outside every representable result rather than excluded by the requested kinds.
+     */
+    ENUM_ENTRY_UNSELECTABLE,
 }
 
 enum class SymbolDiscoveryQualificationFailure {

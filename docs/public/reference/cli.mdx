@@ -167,7 +167,10 @@ A complete, empty result proves absence only within its scope and the static com
 If the selection before the first `--relation` hop or `--terminal trace` selects no declaration, the query rejects with `RELATION_SEED_EMPTY`.
 Correct the selection before you read the relation as absent.
 A selection without a relation hop can still return a complete, empty result for its declaration kinds.
-A name that matches only an enum entry selects nothing, because an enum entry is not a selectable declaration.
+Kast cannot select an enum entry.
+If `--name` matches an enum entry and the selected kinds include `class`, the result is qualified with `enum-entry-unselectable`.
+The result still contains the other declarations that match, for example a property with the same name.
+A selection without `class` in its kinds, or an `--all` selection, excludes enum entries and can be complete.
 Retained results expire. A source change can invalidate their basis.
 
 Restrict where relation hops search with `--relation-in`:

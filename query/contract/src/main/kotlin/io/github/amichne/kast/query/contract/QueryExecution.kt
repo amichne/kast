@@ -220,6 +220,8 @@ enum class QueryLimitation {
     WORK_LIMIT_REACHED,
     TIME_LIMIT_REACHED,
     DISCOVERY_INCOMPLETE,
+    /** A name selection matched an enum entry, which no declaration kind can select. */
+    ENUM_ENTRY_UNSELECTABLE,
     REFINEMENT_INCOMPLETE,
     VISIBILITY_INCOMPLETE,
     SOURCE_INCOMPLETE,

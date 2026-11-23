@@ -242,7 +242,8 @@ internal class QueryExecutionState(
                     SymbolDiscoveryQualification.WORK_LIMIT_REACHED,
                     SymbolDiscoveryQualification.TIME_LIMIT_REACHED,
                 )
-        if (permanent.isNotEmpty()) upstreamLimit(QueryLimitation.DISCOVERY_INCOMPLETE)
+        // Page bounds are removed above, so the projection keeps only permanent reasons beside DISCOVERY_INCOMPLETE.
+        if (permanent.isNotEmpty()) permanentDiscoveryLimitations(permanent).forEach(::upstreamLimit)
     }
 
     /** Child coverage proves incomplete discovery; aggregate result capacity remains query-owned. */

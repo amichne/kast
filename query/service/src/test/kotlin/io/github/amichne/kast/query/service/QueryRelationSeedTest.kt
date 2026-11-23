@@ -27,9 +27,18 @@ import io.github.amichne.kast.source.contract.SourceReadOperations
 import io.github.amichne.kast.symbol.contract.CompilerSymbolKind
 import io.github.amichne.kast.symbol.contract.SymbolDescription
 import io.github.amichne.kast.symbol.contract.SymbolDescriptionResult
+import io.github.amichne.kast.symbol.contract.SymbolDiscoveryBatch
+import io.github.amichne.kast.symbol.contract.SymbolDiscoveryByteCount
+import io.github.amichne.kast.symbol.contract.SymbolDiscoveryElapsedNanoseconds
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryMatch
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryOperations
+import io.github.amichne.kast.symbol.contract.SymbolDiscoveryOutcome
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryPattern
+import io.github.amichne.kast.symbol.contract.SymbolDiscoveryQualification
+import io.github.amichne.kast.symbol.contract.SymbolDiscoveryQualifications
+import io.github.amichne.kast.symbol.contract.SymbolDiscoveryResult
+import io.github.amichne.kast.symbol.contract.SymbolDiscoveryTimings
+import io.github.amichne.kast.symbol.contract.SymbolDiscoveryWorkCount
 import kotlinx.coroutines.test.runTest
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertInstanceOf
@@ -77,6 +86,23 @@ class QueryRelationSeedTest {
 
         val qualified = assertInstanceOf(QueryExecutionResult.Qualified::class.java, result)
         assertEquals(listOf(QueryLimitation.DISCOVERY_INCOMPLETE), qualified.coverage.limitations)
+    }
+
+    @Test
+    fun `an enum-entry-only selection keeps its typed unselectable reason instead of complete absence`() = runTest {
+        for (steps in listOf(emptyList(), listOf(QueryStepSyntax.Related(RelationMeaning.References)))) {
+            val result =
+                service(enumEntryOnlyDiscovery(), unexpectedRelations())
+                    .run(fixture.request(namePlan(steps), workLimit = 8L))
+
+            val qualified = assertInstanceOf(QueryExecutionResult.Qualified::class.java, result, "$steps")
+            assertEquals(
+                listOf(QueryLimitation.DISCOVERY_INCOMPLETE, QueryLimitation.ENUM_ENTRY_UNSELECTABLE),
+                qualified.coverage.limitations,
+                "$steps",
+            )
+            assertEquals(0, qualified.result.symbolRows().size)
+        }
     }
 
     @Test
@@ -178,6 +204,27 @@ class QueryRelationSeedTest {
             queryTestTraversalCeiling(),
             clock = QueryNanoClock { 0L },
         )
+
+    /** Discovery that met only an enum entry with the requested name: nothing selected, a typed qualification. */
+    private fun enumEntryOnlyDiscovery(): SymbolDiscoveryOperations = SymbolDiscoveryOperations { request ->
+        SymbolDiscoveryResult.Discovered(
+            SymbolDiscoveryOutcome.Qualified(
+                SymbolDiscoveryBatch.create(
+                        request,
+                        emptyList(),
+                        SymbolDiscoveryByteCount.parse(0L).refined(),
+                        SymbolDiscoveryWorkCount.parse(1L).refined(),
+                        SymbolDiscoveryTimings(
+                            SymbolDiscoveryElapsedNanoseconds.parse(1L).refined(),
+                            SymbolDiscoveryElapsedNanoseconds.parse(1L).refined(),
+                        ),
+                    )
+                    .refined(),
+                SymbolDiscoveryQualifications.from(setOf(SymbolDiscoveryQualification.ENUM_ENTRY_UNSELECTABLE))
+                    .refined(),
+            )
+        )
+    }
 
     private fun unexpectedRelations(): RelationOperations = RelationOperations {
         error("An empty seed must not issue a relation read")

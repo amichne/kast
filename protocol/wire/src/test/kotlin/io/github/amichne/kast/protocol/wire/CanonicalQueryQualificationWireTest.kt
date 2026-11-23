@@ -1,16 +1,30 @@
 package io.github.amichne.kast.protocol.wire
 
+import io.github.amichne.kast.kernel.EvidenceBasis
+import io.github.amichne.kast.kernel.EvidenceEnvelope
+import io.github.amichne.kast.kernel.EvidenceGeneration
+import io.github.amichne.kast.kernel.OperationOutcome
 import io.github.amichne.kast.kernel.Refinement
+import io.github.amichne.kast.protocol.contract.BoundedProtocolList
+import io.github.amichne.kast.protocol.contract.CanonicalOperation
+import io.github.amichne.kast.protocol.contract.ProtocolText
 import io.github.amichne.kast.protocol.contract.QueryCheckpointDocument
 import io.github.amichne.kast.protocol.contract.QueryExecutionContinuation
 import io.github.amichne.kast.protocol.contract.QueryExecutionRejectionDocument
+import io.github.amichne.kast.protocol.contract.QueryFromDocument
 import io.github.amichne.kast.protocol.contract.QueryKnownMinimum
 import io.github.amichne.kast.protocol.contract.QueryLimitationDocument
+import io.github.amichne.kast.protocol.contract.QueryOutputDocument
 import io.github.amichne.kast.protocol.contract.QueryQualifiedProgressDocument
+import io.github.amichne.kast.protocol.contract.QueryQuestionDocument
+import io.github.amichne.kast.protocol.contract.QueryReferenceDocument
 import io.github.amichne.kast.protocol.contract.QueryRunQualification
 import io.github.amichne.kast.protocol.contract.QueryRunRejection
+import io.github.amichne.kast.protocol.contract.QueryRunResult
 import io.github.amichne.kast.protocol.contract.QueryTerminalReasonDocument
 import io.github.amichne.kast.protocol.contract.ReadResumeActionDocument
+import io.github.amichne.kast.protocol.wire.presentation.CanonicalQueryCliDocuments
+import io.github.amichne.kast.protocol.wire.presentation.ProjectedOperationOutcome
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonArray
@@ -81,6 +95,83 @@ class CanonicalQueryQualificationWireTest {
             ) is WireDecoding.Rejected
         )
     }
+
+    @Test
+    fun `an unselectable enum entry limitation has an independent encoded shape`() {
+        val json = Json { encodeDefaults = true }
+        val expected = json.encodeToJsonElement(ExpectedQueryQualification.serializer(), enumEntryExpected())
+        assertEquals(
+            WireValueEncoding.Encoded(expected),
+            CanonicalQuerySerializers.qualification.encode(enumEntryQualification(), WireValueRole.QUALIFICATION),
+        )
+        assertEquals(
+            enumEntryQualification(),
+            (CanonicalQuerySerializers.qualification.decode(expected, WireValueRole.QUALIFICATION)
+                    as WireDecoding.Decoded)
+                .value,
+        )
+        val unknown = enumEntryExpected().copy(limitations = listOf("discovery-incomplete", "enum-entry-unqueryable"))
+        assertTrue(
+            CanonicalQuerySerializers.qualification.decode(
+                json.encodeToJsonElement(ExpectedQueryQualification.serializer(), unknown),
+                WireValueRole.QUALIFICATION,
+            ) is WireDecoding.Rejected
+        )
+    }
+
+    @Test
+    fun `the public projection names the unselectable enum entry limitation`() {
+        val projected =
+            CanonicalQueryCliDocuments.project(
+                OperationOutcome.Qualified(
+                    EvidenceEnvelope(
+                        CanonicalOperation.QUERY_RUN.id,
+                        EvidenceBasis.Published(EvidenceGeneration.parse(1).refinedValue()),
+                        emptySymbolResult(),
+                    ),
+                    enumEntryQualification(),
+                )
+            )
+        assertTrue(projected is ProjectedOperationOutcome.Qualified, projected.toString())
+        val document = Json.parseToJsonElement((projected as ProjectedOperationOutcome.Qualified).document.value)
+        assertEquals("qualified", document.jsonObject.getValue("status").jsonPrimitive.content)
+        assertEquals(
+            listOf("discovery-incomplete", "enum-entry-unselectable"),
+            document.jsonObject.getValue("qualification").jsonObject.getValue("limitations").jsonArray.map {
+                it.jsonPrimitive.content
+            },
+        )
+    }
+
+    private fun enumEntryQualification(): QueryRunQualification =
+        QueryRunQualification.create(
+                QueryKnownMinimum.parse(1).refinedValue(),
+                listOf(QueryLimitationDocument.DISCOVERY_INCOMPLETE, QueryLimitationDocument.ENUM_ENTRY_UNSELECTABLE),
+                QueryQualifiedProgressDocument.TerminalIncomplete(QueryTerminalReasonDocument.UPSTREAM_INCOMPLETE),
+            )
+            .refinedValue()
+
+    private fun enumEntryExpected() =
+        ExpectedQueryQualification(
+            knownMinimum = 1,
+            limitations = listOf("discovery-incomplete", "enum-entry-unselectable"),
+            progress = ExpectedQueryProgress.Terminal("upstream-incomplete"),
+        )
+
+    private fun emptySymbolResult(): QueryRunResult {
+        val reference = QueryReferenceDocument.ExactSymbol(ProtocolText.parse("exact:v2:opaque").refinedValue())
+        return QueryRunResult(
+            QueryQuestionDocument(
+                QueryFromDocument.References(bounded(listOf(reference))),
+                bounded(emptyList()),
+                QueryOutputDocument.Symbols(bounded(emptyList())),
+            ),
+            bounded(emptyList()),
+            bounded(emptyList()),
+        )
+    }
+
+    private fun <V> bounded(values: List<V>): BoundedProtocolList<V> = BoundedProtocolList.create(values).refinedValue()
 
     @Test
     fun `row selection limitation and finite composition rejections retain wire identity`() {
