@@ -91,25 +91,8 @@ class ProductRemovalRoot:
         return self.root.parent
 
 @dataclass(frozen=True)
-class CapturedRecoveryFile:
-    identity: FileIdentity
-    digest: str
-
-@dataclass(frozen=True)
 class AbsentRecovery:
     type: str = field(default='ABSENT_RECOVERY', init=False)
-
-@dataclass(frozen=True)
-class AdmittedRecovery:
-    installation: str
-    installationIdentity: FileIdentity
-    recoveryDirectoryIdentity: FileIdentity
-    bundleIdentity: FileIdentity
-    receipt: CapturedRecoveryFile
-    recoveryScript: CapturedRecoveryFile
-    lifecycleScript: CapturedRecoveryFile
-    journalScript: Optional[CapturedRecoveryFile] = None
-    type: str = field(default='ADMITTED_RECOVERY', init=False)
 
 @dataclass(frozen=True)
 class EmptyRecovery:
@@ -126,7 +109,7 @@ class ProductUninstallRetirementJournal:
     type: UninstallPhase
     managedRootIdentity: FileIdentity
     controlIdentity: FileIdentity
-    recoveryProof: Union[AbsentRecovery, AdmittedRecovery, EmptyRecovery]
+    recoveryProof: Union[AbsentRecovery, EmptyRecovery]
     product: 'ProductReference'
 
 @dataclass(frozen=True)
@@ -172,32 +155,13 @@ def workspace_removals(document):
         result.append(WorkspaceRemoval(entry['id'], journal_identity(entry['identity']), entry['recordSha256']))
     return result
 
-def captured_recovery_file(document):
-    exact_fields(document, ('identity', 'digest'))
-    if not isinstance(document['digest'], str) or re.fullmatch('[0-9a-f]{64}', document['digest']) is None:
-        raise Rejected(Failure.RECOVERY_REJECTED)
-    return CapturedRecoveryFile(journal_identity(document['identity']), document['digest'])
-
 def decode_recovery_proof(document, installation):
     if document == {'type': 'ABSENT_RECOVERY'}:
         return AbsentRecovery()
-    if isinstance(document, dict) and document.get('type') == 'EMPTY_RECOVERY':
-        exact_fields(document, ('type', 'installation', 'recoveryDirectoryIdentity'))
-        if document['installation'] != str(installation.root):
-            raise Rejected(Failure.RECOVERY_REJECTED)
-        return EmptyRecovery(document['installation'], journal_identity(document['recoveryDirectoryIdentity']))
-    expected = ('type', 'installation', 'installationIdentity', 'recoveryDirectoryIdentity',
-                'bundleIdentity', 'receipt', 'recoveryScript', 'lifecycleScript')
-    if isinstance(document, dict) and 'journalScript' in document:
-        expected += ('journalScript',)
-    exact_fields(document, expected)
-    if document['type'] != 'ADMITTED_RECOVERY' or document['installation'] != str(installation.root):
+    exact_fields(document, ('type', 'installation', 'recoveryDirectoryIdentity'))
+    if document['type'] != 'EMPTY_RECOVERY' or document['installation'] != str(installation.root):
         raise Rejected(Failure.RECOVERY_REJECTED)
-    return AdmittedRecovery(document['installation'], journal_identity(document['installationIdentity']),
-        journal_identity(document['recoveryDirectoryIdentity']), journal_identity(document['bundleIdentity']),
-        captured_recovery_file(document['receipt']), captured_recovery_file(document['recoveryScript']),
-        captured_recovery_file(document['lifecycleScript']),
-        captured_recovery_file(document['journalScript']) if document.get('journalScript') is not None else None)
+    return EmptyRecovery(document['installation'], journal_identity(document['recoveryDirectoryIdentity']))
 
 def admit_uninstall_journal(path, installation):
     expected = installation.managed_root.parent / ('.kast-uninstall-' +

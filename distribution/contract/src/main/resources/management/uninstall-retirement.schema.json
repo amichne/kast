@@ -278,23 +278,6 @@
         }
       }
     },
-    "CapturedRecoveryFile": {
-      "type": "object",
-      "required": [
-        "identity",
-        "digest"
-      ],
-      "additionalProperties": false,
-      "properties": {
-        "identity": {
-          "$ref": "#/$defs/FilesystemIdentity"
-        },
-        "digest": {
-          "type": "string",
-          "pattern": "^[0-9a-f]{64}$"
-        }
-      }
-    },
     "RecoveryProof": {
       "oneOf": [
         {
@@ -308,62 +291,6 @@
               "type": "string",
               "enum": [
                 "ABSENT_RECOVERY"
-              ]
-            }
-          }
-        },
-        {
-          "type": "object",
-          "required": [
-            "type",
-            "installation",
-            "installationIdentity",
-            "recoveryDirectoryIdentity",
-            "bundleIdentity",
-            "receipt",
-            "recoveryScript",
-            "lifecycleScript"
-          ],
-          "additionalProperties": false,
-          "properties": {
-            "type": {
-              "type": "string",
-              "enum": [
-                "ADMITTED_RECOVERY"
-              ]
-            },
-            "installation": {
-              "type": "string",
-              "pattern": "^/",
-              "minLength": 2,
-              "maxLength": 4096
-            },
-            "installationIdentity": {
-              "$ref": "#/$defs/FilesystemIdentity"
-            },
-            "recoveryDirectoryIdentity": {
-              "$ref": "#/$defs/FilesystemIdentity"
-            },
-            "bundleIdentity": {
-              "$ref": "#/$defs/FilesystemIdentity"
-            },
-            "receipt": {
-              "$ref": "#/$defs/CapturedRecoveryFile"
-            },
-            "recoveryScript": {
-              "$ref": "#/$defs/CapturedRecoveryFile"
-            },
-            "lifecycleScript": {
-              "$ref": "#/$defs/CapturedRecoveryFile"
-            },
-            "journalScript": {
-              "oneOf": [
-                {
-                  "$ref": "#/$defs/CapturedRecoveryFile"
-                },
-                {
-                  "type": "null"
-                }
               ]
             }
           }

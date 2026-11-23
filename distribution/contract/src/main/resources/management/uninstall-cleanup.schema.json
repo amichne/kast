@@ -160,9 +160,6 @@
             "ROOT_REJECTED",
             "INSTALLATION_NOT_RETIRED",
             "OWNERSHIP_UNPROVEN",
-            "RECEIPT_REJECTED",
-            "RECOVERY_PENDING",
-            "RECOVERY_UNRESOLVED",
             "FOREIGN_CONTENT",
             "IO_UNAVAILABLE"
           ]
