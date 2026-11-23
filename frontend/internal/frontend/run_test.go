@@ -21,6 +21,7 @@ import (
 
 	"github.com/coder/websocket"
 
+	"github.com/amichne/kast/frontend/internal/install"
 	"github.com/amichne/kast/frontend/internal/reset"
 )
 
@@ -562,6 +563,61 @@ func TestOnlyTheManagementEntryResets(t *testing.T) {
 	for _, arguments := range [][]string{{"--internal-entrypoint=daemon", "reset"}, {"install", "reset"}} {
 		f.executed = nil
 		// A reset here would panic: the fixture provides none.
+		if f.run(t, "", nil, arguments...); len(f.executed) != 1 {
+			t.Errorf("%v: executed %v", arguments, f.executed)
+		}
+	}
+}
+
+func TestAnInstallationRunsWithoutAnInstallationAndMapsItsFailuresToPublishedStatuses(t *testing.T) {
+	for want, failure := range map[int]error{
+		0: nil,
+		2: &install.Rejection{Failure: install.UsageRejected, Detail: "usage", Next: "try this"},
+		4: &install.Rejection{Failure: install.DownloadInvalid, Detail: "digest", Next: "try that"},
+	} {
+		var stderr bytes.Buffer
+		calls := 0
+		process := resetProcess(t, nil, &stderr, "install", "--dry-run", "--json")
+		process.Install = func(_ context.Context, home, target string, arguments []string, _, _ io.Writer) error {
+			calls++
+			if home != "/selected/home" || target != platform() || !slices.Equal(arguments, []string{"--dry-run", "--json"}) {
+				t.Errorf("installation in %q for %q with %v", home, target, arguments)
+			}
+			return failure
+		}
+		status := Run(process)
+		if status != want || calls != 1 || (failure != nil && !strings.Contains(stderr.String(), "try th")) {
+			t.Errorf("status %d after %d calls, want %d: %s", status, calls, want, stderr.String())
+		}
+	}
+}
+
+func TestASignalCancelsAnInstallation(t *testing.T) {
+	for signal, want := range map[os.Signal]int{syscall.SIGINT: 130, syscall.SIGTERM: 143} {
+		signals, cancelled := make(chan os.Signal, 1), make(chan struct{})
+		signals <- signal
+		process := resetProcess(t, nil, io.Discard, "install", "--download-only")
+		process.Signals = signals
+		process.Install = func(ctx context.Context, _, _ string, _ []string, _, _ io.Writer) error {
+			<-ctx.Done()
+			close(cancelled)
+			return ctx.Err()
+		}
+		if status := statusWithin(t, 5*time.Second, func() int { return Run(process) }); status != want {
+			t.Errorf("%v: status %d, want %d", signal, status, want)
+		}
+		<-cancelled
+	}
+}
+
+func TestOnlyInstallOptionsOfTheManagementEntryInstall(t *testing.T) {
+	f := newFixture(t)
+	touchFrontend(t, f)
+	f.receipt(t, "/runtimes/abc")
+	for _, arguments := range [][]string{{"install"}, {"install", "skill"}, {"install", "skill", "--dry-run"},
+		{"install", "--help"}, {"install", "-h"}, {"--internal-entrypoint=daemon", "install", "--dry-run"}} {
+		f.executed = nil
+		// An installation here would panic: the fixture provides none.
 		if f.run(t, "", nil, arguments...); len(f.executed) != 1 {
 			t.Errorf("%v: executed %v", arguments, f.executed)
 		}

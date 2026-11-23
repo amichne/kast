@@ -42,9 +42,9 @@ const temporarySuffix = `[a-z0-9_]{8}`
 
 var (
 	// managed_product_installation.py (.kast-install-, .kast-prepare-), immutable_store.py (.kast-runtime-,
-	// .kast-base-), installation-lifecycle.py (.kast-uninstall-stage-).
+	// .kast-base-), installation-lifecycle.py (.kast-uninstall-stage-), and install/fetch.go (.kast-downloads).
 	siblingName = regexp.MustCompile(`^\.kast-(install-` + uuid + `|prepare-` + temporarySuffix + `|(runtime|base)-` +
-		temporarySuffix + `|uninstall-stage-[0-9a-f]{32})$`)
+		temporarySuffix + `|uninstall-stage-[0-9a-f]{32}|downloads)$`)
 	// managed_installation.py replace_file, beside the public command.
 	stagedCommandName = regexp.MustCompile(`^\.kast-managed-` + uuid + `-command$`)
 	// ServiceLoginAgent.kt: the published login agent and its temporary file.

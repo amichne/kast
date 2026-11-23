@@ -32,6 +32,7 @@ code_sources:
 The Go binary is the installed Control executable at `share/kast/libexec/kast-management`, and the public `kast` command is its copy.
 It serves the public query commands through the persistent coordinator and owns bootstrap, transport, signals, output delivery, and process status for them.
 It also owns `kast reset`, which returns a damaged installation to "nothing installed" without a record, a runtime, or a JVM.
+It selects and downloads published builds for `kast install`, without changing an installation.
 Every other invocation replaces the process with `KastControlMain` on the Host's Java runtime, from the installation's `lib` class path.
 The coordinator and the JVM entry own lowering, defaults, workspace decisions, semantic admission, and presentation.
 Read the [tracer evidence](../docs/reviews/go-frontend-tracer.md) for the measured baseline.
@@ -56,6 +57,11 @@ Read the [tracer evidence](../docs/reviews/go-frontend-tracer.md) for the measur
 - Delete only names that a cited Kast source writes. Select jobs by label and program path, and processes by executable path.
 - Delete the public command last, so that an interrupted reset can run again.
 - Never run a reset test against a real home or supervisor. Inject the adapters in `reset_test.go`, which reject unexpected effects.
+- Route `install` to this process only with `--dry-run` or `--download-only`. The JVM owns every other `install` vector.
+- Admit each downloaded byte through one digest chain: the catalog or release mapping, the build record, then each file.
+- Accept only the current build record schema. Reject an older release before any file request.
+- Write only `~/.local/share/.kast-downloads`. A reset deletes that directory. A dry run writes nothing.
+- Never run an installation test against the network. Inject the transport in `install_test.go`, which rejects unexpected requests.
 - Read stdin only after `input_required`, and never beyond its stated bound.
   The coordinator cancels an invocation whose requested input misses `PublicInvocationProtocol.inputLimit` with `INPUT_EXPIRED`.
 - Bound the connection handshake by the catalog's `handshakeMilliseconds`. Expiry precedes the request, so it is unreachable.
@@ -73,6 +79,9 @@ Read the [tracer evidence](../docs/reviews/go-frontend-tracer.md) for the measur
 - [reset.go](internal/reset/reset.go) - the reset sequence, its failures, and the supervisor and process adapters.
 - [paths.go](internal/reset/paths.go) - the exact deletion targets, their owners, and deletion without links.
 - [backup.go](internal/reset/backup.go) - the client configuration and workspace evidence that a reset copies first.
+- [release.go](internal/install/release.go) - build selection, strict record decoding, and the files a build needs.
+- [fetch.go](internal/install/fetch.go) - HTTPS transfers, resumption, digest admission, and the download directory.
+- [install.go](internal/install/install.go) - the installation modes, their output, and the native adapter.
 - [check](check) - the deterministic gate and the separate advisory scan.
 - [acceptance](acceptance) - case matrix, comparison, latency, first callers, and cancellation evidence.
 
