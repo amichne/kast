@@ -2,81 +2,19 @@ package io.github.amichne.kast.distribution.contract
 
 import io.github.amichne.kast.kernel.Refinement
 import java.io.IOException
-import java.nio.charset.StandardCharsets
 import java.nio.file.Files
 import java.nio.file.LinkOption
 import java.nio.file.Path
-import java.security.MessageDigest
-import java.util.HexFormat
-
-/** Why [InstallationLayout.admit] selected no version root. */
-enum class InstallationLayoutFailure {
-    /** The selected version entry is absent, a symbolic link, not a directory, or unobservable. */
-    VERSION_UNAVAILABLE,
-
-    /** The selected version entry resolves to a path other than its place beneath the physical management root. */
-    VERSION_DISPLACED,
-
-    /**
-     * The code source lies in a version root that the management root no longer selects. The current layout selects
-     * the fixed entry `R/installation` and never yields this failure; stage 8 of the lifecycle design yields it when
-     * `R/current` names another version.
-     */
-    STALE_VERSION,
-}
-
-/**
- * `S`: the share directory, `HOME/.local/share`. It holds the management root, the lifecycle lock, and the workspace
- * and runtime-base stores beside the management root.
- */
-@JvmInline
-value class ShareRoot private constructor(val path: Path) {
-    /** The lifecycle lock and the stores, derived from this share directory. */
-    val share: InstallationLayout.Share
-        get() = InstallationLayout.Share(path)
-
-    companion object {
-        /** The share directory at [path], as admitted by the caller. */
-        fun of(path: Path): ShareRoot = ShareRoot(path)
-    }
-}
-
-/**
- * `R`: the management root, `HOME/.local/share/kast`. It holds the lifecycle records, the stores beside it, and the
- * version root.
- */
-@JvmInline
-value class ManagementRoot private constructor(val path: Path) {
-    /** Lifecycle records, derived from this management root. */
-    val management: InstallationLayout.Management
-        get() = InstallationLayout.Management(path)
-
-    /** `S`: the share directory that holds this management root. In the current and the target layout it is `R`'s parent. */
-    val shareRoot: ShareRoot
-        get() = ShareRoot.of(requireNotNull(path.parent) { "management root has no share directory: $path" })
-
-    /** The lifecycle lock and the stores beside this management root. */
-    val share: InstallationLayout.Share
-        get() = shareRoot.share
-
-    companion object {
-        /** The management root at [path], as admitted by the caller. */
-        fun of(path: Path): ManagementRoot = ManagementRoot(path)
-    }
-}
-
-/** `V`: the version root that holds one release payload. In the current layout it is `R/installation`. */
-@JvmInline value class VersionRoot internal constructor(val path: Path)
 
 /**
  * The only Kotlin derivation of installation paths.
  *
  * The layout holds three roots: the share directory `S`, the management root `R`, and the version root `V`. In the
- * current layout `V` is `R/installation`, `R` is the parent of `V`, and `S` is the parent of `R`. The layout stores
- * `R` and `V` and derives `S` from `R` on access, so the three cannot disagree. Every accessor derives its path on
- * access, so the pure accessors perform no filesystem effect and no eager failure. An architecture rule rejects new
- * installation-relative path literals and `Path.getParent()` chains outside this owner, so a later layout change
- * edits this file alone.
+ * current layout `V` is `R/installation`, `R` is the parent of `V`, and `S` is the parent of `R`. The layout stores `R`
+ * and `V` and derives `S` from `R` on access, so the three cannot disagree. Every accessor derives its path on access,
+ * so the pure accessors perform no filesystem effect and no eager failure. An architecture rule rejects new
+ * installation-relative path literals and `Path.getParent()` chains outside this owner, so a later layout change edits
+ * this owner alone. The root types live in `InstallationRoots.kt`.
  */
 class InstallationLayout
 private constructor(
@@ -432,86 +370,5 @@ private constructor(
             val version = file.root?.resolve(file.subpath(0, depth)) ?: file.subpath(0, depth)
             return of(version)
         }
-    }
-}
-
-/** One `/`-separated path beneath the owned root that holds `config` and `state`. */
-class OwnedRelativePath private constructor(private val segments: List<String>) {
-    /** The recorded form, for example `state/run/c.sock`. */
-    val value: String
-        get() = segments.joinToString("/")
-
-    /** The same path beneath [root]. */
-    internal fun under(root: Path): Path = segments.fold(root) { path, segment -> path.resolve(segment) }
-
-    override fun equals(other: Any?): Boolean = other is OwnedRelativePath && other.segments == segments
-
-    override fun hashCode(): Int = segments.hashCode()
-
-    override fun toString(): String = value
-
-    internal companion object {
-        fun of(vararg segments: String): OwnedRelativePath = OwnedRelativePath(segments.toList())
-    }
-}
-
-/** One `/`-separated installation-relative path, built from its segments. */
-class InstallationRelativePath private constructor(private val segments: List<String>) {
-    /** The manifest form, for example `share/kast/libexec/kast-service`. */
-    val value: String
-        get() = segments.joinToString(SEPARATOR)
-
-    /** The same path beneath [root]. */
-    fun under(root: Path): Path {
-        var path = root
-        for (segment in segments) path = path.resolve(segment)
-        return path
-    }
-
-    /** The relative [Path] form, for suffix checks such as [Path.endsWith]. */
-    fun asPath(): Path = Path.of(segments.first(), *segments.drop(1).toTypedArray())
-
-    override fun equals(other: Any?): Boolean = other is InstallationRelativePath && other.segments == segments
-
-    override fun hashCode(): Int = segments.hashCode()
-
-    override fun toString(): String = value
-
-    internal companion object {
-        private const val SEPARATOR = "/"
-
-        fun of(vararg segments: String): InstallationRelativePath = InstallationRelativePath(segments.toList())
-    }
-}
-
-/** The 16-hex per-host coordinator directory name: a prefix of SHA-256 over the selected Codex home path. */
-@JvmInline
-value class CoordinatorHostProfile private constructor(val value: String) {
-    companion object {
-        private const val PROFILE_CHARACTERS = 16
-
-        fun of(codexHome: String): CoordinatorHostProfile =
-            CoordinatorHostProfile(
-                HexFormat.of()
-                    .formatHex(
-                        MessageDigest.getInstance("SHA-256").digest(codexHome.toByteArray(StandardCharsets.UTF_8))
-                    )
-                    .take(PROFILE_CHARACTERS)
-            )
-    }
-}
-
-/** The 64-hex workspace overlay directory name: SHA-256 over the workspace root path. */
-@JvmInline
-value class WorkspaceOverlayIdentity private constructor(val value: String) {
-    companion object {
-        fun of(workspaceRoot: Path): WorkspaceOverlayIdentity =
-            WorkspaceOverlayIdentity(
-                HexFormat.of()
-                    .formatHex(
-                        MessageDigest.getInstance("SHA-256")
-                            .digest(workspaceRoot.toString().toByteArray(StandardCharsets.UTF_8))
-                    )
-            )
     }
 }

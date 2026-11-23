@@ -38,8 +38,8 @@ private constructor(
     private val revisions: List<ProductInputRevision>,
 ) {
     /**
-     * The workspace store beside this installation. Admission requires the runtime root to be
-     * `runtimes/<sha>` beneath this store, so it is also the store that holds [runtime].
+     * The workspace store beside this installation. Admission requires the runtime root to be `runtimes/<sha>` beneath
+     * this store, so it is also the store that holds [runtime].
      */
     internal val workspaceStore: Path
         get() = InstallationLayout.of(installation).share.workspaceStore

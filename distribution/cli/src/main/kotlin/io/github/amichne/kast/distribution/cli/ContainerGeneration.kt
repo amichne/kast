@@ -19,7 +19,7 @@ internal fun prepareContainerGeneration(
             is Refinement.Refined ->
                 if (current.value.runtime.archiveSha256 == runtime.archiveSha256) current
                 else
-                    ContainerStore(lease.workspace.store,runtime.manifest.platform)
+                    ContainerStore(lease.workspace.store, runtime.manifest.platform)
                         .rebuildRetiredGeneration(current.value, runtime)
         }
     }

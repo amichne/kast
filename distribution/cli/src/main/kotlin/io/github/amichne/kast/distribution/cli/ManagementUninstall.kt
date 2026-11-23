@@ -26,9 +26,7 @@ internal fun uninstallInstallation(
         removeInstallation(root, home, receipt, executeInstaller, observe, present, environment)
         Refinement.Refined(Unit)
     }
-    when (
-        val removed = ContainerQueryLease.duringStoreRemoval(ManagementRoot.of(root).share.workspaceStore, remove)
-    ) {
+    when (val removed = ContainerQueryLease.duringStoreRemoval(ManagementRoot.of(root).share.workspaceStore, remove)) {
         is Refinement.Refined -> Unit
         is Refinement.Rejected -> throw ManagementRejected("uninstall-workspaces", removed.failure.name)
     }

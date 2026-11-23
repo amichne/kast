@@ -18,9 +18,9 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
 
 /**
- * Each `:cli` entry that selects the installation configuration reaches the file that [InstallationLayout.configuration]
- * names. Stage 8 moves that file from the version root to the management root by changing the layout alone, so an
- * entry that derived the file itself would fail here after that change.
+ * Each `:cli` entry that selects the installation configuration reaches the file that
+ * [InstallationLayout.configuration] names. Stage 8 moves that file from the version root to the management root by
+ * changing the layout alone, so an entry that derived the file itself would fail here after that change.
  */
 class ConfigurationReachTest {
     private val layout = InstallationLayout.of(Path.of("/owned/home/.local/share/kast/installation"))
@@ -84,8 +84,7 @@ class ConfigurationReachTest {
                     workspaceRegistry = layout.configuration.workspaceRegistry.toString(),
                     stateRoot = layout.state.directory.toString(),
                     externalAnchors = emptyList(),
-                    payloadFiles =
-                        listOf(PayloadFile(InstallationLayout.Relative.QUERY_EXECUTABLE.value, digest, 493)),
+                    payloadFiles = listOf(PayloadFile(InstallationLayout.Relative.QUERY_EXECUTABLE.value, digest, 493)),
                 )
             ),
         )

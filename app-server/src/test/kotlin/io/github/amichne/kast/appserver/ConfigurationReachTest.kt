@@ -9,9 +9,9 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
 
 /**
- * The coordinator's workspace settings, with no explicit selector, read the files that [InstallationLayout.configuration]
- * names. Stage 8 moves them from the version root to the management root by changing the layout alone, so a reader
- * that derived the files itself would fail here after that change.
+ * The coordinator's workspace settings, with no explicit selector, read the files that
+ * [InstallationLayout.configuration] names. Stage 8 moves them from the version root to the management root by changing
+ * the layout alone, so a reader that derived the files itself would fail here after that change.
  */
 class ConfigurationReachTest {
     @TempDir lateinit var temporary: Path
