@@ -1,6 +1,9 @@
 package codec
 
-import "testing"
+import (
+	"strings"
+	"testing"
+)
 
 func cause(t *testing.T, err error) Cause {
 	t.Helper()
@@ -36,6 +39,19 @@ func TestDocumentAdmitsExactlyOneObject(t *testing.T) {
 	}
 	if _, err := Document([]byte(" \n{\"a\" : 1 }\n\t"), 1024); err != nil {
 		t.Errorf("surrounding white space rejected: %v", err)
+	}
+}
+
+func TestNestingIsBounded(t *testing.T) {
+	for _, pair := range [][2]string{{"[", "]"}, {`{"a":`, "}"}} {
+		deep := `{"a":` + strings.Repeat(pair[0], 100_000) + "1" + strings.Repeat(pair[1], 100_000) + "}"
+		if _, err := Document([]byte(deep), 1<<20); cause(t, err) != Malformed {
+			t.Errorf("deep %s admitted: %v", pair[0], err)
+		}
+		shallow := `{"a":` + strings.Repeat(pair[0], 6) + "1" + strings.Repeat(pair[1], 6) + "}"
+		if _, err := Document([]byte(shallow), 1024); err != nil {
+			t.Errorf("shallow %s rejected: %v", pair[0], err)
+		}
 	}
 }
 

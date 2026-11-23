@@ -43,8 +43,8 @@ Read the [tracer evidence](../docs/reviews/go-frontend-tracer.md) for the measur
 - `go.mod` owns the Go release through its `toolchain` line and the analyzers through its `tool` lines.
   The `mise.toml` Go entry only provisions a matching `go` command.
 - Forward the argument vector, working directory, and environment unchanged. Never lower flags or model requests in Go.
-- The Go lifecycle commands are the one exception: `upgrade`, `uninstall`, `versions`, the bootstrap, and the handoff
-  entry. Go owns them, so Go parses their flags into typed selectors and operations.
+- The Go lifecycle commands are the one exception: `upgrade`, `uninstall`, `versions`, and the bootstrap.
+  Go owns them, so Go parses their flags into typed selectors and operations.
   Section 1.5 of the lifecycle design in #1375 lists them. No command routes to them yet.
 - Keep the lifecycle core in `internal/lifecycle` pure. Its packages import no package for files, processes, the
   network, the clock, random numbers, or the environment. `internal/lifecycle/boundary_test.go` enforces this.

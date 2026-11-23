@@ -15,11 +15,27 @@ type SupervisorState struct {
 }
 
 // SupervisorObservation is what the supervisor adapter reports: unavailable (no user bus or session), or available
-// with the entries that remain.
+// with the entries that remain. The zero value was never observed.
 type SupervisorObservation struct {
-	Available bool
-	Kind      failure.SupervisorKind
-	Remaining []SupervisorState
+	observed  bool
+	available bool
+	kind      failure.SupervisorKind
+	remaining []SupervisorState
+}
+
+// NoSupervisor is a user without a service supervisor, which is a fact and not a failure.
+func NoSupervisor() SupervisorObservation { return SupervisorObservation{observed: true} }
+
+// SupervisorWith is an available supervisor and the entries that remain.
+func SupervisorWith(kind failure.SupervisorKind, remaining ...SupervisorState) SupervisorObservation {
+	return SupervisorObservation{true, true, kind, remaining}
+}
+
+func (s SupervisorObservation) isAvailable() bool {
+	if !s.observed {
+		panic("plan: the supervisor was not observed")
+	}
+	return s.available
 }
 
 // RetirementObservation is the observed result of running managed-retire: the child's exit status, whether its
@@ -63,14 +79,14 @@ func ConfirmRetirement(observed RetirementObservation) ([]failure.Observation, *
 		return reject(failure.NewRetirementRejected(stage, observed.Exit, record.ReasonDocumentInvalid))
 	}
 	var observations []failure.Observation
-	if !observed.Supervisor.Available {
+	if !observed.Supervisor.isAvailable() {
 		observations = append(observations, failure.SupervisorUnavailable{})
 	} else {
 		labels := append([]record.ServiceLabel{retired.Semantic()}, retired.Brokers()...)
 		for _, label := range labels {
-			for _, remaining := range observed.Supervisor.Remaining {
+			for _, remaining := range observed.Supervisor.remaining {
 				if remaining.Label == label {
-					return reject(failure.NewSupervisorStillActive(stage, observed.Supervisor.Kind, label,
+					return reject(failure.NewSupervisorStillActive(stage, observed.Supervisor.kind, label,
 						remaining.State))
 				}
 			}
@@ -108,13 +124,13 @@ type ForcedObservation struct {
 // its absence, terminate every process that uses one of the trees, and remove each login agent that matches its
 // owned document. An entry is owned when its program or working directory lies inside R or a store; another agent
 // stays and is reported.
-func ForcedRetirement(paths Paths, trees []string, observed ForcedObservation, processes []Process) ([]Step,
+func ForcedRetirement(paths Paths, trees []string, observed ForcedObservation, processes ProcessTable) ([]Step,
 	[]failure.Observation) {
 	var b builder
 	var observations []failure.Observation
 	owners := []string{paths.Root(record.RootR), paths.Root(record.RootRuntimeStore),
 		paths.Root(record.RootBaseStore)}
-	if !observed.Supervisor.Available {
+	if !observed.Supervisor.isAvailable() {
 		observations = append(observations, failure.SupervisorUnavailable{})
 	} else {
 		for _, entry := range observed.Entries {
@@ -128,12 +144,12 @@ func ForcedRetirement(paths Paths, trees []string, observed ForcedObservation, p
 				owned = owned || within(entry.Program, owner) || within(entry.WorkingDirectory, owner)
 			}
 			if owned {
-				kind := observed.Supervisor.Kind
+				kind := observed.Supervisor.kind
 				b.step("F1", StopSupervisorEntry{kind, label}, AwaitSupervisorAbsent{kind, label})
 			}
 		}
 	}
-	for _, process := range processes {
+	for _, process := range processes.others() {
 		for _, tree := range trees {
 			if _, uses := UseOf(process, tree); uses {
 				b.step("F3", Terminate{process.Incarnation()})

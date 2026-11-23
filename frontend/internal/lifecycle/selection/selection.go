@@ -200,7 +200,7 @@ func Resolve(selector Selector, candidates Candidates, host record.Target, hando
 		}
 	}
 	if best == 0 {
-		return reject(failure.NewHandoffUnsupported(failure.StageHandoff))
+		return reject(failure.NewHandoffUnsupported(failure.StageHandoff, record.At(record.RootHandoff, "handoff.json")))
 	}
 	return Resolved{chosen, envelope.NewSelection(identity, chosen.SourceRevision()), control, best}, nil
 }

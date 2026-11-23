@@ -396,6 +396,18 @@ func TestRetirementDocumentDecodesStrictly(t *testing.T) {
 	})
 }
 
+func TestUnadmittedValuesNeverEncode(t *testing.T) {
+	zeros := map[string]any{"revision": Revision{}, "tag": ReleaseTag{}, "path": RelativePath{}, "asset": AssetName{},
+		"label": ServiceLabel{}, "link": LinkTarget{}, "home": HostHome{}, "platform": PlatformBuild{},
+		"target": Target(0), "policy": Policy(0), "mode": FileMode(0), "root": RootKind(0),
+		"reason": RetirementReason(0)}
+	for name, zero := range zeros {
+		if encoded, err := codec.Encode(zero); err == nil {
+			t.Errorf("%s: the zero value encoded as %s", name, encoded)
+		}
+	}
+}
+
 func TestCurrentTargetHasOneShape(t *testing.T) {
 	target, ok := ParseCurrentTarget("versions/0123456789abcdef")
 	if !ok || target.String() != "versions/0123456789abcdef" || PointTo(target.Version()) != target {

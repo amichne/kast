@@ -101,6 +101,9 @@ func (Foreign) classification()             {}
 // Classify maps a snapshot to exactly one state with the fixed precedence Legacy, Foreign, Residual, Damaged,
 // Current, Incomplete, Absent. Within one state, the first offending name in byte order is reported.
 func Classify(s Snapshot) Classification {
+	if !s.observed {
+		panic("layout: the snapshot was not observed")
+	}
 	if marker, ok := legacyMarker(s); ok {
 		return Legacy{marker}
 	}
@@ -132,6 +135,15 @@ func legacyMarker(s Snapshot) (record.Location, bool) {
 	return record.Location{}, false
 }
 
+// locate names an entry beneath a root. A file name is arbitrary bytes, so a name that evidence cannot carry is
+// reported as its containing directory.
+func locate(root record.RootKind, relative string, container record.Location) record.Location {
+	if path, ok := record.ParseRelativePath(relative); ok {
+		return record.Location{Root: root, Path: path}
+	}
+	return container
+}
+
 // foreignEntry finds what Kast did not create: R itself as anything but an owned directory, an unnamed entry of R,
 // a structural directory of another type or owner, current owned by someone else, or an entry of R/versions that is
 // not a version name.
@@ -146,7 +158,7 @@ func foreignEntry(s Snapshot) (record.Location, bool) {
 	for _, entry := range s.root {
 		switch ClassifyRootName(entry.name).Kind {
 		case RootForeignName:
-			return record.At(record.RootR, entry.name), true
+			return locate(record.RootR, entry.name, record.At(record.RootHomeShare, RootName)), true
 		case RootVersions, RootConfig, RootState:
 			if !entry.OwnedDirectory() {
 				return record.At(record.RootR, entry.name), true
@@ -159,7 +171,7 @@ func foreignEntry(s Snapshot) (record.Location, bool) {
 	}
 	for _, entry := range s.versions {
 		if _, ok := record.ParseVersionID(entry.name); !ok {
-			return record.At(record.RootR, VersionsName+"/"+entry.name), true
+			return locate(record.RootR, VersionsName+"/"+entry.name, record.At(record.RootR, VersionsName)), true
 		}
 	}
 	return record.Location{}, false

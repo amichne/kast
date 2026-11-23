@@ -15,8 +15,8 @@ func runCleanup(t *testing.T, o layout.Observation, bound BoundSet, own Own, pro
 	t.Helper()
 	snapshot := observe(t, o)
 	var b builder
-	rejected := cleanup(&b, "P5", cleanupInput{paths(t), snapshot, layout.Classify(snapshot), bound, own, processes,
-		&fresh{source: sequence{}}})
+	rejected := cleanup(&b, "P5", cleanupInput{paths(t), snapshot, layout.Classify(snapshot), bound, own,
+		table(processes...), &fresh{source: sequence{}}})
 	return Plan{Steps: b.steps}, rejected
 }
 

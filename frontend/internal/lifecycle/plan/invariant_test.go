@@ -110,8 +110,12 @@ func checkPrefix(intents []Intent, protected map[string]bool) error {
 				return fmt.Errorf("intent %d empties %s without a process-use proof", i, where(effect.At))
 			}
 		case RenameRoot:
-			if !proven[versionTreeOf(intents)] && versionTreeOf(intents) != (record.Location{}) {
-				return fmt.Errorf("intent %d renames R before proving its versions unused", i)
+			// X3 names every version and bound entry of the representative installation.
+			for _, tree := range []record.Location{record.At(record.RootR, "versions/"+oldHex),
+				record.At(record.RootRuntimeStore, runtimeHex), record.At(record.RootBaseStore, baseHex)} {
+				if !proven[tree] {
+					return fmt.Errorf("intent %d renames R before proving %s unused", i, where(tree))
+				}
 			}
 			parentPending = append(parentPending, "HOME_SHARE:.")
 		case SyncTree:
@@ -138,18 +142,23 @@ func checkPrefix(intents []Intent, protected map[string]bool) error {
 			}
 			parentPending = append(parentPending, "R:versions")
 		case ExchangeEntry:
-			if !contentSynced[where(reservation(effect.Entry.Kind, effect.Reservation))] {
+			if !contentSynced[where(reservation(effect.Entry.Kind, effect.Reservation))] || !fullSynced {
 				return fmt.Errorf("intent %d exchanges an unsynced replacement", i)
+			}
+			if !proven[effect.Entry.Location()] {
+				return fmt.Errorf("intent %d replaces %s without a process-use proof", i, where(effect.Entry.Location()))
 			}
 			parentPending = append(parentPending, where(rootDirectory(effect.Entry.Kind.Store())))
 		case SwapCurrent:
-			if len(parentPending) > 0 {
-				return fmt.Errorf("intent %d switches before the parent sync of %v", i, parentPending)
+			if len(parentPending) > 0 || !fullSynced {
+				return fmt.Errorf("intent %d switches before the sync of what it names (%v)", i, parentPending)
 			}
 			parentPending = append(parentPending, "R:.")
 		case PlacePublic:
 			parentPending = append(parentPending, "PUBLIC_COMMAND:.")
 		case SyncDirectory:
+			// fsync reaches the drive cache only, so a later publishing rename needs its own full sync.
+			fullSynced = false
 			for j, pending := range parentPending {
 				if pending == where(effect.At) {
 					parentPending = append(parentPending[:j], parentPending[j+1:]...)
@@ -180,15 +189,6 @@ func guardedTree(location record.Location) bool {
 		return text == layout.WorkspaceStoreName || text == layout.BaseStoreName
 	}
 	return false
-}
-
-func versionTreeOf(intents []Intent) record.Location {
-	for _, intent := range intents {
-		if proof, ok := intent.(ProveUnused); ok && strings.HasPrefix(proof.Tree.Path.String(), "versions/") {
-			return proof.Tree
-		}
-	}
-	return record.Location{}
 }
 
 // checkComplete applies the rules that only a finished plan must meet.
@@ -269,10 +269,18 @@ func representativePlans(t *testing.T) map[string]struct {
 	add("uninstall", Uninstall(uninstallInput(t)))
 	forced := uninstallInput(t)
 	forced.Force = true
+	forced.Forced = ForcedObservation{Supervisor: NoSupervisor()}
 	add("forced uninstall", Uninstall(forced))
 	blocked := uninstallInput(t)
-	blocked.Committed = []Process{{PID: 5, WorkingDirectory: paths(t).Root(record.RootR) + "/versions/" + oldHex}}
+	blocked.Committed = table(Process{PID: 5, WorkingDirectory: paths(t).Root(record.RootR) + "/versions/" + oldHex})
 	add("uninstall blocked at the commit", Uninstall(blocked))
+	add("upgrade to a new runtime", Install(newRuntimeInput(t)), "RUNTIME_STORE:"+newRuntimeHex, "BASE_STORE:"+baseHex,
+		"R:versions/"+id(1))
+	add("repair", Install(repairInput(t)), newBound...)
+	add("repair over damaged", Install(damagedRepairInput(t)), newBound...)
+	used := repairInput(t)
+	used.Final = table(Process{PID: 6, WorkingDirectory: paths(t).Root(record.RootRuntimeStore) + "/" + runtimeHex})
+	add("repair blocked at the exchange", Install(used), newBound...)
 	return plans
 }
 
@@ -294,6 +302,74 @@ func TestEveryPrefixOfEveryPlanKeepsTheInvariants(t *testing.T) {
 		}
 		if err := checkComplete(c.plan); err != nil {
 			t.Errorf("%s: %v", name, err)
+		}
+	}
+}
+
+// TestEveryInterruptedPrefixLeavesNoOwnTreeAndNoLock fails each intent of each plan in turn. Whatever the failed
+// intent, the command deletes its own trees, releases what it holds, keeps the rejection, and breaks no prefix rule.
+// Only an A14 failure continues, through A15.
+func TestEveryInterruptedPrefixLeavesNoOwnTreeAndNoLock(t *testing.T) {
+	io := must(failure.Mapped(failure.CauseIO))
+	rejected := failure.NewFilesystemRejected(failure.StageSwitch, record.At(record.RootR, "current"), failure.OpRename, io)
+	for name, c := range representativePlans(t) {
+		intents := c.plan.Intents()
+		for k := range intents {
+			got := Interrupt(c.plan, k, rejected)
+			if got.Result.Failure == nil || got.Result.Failure.Code() != failure.FilesystemRejected {
+				t.Fatalf("%s, intent %d: result %+v", name, k, got.Result)
+			}
+			if err := checkComplete(got); err != nil {
+				t.Errorf("%s, intent %d (%s): %v", name, k, intents[k], err)
+			}
+			tail := got.Intents()[k:]
+			continues := strings.HasPrefix(intents[k].String(), "link PUBLIC_COMMAND") ||
+				strings.HasPrefix(intents[k].String(), "place-public") ||
+				intents[k].String() == "sync-dir PUBLIC_COMMAND:."
+			if last := len(tail) - 1; continues != (last >= 0 && strings.Contains(strings.Join(strings_(tail), "\n"), "delete-handoff")) {
+				t.Errorf("%s, intent %d (%s): tail %v", name, k, intents[k], strings_(tail))
+			}
+			if !continues {
+				if err := checkPrefix(append(append([]Intent{}, intents[:k]...), withoutReleases(tail)...), c.protected); err != nil {
+					t.Errorf("%s, intent %d (%s): %v", name, k, intents[k], err)
+				}
+			}
+		}
+	}
+}
+
+// withoutReleases drops the final unlocks: an interrupted command may release before a parent sync it could not do.
+func withoutReleases(intents []Intent) []Intent {
+	var kept []Intent
+	for _, intent := range intents {
+		if _, ok := intent.(SetLock); !ok {
+			kept = append(kept, intent)
+		}
+	}
+	return kept
+}
+
+// TestLockTimeoutsReleaseWhatIsHeld: P3 releases intent; A8 deletes the own trees and releases both bytes.
+func TestLockTimeoutsReleaseWhatIsHeld(t *testing.T) {
+	held := failure.NewLockHeld(failure.StagePrelude, failure.RangeMain, failure.ModeShared, 4242)
+	plan := Install(upgradeInput(t))
+	var attempts []int
+	for i, intent := range plan.Intents() {
+		if intent.String() == "lock MAIN EXCLUSIVE bounded" {
+			attempts = append(attempts, i)
+		}
+	}
+	if len(attempts) != 2 {
+		t.Fatalf("bounded attempts at %v", attempts)
+	}
+	tails := [][]string{{"lock INTENT UNLOCKED"},
+		{"rename-aside " + staged + " .kast-removing-" + id(4), "delete .kast-removing-" + id(4), "lock MAIN UNLOCKED",
+			"lock INTENT UNLOCKED"}}
+	for i, at := range attempts {
+		got := Interrupt(plan, at, held)
+		expectFailure(t, "timeout", got, failure.LockHeld)
+		if tail := strings_(got.Intents()[at:]); strings.Join(tail, "\n") != strings.Join(tails[i], "\n") {
+			t.Errorf("attempt %d: tail %v, want %v", i, tail, tails[i])
 		}
 	}
 }

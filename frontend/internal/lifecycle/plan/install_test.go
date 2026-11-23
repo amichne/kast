@@ -45,7 +45,7 @@ var (
 func switchTo(version string) []string {
 	return []string{
 		"full-sync", "publish-version " + staged + " R:versions/" + version, "sync-dir R:versions",
-		"link R:current.next versions/" + version, "swap R:current.next R:current", "sync-dir R:.",
+		"link R:current.next versions/" + version, "full-sync", "swap R:current.next R:current", "sync-dir R:.",
 	}
 }
 
@@ -113,13 +113,15 @@ func TestRepairReplacesDamagedEntriesAndRetiresByForce(t *testing.T) {
 	damage := failure.NewRuntimeEntryDamaged(failure.StageVerify, record.At(record.RootRuntimeStore, runtimeHex))
 	retirement := failure.NewRetirementExecutableDamaged(failure.StageVerify,
 		record.At(record.RootR, "versions/"+oldHex+"/share/kast/libexec/kast-service"))
-	in.Current = CurrentVerification{Runtime: &damage, Retirement: &retirement}
-	in.Runtime = EntryObservation{Presence: EntryPresent, Damage: &damage}
+	in.Current.Runtime, in.Current.Retirement = DamagedBy(damage), DamagedBy(retirement)
+	in.Runtime = EntryPresent(DamagedBy(damage))
 	host := Process{PID: 4100, StartTime: 5, Executable: paths(t).Root(record.RootRuntimeStore) + "/" + runtimeHex +
 		"/host/bin/java"}
-	in.Processes = []Process{host}
+	// The command itself runs from the version it repairs; forced retirement must not terminate it.
+	command := Process{PID: self, Executable: paths(t).Root(record.RootR) + "/versions/" + oldHex + "/bin/kast"}
+	in.RelockedProcesses, in.Final = table(host, command), table(command)
 	in.Forced = ForcedObservation{
-		Supervisor: SupervisorObservation{Available: true, Kind: failure.SupervisorSystemd},
+		Supervisor: SupervisorWith(failure.SupervisorSystemd),
 		Entries: []SupervisorEntry{
 			{Label: semantic, Program: paths(t).Root(record.RootR) + "/versions/" + oldHex + "/bin/kast"},
 			{Label: "io.github.amichne.kast.semantic." + strings.Repeat("1", 32), Program: "/opt/other/bin/kast"},
@@ -136,6 +138,7 @@ func TestRepairReplacesDamagedEntriesAndRetiresByForce(t *testing.T) {
 			"extract runtime " + reserved, "sync-tree " + reserved},
 		stagingIntents(id(1)), relock,
 		[]string{"stop SYSTEMD " + semantic, "await-absent SYSTEMD " + semantic, "terminate 4100@5",
+			"prove-unused RUNTIME_STORE:" + runtimeHex, "full-sync",
 			"exchange " + reserved + " RUNTIME_STORE:" + runtimeHex, "sync-dir RUNTIME_STORE:."},
 		switchTo(id(1)),
 		[]string{"prove-unused R:versions/" + oldHex, "rename-aside R:versions/" + oldHex + " .kast-removing-" + id(4),
@@ -169,7 +172,7 @@ func TestInstallRejectionsNameTheirCheckAndReleaseTheLock(t *testing.T) {
 			failure.PublicCommandForeign, releaseBoth},
 		"damaged current without repair": {func(in *InstallInput) {
 			damage := failure.NewPayloadFileDamaged(failure.StageVerify, record.At(record.RootR, "versions/"+oldHex+"/bin/kast"))
-			in.Current.Payload = &damage
+			in.Current.Payload = DamagedBy(damage)
 		}, failure.PayloadFileDamaged, releaseBoth},
 		"record digest": {func(in *InstallInput) { in.RecordBytes = buildRecord(t) }, failure.RecordDigestMismatch,
 			[]string{"verify-handoff", "lock MAIN UNLOCKED"}},

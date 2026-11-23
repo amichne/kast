@@ -24,7 +24,7 @@ func ParseHostHome(text string) (HostHome, bool) {
 func (h HostHome) String() string { return h.text }
 
 // MarshalText writes the path.
-func (h HostHome) MarshalText() ([]byte, error) { return []byte(h.text), nil }
+func (h HostHome) MarshalText() ([]byte, error) { return admittedText(h.text, h.text != "") }
 
 // PlatformBuild is an IntelliJ platform build of the admitted lines: 262 or 263, then dot-separated decimals. The rule
 // mirrors the Kotlin reader, ManagedHeadlessInstallation.readRecord.
@@ -50,7 +50,7 @@ func ParsePlatformBuild(text string) (PlatformBuild, bool) {
 func (p PlatformBuild) String() string { return p.text }
 
 // MarshalText writes the build.
-func (p PlatformBuild) MarshalText() ([]byte, error) { return []byte(p.text), nil }
+func (p PlatformBuild) MarshalText() ([]byte, error) { return admittedText(p.text, p.text != "") }
 
 // AssemblyRecord is <runtime entry>/host[/Kast.app/Contents]/kast-headless.json. The member names follow the record
 // that the existing writer emits and the Kotlin reader decodes: "installation" is the Host home and

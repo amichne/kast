@@ -217,6 +217,40 @@ func TestDamagedNamesTheFailedCheck(t *testing.T) {
 	}
 }
 
+// TestSelectionMustAgreeWithItsBuildRecord changes one bound fact at a time. The manifest digests the changed
+// selection, so only the agreement with the build record can reject it.
+func TestSelectionMustAgreeWithItsBuildRecord(t *testing.T) {
+	v := consistentVersion(t)
+	id, _ := record.ParseVersionID(versionHex)
+	marker := []byte(record.LayoutMarker)
+	for name, change := range map[string][2]string{
+		"runtime":         {strings.Repeat("e", 64), strings.Repeat("d", 64)},
+		"base":            {strings.Repeat("9", 64), strings.Repeat("7", 64)},
+		"absent base":     {`"` + strings.Repeat("9", 64) + `"`, "null"},
+		"source revision": {strings.Repeat("1", 40), strings.Repeat("2", 40)},
+		"release tag":     {"developer-v0.0.42", "developer-v0.0.43"},
+		"local policy":    {"TRACK_MAIN", "LOCAL"},
+		"target":          {"linux-x86_64", "macos-aarch64"},
+	} {
+		selection := []byte(strings.Replace(string(v.selection), change[0], change[1], 1))
+		if _, err := record.DecodeProductSelection(selection); err != nil {
+			t.Fatalf("%s: the changed selection is not valid on its own: %v", name, err)
+		}
+		manifest, err := record.NewPayloadManifest(id, []record.PayloadFile{
+			{Path: record.BuildRecordPath, SHA256: record.DigestOf(v.build), Bytes: int64(len(v.build)), Mode: record.ModeReadOnly},
+			{Path: record.LayoutMarkerPath, SHA256: record.DigestOf(marker), Bytes: 2, Mode: record.ModeReadOnly},
+			{Path: record.ProductSelectionPath, SHA256: record.DigestOf(selection), Bytes: int64(len(selection)), Mode: record.ModeReadOnly},
+		}, nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		o := installed(t)
+		o.Current = &VersionRecords{Contents(manifest.Encode()), Contents(selection), Contents(v.build), Contents(marker)}
+		expect(t, name, classify(t, o), Damaged{DamageRecordsDisagree,
+			at(record.RootR, "versions/"+versionHex+"/share/kast/product-selection.json")})
+	}
+}
+
 func TestForeignNamesTheFirstEntryKastDidNotCreate(t *testing.T) {
 	witness := Directory(WitnessPrefix+witnessHex, true)
 	cases := map[string]struct {

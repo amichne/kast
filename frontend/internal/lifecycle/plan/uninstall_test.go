@@ -13,8 +13,10 @@ func uninstallInput(t *testing.T) UninstallInput {
 	t.Helper()
 	installed := observe(t, installedObservation(t))
 	retirement := cleanRetirement()
+	// An installed uninstall runs from the version it removes, so every scan sees the command itself.
+	command := Process{PID: self, Executable: paths(t).Root(record.RootR) + "/versions/" + oldHex + "/bin/kast"}
 	return UninstallInput{Paths: paths(t), IDs: sequence{}, Home: healthyHome(), Before: installed, Locked: installed,
-		Retirement: retirement}
+		Processes: table(command), Executables: Verified(), Retirement: retirement, Committed: table(command)}
 }
 
 var residueOfUninstall = []string{
@@ -56,11 +58,12 @@ func TestForcedUninstallOverDamagedSkipsKotlin(t *testing.T) {
 	damaged.Current = &records
 	in.Before, in.Locked = observe(t, damaged), observe(t, damaged)
 	host := Process{PID: 31, StartTime: 2, Executable: p.Root(record.RootRuntimeStore) + "/" + runtimeHex + "/host/java"}
-	in.Processes = []Process{host}
+	command := Process{PID: self, Executable: p.Root(record.RootR) + "/versions/" + oldHex + "/bin/kast"}
+	in.Processes = table(host, command)
 	broker := must(record.ParseServiceLabel("io.github.amichne.kast.broker." + strings.Repeat("2", 32)))
 	foreignAgent := must(record.ParseServiceLabel("io.github.amichne.kast.broker." + strings.Repeat("3", 32)))
 	in.Forced = ForcedObservation{
-		Supervisor:  SupervisorObservation{Available: true, Kind: failure.SupervisorLaunchd},
+		Supervisor:  SupervisorWith(failure.SupervisorLaunchd),
 		Entries:     []SupervisorEntry{{Label: semantic, WorkingDirectory: p.Root(record.RootR)}},
 		LoginAgents: []LoginAgent{{Label: broker, Matches: true}, {Label: foreignAgent, Matches: false}},
 	}
@@ -80,7 +83,7 @@ func TestForcedUninstallOverDamagedSkipsKotlin(t *testing.T) {
 
 func TestUninstallBlocksOnALiveProcessAtTheCommit(t *testing.T) {
 	in := uninstallInput(t)
-	in.Committed = []Process{{PID: 41, Arguments: []string{"-cp", paths(t).Root(record.RootR) + "/versions/" + oldHex + "/lib/a.jar"}}}
+	in.Committed = table(Process{PID: 41, Arguments: []string{"-cp", paths(t).Root(record.RootR) + "/versions/" + oldHex + "/lib/a.jar"}})
 	got := Uninstall(in)
 	expectFailure(t, "live process", got, failure.ProcessStillAlive)
 	for _, intent := range got.Intents() {
@@ -101,7 +104,7 @@ func TestUninstallMapsKotlinRemovalChecks(t *testing.T) {
 	}
 	damaged := failure.NewRetirementExecutableDamaged(failure.StageVerify,
 		record.At(record.RootR, "versions/"+oldHex+"/share/kast/libexec/kast-management"))
-	in.Current.Retirement = &damaged
+	in.Executables = DamagedBy(damaged)
 	expectFailure(t, "damaged retirement executables", Uninstall(in), failure.RetirementExecutableDamaged)
 }
 

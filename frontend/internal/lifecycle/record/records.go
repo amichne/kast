@@ -91,7 +91,7 @@ func ParseLinkTarget(text string) (LinkTarget, bool) {
 func (l LinkTarget) String() string { return l.text }
 
 // MarshalText writes the target.
-func (l LinkTarget) MarshalText() ([]byte, error) { return []byte(l.text), nil }
+func (l LinkTarget) MarshalText() ([]byte, error) { return admittedText(l.text, l.text != "") }
 
 // PayloadFile is one regular file of a version directory.
 type PayloadFile struct {

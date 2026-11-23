@@ -96,7 +96,7 @@ func Document(raw []byte, limit int) (Object, error) {
 	if first != json.Delim('{') {
 		return Object{}, Reject(NotObject, "")
 	}
-	if err := scanObject(decoder); err != nil {
+	if err := scanObject(decoder, 1); err != nil {
 		return Object{}, err
 	}
 	if _, err := decoder.Token(); err != io.EOF {
@@ -105,8 +105,14 @@ func Document(raw []byte, limit int) (Object, error) {
 	return parseObject(json.RawMessage(raw), "")
 }
 
+// maximumDepth bounds nesting, so a hostile document cannot exhaust the stack. No contract nests deeper than 6.
+const maximumDepth = 32
+
 // scanObject consumes the members of an object whose opening brace was read, rejecting a repeated name.
-func scanObject(decoder *json.Decoder) error {
+func scanObject(decoder *json.Decoder, depth int) error {
+	if depth > maximumDepth {
+		return Reject(Malformed, "")
+	}
 	seen := map[string]bool{}
 	for decoder.More() {
 		token, err := decoder.Token()
@@ -121,7 +127,7 @@ func scanObject(decoder *json.Decoder) error {
 			return Reject(DuplicateMember, name)
 		}
 		seen[name] = true
-		if err := scanValue(decoder); err != nil {
+		if err := scanValue(decoder, depth); err != nil {
 			return err
 		}
 	}
@@ -131,17 +137,20 @@ func scanObject(decoder *json.Decoder) error {
 	return nil
 }
 
-func scanValue(decoder *json.Decoder) error {
+func scanValue(decoder *json.Decoder, depth int) error {
 	token, err := decoder.Token()
 	if err != nil {
 		return Reject(Malformed, "")
 	}
 	switch token {
 	case json.Delim('{'):
-		return scanObject(decoder)
+		return scanObject(decoder, depth+1)
 	case json.Delim('['):
+		if depth >= maximumDepth {
+			return Reject(Malformed, "")
+		}
 		for decoder.More() {
-			if err := scanValue(decoder); err != nil {
+			if err := scanValue(decoder, depth+1); err != nil {
 				return err
 			}
 		}

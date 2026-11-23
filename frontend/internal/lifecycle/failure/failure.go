@@ -114,7 +114,7 @@ const (
 var evidenceOf = map[Code]EvidenceKind{
 	SelectorInvalid: KindNone, SelectorsConflict: KindNone, PlatformUnsupported: KindNone,
 	CatalogUnavailable: KindTransfer, CatalogInvalid: KindNone, CommitAmbiguous: KindNone, BuildUnavailable: KindNone,
-	ReleaseLayoutUnsupported: KindNone, HandoffUnsupported: KindNone, HandoffInvalid: KindPath,
+	ReleaseLayoutUnsupported: KindNone, HandoffUnsupported: KindPath, HandoffInvalid: KindPath,
 	RecordDigestMismatch: KindAssetDigest, RecordInvalid: KindPath, RecordSchemaUnsupported: KindPath,
 	AssetUnavailable: KindTransfer, AssetSizeMismatch: KindAssetDigest, AssetDigestMismatch: KindAssetDigest,
 	QualificationInvalid: KindNone, ArchiveEntryRejected: KindPath, BundleInventoryInvalid: KindPath,
@@ -289,8 +289,8 @@ func NewBuildUnavailable(stage Stage) Failure { return build(BuildUnavailable, s
 func NewReleaseLayoutUnsupported(stage Stage) Failure {
 	return build(ReleaseLayoutUnsupported, stage, NoEvidence{})
 }
-func NewHandoffUnsupported(stage Stage) Failure {
-	return build(HandoffUnsupported, stage, NoEvidence{})
+func NewHandoffUnsupported(stage Stage, location record.Location) Failure {
+	return build(HandoffUnsupported, stage, at(location))
 }
 func NewHandoffInvalid(stage Stage, location record.Location) Failure {
 	return build(HandoffInvalid, stage, at(location))

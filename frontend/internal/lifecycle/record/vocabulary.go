@@ -82,7 +82,15 @@ func ParseRevision(text string) (Revision, bool) {
 func (r Revision) String() string { return r.text }
 
 // MarshalText writes the identifier.
-func (r Revision) MarshalText() ([]byte, error) { return []byte(r.text), nil }
+func (r Revision) MarshalText() ([]byte, error) { return admittedText(r.text, r.text != "") }
+
+// admittedText writes an admitted value and refuses the zero value, so an unadmitted one never reaches a record.
+func admittedText(text string, admitted bool) ([]byte, error) {
+	if !admitted {
+		return nil, codec.Reject(codec.InvalidValue, "")
+	}
+	return []byte(text), nil
+}
 
 // Target is the closed set of release targets.
 type Target uint8
@@ -236,7 +244,9 @@ func (t ReleaseTag) String() string {
 }
 
 // MarshalText writes the tag.
-func (t ReleaseTag) MarshalText() ([]byte, error) { return []byte(t.String()), nil }
+func (t ReleaseTag) MarshalText() ([]byte, error) {
+	return admittedText(t.String(), t.stable || t.developer.build != 0)
+}
 
 // Identity is the selection identity shared by the handoff and the product selection: the release tag, the policy
 // and the public version. A stable tag requires the public version it names; a preview tag requires none. Tracking
@@ -318,7 +328,7 @@ func (p RelativePath) Contains(other RelativePath) bool {
 }
 
 // MarshalText writes the path.
-func (p RelativePath) MarshalText() ([]byte, error) { return []byte(p.text), nil }
+func (p RelativePath) MarshalText() ([]byte, error) { return admittedText(p.text, p.text != "") }
 
 // RootKind is the closed set of roots a lifecycle path is relative to. HOME and HANDOFF extend the specification's
 // list: HOME admits the home path checks, and HANDOFF names files of the private handoff directory.
@@ -388,7 +398,7 @@ func MustAssetName(text string) AssetName {
 func (a AssetName) String() string { return a.text }
 
 // MarshalText writes the name.
-func (a AssetName) MarshalText() ([]byte, error) { return []byte(a.text), nil }
+func (a AssetName) MarshalText() ([]byte, error) { return admittedText(a.text, a.text != "") }
 
 // ControlAsset is the fixed name of a target's standalone Control executable asset.
 func ControlAsset(target Target) AssetName { return MustAssetName("kast-control-" + target.String()) }
@@ -440,7 +450,7 @@ func (s ServiceLabel) String() string {
 }
 
 // MarshalText writes the label.
-func (s ServiceLabel) MarshalText() ([]byte, error) { return []byte(s.String()), nil }
+func (s ServiceLabel) MarshalText() ([]byte, error) { return admittedText(s.String(), s.kind != 0) }
 
 func parseEnum[E comparable](names map[E]string, text string) (E, bool) {
 	for value, name := range names {

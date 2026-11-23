@@ -148,7 +148,16 @@ func retiredDocument() []byte {
 
 func cleanRetirement() RetirementObservation {
 	return RetirementObservation{Exit: must(failure.ParseExitCode(0)), Document: retiredDocument(),
-		Supervisor: SupervisorObservation{Available: true, Kind: failure.SupervisorSystemd}}
+		Supervisor: SupervisorWith(failure.SupervisorSystemd)}
+}
+
+// self is the command's own process; the scan that observes it must not count it.
+const self = record.ProcessID(9000)
+
+func table(processes ...Process) ProcessTable { return ObserveProcesses(self, processes) }
+
+func verified() CurrentVerification {
+	return CurrentVerification{Verified(), Verified(), Verified(), Verified()}
 }
 
 // upgradeInput is a representative upgrade: a current installation, a new record with the same entries, a clean
@@ -162,8 +171,9 @@ func upgradeInput(t *testing.T) InstallInput {
 		Home: healthyHome(), Before: observe(t, installed), Locked: observe(t, installed),
 		Handoff: handoff(t, envelope.OperationUpgrade, next), RecordBytes: next, OwnExecutable: digest(controlHex),
 		RuntimeManifest: digest(strings.Repeat("f", 64)),
-		Runtime:         EntryObservation{Presence: EntryPresent}, Base: EntryObservation{Presence: EntryPresent},
+		Runtime:         EntryPresent(Verified()), Base: EntryPresent(Verified()), Current: verified(),
 		LayoutMarker: true, Relocked: observe(t, withStaging(installed, id(2))), Retirement: cleanRetirement(),
+		Processes: table(), RelockedProcesses: table(), Final: table(),
 	}
 }
 
@@ -179,7 +189,8 @@ func freshInput(t *testing.T) InstallInput {
 		Home: facts, Before: observe(t, empty), Locked: observe(t, empty),
 		Handoff: handoff(t, envelope.OperationInstall, build), RecordBytes: build, OwnExecutable: digest(controlHex),
 		RuntimeManifest: digest(strings.Repeat("f", 64)),
-		Runtime:         EntryObservation{Presence: EntryMissing}, Base: EntryObservation{Presence: EntryMissing},
+		Runtime:         EntryMissing(), Base: EntryMissing(),
+		Processes: table(), RelockedProcesses: table(), Final: table(),
 		LayoutMarker: true,
 		Relocked: observe(t, layout.Observation{Share: []layout.Entry{layout.Directory("kast", true),
 			layout.Directory("kast-workspaces", true), layout.Directory("kast-runtime-bases", true)},

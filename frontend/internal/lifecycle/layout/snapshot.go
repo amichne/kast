@@ -131,8 +131,10 @@ var defectNames = map[Defect]string{
 
 func (d Defect) Error() string { return "layout: inconsistent observation: " + defectNames[d] }
 
-// Snapshot is an admitted, consistent observation.
+// Snapshot is an admitted, consistent observation. The zero value was never observed, so Classify refuses it rather
+// than reporting Absent.
 type Snapshot struct {
+	observed                                                        bool
 	share, root, versions, runtimeStore, baseStore, bin, tmpAliases []Entry
 	current                                                         *VersionRecords
 	containers                                                      ContainerState
@@ -213,6 +215,7 @@ func Observe(o Observation) (Snapshot, error) {
 		return Snapshot{}, DefectContainers
 	}
 	s.containers = o.Containers
+	s.observed = true
 	return s, nil
 }
 

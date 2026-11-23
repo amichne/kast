@@ -14,20 +14,20 @@ type UninstallInput struct {
 	Home      HomeFacts
 	Before    layout.Snapshot
 	Locked    layout.Snapshot
-	Processes []Process
-	// Current is the verification of the retirement executables; Retirement is managed-retire --removal's result.
-	Current    CurrentVerification
-	Retirement RetirementObservation
-	Forced     ForcedObservation
+	Processes ProcessTable
+	// Executables is the verification of the retirement executables; Retirement is managed-retire --removal's result.
+	Executables Verification
+	Retirement  RetirementObservation
+	Forced      ForcedObservation
 	// Committed is the process table at X3, after retirement.
-	Committed []Process
+	Committed ProcessTable
 }
 
 // Uninstall plans uninstall and uninstall --force. The commit point is the rename of R to the witness; before it
 // the installation and the stores are intact, so a rerun can still retire through Kotlin.
 func Uninstall(in UninstallInput) Plan {
-	var b builder
 	ids := &fresh{source: in.IDs}
+	b := builder{ids: ids}
 	command := CommandUninstall
 	if in.Force {
 		command = CommandForceUninstall
@@ -63,9 +63,8 @@ func Uninstall(in UninstallInput) Plan {
 	if hasCurrent && !in.Force {
 		version := current.Installed.Version
 		b.step("X2", VerifyVersion{version}, VerifyEntry{Entry{EntryRuntime, currentSelection.RuntimeArchive()}})
-		if in.Current.Retirement != nil {
-			return b.reject("X2", failure.NewRetirementExecutableDamaged(failure.StageVerify,
-				failureLocation(*in.Current.Retirement)))
+		if damage := in.Executables.damaged(); damage != nil {
+			return b.reject("X2", failure.NewRetirementExecutableDamaged(failure.StageVerify, failureLocation(*damage)))
 		}
 		b.step("X2", Retire{version, true})
 		noted, rejected := ConfirmRetirement(in.Retirement)
@@ -88,7 +87,7 @@ func Uninstall(in UninstallInput) Plan {
 	for _, tree := range trees {
 		absolute = append(absolute, in.Paths.Absolute(tree))
 	}
-	if rejected, used := firstUse(in.Committed, absolute); used {
+	if rejected, used := firstUse(in.Committed, failure.StageRemove, absolute); used {
 		return b.reject("X3", *rejected)
 	}
 	for _, tree := range trees {
@@ -170,19 +169,21 @@ func committedSnapshot(paths Paths, locked layout.Snapshot, residual bool, witne
 	if residual {
 		residueLinks(&removed, cleanupInput{paths: paths, snapshot: locked})
 	}
-	unlinked := map[record.Location]bool{}
-	for _, intent := range removed.steps {
-		for _, effect := range intent.Intents {
-			unlinked[effect.(Unlink).At] = true
+	// Entry names are arbitrary bytes, so compare names rather than building locations from them.
+	unlinked := map[record.RootKind]map[string]bool{record.RootPublicCommand: {}, record.RootTmpAlias: {}}
+	for _, step := range removed.steps {
+		for _, effect := range step.Intents {
+			at := effect.(Unlink).At
+			unlinked[at.Root][at.Path.String()] = true
 		}
 	}
 	for _, entry := range locked.Bin() {
-		if !unlinked[record.At(record.RootPublicCommand, entry.Name())] {
+		if !unlinked[record.RootPublicCommand][entry.Name()] {
 			observation.Bin = append(observation.Bin, entry)
 		}
 	}
 	for _, entry := range locked.TmpAliases() {
-		if !unlinked[record.At(record.RootTmpAlias, entry.Name())] {
+		if !unlinked[record.RootTmpAlias][entry.Name()] {
 			observation.TmpAliases = append(observation.TmpAliases, entry)
 		}
 	}

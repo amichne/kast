@@ -214,7 +214,7 @@ type cleanupInput struct {
 	classification layout.Classification
 	bound          BoundSet
 	own            Own
-	processes      []Process
+	processes      ProcessTable
 	ids            *fresh
 }
 
@@ -396,7 +396,7 @@ func cleanup(b *builder, step StepName, in cleanupInput) *failure.Failure {
 	for _, location := range append(stores, witnesses...) {
 		guarded = append(guarded, in.paths.Absolute(location))
 	}
-	if rejected, used := firstUse(in.processes, guarded); used {
+	if rejected, used := firstUse(in.processes, stage, guarded); used {
 		return rejected
 	}
 

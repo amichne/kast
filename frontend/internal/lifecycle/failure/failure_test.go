@@ -60,7 +60,7 @@ func constructed() []failure.Failure {
 		failure.NewCommitAmbiguous(s),
 		failure.NewBuildUnavailable(s),
 		failure.NewReleaseLayoutUnsupported(s),
-		failure.NewHandoffUnsupported(h),
+		failure.NewHandoffUnsupported(h, handoff),
 		failure.NewHandoffInvalid(h, handoff),
 		failure.NewRecordDigestMismatch(v, recordAsset, a, b),
 		failure.NewRecordInvalid(v, current),

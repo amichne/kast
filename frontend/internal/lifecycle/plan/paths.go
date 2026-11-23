@@ -83,8 +83,7 @@ func within(candidate, tree string) bool {
 
 // UseOf reports how a process uses a tree: its executable or working directory lies inside it, or any argument
 // mentions it. An argument counts wherever it names the tree, as an element of a class path or after "=", because
-// a JVM names V/lib only inside -cp. Identifiers in tree names have fixed lengths, so a substring match cannot
-// confuse two trees.
+// a JVM names V/lib only inside -cp. The match is a plain substring, so it can only report too many uses.
 func UseOf(process Process, tree string) (failure.ProcessUse, bool) {
 	switch {
 	case within(process.Executable, tree):
@@ -100,12 +99,38 @@ func UseOf(process Process, tree string) (failure.ProcessUse, bool) {
 	return 0, false
 }
 
-// firstUse finds the first process, in table order, that uses any of the trees.
-func firstUse(processes []Process, trees []string) (*failure.Failure, bool) {
+// ProcessTable is one completed scan of the user's processes, without the scanning command itself: an installed
+// command runs from the version it removes, and forced retirement must never terminate its own process. The zero
+// table was never observed, so it proves nothing and is a defect wherever a proof is needed.
+type ProcessTable struct {
+	observed  bool
+	processes []Process
+}
+
+// ObserveProcesses admits a scan and drops the command's own process.
+func ObserveProcesses(self record.ProcessID, processes []Process) ProcessTable {
+	table := ProcessTable{observed: true}
 	for _, process := range processes {
+		if process.PID != self {
+			table.processes = append(table.processes, process)
+		}
+	}
+	return table
+}
+
+func (t ProcessTable) others() []Process {
+	if !t.observed {
+		panic("plan: the process table was not observed")
+	}
+	return t.processes
+}
+
+// firstUse finds the first process, in table order, that uses any of the trees.
+func firstUse(table ProcessTable, stage failure.Stage, trees []string) (*failure.Failure, bool) {
+	for _, process := range table.others() {
 		for _, tree := range trees {
 			if use, ok := UseOf(process, tree); ok {
-				rejected := failure.NewProcessStillAlive(failure.StageCleanup, process.PID, use)
+				rejected := failure.NewProcessStillAlive(stage, process.PID, use)
 				return &rejected, true
 			}
 		}

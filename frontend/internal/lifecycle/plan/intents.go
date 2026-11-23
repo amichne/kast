@@ -2,6 +2,7 @@ package plan
 
 import (
 	"fmt"
+	"slices"
 
 	"github.com/amichne/kast/frontend/internal/lifecycle/failure"
 	"github.com/amichne/kast/frontend/internal/lifecycle/layout"
@@ -409,6 +410,7 @@ type Result struct {
 type Plan struct {
 	Steps  []Step
 	Result Result
+	ids    *fresh
 }
 
 // Intents flattens the steps.
@@ -425,6 +427,7 @@ func (p Plan) Intents() []Intent {
 type builder struct {
 	steps        []Step
 	intent, main LockState
+	ids          *fresh
 }
 
 func (b *builder) step(name StepName, intents ...Intent) {
@@ -464,9 +467,66 @@ func (b *builder) reject(name StepName, rejected failure.Failure) Plan {
 }
 
 func (b *builder) fail(rejected failure.Failure) Plan {
-	return Plan{b.steps, Result{Failure: &rejected}}
+	return Plan{b.steps, Result{Failure: &rejected}, b.ids}
 }
 
 func (b *builder) finish(outcome failure.Outcome) Plan {
-	return Plan{b.steps, Result{Outcome: &outcome}}
+	return Plan{b.steps, Result{Outcome: &outcome}, b.ids}
+}
+
+// Interrupt is what a command performs when one intent of its plan fails: the intents before it, then the
+// rejection's own tail. The tail deletes the own staging tree and reservations that still exist and releases
+// exactly the bytes held; a lock attempt that fails leaves the earlier lock state. When A14 fails, current already
+// names the new version, so A15 still runs and the failure is returned after it (section 3.2).
+func Interrupt(plan Plan, failed int, rejected failure.Failure) Plan {
+	b := builder{ids: &fresh{plan.ids.source, plan.ids.next}}
+	var own Own
+	position, interrupted := 0, StepName("")
+	for _, step := range plan.Steps {
+		for _, intent := range step.Intents {
+			switch {
+			case position < failed:
+				b.step(step.Name, intent)
+				own.track(intent)
+			case position == failed:
+				interrupted = step.Name
+			case interrupted == "A14" && step.Name == "A15":
+				b.step(step.Name, intent)
+			}
+			position++
+		}
+	}
+	if interrupted != "A14" {
+		b.step(interrupted, Abandon(own, b.ids.source, b.ids.next)...)
+		b.release(interrupted)
+	}
+	return b.fail(rejected)
+}
+
+// track follows the own trees through one performed intent.
+func (o *Own) track(intent Intent) {
+	dropReservation := func(kind EntryKind, id record.VersionID) {
+		o.Reservations = slices.DeleteFunc(o.Reservations, func(own Reservation) bool {
+			return own == Reservation{kind, id}
+		})
+	}
+	switch effect := intent.(type) {
+	case CreateStaging:
+		o.Staging = &effect.Staging
+	case ReserveEntry:
+		o.Reservations = append(o.Reservations, Reservation{effect.Kind, effect.Reservation})
+	case PublishVersion:
+		o.Staging = nil
+	case PublishEntry:
+		dropReservation(effect.Entry.Kind, effect.Reservation)
+	case RenameAside:
+		if o.Staging != nil && effect.From == staging(*o.Staging) {
+			o.Staging = nil
+		}
+		for _, own := range slices.Clone(o.Reservations) {
+			if effect.From == reservation(own.Kind, own.ID) {
+				dropReservation(own.Kind, own.ID)
+			}
+		}
+	}
 }

@@ -41,7 +41,7 @@ func TestConfirmRetirementChecksEveryFactOfTheDocument(t *testing.T) {
 		}
 	}
 	remaining := cleanRetirement()
-	remaining.Supervisor.Remaining = []SupervisorState{{label, failure.StateDeactivating}}
+	remaining.Supervisor = SupervisorWith(failure.SupervisorSystemd, SupervisorState{label, failure.StateDeactivating})
 	if _, rejected := ConfirmRetirement(remaining); rejected == nil || rejected.Code() != failure.SupervisorStillActive {
 		t.Errorf("a deactivating unit passed: %v", rejected)
 	}
@@ -56,7 +56,7 @@ func TestConfirmRetirementChecksEveryFactOfTheDocument(t *testing.T) {
 		t.Errorf("a reused process identifier blocked retirement: %v", rejected)
 	}
 	unavailable := cleanRetirement()
-	unavailable.Supervisor = SupervisorObservation{}
+	unavailable.Supervisor = NoSupervisor()
 	observations, rejected := ConfirmRetirement(unavailable)
 	if rejected != nil || len(observations) != 1 || observations[0] != (failure.SupervisorUnavailable{}) {
 		t.Errorf("no supervisor: %v %v", observations, rejected)
@@ -67,16 +67,17 @@ func TestForcedRetirementStopsOnlyWhatKastOwns(t *testing.T) {
 	p := paths(t)
 	version := p.Root(record.RootR) + "/versions/" + oldHex
 	steps, observations := ForcedRetirement(p, []string{version}, ForcedObservation{
-		Supervisor: SupervisorObservation{Available: true, Kind: failure.SupervisorSystemd},
+		Supervisor: SupervisorWith(failure.SupervisorSystemd),
 		Entries: []SupervisorEntry{
 			{Label: semantic, Program: version + "/bin/kast"},
 			{Label: "io.github.amichne.kast.broker." + strings.Repeat("4", 32), WorkingDirectory: "/srv"},
 			{Label: "io.github.amichne.kast.unknown", Program: version + "/bin/kast"},
 		},
-	}, []Process{
-		{PID: 1, StartTime: 1, Executable: version + "/bin/kast"},
-		{PID: 2, StartTime: 1, Executable: "/usr/bin/vim", Arguments: []string{"/home/user/notes"}},
-	})
+	}, table(
+		Process{PID: 1, StartTime: 1, Executable: version + "/bin/kast"},
+		Process{PID: 2, StartTime: 1, Executable: "/usr/bin/vim", Arguments: []string{"/home/user/notes"}},
+		Process{PID: self, StartTime: 1, Executable: version + "/bin/kast"},
+	))
 	if got := strings.Join(strings_((Plan{Steps: steps}).Intents()), "\n"); got != strings.Join([]string{
 		"stop SYSTEMD " + semantic, "await-absent SYSTEMD " + semantic, "terminate 1@1"}, "\n") {
 		t.Errorf("forced:\n%s", got)
@@ -84,7 +85,7 @@ func TestForcedRetirementStopsOnlyWhatKastOwns(t *testing.T) {
 	if len(observations) != 0 {
 		t.Errorf("observations %+v", observations)
 	}
-	_, unavailable := ForcedRetirement(p, nil, ForcedObservation{}, nil)
+	_, unavailable := ForcedRetirement(p, nil, ForcedObservation{Supervisor: NoSupervisor()}, table())
 	if len(unavailable) != 1 || unavailable[0] != (failure.SupervisorUnavailable{}) {
 		t.Errorf("no supervisor: %+v", unavailable)
 	}

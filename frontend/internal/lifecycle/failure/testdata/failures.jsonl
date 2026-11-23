@@ -6,7 +6,7 @@
 {"schemaVersion":1,"code":"COMMIT_AMBIGUOUS","stage":"SELECTION","evidence":{}}
 {"schemaVersion":1,"code":"BUILD_UNAVAILABLE","stage":"SELECTION","evidence":{}}
 {"schemaVersion":1,"code":"RELEASE_LAYOUT_UNSUPPORTED","stage":"SELECTION","evidence":{}}
-{"schemaVersion":1,"code":"HANDOFF_UNSUPPORTED","stage":"HANDOFF","evidence":{}}
+{"schemaVersion":1,"code":"HANDOFF_UNSUPPORTED","stage":"HANDOFF","evidence":{"root":"HANDOFF","path":"handoff.json"}}
 {"schemaVersion":1,"code":"HANDOFF_INVALID","stage":"HANDOFF","evidence":{"root":"HANDOFF","path":"handoff.json"}}
 {"schemaVersion":1,"code":"RECORD_DIGEST_MISMATCH","stage":"VERIFY","evidence":{"asset":"build-record.json","expected":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","observed":"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"}}
 {"schemaVersion":1,"code":"RECORD_INVALID","stage":"VERIFY","evidence":{"root":"R","path":"current"}}

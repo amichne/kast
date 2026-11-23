@@ -8,38 +8,57 @@ import (
 	"github.com/amichne/kast/frontend/internal/lifecycle/record"
 )
 
+// Verification is the result of one completed check: verified, or damaged with its failure. The zero value was
+// never performed, so reading it is a defect rather than a success.
+type Verification struct {
+	performed bool
+	damage    *failure.Failure
+}
+
+// Verified is a check that passed.
+func Verified() Verification { return Verification{performed: true} }
+
+// DamagedBy is a check that failed.
+func DamagedBy(damage failure.Failure) Verification { return Verification{true, &damage} }
+
+func (v Verification) damaged() *failure.Failure {
+	if !v.performed {
+		panic("plan: a verification was not performed")
+	}
+	return v.damage
+}
+
 // CurrentVerification is A3's observation of the current version: its payload against its manifest, the subset of
-// retirement executables (T3, V2), and its bound runtime and base entries. A nil field verified.
+// retirement executables (T3, V2), and its bound runtime and base entries. Base is Verified without a bound base.
 type CurrentVerification struct {
-	Payload    *failure.Failure
-	Retirement *failure.Failure
-	Runtime    *failure.Failure
-	Base       *failure.Failure
+	Payload    Verification
+	Retirement Verification
+	Runtime    Verification
+	Base       Verification
 }
 
 func (c CurrentVerification) first() *failure.Failure {
-	for _, damage := range []*failure.Failure{c.Payload, c.Retirement, c.Runtime, c.Base} {
-		if damage != nil {
-			return damage
+	var first *failure.Failure
+	for _, check := range []Verification{c.Payload, c.Retirement, c.Runtime, c.Base} {
+		if damage := check.damaged(); damage != nil && first == nil {
+			first = damage
 		}
 	}
-	return nil
+	return first
 }
 
-// EntryPresence is whether a store entry the new selection binds exists.
-type EntryPresence uint8
-
-const (
-	EntryMissing EntryPresence = iota + 1
-	EntryPresent
-)
-
-// EntryObservation is A6's observation of one entry the new selection binds: missing, or present and verified, or
-// present and damaged.
+// EntryObservation is A6's observation of one entry the new selection binds: missing, verified, or damaged. The zero
+// value was never observed.
 type EntryObservation struct {
-	Presence EntryPresence
-	Damage   *failure.Failure
+	missing bool
+	check   Verification
 }
+
+// EntryMissing is an entry that does not exist.
+func EntryMissing() EntryObservation { return EntryObservation{missing: true} }
+
+// EntryPresent is an entry that exists, with its verification.
+func EntryPresent(check Verification) EntryObservation { return EntryObservation{check: check} }
 
 // InstallInput holds every observation the install, upgrade and repair machine decides from, in the order the
 // machine reaches them. Observations a rejected plan never reaches are ignored.
@@ -53,7 +72,7 @@ type InstallInput struct {
 	Before layout.Snapshot
 	// Locked is P4's snapshot, under both bytes exclusively; Processes is the process table at that point.
 	Locked    layout.Snapshot
-	Processes []Process
+	Processes ProcessTable
 	// Current is A3's verification of the current version.
 	Current CurrentVerification
 	// Handoff, RecordBytes and OwnExecutable are A5's inputs: the handoff document, the record bytes in the handoff
@@ -67,13 +86,15 @@ type InstallInput struct {
 	Base            EntryObservation
 	// LayoutMarker reports A7's marker check on the extracted payload.
 	LayoutMarker bool
-	// Relocked is A9's snapshot, under both bytes again.
-	Relocked layout.Snapshot
+	// Relocked and RelockedProcesses are A9's snapshot and process table, under both bytes again. A table from the
+	// first hold proves nothing under the second.
+	Relocked          layout.Snapshot
+	RelockedProcesses ProcessTable
 	// Retirement is A10's normal retirement; Forced is the observation forced retirement plans from.
 	Retirement RetirementObservation
 	Forced     ForcedObservation
-	// Final is the process table at A15, after retirement.
-	Final []Process
+	// Final is the process table after A10, for A11's exchanges and A15's deletions.
+	Final ProcessTable
 }
 
 func commandOf(operation envelope.Operation) Command {
@@ -123,8 +144,8 @@ func admittedHandoff(in InstallInput) (record.BuildRecord, record.BuildTarget, *
 // Install plans install, upgrade and repair as one machine (section 3.2, steps A1 to A15; H1 and H2 run in the
 // selecting binary).
 func Install(in InstallInput) Plan {
-	var b builder
 	ids := &fresh{source: in.IDs}
+	b := builder{ids: ids}
 	command := commandOf(in.Operation)
 	if rejected := Precheck(in.Home, layout.Classify(in.Before)); rejected != nil {
 		return b.fail(*rejected)
@@ -213,14 +234,15 @@ func Install(in InstallInput) Plan {
 	entries = append(entries, wanted{Entry{EntryRuntime, target.Runtime().SHA256()}, target.Runtime().Name(), in.Runtime})
 	for _, want := range entries {
 		store := rootDirectory(want.entry.Kind.Store())
-		if want.observation.Presence == EntryPresent {
+		if !want.observation.missing {
 			b.step("A6", VerifyEntry{want.entry})
-			if want.observation.Damage == nil {
+			damage := want.observation.check.damaged()
+			if damage == nil {
 				continue
 			}
 			if command != CommandRepair {
 				b.step("A6", Abandon(own, in.IDs, ids.next)...)
-				return b.reject("A6", *want.observation.Damage)
+				return b.reject("A6", *damage)
 			}
 		}
 		id := ids.id()
@@ -228,7 +250,7 @@ func Install(in InstallInput) Plan {
 		ensureStore(&b, in.Locked, residual, want.entry.Kind)
 		b.step("A6", Download{want.asset}, ReserveEntry{want.entry.Kind, id}, ExtractEntry{want.entry, id},
 			SyncTree{reservation(want.entry.Kind, id)})
-		if want.observation.Presence == EntryPresent {
+		if !want.observation.missing {
 			replacements = append(replacements, replacement{want.entry, id})
 			continue
 		}
@@ -268,8 +290,8 @@ func Install(in InstallInput) Plan {
 			nineBound = Bound(selection)
 		}
 	}
-	if rejected := cleanup(&b, "A9", cleanupInput{in.Paths, in.Relocked, relocked, nineBound, own, in.Processes,
-		ids}); rejected != nil {
+	if rejected := cleanup(&b, "A9", cleanupInput{in.Paths, in.Relocked, relocked, nineBound, own,
+		in.RelockedProcesses, ids}); rejected != nil {
 		b.step("A9", Abandon(own, in.IDs, ids.next)...)
 		return b.reject("A9", *rejected)
 	}
@@ -277,10 +299,10 @@ func Install(in InstallInput) Plan {
 	// A10: retire the outgoing version: through its own code, or forced when that code cannot be trusted.
 	var observations []failure.Observation
 	if hasCurrent || damaged {
-		forced := damaged || in.Current.Retirement != nil
+		forced := damaged || in.Current.Retirement.damaged() != nil
 		if forced {
 			steps, noted := ForcedRetirement(in.Paths, outgoingTrees(in.Paths, in.Relocked, outgoing), in.Forced,
-				in.Processes)
+				in.RelockedProcesses)
 			for _, step := range steps {
 				b.step("A10", step.Intents...)
 			}
@@ -297,15 +319,27 @@ func Install(in InstallInput) Plan {
 	}
 
 	// A11: swap each damaged entry with its replacement; the damaged copy is left at the reservation name.
+	// An exchange replaces a store entry, so the process-use invariant applies to it too.
+	var replacedTrees []string
 	for _, replaced := range replacements {
-		b.step("A11", ExchangeEntry{replaced.entry, replaced.reservation},
+		replacedTrees = append(replacedTrees, in.Paths.Absolute(replaced.entry.Location()))
+	}
+	if len(replacedTrees) > 0 {
+		if rejected, used := firstUse(in.Final, failure.StagePublish, replacedTrees); used {
+			b.step("A11", Abandon(own, in.IDs, ids.next)...)
+			return b.reject("A11", *rejected)
+		}
+	}
+	for _, replaced := range replacements {
+		b.step("A11", ProveUnused{replaced.entry.Location()}, FullSync{},
+			ExchangeEntry{replaced.entry, replaced.reservation},
 			SyncDirectory{rootDirectory(replaced.entry.Kind.Store())})
 	}
 	// A12: publish the version directory.
 	b.step("A12", FullSync{}, PublishVersion{stagingID, newVersion},
 		SyncDirectory{record.At(record.RootR, layout.VersionsName)})
-	// A13: the switch.
-	b.step("A13", LinkCurrentNext{newVersion}, SwapCurrent{}, SyncDirectory{rootDirectory(record.RootR)})
+	// A13: the switch. The full sync makes the published version durable before current can name it.
+	b.step("A13", LinkCurrentNext{newVersion}, FullSync{}, SwapCurrent{}, SyncDirectory{rootDirectory(record.RootR)})
 	// A14: ensure the public command.
 	ensurePublic(&b, "A14", in.Paths, in.Relocked, ids)
 	// A15: delete the outgoing version and every entry outside the new bound set, under the process-use invariant.
@@ -466,7 +500,7 @@ func afterSwitch(b *builder, in InstallInput, selection record.ProductSelection,
 	for _, tree := range trees {
 		absolute = append(absolute, in.Paths.Absolute(tree))
 	}
-	if rejected, used := firstUse(in.Final, absolute); used {
+	if rejected, used := firstUse(in.Final, failure.StageCleanup, absolute); used {
 		return rejected
 	}
 	var aside []record.VersionID
