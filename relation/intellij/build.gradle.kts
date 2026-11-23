@@ -280,9 +280,11 @@ fun registerRelationNativeFixtures(taskName: String, selectedClasses: List<Strin
         )
         systemProperty("java.awt.headless", "true")
         systemProperty("idea.home.path", nativeIdeaHome.get().asFile.absolutePath)
-        systemProperty("idea.config.path", layout.buildDirectory.dir("native-test/config").get().asFile.absolutePath)
-        systemProperty("idea.system.path", layout.buildDirectory.dir("native-test/system").get().asFile.absolutePath)
-        systemProperty("idea.log.path", layout.buildDirectory.dir("native-test/log").get().asFile.absolutePath)
+        // Each suite owns its IDE directories; the configuration cache may run suites of one project together.
+        val ideaRoot = layout.buildDirectory.dir("native-test/$taskName").get().asFile
+        systemProperty("idea.config.path", ideaRoot.resolve("config").absolutePath)
+        systemProperty("idea.system.path", ideaRoot.resolve("system").absolutePath)
+        systemProperty("idea.log.path", ideaRoot.resolve("log").absolutePath)
         systemProperty("idea.plugins.path", nativeIdeaHome.get().dir("plugins").asFile.absolutePath)
         systemProperty("idea.load.plugins.id", "com.intellij.java,org.jetbrains.kotlin,org.toml.lang")
         systemProperty("idea.is.unit.test", "true")
@@ -290,14 +292,14 @@ fun registerRelationNativeFixtures(taskName: String, selectedClasses: List<Strin
         systemProperty("kotlin.plugin.mode", "K2")
     }
 
-registerRelationNativeFixtures("nativeFixtureTest", emptyList())
+val nativeFixtureTest = registerRelationNativeFixtures("nativeFixtureTest", emptyList())
 
 val dependencyFixtureTest =
     registerRelationNativeFixtures("dependencyFixtureTest", listOf("*DeclaredEffectArchiveIsolationTest"))
 
-tasks.named("check") { dependsOn(dependencyFixtureTest) }
+tasks.named("check") { dependsOn(dependencyFixtureTest, nativeFixtureTest) }
 
-tasks.named("scopedCheck") { dependsOn(dependencyFixtureTest) }
+tasks.named("scopedCheck") { dependsOn(dependencyFixtureTest, nativeFixtureTest) }
 
 registerRelationNativeFixtures(
     "semanticCoverageFixtureTest",

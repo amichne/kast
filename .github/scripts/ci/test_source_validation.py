@@ -32,7 +32,9 @@ def expected_obligations():
         ":cli:udsTest", ":cli:verifyMintlifyCallableReference", ":app-server:verifyPublicQueryGeneration",
         ":relation:intellij:semanticCoverageFixtureTest", ":runtime:hosted:semanticCoverageFixtureTest",
         ":symbol:intellij:semanticCoverageFixtureTest", ":relation:intellij:dependencyFixtureTest",
-        ":runtime:hosted:dependencyFixtureTest", ":productGateVersionTest", ":installerFixtureTest",
+        ":runtime:hosted:dependencyFixtureTest", ":relation:intellij:nativeFixtureTest",
+        ":runtime:hosted:nativeFixtureTest", ":symbol:intellij:nativeFixtureTest",
+        ":productGateVersionTest", ":installerFixtureTest",
         ":installationRecoveryTest",
         ":installationSystemPythonTest", ":localInstallationTest", ":installerRemovalTest",
         ":testCheckoutInstaller", ":installerEntrypointTest",
@@ -162,6 +164,10 @@ class SourceValidationTest(unittest.TestCase):
         self.assertIn(":cli:udsTest", required)
         self.assertNotIn(":symbol:intellij:semanticCoverageFixtureTest", required)
         self.assertNotIn(":relation:intellij:semanticCoverageFixtureTest", required)
+        # An affected owner keeps its whole native fixture suite; an unaffected owner does not run it.
+        self.assertIn(":runtime:hosted:nativeFixtureTest", required)
+        self.assertNotIn(":relation:intellij:nativeFixtureTest", required)
+        self.assertNotIn(":symbol:intellij:nativeFixtureTest", required)
 
     def test_direct_file_consumers_keep_full_owner_obligations_and_cases(self):
         matrix = (
