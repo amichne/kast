@@ -13,20 +13,27 @@ from __future__ import annotations
 
 import argparse
 import os
+import re
+import shutil
 import subprocess
 import sys
+import tempfile
 from collections.abc import Mapping, Sequence
 from pathlib import Path
 
 MODULE = Path(__file__).resolve().parent
 # Every target the product can ship. Building each one with cgo disabled proves the frontend stays portable.
 RELEASE_TARGETS = (("darwin", "arm64"), ("darwin", "amd64"), ("linux", "arm64"), ("linux", "amd64"))
+# The product platforms that install.sh can start on, by published name.
+BOOTSTRAP_TARGETS = {"macos-aarch64": ("darwin", "arm64"), "linux-x86_64": ("linux", "amd64")}
 
 
-def run(stage: str, command: Sequence[str], environment: Mapping[str, str] | None = None) -> str:
+def run(
+    stage: str, command: Sequence[str], environment: Mapping[str, str] | None = None, directory: Path = MODULE
+) -> str:
     completed = subprocess.run(
         command,
-        cwd=MODULE,
+        cwd=directory,
         env={**os.environ, **(environment or {})},
         stdin=subprocess.DEVNULL,
         capture_output=True,
@@ -60,6 +67,43 @@ def gate(catalog: Path | None) -> None:
             ("go", "build", "-trimpath", "-o", os.devnull, "./cmd/kast"),
             {"CGO_ENABLED": "0", "GOOS": goos, "GOARCH": goarch},
         )
+    reproducible()
+
+
+def bootstrap(module: Path, output: Path) -> None:
+    """Build the bootstrap executables. Only the module's bytes and its toolchain line decide the result."""
+    toolchain = re.search(r"^toolchain (go\S+)$", (module / "go.mod").read_text(), re.MULTILINE)
+    if toolchain is None:
+        raise SystemExit("frontend-check: go.mod names no toolchain")
+    if output.exists():
+        raise SystemExit(f"frontend-check: {output} already exists")
+    output.mkdir(parents=True)
+    for target, (goos, goarch) in BOOTSTRAP_TARGETS.items():
+        run(
+            f"bootstrap {target}",
+            ("go", "build", "-trimpath", "-buildvcs=false", "-ldflags=-s -w -buildid=", "-o",
+             str(output / f"kast-bootstrap-{target}"), "./cmd/kast"),
+            {
+                "CGO_ENABLED": "0", "GOOS": goos, "GOARCH": goarch, "GOAMD64": "v1", "GOARM64": "v8.0",
+                "GOTOOLCHAIN": toolchain[1], "GOFLAGS": "", "GOEXPERIMENT": "", "GOWORK": "off", "GOENV": "off",
+            },
+            module,
+        )  # fmt: skip
+
+
+def reproducible() -> None:
+    """install.sh pins these bytes, so another checkout of the same module must build the same files."""
+    with tempfile.TemporaryDirectory(prefix="kast-bootstrap-") as temporary:
+        root = Path(temporary)
+        copy = root / "elsewhere" / "frontend"
+        shutil.copytree(MODULE, copy, ignore=shutil.ignore_patterns("__pycache__"))
+        bootstrap(MODULE, root / "first")
+        bootstrap(copy, root / "second")
+        for target in BOOTSTRAP_TARGETS:
+            name = f"kast-bootstrap-{target}"
+            if (root / "first" / name).read_bytes() != (root / "second" / name).read_bytes():
+                raise SystemExit(f"frontend-check: {name} depends on its build directory")
+    print("frontend-check: reproducible bootstrap passed", flush=True)
 
 
 def main(arguments: Sequence[str] | None = None) -> int:
@@ -68,8 +112,12 @@ def main(arguments: Sequence[str] | None = None) -> int:
     verify = commands.add_parser("gate", help="deterministic checks for every change")
     verify.add_argument("--catalog", type=Path, help="generated frontend.json; required for the status-table test")
     commands.add_parser("vulnerabilities", help="scan reachable code against the live Go advisory database")
+    build = commands.add_parser("bootstrap", help="build the executables that install.sh pins")
+    build.add_argument("--output", type=Path, required=True, help="directory to create")
     args = parser.parse_args(arguments)
-    if args.command == "gate":
+    if args.command == "bootstrap":
+        bootstrap(MODULE, args.output.absolute())
+    elif args.command == "gate":
         catalog = args.catalog
         if catalog is not None and (not catalog.is_absolute() or not catalog.is_file()):
             raise SystemExit(f"frontend-check: --catalog must be an existing absolute file: {catalog}")

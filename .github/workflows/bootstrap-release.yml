@@ -1,0 +1,53 @@
+name: Bootstrap release
+
+# Publishes the Go executables that install.sh pins by digest. The pin changes in a separate pull request.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+concurrency:
+  group: bootstrap-release
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    name: Build and publish the bootstrap executables
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+
+      - name: Set up Python
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version-file: .python-version
+
+      - name: Set up the frontend Go toolchain
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: frontend/go.mod
+          cache: false
+
+      - name: Verify the frontend and its reproducible bootstrap
+        run: python3 frontend/check gate
+
+      - name: Build the bootstrap executables
+        run: python3 frontend/check bootstrap --output build/bootstrap
+
+      - name: Publish one immutable pre-release
+        # An explicit bash sets pipefail, so tee cannot hide a rejection.
+        shell: bash
+        run: python3 .github/scripts/release/publish_bootstrap.py --directory build/bootstrap | tee -a "$GITHUB_STEP_SUMMARY"

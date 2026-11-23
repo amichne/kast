@@ -20,7 +20,7 @@ default = true
 [tool.pyright]
 pythonVersion = "3.12"
 typeCheckingMode = "strict"
-include = ["developer_catalog.py", "publish_developer.py", "product_candidate.py", "product_producer.py", "test_product_producer.py", "test_product_candidate.py", "qualified_runtime_assets.py", "test_developer_catalog.py", "test_developer_publication.py", "candidate_admission.py", "test_candidate_admission.py"]
+include = ["developer_catalog.py", "publish_bootstrap.py", "publish_developer.py", "product_candidate.py", "product_producer.py", "test_product_producer.py", "test_product_candidate.py", "qualified_runtime_assets.py", "test_developer_catalog.py", "test_developer_publication.py", "candidate_admission.py", "test_candidate_admission.py"]
 extraPaths = [
     "../ci",
     "../../../packaging/internal/bootstrap",
@@ -39,7 +39,7 @@ reportUnnecessaryTypeIgnoreComment = "error"
 [tool.ruff]
 target-version = "py312"
 line-length = 100
-include = ["**/developer_catalog.py", "**/publish_developer.py", "**/product_candidate.py", "**/product_producer.py", "**/test_product_producer.py", "**/test_product_candidate.py", "**/qualified_runtime_assets.py", "**/test_developer_catalog.py", "**/test_developer_publication.py", "**/candidate_admission.py", "**/test_candidate_admission.py"]
+include = ["**/developer_catalog.py", "**/publish_bootstrap.py", "**/publish_developer.py", "**/product_candidate.py", "**/product_producer.py", "**/test_product_producer.py", "**/test_product_candidate.py", "**/qualified_runtime_assets.py", "**/test_developer_catalog.py", "**/test_developer_publication.py", "**/candidate_admission.py", "**/test_candidate_admission.py"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B"]
