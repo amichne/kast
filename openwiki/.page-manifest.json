@@ -100,11 +100,11 @@
       "completedRunId": "ee509710-7181-4f5b-ae9d-87a82dbc14b0"
     },
     "/openwiki/distribution/installation-and-managed-files.md": {
-      "pageVersion": "sha256:fa0acfa48446f02ad27844eedb8a3ec14ff4dc32858d915c4483f6a2df017c81",
+      "pageVersion": "sha256:30eef30ac0d22e0d1cce4f0add61a1810981de155cc33a506fa6dae6670bc572",
       "completedBy": "codex",
-      "completedRunId": "0507cfa8-c996-4072-8bef-114487da538e",
-      "gitHead": "e0807071160cc4a948a316a6f6f2357d5487e5bb",
-      "sourceFingerprint": "sha256:ff7ea60b4dfb6e9b51d86b712b77be89adda8f1ba9a9ebc6a586ec59dc5b6d1e"
+      "completedRunId": "c3f87c2d-b279-4345-bfe7-0fc598ad983c",
+      "gitHead": "2deba73b5f0b377006000457aee7bf1f37d0b634",
+      "sourceFingerprint": "sha256:7b587892e24287ff406efb68ef5e8d81c3ee2f55b036c67c5d00e41233e8f98c"
     },
     "/openwiki/distribution/management-and-connections.md": {
       "gitHead": "58f5f8531dbebe138d46f16897c95c737f615576",
@@ -121,11 +121,11 @@
       "completedRunId": "0bce3dd5-04f2-4318-9b68-1aa8a006cb93"
     },
     "/openwiki/distribution/upgrades-shutdown-and-reset.md": {
+      "gitHead": "e0807071160cc4a948a316a6f6f2357d5487e5bb",
+      "sourceFingerprint": "sha256:ff7ea60b4dfb6e9b51d86b712b77be89adda8f1ba9a9ebc6a586ec59dc5b6d1e",
       "pageVersion": "sha256:dbb1f61d8978f0853a671dd245b60adf798aa00e7b2c3f719d6d7e32759b84bd",
       "completedBy": "codex",
-      "completedRunId": "0507cfa8-c996-4072-8bef-114487da538e",
-      "gitHead": "e0807071160cc4a948a316a6f6f2357d5487e5bb",
-      "sourceFingerprint": "sha256:ff7ea60b4dfb6e9b51d86b712b77be89adda8f1ba9a9ebc6a586ec59dc5b6d1e"
+      "completedRunId": "0507cfa8-c996-4072-8bef-114487da538e"
     },
     "/openwiki/flows/change-lifecycle.md": {
       "gitHead": "58f5f8531dbebe138d46f16897c95c737f615576",
@@ -219,11 +219,11 @@
       "completedRunId": "bb7d762b-e640-426b-bae8-f8fa41505944"
     },
     "/openwiki/modules/distribution.md": {
+      "gitHead": "e0807071160cc4a948a316a6f6f2357d5487e5bb",
+      "sourceFingerprint": "sha256:ff7ea60b4dfb6e9b51d86b712b77be89adda8f1ba9a9ebc6a586ec59dc5b6d1e",
       "pageVersion": "sha256:0a46961245d048276e5d296040984361c4c1318111d1235d812d71eceda1125b",
       "completedBy": "codex",
-      "completedRunId": "0507cfa8-c996-4072-8bef-114487da538e",
-      "gitHead": "e0807071160cc4a948a316a6f6f2357d5487e5bb",
-      "sourceFingerprint": "sha256:ff7ea60b4dfb6e9b51d86b712b77be89adda8f1ba9a9ebc6a586ec59dc5b6d1e"
+      "completedRunId": "0507cfa8-c996-4072-8bef-114487da538e"
     },
     "/openwiki/modules/kernel.md": {
       "gitHead": "58f5f8531dbebe138d46f16897c95c737f615576",
@@ -247,11 +247,11 @@
       "completedRunId": "0bce3dd5-04f2-4318-9b68-1aa8a006cb93"
     },
     "/openwiki/modules/runtime-hosts.md": {
+      "gitHead": "e0807071160cc4a948a316a6f6f2357d5487e5bb",
+      "sourceFingerprint": "sha256:ff7ea60b4dfb6e9b51d86b712b77be89adda8f1ba9a9ebc6a586ec59dc5b6d1e",
       "pageVersion": "sha256:66bedd33e9b93fb40b2582c1ded201b3b08c047c8bad7d8dbdeeabde96cf4023",
       "completedBy": "codex",
-      "completedRunId": "0507cfa8-c996-4072-8bef-114487da538e",
-      "gitHead": "e0807071160cc4a948a316a6f6f2357d5487e5bb",
-      "sourceFingerprint": "sha256:ff7ea60b4dfb6e9b51d86b712b77be89adda8f1ba9a9ebc6a586ec59dc5b6d1e"
+      "completedRunId": "0507cfa8-c996-4072-8bef-114487da538e"
     },
     "/openwiki/modules/semantic-reads.md": {
       "gitHead": "58f5f8531dbebe138d46f16897c95c737f615576",

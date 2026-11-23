@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:fa0acfa48446f02ad27844eedb8a3ec14ff4dc32858d915c4483f6a2df017c81",
+  "pageVersion": "sha256:30eef30ac0d22e0d1cce4f0add61a1810981de155cc33a506fa6dae6670bc572",
   "claims": [
     {
       "id": "claim_1d06d658c78b456b960fba22b9053804",
@@ -13,20 +13,6 @@
         {
           "resource": "repo://distribution/managed/src/main/kotlin/io/github/amichne/kast/distribution/managed/ManagedInstallationOwnedTree.kt#L17-L17",
           "version": "repo-lines-v1:sha256:061dc306856bd8c34cc998253497184426e84a6f5faa216ebe3c4b47586be696:eyJzZWxlY3RlZExpbmVDb3VudCI6MSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiMDYxZGMzMDY4NTZiZDhjMzRjYzk5ODI1MzQ5NzE4NDQyNmU4NGE2ZjVmYWEyMTZlYmUzYzRiNDc1ODZiZTY5NiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiMDYxZGMzMDY4NTZiZDhjMzRjYzk5ODI1MzQ5NzE4NDQyNmU4NGE2ZjVmYWEyMTZlYmUzYzRiNDc1ODZiZTY5NiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZjEyZTIwYjdhZDZhMDYyOGFlNmE5M2ViNTNkZDVjMmNkMGZhZWMxZTk4YzljMDYxZmRjNzFmZGRhYzQ3MDA0OCIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiNjljNjA5YzRjNTIxYzljODVhNTgxNWE3MTQyOTQ0YTlmMzRkOTA0YjYyZjBkZDNhMWMxZTNjZjBkYzgyMGQwMyJ9"
-        }
-      ]
-    },
-    {
-      "id": "claim_91597cb535664fb6a1629440e64f0722",
-      "statement": "A stopped installation without a workspace registry can pass retirement admission when its current broker stores have exact integer layout versions, empty record directories, empty locks, and private ownership. Records, unknown artifacts, live evidence, and unsafe paths still reject.",
-      "evidence": [
-        {
-          "resource": "repo://packaging/internal/installation/installation-lifecycle.py",
-          "version": "repo-file-v1:sha256:1b6b406ff5e14ce96418cfdd8a41bd0c78f44d10865418c9a1bec504ee7581de"
-        },
-        {
-          "resource": "repo://packaging/tests/test-installation-lifecycle.py",
-          "version": "repo-file-v1:sha256:7b4520d7896917f04c30aa97eba8c8c76c36c3df8a8de839dbcd612d9d0c48ff"
         }
       ]
     },
@@ -50,11 +36,11 @@
       "evidence": [
         {
           "resource": "repo://packaging/internal/installation/managed_installation.py",
-          "version": "repo-file-v1:sha256:7343a3e74578f263b8b9861bdbaab153690e350570a13830da0bc6c1e176b9fb"
+          "version": "repo-file-v1:sha256:6dc41622c086444749e4fafb2a73acfbacbcfed93798801b74f2cc5ee2dcff50"
         },
         {
           "resource": "repo://packaging/tests/test-managed-installation.py",
-          "version": "repo-file-v1:sha256:f9584a0d7e48563c52365087a0207b6931cea84dc3db35b1578713988f47bb19"
+          "version": "repo-file-v1:sha256:44da46f83a9100e035e101abd62e78b6aab5e33ec9d9d724685690b1656a6667"
         }
       ]
     },
@@ -64,7 +50,7 @@
       "evidence": [
         {
           "resource": "repo://packaging/internal/installation/managed_installation.py",
-          "version": "repo-file-v1:sha256:7343a3e74578f263b8b9861bdbaab153690e350570a13830da0bc6c1e176b9fb"
+          "version": "repo-file-v1:sha256:6dc41622c086444749e4fafb2a73acfbacbcfed93798801b74f2cc5ee2dcff50"
         },
         {
           "resource": "repo://packaging/internal/product/managed_product_installation.py",
@@ -104,7 +90,7 @@
         },
         {
           "resource": "repo://packaging/tests/test-managed-build-record.py",
-          "version": "repo-file-v1:sha256:3bcb3558540e23be2d69f055b4d9c681fe500a1d42b736158f623754c73a54e9"
+          "version": "repo-file-v1:sha256:5f45289e99f7fcd47cffe4cc8a789aee1a8f91c282af30f0006ce4a5d366e525"
         }
       ]
     },
@@ -122,7 +108,7 @@
         },
         {
           "resource": "repo://packaging/tests/test-managed-build-record.py",
-          "version": "repo-file-v1:sha256:3bcb3558540e23be2d69f055b4d9c681fe500a1d42b736158f623754c73a54e9"
+          "version": "repo-file-v1:sha256:5f45289e99f7fcd47cffe4cc8a789aee1a8f91c282af30f0006ce4a5d366e525"
         }
       ]
     },
@@ -150,7 +136,7 @@
         },
         {
           "resource": "repo://packaging/internal/installation/installation-lifecycle.py",
-          "version": "repo-file-v1:sha256:1b6b406ff5e14ce96418cfdd8a41bd0c78f44d10865418c9a1bec504ee7581de"
+          "version": "repo-file-v1:sha256:c04ebe2b0294a6b53c40e608993c91db354a2ca79543834704cebfaaaccc5149"
         },
         {
           "resource": "repo://packaging/internal/product/managed_product_installation.py",
@@ -180,7 +166,7 @@
         },
         {
           "resource": "repo://packaging/tests/test-managed-build-record.py",
-          "version": "repo-file-v1:sha256:3bcb3558540e23be2d69f055b4d9c681fe500a1d42b736158f623754c73a54e9"
+          "version": "repo-file-v1:sha256:5f45289e99f7fcd47cffe4cc8a789aee1a8f91c282af30f0006ce4a5d366e525"
         }
       ]
     },
@@ -194,7 +180,7 @@
         },
         {
           "resource": "repo://packaging/internal/installation/installation-lifecycle.py",
-          "version": "repo-file-v1:sha256:1b6b406ff5e14ce96418cfdd8a41bd0c78f44d10865418c9a1bec504ee7581de"
+          "version": "repo-file-v1:sha256:c04ebe2b0294a6b53c40e608993c91db354a2ca79543834704cebfaaaccc5149"
         },
         {
           "resource": "repo://packaging/internal/product/product_state_removal.py",
@@ -202,7 +188,7 @@
         },
         {
           "resource": "repo://packaging/tests/test-managed-build-record.py",
-          "version": "repo-file-v1:sha256:3bcb3558540e23be2d69f055b4d9c681fe500a1d42b736158f623754c73a54e9"
+          "version": "repo-file-v1:sha256:5f45289e99f7fcd47cffe4cc8a789aee1a8f91c282af30f0006ce4a5d366e525"
         }
       ]
     },
@@ -212,11 +198,11 @@
       "evidence": [
         {
           "resource": "repo://build.gradle.kts",
-          "version": "repo-file-v1:sha256:7becc191584d7cfc5d62346345959afb8bf403b9d8fc489c6200a9b05f802183"
+          "version": "repo-file-v1:sha256:e1e6bd0a376567acd135ab575447f64d65d94900c74a4eb59d18ee9287ee8f62"
         },
         {
           "resource": "repo://packaging/internal/bootstrap/generate_bootstrap.py",
-          "version": "repo-file-v1:sha256:d588c4f04ae4355fdbecc14c48dcb0a062d3ecea0da8a33bf7640ac62c85a2ed"
+          "version": "repo-file-v1:sha256:c70a5b1bcd382bf92ddae0df4b7c41adfe9c5626a10a4e2caacaf8a129dbdf2d"
         },
         {
           "resource": "repo://packaging/tests/test-install-checkout.py",
@@ -224,7 +210,7 @@
         },
         {
           "resource": "repo://packaging/tests/test-managed-bootstrap.py",
-          "version": "repo-file-v1:sha256:13d67689824b5eecfc3742279be2727085eee86cea734ecf5b7ecb81879f5d7b"
+          "version": "repo-file-v1:sha256:7a2bac47d45ff96c520a9ae212a9816dd882e392606735be1507be8f27997179"
         }
       ]
     },
@@ -244,7 +230,7 @@
       "evidence": [
         {
           "resource": "repo://packaging/internal/installation/managed_installation.py",
-          "version": "repo-file-v1:sha256:7343a3e74578f263b8b9861bdbaab153690e350570a13830da0bc6c1e176b9fb"
+          "version": "repo-file-v1:sha256:6dc41622c086444749e4fafb2a73acfbacbcfed93798801b74f2cc5ee2dcff50"
         },
         {
           "resource": "repo://packaging/internal/installation/managed_release.py",
@@ -252,7 +238,7 @@
         },
         {
           "resource": "repo://packaging/tests/test-managed-build-record.py",
-          "version": "repo-file-v1:sha256:3bcb3558540e23be2d69f055b4d9c681fe500a1d42b736158f623754c73a54e9"
+          "version": "repo-file-v1:sha256:5f45289e99f7fcd47cffe4cc8a789aee1a8f91c282af30f0006ce4a5d366e525"
         }
       ]
     },
@@ -266,7 +252,7 @@
         },
         {
           "resource": "repo://packaging/tests/test-managed-bootstrap.py",
-          "version": "repo-file-v1:sha256:13d67689824b5eecfc3742279be2727085eee86cea734ecf5b7ecb81879f5d7b"
+          "version": "repo-file-v1:sha256:7a2bac47d45ff96c520a9ae212a9816dd882e392606735be1507be8f27997179"
         }
       ]
     },
@@ -280,7 +266,7 @@
         },
         {
           "resource": "repo://packaging/tests/test-managed-build-record.py",
-          "version": "repo-file-v1:sha256:3bcb3558540e23be2d69f055b4d9c681fe500a1d42b736158f623754c73a54e9"
+          "version": "repo-file-v1:sha256:5f45289e99f7fcd47cffe4cc8a789aee1a8f91c282af30f0006ce4a5d366e525"
         }
       ]
     },
@@ -308,7 +294,7 @@
         },
         {
           "resource": "repo://packaging/internal/installation/managed_installation.py",
-          "version": "repo-file-v1:sha256:7343a3e74578f263b8b9861bdbaab153690e350570a13830da0bc6c1e176b9fb"
+          "version": "repo-file-v1:sha256:6dc41622c086444749e4fafb2a73acfbacbcfed93798801b74f2cc5ee2dcff50"
         }
       ]
     },
@@ -318,7 +304,7 @@
       "evidence": [
         {
           "resource": "repo://packaging/internal/bootstrap/generate_bootstrap.py",
-          "version": "repo-file-v1:sha256:d588c4f04ae4355fdbecc14c48dcb0a062d3ecea0da8a33bf7640ac62c85a2ed"
+          "version": "repo-file-v1:sha256:c70a5b1bcd382bf92ddae0df4b7c41adfe9c5626a10a4e2caacaf8a129dbdf2d"
         },
         {
           "resource": "repo://packaging/internal/installation/managed_release.py",
@@ -332,7 +318,7 @@
       "evidence": [
         {
           "resource": "repo://packaging/internal/installation/managed_installation.py",
-          "version": "repo-file-v1:sha256:7343a3e74578f263b8b9861bdbaab153690e350570a13830da0bc6c1e176b9fb"
+          "version": "repo-file-v1:sha256:6dc41622c086444749e4fafb2a73acfbacbcfed93798801b74f2cc5ee2dcff50"
         },
         {
           "resource": "repo://packaging/internal/installation/managed_update_contract.py",
@@ -350,7 +336,7 @@
       "evidence": [
         {
           "resource": "repo://packaging/internal/installation/managed_installation.py",
-          "version": "repo-file-v1:sha256:7343a3e74578f263b8b9861bdbaab153690e350570a13830da0bc6c1e176b9fb"
+          "version": "repo-file-v1:sha256:6dc41622c086444749e4fafb2a73acfbacbcfed93798801b74f2cc5ee2dcff50"
         },
         {
           "resource": "repo://packaging/internal/installation/managed_update_contract.py",
@@ -358,7 +344,7 @@
         },
         {
           "resource": "repo://packaging/tests/test-managed-state-admission.py",
-          "version": "repo-file-v1:sha256:6bc1a60e186d15788b73e43888b3bc22a212a69da88eadf37631468a3b5f3c5b"
+          "version": "repo-file-v1:sha256:ecd02448e935d60e06c7688c75ec58b79188d6bcf842e1774769d6a6f6f6fa30"
         }
       ]
     },
@@ -368,7 +354,7 @@
       "evidence": [
         {
           "resource": "repo://packaging/internal/installation/managed_installation.py",
-          "version": "repo-file-v1:sha256:7343a3e74578f263b8b9861bdbaab153690e350570a13830da0bc6c1e176b9fb"
+          "version": "repo-file-v1:sha256:6dc41622c086444749e4fafb2a73acfbacbcfed93798801b74f2cc5ee2dcff50"
         }
       ]
     },
@@ -382,7 +368,7 @@
         },
         {
           "resource": "repo://packaging/tests/test-managed-bootstrap.py",
-          "version": "repo-file-v1:sha256:13d67689824b5eecfc3742279be2727085eee86cea734ecf5b7ecb81879f5d7b"
+          "version": "repo-file-v1:sha256:7a2bac47d45ff96c520a9ae212a9816dd882e392606735be1507be8f27997179"
         }
       ]
     },
@@ -403,6 +389,6 @@
   ],
   "verification": {
     "by": "openwiki/0.9.0",
-    "at": "2026-11-23T00:44:58.019Z"
+    "at": "2026-11-23T01:46:32.738Z"
   }
 }

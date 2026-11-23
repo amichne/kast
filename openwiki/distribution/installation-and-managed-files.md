@@ -51,8 +51,6 @@ sources:
     resource: repo://packaging/internal/verification/harness_launchd.py
   - id: openwiki-source-12d7829bb8c1e9c898163e3a
     resource: repo://packaging/tests/test-install-checkout.py
-  - id: openwiki-source-d660a64cf3c39a2f406a497b
-    resource: repo://packaging/tests/test-installation-lifecycle.py
   - id: openwiki-source-d4b63d273ed6048ab72eda6d
     resource: repo://packaging/tests/test-managed-bootstrap.py
   - id: openwiki-source-abab1b24f64b3271633d720d
@@ -61,10 +59,10 @@ sources:
     resource: repo://packaging/tests/test-managed-installation.py
   - id: openwiki-source-40badbf2c7286dd74fa8aee8
     resource: repo://packaging/tests/test-managed-state-admission.py
-generated: { by: "codex", at: "2026-11-22T21:35:10.249Z" }
+generated: { by: "codex", at: "2026-11-23T01:46:32.738Z" }
 verified:
   - by: openwiki/0.9.0
-    at: 2026-11-23T00:44:58.019Z
+    at: 2026-11-23T01:46:32.738Z
 ---
 
 
@@ -198,11 +196,6 @@ A recovery-only invocation does not select a new release.
 
 Control recovery keeps the previous payload and qualified settings when replacement fails.
 Failures during retirement, retention, activation, or recovery remain explicit.
-
-Without a workspace registry, retirement admits only a stopped coordinator with exact empty stores and private ownership.
-Current thread and invocation stores need their exact layout versions, empty record directories, and empty lock files.
-The protocol cache must stay empty, and desktop discovery can contain only its empty lock file.
-Durable records, unknown artifacts, live readiness evidence, symlinks, and foreign ownership still block retirement.
 
 Installer tests establish payload, state, and artifact protection under private files.
 They do not establish that a running Host loaded the new runtime.
