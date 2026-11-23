@@ -122,13 +122,13 @@ class InstalledSemanticStartupTest {
         }
 
     @Test
-    fun `an installation replacement fence rejects before stale retirement or submission`() =
-        withCoordinatorPayload { root, _ ->
+    fun `an installation shutdown fence rejects before stale retirement or submission`() =
+        withFenceableCoordinatorPayload { root, _ ->
             runBlocking {
                 val command = semanticLaunchFixture(root)
                 writeReady(root, exitedPeer(command.executable))
                 val retained = Files.readAllBytes(command.readiness)
-                Files.createFile(root.resolve(".lifecycle-transition.json"))
+                fenceInstallation(root)
                 assertEquals(
                     Refinement.Rejected(SemanticCoordinatorStartupFailure.InstallationFenced),
                     connectWithoutSubmission(root, command),
@@ -282,7 +282,7 @@ class AbandonedSemanticStartupTest {
 
     @Test
     fun `an unproven startup incarnation rejects without retirement or a competing service`() =
-        withCoordinatorPayload { root, _ ->
+        withFenceableCoordinatorPayload { root, _ ->
             runBlocking {
                 val command = semanticLaunchFixture(root)
                 // A non-positive pid, and a vanished pid whose recorded start is not an admitted instant.
@@ -301,7 +301,7 @@ class AbandonedSemanticStartupTest {
 
     @Test
     fun `an exited startup never unlinks a foreign listener or FIFO at the unrecorded socket path`() =
-        withCoordinatorPayload { root, _ ->
+        withFenceableCoordinatorPayload { root, _ ->
             runBlocking {
                 val command = semanticLaunchFixture(root)
                 val socket = Files.createDirectories(root.resolve("state/run")).resolve("c.sock")
@@ -329,7 +329,7 @@ class AbandonedSemanticStartupTest {
             Refinement.Rejected(PersistentBrokerServiceFailure.READINESS_REJECTED),
             BrokerServiceStartLock.submitSemantic(command) { fail("Ambiguous ownership admitted a service") },
         )
-        val fence = Files.createFile(root.resolve(".lifecycle-transition.json"))
+        val fence = fenceInstallation(root)
         assertEquals(SemanticCoordinatorRetirement.OWNERSHIP_UNPROVEN, retireFencedSemanticCoordinator(root, root))
         Files.delete(fence)
         assertArrayEquals(retained, Files.readAllBytes(command.readiness))

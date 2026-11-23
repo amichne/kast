@@ -33,10 +33,10 @@ class PersistentBrokerServiceTest {
     }
 
     @Test
-    fun `installation lifecycle fence prevents launch inside service ownership lock`(@TempDir temporary: Path) {
+    fun `installation shutdown fence prevents launch inside service ownership lock`(@TempDir temporary: Path) {
         val fixture = installedFixture(temporary)
         val command = resolvedCommand(fixture)
-        Files.writeString(fixture.kast.parent.parent.resolve(".lifecycle-transition.json"), "{}")
+        Files.writeString(fixture.kast.parent.parent.parent.resolve("shutdown.json"), "fenced")
         var calls = 0
         val host =
             MacOsPersistentBrokerServiceHost(
@@ -72,7 +72,7 @@ class PersistentBrokerServiceTest {
     ) {
         val fixture = installedFixture(temporary)
         val root = fixture.kast.parent.parent
-        Files.writeString(root.resolve(".lifecycle-transition.json"), "{}")
+        Files.writeString(root.resolveSibling("shutdown.json"), "{}")
         val config = Files.createDirectories(root.resolve("config"))
         Files.writeString(config.resolve("workspaces.json"), "invalid")
         val stopped = Files.createDirectories(root.resolve("state/broker")).resolve("stopped")

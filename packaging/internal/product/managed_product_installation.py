@@ -494,7 +494,6 @@ def materialize_client_entries(stage: Path, active: Path) -> None:
                 'if [ -z "${KAST_CONFIGURATION_FILE+x}" ]; then\n'
                 '  export KAST_CONFIGURATION_FILE="$installation_root/config/environment"\n'
                 "fi\nunset KAST_SESSION_ROOT\n"
-                '[ ! -e "$installation_root/.recovery-detached" ] || exit 1\n'
                 f'exec "$script_dir/{executable}" "$@"\n'
             )
         launcher.chmod(0o755)

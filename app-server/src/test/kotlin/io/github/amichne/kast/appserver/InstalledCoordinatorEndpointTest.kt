@@ -6,6 +6,7 @@ import io.github.amichne.kast.appserver.runtime.BrokerUpstreamConnectionAdmissio
 import io.github.amichne.kast.appserver.runtime.BrokerUpstreamFrame
 import io.github.amichne.kast.appserver.runtime.BrokerUpstreamSend
 import io.github.amichne.kast.appserver.runtime.connectCodexUnixWebSocket
+import io.github.amichne.kast.distribution.contract.INSTALLATION_SHUTDOWN_FENCE
 import io.github.amichne.kast.distribution.managed.CanonicalRootDiscovery
 import io.github.amichne.kast.distribution.managed.FilesystemCanonicalRootDiscovery
 import io.github.amichne.kast.kernel.Refinement
@@ -403,14 +404,24 @@ class InstalledCoordinatorMutationProjectionTest {
         }
 }
 
-internal fun withCoordinatorPayload(test: (Path, Path) -> Unit) {
-    val root = Files.createTempDirectory(Path.of("/tmp").toRealPath(), "kast-c-").toRealPath()
+internal fun withCoordinatorPayload(test: (Path, Path) -> Unit) = withCoordinatorPayload(nested = false, test)
+
+/** The installation sits one level below a private root, so a test can own its parent shutdown fence. */
+internal fun withFenceableCoordinatorPayload(test: (Path, Path) -> Unit) = withCoordinatorPayload(nested = true, test)
+
+/** Writes the parent shutdown fence that every installation lifecycle observer honours. */
+internal fun fenceInstallation(root: Path): Path =
+    Files.writeString(root.resolveSibling(INSTALLATION_SHUTDOWN_FENCE), "fenced")
+
+private fun withCoordinatorPayload(nested: Boolean, test: (Path, Path) -> Unit) {
+    val owned = Files.createTempDirectory(Path.of("/tmp").toRealPath(), "kast-c-").toRealPath()
     try {
+        val root = if (nested) Files.createDirectory(owned.resolve("i")) else owned
         for (directory in listOf("bin", "lib", "share")) Files.createDirectory(root.resolve(directory))
         val kast = Files.writeString(root.resolve("bin/kast"), "#!/bin/sh\nexit 0\n")
         Files.setPosixFilePermissions(kast, PosixFilePermissions.fromString("rwx------"))
         test(root, kast)
     } finally {
-        Files.walk(root).use { paths -> paths.sorted(Comparator.reverseOrder()).forEach(Files::delete) }
+        Files.walk(owned).use { paths -> paths.sorted(Comparator.reverseOrder()).forEach(Files::delete) }
     }
 }

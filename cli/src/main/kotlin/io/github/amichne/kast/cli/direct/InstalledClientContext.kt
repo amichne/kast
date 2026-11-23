@@ -35,12 +35,7 @@ private constructor(
 ) {
     fun observe(): InstalledToolAdmission =
         try {
-            if (
-                !payloadRevision.isCurrent() ||
-                    !manifest.isCurrent() ||
-                    !Files.notExists(installation.resolve(".recovery-detached"), NOFOLLOW_LINKS)
-            )
-                InstalledToolAdmission.UNPROVEN
+            if (!payloadRevision.isCurrent() || !manifest.isCurrent()) InstalledToolAdmission.UNPROVEN
             else observeInstalledToolAdmission(installation)
         } catch (_: IOException) {
             InstalledToolAdmission.UNPROVEN
@@ -88,8 +83,6 @@ private constructor(
                     is Refinement.Refined -> selected.value
                     is Refinement.Rejected -> return selected
                 }
-            if (!Files.notExists(installation.resolve(".recovery-detached"), NOFOLLOW_LINKS))
-                return Refinement.Rejected(ClientInstallationFailure.PAYLOAD)
             val manifest =
                 when (val admitted = admitManifest(installation)) {
                     is Refinement.Rejected -> return admitted

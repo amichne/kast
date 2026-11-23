@@ -8,6 +8,7 @@ import io.github.amichne.kast.appserver.runtime.CodexAppServerProcess
 import io.github.amichne.kast.appserver.runtime.CodexAppServerProcessAdmission
 import io.github.amichne.kast.appserver.runtime.CodexAppServerProcessLauncher
 import io.github.amichne.kast.appserver.runtime.CodexAppServerProcessRequest
+import io.github.amichne.kast.distribution.contract.INSTALLATION_SHUTDOWN_FENCE
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.cio.CIO
 import io.ktor.client.plugins.websocket.WebSockets
@@ -44,10 +45,10 @@ import org.junit.jupiter.api.io.TempDir
 
 class InstalledBrokerServerTest {
     @Test
-    fun `installation lifecycle fence rejects direct server before state creation`(@TempDir temporary: Path) {
-        val user = temporary.toRealPath()
+    fun `installation shutdown fence rejects direct server before state creation`(@TempDir temporary: Path) {
+        val user = Files.createDirectory(temporary.toRealPath().resolve("installation"))
         val kast = executable(Files.createDirectories(user.resolve("bin")).resolve("kast"))
-        Files.writeString(user.resolve(".lifecycle-transition.json"), "{}")
+        Files.writeString(user.resolveSibling(INSTALLATION_SHUTDOWN_FENCE), "fenced")
         assertEquals(
             InstalledBrokerServerConfiguration.Rejected(
                 InstalledBrokerServerConfigurationFailure.STATE_DIRECTORY_REJECTED
