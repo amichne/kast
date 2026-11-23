@@ -31,7 +31,7 @@ private constructor(
     private val execution: LifecycleExecution,
 ) {
     private val shutdownFence: Path
-        get() = InstallationLayout.beneath(root).management.shutdownFence
+        get() = ManagementRoot.of(root).management.shutdownFence
 
     private var fenceIdentity: FenceAttributes = FenceAttributes.Rejected
 
@@ -171,7 +171,7 @@ private constructor(
     }
 
     private fun service(action: LifecycleServiceAction): LifecycleEffect {
-        val layout = InstallationLayout.beneath(root)
+        val layout = InstallationLayout.of(installation)
         val selected = layout.version.path
         val executable = layout.payload.serviceExecutable
         val current = readBundledManifest(selected)

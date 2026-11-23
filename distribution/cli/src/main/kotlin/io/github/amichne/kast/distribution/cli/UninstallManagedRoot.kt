@@ -45,7 +45,7 @@ internal fun cleanupUninstallActivationLock(root: Path, observe: (UninstallClean
 }
 
 private fun removeUninstallActivationLock(root: Path) {
-    val path = InstallationLayout.beneath(root).management.activationLock
+    val path = ManagementRoot.of(root).management.activationLock
     if (Files.notExists(path, NOFOLLOW_LINKS)) return
     if (
         !Files.isRegularFile(path, NOFOLLOW_LINKS) ||
@@ -133,13 +133,13 @@ private inline fun uninstallManagedRootEffect(
     observe(UninstallCleanupObservation.Completed(artifact))
 }
 
-internal fun productRemovalDirectory(root: Path): Path = InstallationLayout.beneath(root).management.productRemoval
+internal fun productRemovalDirectory(root: Path): Path = ManagementRoot.of(root).management.productRemoval
 
 internal fun cleanupProductRemovalFence(root: Path) {
-    val layout = InstallationLayout.beneath(root)
-    val fence = layout.management.shutdownFence
+    val management = ManagementRoot.of(root).management
+    val fence = management.shutdownFence
     if (Files.exists(fence, NOFOLLOW_LINKS)) {
-        requireRemoval(Files.notExists(layout.management.installation, NOFOLLOW_LINKS))
+        requireRemoval(Files.notExists(management.installation, NOFOLLOW_LINKS))
         requireRemovalPath(fence)
         val identity = uninstallFilesystemIdentity(fence)
         val raw =
@@ -147,7 +147,7 @@ internal fun cleanupProductRemovalFence(root: Path) {
                 ?: throw ManagementRejected("uninstall-recovery", "retirement fence is unavailable")
         requireRemoval(
             decodeRemovalDocument<InstallationShutdownRequest>(raw) ==
-                InstallationShutdownRequest(layout.management.installation.toString())
+                InstallationShutdownRequest(management.installation.toString())
         )
         requireRemoval(uninstallFilesystemIdentity(fence) == identity)
         Files.delete(fence)
@@ -171,7 +171,7 @@ internal fun cleanupProductRemoval(root: Path, proof: ProductRemovalProof) {
         proof.phase == ProductRemovalPhase.PREPARED &&
             Files.notExists(ManagementRoot.of(root).management.installation, NOFOLLOW_LINKS)
     )
-    removeEmptyProductStore(InstallationLayout.beneath(root).management.runtimeBaseStore, proof.baseStoreIdentity)
+    removeEmptyProductStore(ManagementRoot.of(root).management.runtimeBaseStore, proof.baseStoreIdentity)
     val bundle = productRemovalDirectory(root)
     if (Files.exists(bundle, NOFOLLOW_LINKS)) {
         requireRemovalIdentity(bundle, proof.executionIdentity)
@@ -203,7 +203,7 @@ internal fun cleanupProductRemoval(root: Path, proof: ProductRemovalProof) {
 }
 
 internal fun requireProductRuntimeStore(root: Path, proof: ProductRemovalProof) {
-    val directory = InstallationLayout.beneath(root).management.workspaceStore.resolve("runtimes")
+    val directory = ManagementRoot.of(root).management.workspaceStore.resolve("runtimes")
     if (Files.exists(directory, NOFOLLOW_LINKS)) {
         requireRemovalIdentity(directory, proof.runtimeStoreIdentity)
         requireRemoval(Files.list(directory).use { it.findAny().isEmpty })
@@ -218,7 +218,7 @@ private fun removeEmptyProductStore(directory: Path, identity: InstallationFiles
 }
 
 private fun removeEmptyProductRecoveryParents(root: Path) {
-    val management = InstallationLayout.beneath(root).management
+    val management = ManagementRoot.of(root).management
     for (directory in listOf(management.installationRecovery, management.recovery)) {
         if (Files.exists(directory, NOFOLLOW_LINKS)) {
             requireRemovalPath(directory)

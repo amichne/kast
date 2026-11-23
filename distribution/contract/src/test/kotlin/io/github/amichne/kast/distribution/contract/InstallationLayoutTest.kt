@@ -1,9 +1,15 @@
 package io.github.amichne.kast.distribution.contract
 
+import io.github.amichne.kast.kernel.Refinement
+import java.nio.file.Files
 import java.nio.file.Path
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNull
+import org.junit.jupiter.api.Assertions.assertTrue
+import org.junit.jupiter.api.Assumptions.assumeTrue
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.assertInstanceOf
+import org.junit.jupiter.api.io.TempDir
 
 /**
  * Pins every path the layout produces for a fixed root. The expected strings are written independently of the layout;
@@ -11,8 +17,8 @@ import org.junit.jupiter.api.Test
  */
 class InstallationLayoutTest {
     private val management = Path.of("/fixed/home/.local/share/kast")
-    private val layout = InstallationLayout.beneath(management)
     private val installation = "/fixed/home/.local/share/kast/installation"
+    private val layout = InstallationLayout.of(Path.of(installation))
     private val profile = CoordinatorHostProfile.of("/fixed/home/.codex")
 
     @Test
@@ -153,6 +159,48 @@ class InstallationLayoutTest {
         assertEquals(layout, InstallationLayout.ofConfigurationFile(root.resolve("config/environment")))
         assertNull(InstallationLayout.ofConfigurationFile(Path.of("environment")))
     }
+
+    @Test
+    fun `admission selects the physical installation entry beneath the physical management root`(
+        @TempDir temporary: Path
+    ) {
+        val physical = Files.createDirectories(temporary.resolve("home/.local/share/kast")).toRealPath()
+        Files.createDirectory(physical.resolve("installation"))
+        val linkedHome = Files.createSymbolicLink(temporary.resolve("linked-home"), temporary.resolve("home"))
+
+        val admitted = InstallationLayout.admit(ManagementRoot.of(linkedHome.resolve(".local/share/kast")))
+
+        val layout = assertInstanceOf<Refinement.Refined<InstallationLayout>>(admitted).value
+        assertEquals("$physical/installation", layout.version.path.toString())
+        assertEquals(physical.toString(), layout.managementRoot.path.toString())
+    }
+
+    @Test
+    fun `admission rejects an absent, linked, or non-directory installation entry`(@TempDir temporary: Path) {
+        val root = Files.createDirectories(temporary.resolve("kast")).toRealPath()
+        val entry = root.resolve("installation")
+        assertEquals(Refinement.Rejected(InstallationLayoutFailure.VERSION_UNAVAILABLE), admit(root))
+
+        val target = Files.createDirectory(temporary.resolve("elsewhere"))
+        Files.createSymbolicLink(entry, target)
+        assertEquals(Refinement.Rejected(InstallationLayoutFailure.VERSION_UNAVAILABLE), admit(root))
+        assertTrue(Files.isDirectory(target), "admission must not change the link target")
+
+        Files.delete(entry)
+        Files.writeString(entry, "not a directory")
+        assertEquals(Refinement.Rejected(InstallationLayoutFailure.VERSION_UNAVAILABLE), admit(root))
+    }
+
+    @Test
+    fun `admission rejects an entry whose physical name differs from the version root`(@TempDir temporary: Path) {
+        val root = Files.createDirectories(temporary.resolve("kast")).toRealPath()
+        Files.createDirectory(root.resolve("INSTALLATION"))
+        assumeTrue(Files.isDirectory(root.resolve("installation")), "needs a case-insensitive file system")
+
+        assertEquals(Refinement.Rejected(InstallationLayoutFailure.VERSION_DISPLACED), admit(root))
+    }
+
+    private fun admit(root: Path) = InstallationLayout.admit(ManagementRoot.of(root))
 
     private fun assertPaths(vararg cases: Pair<String, Pair<String, Path>>) {
         assertEquals(

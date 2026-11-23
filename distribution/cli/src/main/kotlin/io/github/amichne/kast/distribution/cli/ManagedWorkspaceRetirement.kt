@@ -1,6 +1,6 @@
 package io.github.amichne.kast.distribution.cli
 
-import io.github.amichne.kast.distribution.contract.InstallationLayout
+import io.github.amichne.kast.distribution.contract.ManagementRoot
 import io.github.amichne.kast.kernel.Refinement
 import java.nio.file.Path
 
@@ -10,7 +10,7 @@ internal fun retireManagedProduct(
     environment: Map<String, String>,
 ): Refinement<Unit, ContainerFailure> {
     val store =
-        when (val selected = containerStore(InstallationLayout.beneath(root).management.workspaceStore)) {
+        when (val selected = containerStore(ManagementRoot.of(root).management.workspaceStore)) {
             is Refinement.Rejected -> return selected
             is Refinement.Refined -> selected.value
         }

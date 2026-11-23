@@ -106,7 +106,7 @@ internal fun selectPublicQueryLauncher(environment: Map<String, String>): Public
         when (val root = resolveManagementRoot(environment)) {
             is ManagementRootResolution.Rejected -> PublicQueryLauncher.Unavailable
             is ManagementRootResolution.Selected -> {
-                val installation = selectedInstallation(root.root)
+                val installation = selectedInstallation(root.root).version.path
                 when (val manifest = readBundledManifest(installation)) {
                     is BundledManifestRead.Read ->
                         PublicQueryLauncher.Admitted.fromInstallation(installation, manifest.manifest)
@@ -128,7 +128,7 @@ fun selectedPublicQueryInstallation(environment: Map<String, String>): Path? =
     try {
         when (val selected = resolveManagementRoot(environment)) {
             is ManagementRootResolution.Rejected -> null
-            is ManagementRootResolution.Selected -> selectedInstallation(selected.root)
+            is ManagementRootResolution.Selected -> selectedInstallation(selected.root).version.path
         }
     } catch (_: ManagementRejected) {
         null

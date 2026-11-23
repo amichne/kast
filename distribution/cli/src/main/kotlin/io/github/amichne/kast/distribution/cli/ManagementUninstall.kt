@@ -27,8 +27,7 @@ internal fun uninstallInstallation(
         Refinement.Refined(Unit)
     }
     when (
-        val removed =
-            ContainerQueryLease.duringStoreRemoval(InstallationLayout.beneath(root).management.workspaceStore, remove)
+        val removed = ContainerQueryLease.duringStoreRemoval(ManagementRoot.of(root).management.workspaceStore, remove)
     ) {
         is Refinement.Refined -> Unit
         is Refinement.Rejected -> throw ManagementRejected("uninstall-workspaces", removed.failure.name)
@@ -232,10 +231,10 @@ private fun finishUninstall(
     observe: (UninstallCleanupObservation) -> Unit,
 ) {
     val executable = Path.of(receipt.executable)
-    val layout = InstallationLayout.beneath(root)
-    requireUninstallExecutable(receipt, layout.management.installation)
+    val management = ManagementRoot.of(root).management
+    requireUninstallExecutable(receipt, management.installation)
     removeUninstallArtifact(executable, UninstallArtifact.PUBLIC_EXECUTABLE, observe)
-    removeUninstallArtifact(layout.management.registrationLock, UninstallArtifact.MANAGEMENT_LOCK, observe)
+    removeUninstallArtifact(management.registrationLock, UninstallArtifact.MANAGEMENT_LOCK, observe)
     persistUninstallRetirement(
         root,
         receipt,

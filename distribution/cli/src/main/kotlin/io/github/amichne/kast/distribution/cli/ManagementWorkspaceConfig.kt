@@ -39,11 +39,11 @@ internal fun publishWorkspaceConfig(
         when (val action = command.action) {
             is WorkspaceConfigAction.Edit ->
                 withWorkspaceEditLock(root) {
-                    val installation = selectedInstallation(root)
+                    val installation = selectedInstallation(root).version.path
                     editWorkspaceOverlay(installation, workspace, action, environment)
                     workspaceConfigReport(installation, workspace, action, environment)
                 }
-            else -> workspaceConfigReport(selectedInstallation(root), workspace, action, environment)
+            else -> workspaceConfigReport(selectedInstallation(root).version.path, workspace, action, environment)
         }
     if (output.structured(command.json)) output.publish(managementJson.encodeToString(report))
     else {

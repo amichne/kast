@@ -51,7 +51,7 @@ internal fun shutdownContainerHost(
     val installation =
         when (val root = resolveManagementRoot(environment)) {
             is ManagementRootResolution.Rejected -> return Refinement.Rejected(ContainerFailure.RUNTIME_UNAVAILABLE)
-            is ManagementRootResolution.Selected -> selectedInstallation(root.root)
+            is ManagementRootResolution.Selected -> selectedInstallation(root.root).version.path
         }
     val manifest = readBundledManifest(installation)
     if (

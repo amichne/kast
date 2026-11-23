@@ -1,9 +1,22 @@
 package io.github.amichne.kast.distribution.contract
 
+import io.github.amichne.kast.kernel.Refinement
+import java.io.IOException
 import java.nio.charset.StandardCharsets
+import java.nio.file.Files
+import java.nio.file.LinkOption
 import java.nio.file.Path
 import java.security.MessageDigest
 import java.util.HexFormat
+
+/** Why [InstallationLayout.admit] selected no version root. */
+enum class InstallationLayoutFailure {
+    /** The selected version entry is absent, a symbolic link, not a directory, or unobservable. */
+    VERSION_UNAVAILABLE,
+
+    /** The selected version entry resolves to a path other than its place beneath the physical management root. */
+    VERSION_DISPLACED,
+}
 
 /**
  * `R`: the management root, `HOME/.local/share/kast`. It holds the lifecycle records, the stores beside it, and the
@@ -171,7 +184,8 @@ private constructor(
     class Management internal constructor(val root: Path) {
         /**
          * The current layout's installation entry, `R/installation`, as the Kotlin lifecycle records name it when they
-         * install, replace, or remove it. Runtime readers select the version root through the layout admission instead.
+         * install, replace, or remove it. Runtime readers select the version root through [InstallationLayout.admit]
+         * instead.
          */
         val installation: Path
             get() = root.resolve(INSTALLATION_DIRECTORY)
@@ -293,8 +307,32 @@ private constructor(
         fun of(version: Path): InstallationLayout =
             InstallationLayout(ManagementRoot.of(version.parent), VersionRoot(version))
 
-        /** The installation directory beneath an admitted management root. */
-        fun beneath(managementRoot: Path): InstallationLayout = of(managementRoot.resolve(INSTALLATION_DIRECTORY))
+        /**
+         * Effect boundary: selects the version root that [root] names now and returns its physical layout.
+         *
+         * In the current layout the selection is the fixed entry `R/installation`. The admission observes that entry
+         * without following links, and requires its physical path to be the same entry beneath the physical management
+         * root. Stage 8 of the lifecycle design replaces this body with one read of `R/current`. The Kotlin lifecycle
+         * records, which need the entry while it may be absent, name it through [Management.installation] instead.
+         */
+        fun admit(root: ManagementRoot): Refinement<InstallationLayout, InstallationLayoutFailure> =
+            try {
+                val entry = root.management.installation
+                when {
+                    Files.isSymbolicLink(entry) || !Files.isDirectory(entry, LinkOption.NOFOLLOW_LINKS) ->
+                        Refinement.Rejected(InstallationLayoutFailure.VERSION_UNAVAILABLE)
+                    else -> {
+                        val physical = entry.toRealPath()
+                        if (physical == ManagementRoot.of(root.path.toRealPath()).management.installation)
+                            Refinement.Refined(of(physical))
+                        else Refinement.Rejected(InstallationLayoutFailure.VERSION_DISPLACED)
+                    }
+                }
+            } catch (_: IOException) {
+                Refinement.Rejected(InstallationLayoutFailure.VERSION_UNAVAILABLE)
+            } catch (_: SecurityException) {
+                Refinement.Rejected(InstallationLayoutFailure.VERSION_UNAVAILABLE)
+            }
 
         /** The layout whose version root contains a `bin/kast` executable. */
         fun ofKastExecutable(kast: Path): InstallationLayout = of(kast.parent.parent)

@@ -40,7 +40,7 @@ internal class AdmittedCliSkill private constructor(private val files: List<Skil
         fun admit(root: Path): SkillAdmission {
             return try {
                 requireOwnedExecutable(root)
-                val installation = selectedInstallation(root)
+                val installation = selectedInstallation(root).version.path
                 val manifest =
                     when (val read = readBundledManifest(installation)) {
                         is BundledManifestRead.Read -> read.manifest

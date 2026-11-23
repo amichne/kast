@@ -1,6 +1,6 @@
 package io.github.amichne.kast.distribution.cli
 
-import io.github.amichne.kast.distribution.contract.InstallationLayout
+import io.github.amichne.kast.distribution.contract.ManagementRoot
 import io.github.amichne.kast.distribution.managed.CanonicalRootDiscovery
 import io.github.amichne.kast.distribution.managed.FilesystemCanonicalRootDiscovery
 import io.github.amichne.kast.kernel.Refinement
@@ -100,7 +100,7 @@ internal fun executeWorkspaceStop(
 ) {
     val session = OwnedChildSession()
     val result =
-        when (val store = containerStore(InstallationLayout.beneath(root).management.workspaceStore)) {
+        when (val store = containerStore(ManagementRoot.of(root).management.workspaceStore)) {
             is Refinement.Rejected -> store
             is Refinement.Refined ->
                 stopManagedWorkspaces(store.value, command.scope, Path.of("").toAbsolutePath()) {

@@ -1,7 +1,7 @@
 package io.github.amichne.kast.distribution.cli
 
 import io.github.amichne.kast.distribution.contract.InstallationFilesystemIdentity
-import io.github.amichne.kast.distribution.contract.InstallationLayout
+import io.github.amichne.kast.distribution.contract.ManagementRoot
 import io.github.amichne.kast.distribution.managed.removalProcessUid
 import io.github.amichne.kast.kernel.Refinement
 import java.nio.file.Files
@@ -18,7 +18,7 @@ internal data class ManagedWorkspaceRemoval(
 )
 
 internal fun uninstallWorkspaceStore(root: Path): ContainerStore =
-    requireWorkspaceRemoval(containerStore(InstallationLayout.beneath(root).management.workspaceStore))
+    requireWorkspaceRemoval(containerStore(ManagementRoot.of(root).management.workspaceStore))
 
 internal fun prepareProductWorkspaceRemoval(
     root: Path,

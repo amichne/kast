@@ -3,6 +3,9 @@ package io.github.amichne.kast.distribution.cli
 import io.github.amichne.kast.distribution.contract.ControlDistributionLimits
 import io.github.amichne.kast.distribution.contract.INSTALLATION_MANIFEST_SCHEMA_VERSION
 import io.github.amichne.kast.distribution.contract.InstallationLayout
+import io.github.amichne.kast.distribution.contract.InstallationLayoutFailure
+import io.github.amichne.kast.distribution.contract.ManagementRoot
+import io.github.amichne.kast.kernel.Refinement
 import java.nio.file.Files
 import java.nio.file.LinkOption
 import java.nio.file.Path
@@ -42,24 +45,24 @@ internal fun readBundledManifest(installation: Path): BundledManifestRead {
     }
 }
 
+/** The one management-root boundary that selects the installed version root before its manifest is admitted. */
 @Suppress("ThrowsCount") // Each incomplete installation proof rejects before external commands run.
-internal fun selectedInstallation(root: Path): Path {
-    val layout = InstallationLayout.beneath(root)
-    val payload = layout.version.path
-    if (
-        Files.isSymbolicLink(payload) ||
-            !Files.isDirectory(payload, LinkOption.NOFOLLOW_LINKS) ||
-            !Files.isRegularFile(layout.payload.manifest, LinkOption.NOFOLLOW_LINKS)
-    )
-        throw ManagementRejected("installation-admission", "installation is unavailable")
-    val selected =
-        try {
-            payload.toRealPath()
-        } catch (_: Exception) {
-            throw ManagementRejected("installation-admission", "installation is unavailable")
+internal fun selectedInstallation(root: Path): InstallationLayout {
+    val layout =
+        when (val admitted = InstallationLayout.admit(ManagementRoot.of(root))) {
+            is Refinement.Refined -> admitted.value
+            is Refinement.Rejected ->
+                throw ManagementRejected(
+                    "installation-admission",
+                    when (admitted.failure) {
+                        InstallationLayoutFailure.VERSION_UNAVAILABLE -> "installation is unavailable"
+                        InstallationLayoutFailure.VERSION_DISPLACED -> "installation is invalid"
+                    },
+                )
         }
-    if (selected != InstallationLayout.beneath(root.toRealPath()).version.path)
-        throw ManagementRejected("installation-admission", "installation is invalid")
+    if (!Files.isRegularFile(layout.payload.manifest, LinkOption.NOFOLLOW_LINKS))
+        throw ManagementRejected("installation-admission", "installation is unavailable")
+    val selected = layout.version.path
     val manifest =
         when (val read = readBundledManifest(selected)) {
             is BundledManifestRead.Read -> read.manifest
@@ -71,5 +74,5 @@ internal fun selectedInstallation(root: Path): Path {
             manifest.installationRoot != selected.toString()
     )
         throw ManagementRejected("installation-admission", "manifest is incompatible")
-    return selected
+    return layout
 }
