@@ -4,14 +4,17 @@ title: "Kast frontend"
 description: "Owns the Go Control executable: public queries through the persistent coordinator and every other entry on the JVM."
 resource: "repo://frontend"
 tags: [kast, frontend, coordinator]
-timestamp: "2026-11-18T00:00:00Z"
-source_revision: cf067e5fcdbc0de5db077e101d50f0c287edd4fd
+timestamp: "2026-11-23T00:00:00Z"
+source_revision: fec3978de23edb8fc6578368f94aff3a2544bec8
 code_sources:
   - path: frontend/cmd/kast/main.go
   - path: frontend/internal/frontend/catalog.go
   - path: frontend/internal/frontend/control.go
   - path: frontend/internal/frontend/invocation.go
   - path: frontend/internal/frontend/run.go
+  - path: frontend/internal/frontend/runtime.go
+  - path: frontend/internal/frontend/records.go
+  - path: packaging/internal/product/managed_product_installation.py
   - path: frontend/go.mod
   - path: frontend/check
   - path: frontend/acceptance
@@ -44,7 +47,9 @@ Read the [tracer evidence](../docs/reviews/go-frontend-tracer.md) for the measur
 - Route JVM warnings to stderr with `-Xlog:disable -Xlog:all=warning:stderr`, so standard output carries only the entry's document.
 - Pass `-XX:SharedArchiveFile` only when the catalog's `sharedArchive` is a regular file. The installer creates it with the installed runtime, and the manifest digests it.
 - Dial a socket longer than the catalog's `socketAlias.maximumPathBytes` only through the alias that links to its exact directory.
-- Read the Java home from the management receipt's runtime root and the catalog's platform table. Do not search `PATH` or `JAVA_HOME`.
+- Read the Java home from the runtime entry that the installation's `share/kast/product-selection.json` binds, and the catalog's platform table.
+  The entry must sit beside the management root under its archive digest, and its `runtime.json` and `manifest.json` must match the selection's digests.
+  Reject a missing or inconsistent binding with its typed failure. Never read `management.json`, `PATH` or `JAVA_HOME`.
 - Answer only exact help vectors from `share/kast/frontend.json`. Forward every other vector.
 - Admit the catalog versions before any other field. Ignore additive metadata within one schema version.
 - Emit only the statuses the catalog declares. `bootstrapStatus` and `protocolStatus` apply before admission.
@@ -62,6 +67,9 @@ Read the [tracer evidence](../docs/reviews/go-frontend-tracer.md) for the measur
 - [invocation.go](internal/frontend/invocation.go) - the typed envelope and the private-socket trust check.
 - [run.go](internal/frontend/run.go) - start or join, status mapping, signals, and delivery.
 - [control.go](internal/frontend/control.go) - installation location, entry selection, and the JVM command.
+- [runtime.go](internal/frontend/runtime.go) - the runtime binding, its closed failure codes, and the record reads.
+- [records.go](internal/frontend/records.go) - strict decoders for `product-selection.json` and `runtime.json`.
+- [installed-records](internal/frontend/testdata/installed-records) - the installer's exact record bytes, which `packaging/tests/test-managed-build-record.py` also pins.
 - [check](check) - the deterministic gate and the separate advisory scan.
 - [acceptance](acceptance) - case matrix, comparison, latency, first callers, and cancellation evidence.
 

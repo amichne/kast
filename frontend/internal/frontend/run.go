@@ -73,13 +73,13 @@ func Run(process Process) int {
 // execute replaces this process with the JVM entry. The process identity, stdio and environment pass through, so
 // installation lifecycle owners observe the JVM exactly as they would a directly launched entry.
 func execute(catalog *Catalog, installation string, parsed invocation, process Process) int {
-	javaHome, err := catalog.runtimeHome(installation)
-	if err != nil {
-		diagnose(process.Stderr, "the Kast runtime is unavailable. Reinstall Kast.")
+	javaHome, failure := catalog.runtimeHome(installation, platform())
+	if failure != nil {
+		diagnose(process.Stderr, "the Kast runtime is unavailable ("+failure.Error()+"). Reinstall Kast.")
 		return catalog.status("BOOTSTRAP")
 	}
 	command := catalog.jvmCommand(installation, javaHome, process.Executable, parsed)
-	err = process.Exec(command[0], command, process.Environment)
+	err := process.Exec(command[0], command, process.Environment)
 	diagnose(process.Stderr, "the Kast runtime could not start: "+err.Error())
 	return catalog.status("BOOTSTRAP")
 }

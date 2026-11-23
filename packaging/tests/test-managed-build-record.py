@@ -115,6 +115,46 @@ class Source:
         return release.DownloadedFile(destination, hashlib.sha256(value).hexdigest(), len(value))
 
 
+FRONTEND_RECORDS = (
+    Path(__file__).parents[2] / "frontend/internal/frontend/testdata/installed-records"
+)
+
+
+class FrontendRecordShapeTest(unittest.TestCase):
+    """The Go frontend's record fixtures must remain exactly what this installer writes and strictly decodes."""
+
+    def test_selection_fixtures_are_canonical_product_references(self) -> None:
+        for name in ("product-selection-stable.json", "product-selection-preview.json"):
+            with self.subTest(name=name):
+                recorded = (FRONTEND_RECORDS / name).read_bytes()
+                # The decoder reference_at admits the written selection with.
+                reference = install.RECOVERY.decode(staging.ProductReference, json.loads(recorded))
+                self.assertIsInstance(reference, staging.ProductReference)
+                self.assertEqual(recorded, install.encoded(reference))
+
+    def test_runtime_receipt_fixture_is_the_receipt_bound_to_the_selection(self) -> None:
+        recorded = (FRONTEND_RECORDS / "runtime.json").read_bytes()
+        selection = install.RECOVERY.decode(
+            staging.ProductReference,
+            json.loads((FRONTEND_RECORDS / "product-selection-stable.json").read_bytes()),
+        )
+        manifest = (FRONTEND_RECORDS / "manifest.json").read_bytes()
+        self.assertEqual(selection.runtimeManifestSha256, hashlib.sha256(manifest).hexdigest())
+        self.assertEqual(
+            install.RECOVERY.decode(staging.RuntimeReceipt, json.loads(recorded)),
+            staging.RuntimeReceipt(selection.runtimeArchiveSha256, selection.runtimeManifestSha256),
+        )
+        # The writer's own expression for runtime.json.
+        self.assertEqual(
+            recorded,
+            install.encoded(
+                staging.RuntimeReceipt(
+                    selection.runtimeArchiveSha256, selection.runtimeManifestSha256
+                )
+            ),
+        )
+
+
 class ProductRecordTest(unittest.TestCase):
     def test_complete_record_has_target_local_artifacts_and_native_evidence(self) -> None:
         record = product()
@@ -762,6 +802,15 @@ class ProductActivationTest(unittest.TestCase):
                 ).hexdigest(),
             },
             receipt,
+        )
+        # The Go frontend's shared fixtures carry the members of these written records, in order.
+        selection = (self.root / "installation/share/kast/product-selection.json").read_bytes()
+        self.assertEqual(
+            list(json.loads((FRONTEND_RECORDS / "product-selection-stable.json").read_bytes())),
+            list(json.loads(selection)),
+        )
+        self.assertEqual(
+            list(json.loads((FRONTEND_RECORDS / "runtime.json").read_bytes())), list(receipt)
         )
         self.assertEqual("1.2.3", result.product.publicVersion)
         self.assertEqual("0.0.123", result.product.version)

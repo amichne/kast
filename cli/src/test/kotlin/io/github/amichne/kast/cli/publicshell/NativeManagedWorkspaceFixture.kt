@@ -118,10 +118,16 @@ internal class NativeManagedWorkspaceFixture(installation: Path, workspace: Path
         val productDirectory = if (mac) "$host/Resources" else host
         val launcher = if (mac) "$host/MacOS/idea" else "$host/bin/idea"
         val javaHome = if (mac) "$host/jbr/Contents/Home" else "$host/jbr"
+        // The Control executable runs every JVM entry on this entry's java, so its commands are the test's own
+        // runtime. The Java home itself stays a physical directory, as Host admission requires.
+        Files.createDirectories(runtime.resolve(javaHome))
+        Files.createSymbolicLink(
+            runtime.resolve("$javaHome/bin"),
+            Path.of(System.getProperty("java.home")).toRealPath().resolve("bin"),
+        )
         return mapOf(
                 "$productDirectory/product-info.json" to json.encodeToString(vendorProduct(mac)),
                 launcher to "must never execute",
-                "$javaHome/bin/java" to "must never execute",
                 "$host/bin/idea.vmoptions" to "-Dvendor.required=true\n",
                 "$host/third-party-plugins/kast-managed-headless/lib/kast-managed-headless.jar" to "bootstrap",
                 "components/plugins/kast-ide-hosted/lib/kast-ide-hosted.jar" to "inert Host plugin",
