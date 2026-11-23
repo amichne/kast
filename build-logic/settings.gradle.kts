@@ -1,4 +1,5 @@
 rootProject.name = "build-logic"
+include("idea-libraries")
 
 pluginManagement {
     repositories {

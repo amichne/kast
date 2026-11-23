@@ -6,11 +6,19 @@
         },
         {
             "path": "build-logic/build.gradle.kts",
-            "sha256": "e8b14512a7c84603fc50c3799bfadb242c3e07e1ad33128af558d4fcf524bfa6"
+            "sha256": "1e73b0a3e817d4e8b1aad76a665ec297f03ed882b09e7fa1a24d7d68c143a1c9"
+        },
+        {
+            "path": "build-logic/idea-libraries/build.gradle.kts",
+            "sha256": "ee4500eb90c13eae57efe6c8c5d1af34f4a86d6a26a08f2e3448e11971d9a7c4"
+        },
+        {
+            "path": "build-logic/idea-libraries/src/main/kotlin/IdeaLibraryTransform.kt",
+            "sha256": "986723c7f9a8c34e2dd7c4fe22cd860920e207ddbe21f8440401805fa0fdf015"
         },
         {
             "path": "build-logic/settings.gradle.kts",
-            "sha256": "f2b1ff79535af12aa730160fd5f72c109696aab3bbfd014575de82e43279d6ac"
+            "sha256": "c4cbe36730a8290bdb1258ae6af4e6aa86f8dd407c1f30c5b6065a67772687f5"
         },
         {
             "path": "build-logic/src/main/kotlin/conventions/JsonContractVerification.kt",
@@ -66,7 +74,7 @@
         },
         {
             "path": "build-logic/src/main/kotlin/kast.architecture.gradle.kts",
-            "sha256": "15215fcaed1dd0de38e570c88bc0058b90d471ec041a57c241312dadfa5a8982"
+            "sha256": "92db3e078d40a84cb5b5bfd280e93986a42273afe01e6cc6fd66869f90120e72"
         },
         {
             "path": "build-logic/src/main/kotlin/kast.kotlin-library.gradle.kts",
@@ -261,10 +269,6 @@
             "sha256": "271dac5d38fe26382d78b5ae17e83e54f1d8bfee143119d1a53c46a477c5ff67"
         },
         {
-            "path": "build-logic/src/main/kotlin/support/tasks/IdeaLibraryTransform.kt",
-            "sha256": "986723c7f9a8c34e2dd7c4fe22cd860920e207ddbe21f8440401805fa0fdf015"
-        },
-        {
             "path": "build-logic/src/main/kotlin/support/tasks/SyncRuntimeLibsTask.kt",
             "sha256": "baec3e4f0a06158b3f9b3934006171229f2447190f655e0911a1ae86c54a0e7d"
         },
@@ -339,6 +343,14 @@
         {
             "path": "build.gradle.kts",
             "sha256": "e1e6bd0a376567acd135ab575447f64d65d94900c74a4eb59d18ee9287ee8f62"
+        },
+        {
+            "path": "buildSrc/build.gradle.kts",
+            "sha256": "7c8ceb0405ad6b91caaa2c27b81eedc3fc1447c69dcd8dcf611052e17e3b687a"
+        },
+        {
+            "path": "buildSrc/settings.gradle.kts",
+            "sha256": "4891b534560d5a749f3f06db5e1c20ac6e1c78e8c3439cfacc4c2f7ea8b9672d"
         },
         {
             "path": "change/apply/build.gradle.kts",

@@ -108,4 +108,4 @@ tasks.test {
     useJUnitPlatform()
 }
 
-tasks.check { dependsOn(jsonContractsTestTask) }
+tasks.check { dependsOn(jsonContractsTestTask, ":idea-libraries:check") }
