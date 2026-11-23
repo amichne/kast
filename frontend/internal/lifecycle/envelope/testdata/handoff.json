@@ -1,0 +1,1 @@
+{"schemaVersion":1,"operation":"UPGRADE","selection":{"releaseTag":"v1.2.3","policy":"TRACK_STABLE","publicVersion":"1.2.3","sourceRevision":"1111111111111111111111111111111111111111"},"recordSha256":"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb","controlSha256":"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc","output":"JSON"}

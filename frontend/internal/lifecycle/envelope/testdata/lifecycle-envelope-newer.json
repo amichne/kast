@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 1,
+  "releaseTag": "developer-v0.0.42",
+  "sourceRevision": "1111111111111111111111111111111111111111",
+  "recordSha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+  "layout": 3,
+  "handoff": [2, 1],
+  "signature": {"kind": "future"},
+  "controls": {
+    "linux-x86_64": {"sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc", "bytes": 9000000, "compression": "none"},
+    "linux-aarch64": {"sha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd", "bytes": 1, "future": true}
+  }
+}
