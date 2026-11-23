@@ -121,7 +121,8 @@ internal object BrokerServiceStartLock {
         val directoryMode = PosixFilePermissions.fromString("rwx------")
         val fileMode = PosixFilePermissions.fromString("rw-------")
         val owner = Files.getOwner(command.installation, LinkOption.NOFOLLOW_LINKS)
-        val dirs = listOf(command.state.parent.parent, command.state.parent, command.state)
+        val state = InstallationLayout.of(command.installation).state
+        val dirs = listOf(state.directory, state.brokers, command.state)
         for (directory in dirs) {
             try {
                 Files.createDirectory(directory, PosixFilePermissions.asFileAttribute(directoryMode))

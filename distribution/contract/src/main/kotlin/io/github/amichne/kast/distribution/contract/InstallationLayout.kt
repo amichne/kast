@@ -58,7 +58,7 @@ private constructor(
 
     /** Coordinator state beneath `state`, derived from [ownedRoot]. */
     val state: State
-        get() = State(ownedRoot.resolve(STATE_DIRECTORY))
+        get() = State(ownedRoot)
 
     /** Files the release payload delivers, derived from the version root. */
     val payload: Payload
@@ -109,7 +109,10 @@ private constructor(
     }
 
     /** `state`: the installation epoch, per-host coordinator state, and runtime sockets and invocation records. */
-    class State internal constructor(val directory: Path) {
+    class State internal constructor(private val owned: Path) {
+        val directory: Path
+            get() = owned.resolve(STATE_DIRECTORY)
+
         val epoch: Path
             get() = directory.resolve("epoch.json")
 
@@ -118,7 +121,7 @@ private constructor(
             get() = directory.resolve("broker")
 
         val run: Run
-            get() = Run(directory.resolve("run"))
+            get() = Run(owned)
 
         /** Worker state from an earlier coordinator; read only to retire it. */
         val legacyWorkers: Path
@@ -127,21 +130,28 @@ private constructor(
         fun broker(profile: CoordinatorHostProfile): Path = brokers.resolve(profile.value)
 
         fun readiness(profile: CoordinatorHostProfile): Path = broker(profile).resolve(READINESS_FILE)
+
+        /** Whether [path] names the readiness record of some per-host coordinator directory beneath [brokers]. */
+        fun holdsReadiness(path: Path): Boolean =
+            path.fileName?.toString() == READINESS_FILE && path.parent?.parent == brokers
     }
 
-    /** `state/run`: runtime sockets and live invocation records. */
-    class Run internal constructor(val directory: Path) {
+    /** `state/run`: runtime sockets and live invocation records, derived from the owned-root relative forms. */
+    class Run internal constructor(private val owned: Path) {
+        val directory: Path
+            get() = Owned.RUN.under(owned)
+
         val coordinatorSocket: Path
-            get() = directory.resolve(COORDINATOR_SOCKET_FILE)
+            get() = Owned.COORDINATOR_SOCKET.under(owned)
 
         val upstreamSocket: Path
             get() = directory.resolve("u.sock")
 
         val oneShotInvocations: Path
-            get() = directory.resolve("one-shot")
+            get() = Owned.ONE_SHOT_INVOCATIONS.under(owned)
 
         val toolSessions: Path
-            get() = directory.resolve("tool-sessions")
+            get() = Owned.TOOL_SESSIONS.under(owned)
     }
 
     /** Release payload files inside the installation directory. */
@@ -225,6 +235,13 @@ private constructor(
         val productRemoval: Path
             get() = installationRecovery.resolve("product-removal")
 
+        /**
+         * The user home that the canonical management root `HOME/.local/share/kast` lies beneath, or null when the
+         * management root has fewer than three parents.
+         */
+        val userHome: Path?
+            get() = root.parent?.parent?.parent
+
         val workspaceStore: Path
             get() = root.resolveSibling("kast-workspaces")
 
@@ -276,12 +293,6 @@ private constructor(
                 BIN_DIRECTORY,
                 "python3.12",
             )
-        val COORDINATOR_SOCKET: InstallationRelativePath =
-            InstallationRelativePath.of(STATE_DIRECTORY, "run", COORDINATOR_SOCKET_FILE)
-        val ONE_SHOT_INVOCATIONS: InstallationRelativePath =
-            InstallationRelativePath.of(STATE_DIRECTORY, "run", "one-shot")
-        val TOOL_SESSIONS: InstallationRelativePath =
-            InstallationRelativePath.of(STATE_DIRECTORY, "run", "tool-sessions")
 
         /** One archive directly beneath `lib`. */
         fun library(fileName: String): InstallationRelativePath =
@@ -292,6 +303,18 @@ private constructor(
 
         private fun libexec(name: String): InstallationRelativePath =
             InstallationRelativePath.of(SHARE_DIRECTORY, PRODUCT_DIRECTORY, "libexec", name)
+    }
+
+    /**
+     * Paths relative to the owned root that holds `config` and `state`, not to the version root. The frontend catalog
+     * records the coordinator socket in this form, and [Run] derives each absolute path from the same value.
+     */
+    object Owned {
+        internal val RUN: OwnedRelativePath = OwnedRelativePath.of(STATE_DIRECTORY, RUN_DIRECTORY)
+        val COORDINATOR_SOCKET: OwnedRelativePath =
+            OwnedRelativePath.of(STATE_DIRECTORY, RUN_DIRECTORY, COORDINATOR_SOCKET_FILE)
+        val ONE_SHOT_INVOCATIONS: OwnedRelativePath = OwnedRelativePath.of(STATE_DIRECTORY, RUN_DIRECTORY, "one-shot")
+        val TOOL_SESSIONS: OwnedRelativePath = OwnedRelativePath.of(STATE_DIRECTORY, RUN_DIRECTORY, "tool-sessions")
     }
 
     companion object {
@@ -306,6 +329,7 @@ private constructor(
         private const val ENVIRONMENT_FILE = "environment"
         private const val READINESS_FILE = "service-readiness.json"
         private const val COORDINATOR_SOCKET_FILE = "c.sock"
+        private const val RUN_DIRECTORY = "run"
 
         /**
          * The layout whose version root is [version], as admitted by the caller. The management root derives upward
@@ -343,6 +367,39 @@ private constructor(
 
         /** The layout whose version root contains a `bin/kast` executable. */
         fun ofKastExecutable(kast: Path): InstallationLayout = of(kast.parent.parent)
+
+        /**
+         * The layout whose version root holds [file] at [relative], or null when [file] does not end with [relative]
+         * beneath a parent directory. Code locations and payload executables locate their version root here, not
+         * through their own parent chains.
+         */
+        fun containing(file: Path, relative: InstallationRelativePath): InstallationLayout? {
+            if (!file.endsWith(relative.asPath())) return null
+            val depth = file.nameCount - relative.asPath().nameCount
+            if (depth < 1) return null
+            val version = file.root?.resolve(file.subpath(0, depth)) ?: file.subpath(0, depth)
+            return of(version)
+        }
+    }
+}
+
+/** One `/`-separated path beneath the owned root that holds `config` and `state`. */
+class OwnedRelativePath private constructor(private val segments: List<String>) {
+    /** The recorded form, for example `state/run/c.sock`. */
+    val value: String
+        get() = segments.joinToString("/")
+
+    /** The same path beneath [root]. */
+    internal fun under(root: Path): Path = segments.fold(root) { path, segment -> path.resolve(segment) }
+
+    override fun equals(other: Any?): Boolean = other is OwnedRelativePath && other.segments == segments
+
+    override fun hashCode(): Int = segments.hashCode()
+
+    override fun toString(): String = value
+
+    internal companion object {
+        fun of(vararg segments: String): OwnedRelativePath = OwnedRelativePath(segments.toList())
     }
 }
 

@@ -193,11 +193,7 @@ private sealed interface PrivateServiceDocument {
 }
 
 private fun privateDocument(installation: Path, path: Path): PrivateServiceDocument {
-    if (
-        path.parent?.parent != InstallationLayout.of(installation).state.brokers ||
-            path.fileName.toString() != "service-readiness.json"
-    )
-        return PrivateServiceDocument.Unadmitted
+    if (!InstallationLayout.of(installation).state.holdsReadiness(path)) return PrivateServiceDocument.Unadmitted
     return try {
         if (Files.notExists(path, NOFOLLOW_LINKS)) return PrivateServiceDocument.Absent
         val owner = Files.getOwner(installation, NOFOLLOW_LINKS)

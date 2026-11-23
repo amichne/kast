@@ -121,7 +121,7 @@ internal fun readStatus(
         applicationHost =
             if (receipt is ReceiptRead.Read) Observation.unavailable("WORKSPACE_SCOPED")
             else
-                root.parent?.parent?.parent?.let { readApplicationHost(root, it) }
+                ManagementRoot.of(root).management.userHome?.let { readApplicationHost(root, it) }
                     ?: Observation.unavailable("user_home_unavailable"),
         product =
             if (receipt is ReceiptRead.Read) Observation.verified(receipt.receipt.product)

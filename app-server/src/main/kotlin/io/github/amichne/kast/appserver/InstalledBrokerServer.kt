@@ -90,7 +90,7 @@ internal sealed interface InstalledBrokerServerConfiguration {
                         return rejected(InstalledBrokerServerConfigurationFailure.KAST_EXECUTABLE_REJECTED)
                 }
             if (
-                InstallationLifecycleFence.observe(kast.path.parent.parent) !=
+                InstallationLifecycleFence.observe(InstallationLayout.ofKastExecutable(kast.path).version.path) !=
                     InstallationLifecycleStartAdmission.AVAILABLE
             ) {
                 return rejected(InstalledBrokerServerConfigurationFailure.STATE_DIRECTORY_REJECTED)

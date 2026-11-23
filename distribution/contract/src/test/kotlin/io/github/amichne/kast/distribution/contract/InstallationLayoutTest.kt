@@ -4,6 +4,8 @@ import io.github.amichne.kast.kernel.Refinement
 import java.nio.file.Files
 import java.nio.file.Path
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertFalse
+import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Assumptions.assumeTrue
 import org.junit.jupiter.api.Test
@@ -129,11 +131,21 @@ class InstallationLayoutTest {
                 "share/kast/managed-install-v1" to relative.MANAGED_INSTALL_CAPABILITY,
                 "share/kast/install-candidate.sh" to relative.INSTALL_CANDIDATE,
                 "share/kast/private-python/bin/python3.12" to relative.PRIVATE_PYTHON_INTERPRETER,
-                "state/run/c.sock" to relative.COORDINATOR_SOCKET,
-                "state/run/one-shot" to relative.ONE_SHOT_INVOCATIONS,
-                "state/run/tool-sessions" to relative.TOOL_SESSIONS,
             )
         assertEquals(expected.keys.toList(), expected.values.map(InstallationRelativePath::value))
+    }
+
+    @Test
+    fun `owned-root relative paths keep their recorded form and match the run accessors`() {
+        val owned = InstallationLayout.Owned
+        val expected =
+            linkedMapOf(
+                "state/run/c.sock" to owned.COORDINATOR_SOCKET,
+                "state/run/one-shot" to owned.ONE_SHOT_INVOCATIONS,
+                "state/run/tool-sessions" to owned.TOOL_SESSIONS,
+            )
+        assertEquals(expected.keys.toList(), expected.values.map(OwnedRelativePath::value))
+        assertEquals("$installation/state/run/c.sock", layout.state.run.coordinatorSocket.toString())
     }
 
     @Test
@@ -155,6 +167,36 @@ class InstallationLayoutTest {
         val root = Path.of(installation)
         assertEquals(layout, InstallationLayout.of(root))
         assertEquals(layout, InstallationLayout.ofKastExecutable(root.resolve("bin/kast")))
+    }
+
+    @Test
+    fun `a payload file locates its version root through the layout, not its own parent chain`() {
+        val relative = InstallationLayout.Relative
+        val root = Path.of(installation)
+        assertEquals(
+            layout,
+            InstallationLayout.containing(
+                root.resolve("share/kast/libexec/kast-management"),
+                relative.MANAGEMENT_EXECUTABLE,
+            ),
+        )
+        assertEquals(layout, InstallationLayout.containing(root.resolve("bin/kast-query"), relative.QUERY_EXECUTABLE))
+        assertEquals(
+            layout,
+            InstallationLayout.containing(root.resolve("lib/kast-cli.jar"), relative.library("kast-cli.jar")),
+        )
+        assertNull(InstallationLayout.containing(root.resolve("bin/kast"), relative.QUERY_EXECUTABLE))
+        assertNull(InstallationLayout.containing(Path.of("/lib/kast-cli.jar"), relative.library("kast-cli.jar")))
+        assertNull(InstallationLayout.containing(Path.of("lib/kast-cli.jar"), relative.library("kast-cli.jar")))
+    }
+
+    @Test
+    fun `readiness membership accepts only a per-host readiness record beneath the broker directory`() {
+        val state = layout.state
+        assertTrue(state.holdsReadiness(Path.of("$installation/state/broker/f9cc2b730341a2cf/service-readiness.json")))
+        assertFalse(state.holdsReadiness(Path.of("$installation/state/broker/service-readiness.json")))
+        assertFalse(state.holdsReadiness(Path.of("$installation/state/broker/f9cc2b730341a2cf/service.log")))
+        assertFalse(state.holdsReadiness(Path.of("/other/state/broker/f9cc2b730341a2cf/service-readiness.json")))
     }
 
     @Test

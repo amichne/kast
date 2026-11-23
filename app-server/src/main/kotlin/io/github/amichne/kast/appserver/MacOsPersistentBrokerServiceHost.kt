@@ -360,7 +360,7 @@ internal class MacOsPersistentBrokerServiceHost(
             val execution =
                 BrokerServiceStartLock.withAcquired(command.serviceLock) {
                     if (
-                        InstallationLifecycleFence.observe(command.kast.parent.parent) !=
+                        InstallationLifecycleFence.observe(command.installation.version.path) !=
                             InstallationLifecycleStartAdmission.AVAILABLE
                     ) {
                         rejected(PersistentBrokerServiceFailure.DISABLED)
@@ -396,7 +396,7 @@ internal class MacOsPersistentBrokerServiceHost(
 
     private fun resumeLoginExclusively(command: BrokerServiceLaunchCommand): PersistentBrokerServiceAdmission {
         if (
-            InstallationLifecycleFence.observe(command.kast.parent.parent) !=
+            InstallationLifecycleFence.observe(command.installation.version.path) !=
                 InstallationLifecycleStartAdmission.AVAILABLE || !loginEvidenceAdmitted(command)
         )
             return rejected(PersistentBrokerServiceFailure.DISABLED)
