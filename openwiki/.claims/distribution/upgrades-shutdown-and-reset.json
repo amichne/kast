@@ -1,21 +1,7 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:5ae9cecf13d1455583963015dd5d9e207c23bacc99908731f8663dad56d67d51",
+  "pageVersion": "sha256:dbb1f61d8978f0853a671dd245b60adf798aa00e7b2c3f719d6d7e32759b84bd",
   "claims": [
-    {
-      "id": "claim_4418145e0e48413589ccb805f87f8741",
-      "statement": "Daemon upgrade preparation distinguishes absence, blockers, sealed and committed exact permits, and finite rejection before retirement.",
-      "evidence": [
-        {
-          "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/InstalledDaemonUpgrade.kt",
-          "version": "repo-file-v1:sha256:33c611618851d3fc5cbf718be7cddf414aaadae9a684ba681d18cbb9c77a6183"
-        },
-        {
-          "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/InstalledDaemonUpgrade.kt#L95-L95",
-          "version": "repo-lines-v1:sha256:2efb83d97cd966e827f4e5a5602da6c53afb4e75a86d9accd98048f166269182:eyJzZWxlY3RlZExpbmVDb3VudCI6MSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiMmVmYjgzZDk3Y2Q5NjZlODI3ZjRlNWE1NjAyZGE2YzUzYWZiNGU3NWE4NmQ5YWNjZDk4MDQ4ZjE2NjI2OTE4MiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiMmVmYjgzZDk3Y2Q5NjZlODI3ZjRlNWE1NjAyZGE2YzUzYWZiNGU3NWE4NmQ5YWNjZDk4MDQ4ZjE2NjI2OTE4MiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiYjFiNTZiYThkN2Y1YWI0YjA4Y2FjNzUyZDUyZmQ1NjI2MTJlYTU3YmJkNzEyNmM0NzAyNzM0MDc0NmYyOTZjOSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiMDFkZmZjNmNkZTNiOTJjYTRiNzUyNDQ0NmQwMzNmMDIxNzZmMDhkYzQxZjIwOGVkY2MwOWU5OGIwZWE3ZThmMyJ9"
-        }
-      ]
-    },
     {
       "id": "claim_1620e746f39a4a639c57470e10369d40",
       "statement": "Force-reset scope rejects filesystem roots, HOME and its ancestors, and physical aliases before deletion while keeping deletion scope separate from old receipt ownership.",
@@ -66,7 +52,7 @@
         },
         {
           "resource": "repo://packaging/internal/product/managed_product_installation.py",
-          "version": "repo-file-v1:sha256:85b174d534c99d75bd439593419e20290070e31816d32775ce48c46e1c4dc4ee"
+          "version": "repo-file-v1:sha256:6e46eb8d3f6e7964c431ed7841983a4bd94107d3a1ed190750f8ccd36736c8e6"
         }
       ]
     },
@@ -174,11 +160,11 @@
         },
         {
           "resource": "repo://packaging/internal/product/managed_product_installation.py",
-          "version": "repo-file-v1:sha256:85b174d534c99d75bd439593419e20290070e31816d32775ce48c46e1c4dc4ee"
+          "version": "repo-file-v1:sha256:6e46eb8d3f6e7964c431ed7841983a4bd94107d3a1ed190750f8ccd36736c8e6"
         },
         {
           "resource": "repo://packaging/tests/test-managed-build-record.py",
-          "version": "repo-file-v1:sha256:57f6c9d4f690fdc4d3f698578fcf92dcc617a53c2a2d5caa1b3ff0952da6f9db"
+          "version": "repo-file-v1:sha256:3bcb3558540e23be2d69f055b4d9c681fe500a1d42b736158f623754c73a54e9"
         }
       ]
     },
@@ -188,7 +174,7 @@
       "evidence": [
         {
           "resource": "repo://packaging/internal/installation/installation-lifecycle.py",
-          "version": "repo-file-v1:sha256:653f831b0d7857b86bfa26f1e8cac78301f1121cd2d8e10de4cfa23eb9850c9b"
+          "version": "repo-file-v1:sha256:1b6b406ff5e14ce96418cfdd8a41bd0c78f44d10865418c9a1bec504ee7581de"
         },
         {
           "resource": "repo://packaging/internal/installation/installation-recovery.py",
@@ -196,7 +182,7 @@
         },
         {
           "resource": "repo://packaging/internal/product/managed_product_installation.py",
-          "version": "repo-file-v1:sha256:85b174d534c99d75bd439593419e20290070e31816d32775ce48c46e1c4dc4ee"
+          "version": "repo-file-v1:sha256:6e46eb8d3f6e7964c431ed7841983a4bd94107d3a1ed190750f8ccd36736c8e6"
         },
         {
           "resource": "repo://packaging/tests/test-installation-recovery.py",
@@ -210,7 +196,7 @@
       "evidence": [
         {
           "resource": "repo://packaging/internal/product/managed_product_installation.py",
-          "version": "repo-file-v1:sha256:85b174d534c99d75bd439593419e20290070e31816d32775ce48c46e1c4dc4ee"
+          "version": "repo-file-v1:sha256:6e46eb8d3f6e7964c431ed7841983a4bd94107d3a1ed190750f8ccd36736c8e6"
         },
         {
           "resource": "repo://packaging/internal/product/product_removal_recovery.py",
@@ -222,7 +208,7 @@
         },
         {
           "resource": "repo://packaging/tests/test-managed-build-record.py",
-          "version": "repo-file-v1:sha256:57f6c9d4f690fdc4d3f698578fcf92dcc617a53c2a2d5caa1b3ff0952da6f9db"
+          "version": "repo-file-v1:sha256:3bcb3558540e23be2d69f055b4d9c681fe500a1d42b736158f623754c73a54e9"
         }
       ]
     },
@@ -276,7 +262,7 @@
         },
         {
           "resource": "repo://packaging/internal/product/managed_product_installation.py",
-          "version": "repo-file-v1:sha256:85b174d534c99d75bd439593419e20290070e31816d32775ce48c46e1c4dc4ee"
+          "version": "repo-file-v1:sha256:6e46eb8d3f6e7964c431ed7841983a4bd94107d3a1ed190750f8ccd36736c8e6"
         }
       ]
     },
@@ -312,13 +298,13 @@
         },
         {
           "resource": "repo://distribution/contract/src/main/resources/management/uninstall-retirement.schema.json",
-          "version": "repo-file-v1:sha256:d85ea99066e8de336cd1e9aac4a498964b325a0d6e22ef89489fe14a3e0cb194"
+          "version": "repo-file-v1:sha256:a4918791ae31aa69adf23442c83c630712f69286f553ef5981557620054814d6"
         }
       ]
     }
   ],
   "verification": {
     "by": "openwiki/0.9.0",
-    "at": "2026-11-22T20:53:36.158Z"
+    "at": "2026-11-23T00:44:58.019Z"
   }
 }

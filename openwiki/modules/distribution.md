@@ -4,7 +4,7 @@ title: "Distribution and packaging"
 openwiki_generated: true
 verified:
   - by: openwiki/0.9.0
-    at: 2026-11-22T20:53:36.158Z
+    at: 2026-11-23T00:44:58.019Z
 sources:
   - id: openwiki-source-baf30c604828cfde90a8ab63
     resource: repo://.githooks/pre-push

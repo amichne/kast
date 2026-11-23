@@ -100,11 +100,11 @@
       "completedRunId": "ee509710-7181-4f5b-ae9d-87a82dbc14b0"
     },
     "/openwiki/distribution/installation-and-managed-files.md": {
-      "pageVersion": "sha256:ba15ac7166c0ea2cbe32be128b147ff0a17766e9675594f687268d3cea28e62e",
+      "pageVersion": "sha256:fa0acfa48446f02ad27844eedb8a3ec14ff4dc32858d915c4483f6a2df017c81",
       "completedBy": "codex",
-      "completedRunId": "90c1f074-3099-444e-820f-69ebce8e8ca4",
-      "gitHead": "58f5f8531dbebe138d46f16897c95c737f615576",
-      "sourceFingerprint": "sha256:3776af5fa9c2493d80ccef44b8c8c4e76bcd53bb15d831b1650109ee446ee207"
+      "completedRunId": "0507cfa8-c996-4072-8bef-114487da538e",
+      "gitHead": "e0807071160cc4a948a316a6f6f2357d5487e5bb",
+      "sourceFingerprint": "sha256:ff7ea60b4dfb6e9b51d86b712b77be89adda8f1ba9a9ebc6a586ec59dc5b6d1e"
     },
     "/openwiki/distribution/management-and-connections.md": {
       "gitHead": "58f5f8531dbebe138d46f16897c95c737f615576",
@@ -121,11 +121,11 @@
       "completedRunId": "0bce3dd5-04f2-4318-9b68-1aa8a006cb93"
     },
     "/openwiki/distribution/upgrades-shutdown-and-reset.md": {
-      "gitHead": "58f5f8531dbebe138d46f16897c95c737f615576",
-      "sourceFingerprint": "sha256:3776af5fa9c2493d80ccef44b8c8c4e76bcd53bb15d831b1650109ee446ee207",
-      "pageVersion": "sha256:5ae9cecf13d1455583963015dd5d9e207c23bacc99908731f8663dad56d67d51",
+      "pageVersion": "sha256:dbb1f61d8978f0853a671dd245b60adf798aa00e7b2c3f719d6d7e32759b84bd",
       "completedBy": "codex",
-      "completedRunId": "0bce3dd5-04f2-4318-9b68-1aa8a006cb93"
+      "completedRunId": "0507cfa8-c996-4072-8bef-114487da538e",
+      "gitHead": "e0807071160cc4a948a316a6f6f2357d5487e5bb",
+      "sourceFingerprint": "sha256:ff7ea60b4dfb6e9b51d86b712b77be89adda8f1ba9a9ebc6a586ec59dc5b6d1e"
     },
     "/openwiki/flows/change-lifecycle.md": {
       "gitHead": "58f5f8531dbebe138d46f16897c95c737f615576",
@@ -219,11 +219,11 @@
       "completedRunId": "bb7d762b-e640-426b-bae8-f8fa41505944"
     },
     "/openwiki/modules/distribution.md": {
-      "gitHead": "58f5f8531dbebe138d46f16897c95c737f615576",
-      "sourceFingerprint": "sha256:3776af5fa9c2493d80ccef44b8c8c4e76bcd53bb15d831b1650109ee446ee207",
-      "pageVersion": "sha256:00f0db2ef4f7d5d02fdcb7f8be0c290b5a1204566e1869b4264014cd3555e21e",
+      "pageVersion": "sha256:0a46961245d048276e5d296040984361c4c1318111d1235d812d71eceda1125b",
       "completedBy": "codex",
-      "completedRunId": "0bce3dd5-04f2-4318-9b68-1aa8a006cb93"
+      "completedRunId": "0507cfa8-c996-4072-8bef-114487da538e",
+      "gitHead": "e0807071160cc4a948a316a6f6f2357d5487e5bb",
+      "sourceFingerprint": "sha256:ff7ea60b4dfb6e9b51d86b712b77be89adda8f1ba9a9ebc6a586ec59dc5b6d1e"
     },
     "/openwiki/modules/kernel.md": {
       "gitHead": "58f5f8531dbebe138d46f16897c95c737f615576",
@@ -247,11 +247,11 @@
       "completedRunId": "0bce3dd5-04f2-4318-9b68-1aa8a006cb93"
     },
     "/openwiki/modules/runtime-hosts.md": {
-      "gitHead": "58f5f8531dbebe138d46f16897c95c737f615576",
-      "sourceFingerprint": "sha256:3776af5fa9c2493d80ccef44b8c8c4e76bcd53bb15d831b1650109ee446ee207",
-      "pageVersion": "sha256:ddc2b9f02a6232f01a7c12be1b646d66ce0fa50080471517cfee378352c242f3",
+      "pageVersion": "sha256:66bedd33e9b93fb40b2582c1ded201b3b08c047c8bad7d8dbdeeabde96cf4023",
       "completedBy": "codex",
-      "completedRunId": "f36b73d8-0fac-474e-a1b9-0e99d8381d2c"
+      "completedRunId": "0507cfa8-c996-4072-8bef-114487da538e",
+      "gitHead": "e0807071160cc4a948a316a6f6f2357d5487e5bb",
+      "sourceFingerprint": "sha256:ff7ea60b4dfb6e9b51d86b712b77be89adda8f1ba9a9ebc6a586ec59dc5b6d1e"
     },
     "/openwiki/modules/semantic-reads.md": {
       "gitHead": "58f5f8531dbebe138d46f16897c95c737f615576",
@@ -352,11 +352,11 @@
       "completedRunId": "f36b73d8-0fac-474e-a1b9-0e99d8381d2c"
     },
     "/openwiki/semantics/relation/named-relations.md": {
+      "gitHead": "58f5f8531dbebe138d46f16897c95c737f615576",
+      "sourceFingerprint": "sha256:3776af5fa9c2493d80ccef44b8c8c4e76bcd53bb15d831b1650109ee446ee207",
       "pageVersion": "sha256:17accaff934af75a5aecb8a70c1ddf14aef3d5acb3b39071de5282945e712cd7",
       "completedBy": "codex",
-      "completedRunId": "90c1f074-3099-444e-820f-69ebce8e8ca4",
-      "gitHead": "58f5f8531dbebe138d46f16897c95c737f615576",
-      "sourceFingerprint": "sha256:3776af5fa9c2493d80ccef44b8c8c4e76bcd53bb15d831b1650109ee446ee207"
+      "completedRunId": "90c1f074-3099-444e-820f-69ebce8e8ca4"
     },
     "/openwiki/semantics/relation/value-flow-and-models.md": {
       "gitHead": "58f5f8531dbebe138d46f16897c95c737f615576",

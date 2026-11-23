@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:ba15ac7166c0ea2cbe32be128b147ff0a17766e9675594f687268d3cea28e62e",
+  "pageVersion": "sha256:fa0acfa48446f02ad27844eedb8a3ec14ff4dc32858d915c4483f6a2df017c81",
   "claims": [
     {
       "id": "claim_1d06d658c78b456b960fba22b9053804",
@@ -22,7 +22,7 @@
       "evidence": [
         {
           "resource": "repo://packaging/internal/installation/installation-lifecycle.py",
-          "version": "repo-file-v1:sha256:653f831b0d7857b86bfa26f1e8cac78301f1121cd2d8e10de4cfa23eb9850c9b"
+          "version": "repo-file-v1:sha256:1b6b406ff5e14ce96418cfdd8a41bd0c78f44d10865418c9a1bec504ee7581de"
         },
         {
           "resource": "repo://packaging/tests/test-installation-lifecycle.py",
@@ -68,7 +68,7 @@
         },
         {
           "resource": "repo://packaging/internal/product/managed_product_installation.py",
-          "version": "repo-file-v1:sha256:85b174d534c99d75bd439593419e20290070e31816d32775ce48c46e1c4dc4ee"
+          "version": "repo-file-v1:sha256:6e46eb8d3f6e7964c431ed7841983a4bd94107d3a1ed190750f8ccd36736c8e6"
         }
       ]
     },
@@ -96,7 +96,7 @@
         },
         {
           "resource": "repo://packaging/internal/product/managed_product_installation.py",
-          "version": "repo-file-v1:sha256:85b174d534c99d75bd439593419e20290070e31816d32775ce48c46e1c4dc4ee"
+          "version": "repo-file-v1:sha256:6e46eb8d3f6e7964c431ed7841983a4bd94107d3a1ed190750f8ccd36736c8e6"
         },
         {
           "resource": "repo://packaging/internal/product/product_removal_recovery.py",
@@ -104,7 +104,7 @@
         },
         {
           "resource": "repo://packaging/tests/test-managed-build-record.py",
-          "version": "repo-file-v1:sha256:57f6c9d4f690fdc4d3f698578fcf92dcc617a53c2a2d5caa1b3ff0952da6f9db"
+          "version": "repo-file-v1:sha256:3bcb3558540e23be2d69f055b4d9c681fe500a1d42b736158f623754c73a54e9"
         }
       ]
     },
@@ -118,11 +118,11 @@
         },
         {
           "resource": "repo://packaging/internal/product/managed_product_installation.py",
-          "version": "repo-file-v1:sha256:85b174d534c99d75bd439593419e20290070e31816d32775ce48c46e1c4dc4ee"
+          "version": "repo-file-v1:sha256:6e46eb8d3f6e7964c431ed7841983a4bd94107d3a1ed190750f8ccd36736c8e6"
         },
         {
           "resource": "repo://packaging/tests/test-managed-build-record.py",
-          "version": "repo-file-v1:sha256:57f6c9d4f690fdc4d3f698578fcf92dcc617a53c2a2d5caa1b3ff0952da6f9db"
+          "version": "repo-file-v1:sha256:3bcb3558540e23be2d69f055b4d9c681fe500a1d42b736158f623754c73a54e9"
         }
       ]
     },
@@ -136,7 +136,7 @@
         },
         {
           "resource": "repo://packaging/internal/product/managed_product_installation.py",
-          "version": "repo-file-v1:sha256:85b174d534c99d75bd439593419e20290070e31816d32775ce48c46e1c4dc4ee"
+          "version": "repo-file-v1:sha256:6e46eb8d3f6e7964c431ed7841983a4bd94107d3a1ed190750f8ccd36736c8e6"
         }
       ]
     },
@@ -150,11 +150,11 @@
         },
         {
           "resource": "repo://packaging/internal/installation/installation-lifecycle.py",
-          "version": "repo-file-v1:sha256:653f831b0d7857b86bfa26f1e8cac78301f1121cd2d8e10de4cfa23eb9850c9b"
+          "version": "repo-file-v1:sha256:1b6b406ff5e14ce96418cfdd8a41bd0c78f44d10865418c9a1bec504ee7581de"
         },
         {
           "resource": "repo://packaging/internal/product/managed_product_installation.py",
-          "version": "repo-file-v1:sha256:85b174d534c99d75bd439593419e20290070e31816d32775ce48c46e1c4dc4ee"
+          "version": "repo-file-v1:sha256:6e46eb8d3f6e7964c431ed7841983a4bd94107d3a1ed190750f8ccd36736c8e6"
         }
       ]
     },
@@ -168,7 +168,7 @@
         },
         {
           "resource": "repo://packaging/internal/product/managed_product_installation.py",
-          "version": "repo-file-v1:sha256:85b174d534c99d75bd439593419e20290070e31816d32775ce48c46e1c4dc4ee"
+          "version": "repo-file-v1:sha256:6e46eb8d3f6e7964c431ed7841983a4bd94107d3a1ed190750f8ccd36736c8e6"
         },
         {
           "resource": "repo://packaging/internal/product/managed_product_removal.py",
@@ -180,7 +180,7 @@
         },
         {
           "resource": "repo://packaging/tests/test-managed-build-record.py",
-          "version": "repo-file-v1:sha256:57f6c9d4f690fdc4d3f698578fcf92dcc617a53c2a2d5caa1b3ff0952da6f9db"
+          "version": "repo-file-v1:sha256:3bcb3558540e23be2d69f055b4d9c681fe500a1d42b736158f623754c73a54e9"
         }
       ]
     },
@@ -194,7 +194,7 @@
         },
         {
           "resource": "repo://packaging/internal/installation/installation-lifecycle.py",
-          "version": "repo-file-v1:sha256:653f831b0d7857b86bfa26f1e8cac78301f1121cd2d8e10de4cfa23eb9850c9b"
+          "version": "repo-file-v1:sha256:1b6b406ff5e14ce96418cfdd8a41bd0c78f44d10865418c9a1bec504ee7581de"
         },
         {
           "resource": "repo://packaging/internal/product/product_state_removal.py",
@@ -202,7 +202,7 @@
         },
         {
           "resource": "repo://packaging/tests/test-managed-build-record.py",
-          "version": "repo-file-v1:sha256:57f6c9d4f690fdc4d3f698578fcf92dcc617a53c2a2d5caa1b3ff0952da6f9db"
+          "version": "repo-file-v1:sha256:3bcb3558540e23be2d69f055b4d9c681fe500a1d42b736158f623754c73a54e9"
         }
       ]
     },
@@ -252,7 +252,7 @@
         },
         {
           "resource": "repo://packaging/tests/test-managed-build-record.py",
-          "version": "repo-file-v1:sha256:57f6c9d4f690fdc4d3f698578fcf92dcc617a53c2a2d5caa1b3ff0952da6f9db"
+          "version": "repo-file-v1:sha256:3bcb3558540e23be2d69f055b4d9c681fe500a1d42b736158f623754c73a54e9"
         }
       ]
     },
@@ -280,7 +280,7 @@
         },
         {
           "resource": "repo://packaging/tests/test-managed-build-record.py",
-          "version": "repo-file-v1:sha256:57f6c9d4f690fdc4d3f698578fcf92dcc617a53c2a2d5caa1b3ff0952da6f9db"
+          "version": "repo-file-v1:sha256:3bcb3558540e23be2d69f055b4d9c681fe500a1d42b736158f623754c73a54e9"
         }
       ]
     },
@@ -340,7 +340,7 @@
         },
         {
           "resource": "repo://packaging/internal/product/managed_product_installation.py",
-          "version": "repo-file-v1:sha256:85b174d534c99d75bd439593419e20290070e31816d32775ce48c46e1c4dc4ee"
+          "version": "repo-file-v1:sha256:6e46eb8d3f6e7964c431ed7841983a4bd94107d3a1ed190750f8ccd36736c8e6"
         }
       ]
     },
@@ -403,6 +403,6 @@
   ],
   "verification": {
     "by": "openwiki/0.9.0",
-    "at": "2026-11-22T21:35:10.249Z"
+    "at": "2026-11-23T00:44:58.019Z"
   }
 }

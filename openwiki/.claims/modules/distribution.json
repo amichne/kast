@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:00f0db2ef4f7d5d02fdcb7f8be0c290b5a1204566e1869b4264014cd3555e21e",
+  "pageVersion": "sha256:0a46961245d048276e5d296040984361c4c1318111d1235d812d71eceda1125b",
   "claims": [
     {
       "id": "claim_1a8f3f1aad9047d2b79590402921e2dd",
@@ -172,7 +172,7 @@
         },
         {
           "resource": "repo://packaging/internal/product/managed_product_installation.py",
-          "version": "repo-file-v1:sha256:85b174d534c99d75bd439593419e20290070e31816d32775ce48c46e1c4dc4ee"
+          "version": "repo-file-v1:sha256:6e46eb8d3f6e7964c431ed7841983a4bd94107d3a1ed190750f8ccd36736c8e6"
         }
       ]
     },
@@ -272,7 +272,7 @@
         },
         {
           "resource": "repo://packaging/tests/test-managed-build-record.py",
-          "version": "repo-file-v1:sha256:57f6c9d4f690fdc4d3f698578fcf92dcc617a53c2a2d5caa1b3ff0952da6f9db"
+          "version": "repo-file-v1:sha256:3bcb3558540e23be2d69f055b4d9c681fe500a1d42b736158f623754c73a54e9"
         }
       ]
     },
@@ -388,7 +388,7 @@
       "evidence": [
         {
           "resource": "repo://packaging/internal/product/managed_product_installation.py",
-          "version": "repo-file-v1:sha256:85b174d534c99d75bd439593419e20290070e31816d32775ce48c46e1c4dc4ee"
+          "version": "repo-file-v1:sha256:6e46eb8d3f6e7964c431ed7841983a4bd94107d3a1ed190750f8ccd36736c8e6"
         },
         {
           "resource": "repo://packaging/internal/runtime/runtime_base.py",
@@ -582,7 +582,7 @@
         },
         {
           "resource": "repo://packaging/internal/product/managed_product_installation.py",
-          "version": "repo-file-v1:sha256:85b174d534c99d75bd439593419e20290070e31816d32775ce48c46e1c4dc4ee"
+          "version": "repo-file-v1:sha256:6e46eb8d3f6e7964c431ed7841983a4bd94107d3a1ed190750f8ccd36736c8e6"
         }
       ]
     },
@@ -690,7 +690,7 @@
         },
         {
           "resource": "repo://packaging/internal/product/managed_product_installation.py",
-          "version": "repo-file-v1:sha256:85b174d534c99d75bd439593419e20290070e31816d32775ce48c46e1c4dc4ee"
+          "version": "repo-file-v1:sha256:6e46eb8d3f6e7964c431ed7841983a4bd94107d3a1ed190750f8ccd36736c8e6"
         }
       ]
     },
@@ -735,6 +735,6 @@
   ],
   "verification": {
     "by": "openwiki/0.9.0",
-    "at": "2026-11-22T20:53:36.158Z"
+    "at": "2026-11-23T00:44:58.019Z"
   }
 }
