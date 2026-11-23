@@ -219,6 +219,11 @@ internal class IdeLifecycleNative(
                 return blocked(it)
             }
             state.progress(LifecycleRequest(operation.requestId), operation.enter(IdeLifecycleStage.IMPORTING))
+            when (awaitImportedModelRestore(project, operation)) {
+                ImportedModelRestore.RESTORED -> Unit
+                ImportedModelRestore.DISPOSED -> return blocked(IdeLifecycleFailure.DISPOSED)
+                ImportedModelRestore.DEADLINE_EXCEEDED -> return blocked(IdeLifecycleFailure.DEADLINE_EXCEEDED)
+            }
             val reuse = managedGradleImportReuse(project, root)
             com.intellij.openapi.diagnostic.Logger.getInstance(IdeLifecycleNative::class.java)
                 .info("kast_managed_import_reuse outcome=$reuse")

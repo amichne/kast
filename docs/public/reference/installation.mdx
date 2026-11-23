@@ -166,7 +166,8 @@ Gradle reads the copy through `GRADLE_RO_DEP_CACHE` and writes misses to the sha
 If both caches are empty or busy, Gradle uses the writable cache. A later workspace creation can supply the copy.
 An explicit `GRADLE_USER_HOME` selects that directory for writes. Kast creates the read-only copy only for its own shared Gradle home.
 
-Managed Gradle imports skip dependency source downloads. For a new project, the Host defers the scan queue until the Gradle model settles.
+Managed Gradle imports skip dependency source downloads and publish the Gradle model once, after resolution.
+The Host holds the scan queue while it applies that model. Project dependencies are indexed after the model settles.
 Each Host keeps its own live IDE indexes.
 
 Index seeding clones an IDE system directory from a stopped, compatible workspace into a new container with copy-on-write storage.

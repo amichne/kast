@@ -33,7 +33,7 @@ internal fun nativeLifecycleProjectTask(
             runConversionBeforeOpen = false
             isNewProject = !Files.exists(directory)
             beforeOpen = { opening ->
-                importScopes.add(InitialImportScope(opening, deferScanning = application.isHeadlessEnvironment))
+                importScopes.add(InitialImportScope(opening, root, managedHeadless = application.isHeadlessEnvironment))
                 true
             }
             useDefaultProjectAsTemplate = false
