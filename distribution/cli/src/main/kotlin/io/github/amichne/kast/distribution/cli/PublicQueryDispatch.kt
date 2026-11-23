@@ -1,6 +1,7 @@
 package io.github.amichne.kast.distribution.cli
 
 import com.github.ajalt.clikt.core.Context
+import io.github.amichne.kast.distribution.contract.InstallationLayout
 import io.github.amichne.kast.kernel.Refinement
 import java.io.IOException
 import java.nio.file.Files
@@ -78,12 +79,17 @@ internal sealed interface PublicQueryLauncher {
     class Admitted private constructor(val path: Path) : PublicQueryLauncher {
         companion object {
             fun fromInstallation(installation: Path, manifest: BundledManifest): PublicQueryLauncher {
-                val relative = "bin/kast-query-complete"
-                val path = installation.resolve(relative)
-                val executablePayloads = listOf("bin/kast-query", relative, "share/kast/libexec/kast-management")
+                val relative = InstallationLayout.Relative.QUERY_COMPLETE_EXECUTABLE
+                val path = relative.under(installation)
+                val executablePayloads =
+                    listOf(
+                        InstallationLayout.Relative.QUERY_EXECUTABLE,
+                        relative,
+                        InstallationLayout.Relative.MANAGEMENT_EXECUTABLE,
+                    )
                 return if (
                     executablePayloads.all {
-                        payloadOwned(installation, manifest, it) && Files.isExecutable(installation.resolve(it))
+                        payloadOwned(installation, manifest, it.value) && Files.isExecutable(it.under(installation))
                     }
                 )
                     Admitted(path)

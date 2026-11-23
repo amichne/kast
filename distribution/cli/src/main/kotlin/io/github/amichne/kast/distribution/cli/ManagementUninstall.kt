@@ -1,5 +1,6 @@
 package io.github.amichne.kast.distribution.cli
 
+import io.github.amichne.kast.distribution.contract.InstallationLayout
 import io.github.amichne.kast.distribution.managed.RecoveryRemovalOutcome
 import io.github.amichne.kast.distribution.managed.admitRecoveryRemoval
 import io.github.amichne.kast.distribution.managed.removalProcessUid
@@ -183,9 +184,9 @@ private fun requireRetainedUninstallInventory(
 }
 
 private fun ownedUninstallInstaller(root: Path): Path {
-    val payload = root.resolve("installation")
-    val relative = "share/kast/install-candidate.sh"
-    val script = payload.resolve(relative)
+    val payload = InstallationLayout.beneath(root).root
+    val relative = InstallationLayout.Relative.INSTALL_CANDIDATE.value
+    val script = InstallationLayout.Relative.INSTALL_CANDIDATE.under(payload)
     val manifest =
         when (val read = readBundledManifest(payload)) {
             is BundledManifestRead.Read -> read.manifest

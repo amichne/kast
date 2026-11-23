@@ -12,6 +12,7 @@ import io.github.amichne.kast.appserver.PublicInvocations
 import io.github.amichne.kast.cli.direct.InstalledClientContext
 import io.github.amichne.kast.cli.direct.ManagedCoordinatorOperations
 import io.github.amichne.kast.cli.publicshell.CoordinatorPublicInvocations
+import io.github.amichne.kast.distribution.contract.InstallationLayout
 import io.github.amichne.kast.kernel.Refinement
 import java.nio.file.Path
 import kotlin.system.exitProcess
@@ -97,7 +98,7 @@ internal fun runSemanticCoordinator(
             emptyList(),
             semantic,
             InstalledBrokerServerRunner(
-                root.resolve("bin/kast"),
+                InstallationLayout.of(root).payload.kast,
                 home,
                 semantic,
                 requests = it,

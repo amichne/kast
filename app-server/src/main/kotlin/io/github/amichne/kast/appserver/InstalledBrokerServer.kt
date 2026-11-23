@@ -185,7 +185,7 @@ internal sealed interface InstalledBrokerServerConfiguration {
                 KastProviderOptions(
                     catalogSource =
                         io.github.amichne.kast.appserver.provider.PackagedKastCatalog(
-                            kast.path.parent.parent.resolve("share/kast/provider-catalog.json")
+                            installation.installation.payload.providerCatalog
                         ),
                     userHome = canonicalUserHome,
                     readLimits = configuration.readLimits,

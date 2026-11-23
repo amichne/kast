@@ -2,6 +2,7 @@ package io.github.amichne.kast.distribution.cli
 
 import io.github.amichne.kast.distribution.contract.HostedServiceStatus
 import io.github.amichne.kast.distribution.contract.INSTALLATION_MANIFEST_SCHEMA_VERSION
+import io.github.amichne.kast.distribution.contract.InstallationLayout
 import io.github.amichne.kast.distribution.contract.InstalledBuildIdentity
 import io.github.amichne.kast.distribution.contract.UpdatePolicy
 import java.nio.file.Files
@@ -131,7 +132,7 @@ internal fun readStatus(
 private const val INSTALLED_MANIFEST_BYTES = 67_108_864L
 
 private fun readInstalledVersion(selected: Path): String? =
-    readBoundedFile(selected.resolve("installation.json"), INSTALLED_MANIFEST_BYTES)
+    readBoundedFile(InstallationLayout.of(selected).payload.manifest, INSTALLED_MANIFEST_BYTES)
         ?.let { raw ->
             try {
                 manifestJson.decodeFromString<InstalledManifest>(raw)

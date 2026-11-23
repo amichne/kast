@@ -59,7 +59,10 @@ class InstallationLayoutTest {
                 "management.root" to "/fixed/home/.local/share/kast",
                 "management.receipt" to "/fixed/home/.local/share/kast/management.json",
                 "management.shutdownFence" to "/fixed/home/.local/share/kast/shutdown.json",
+                "management.registrationLock" to "/fixed/home/.local/share/kast/management.lock",
+                "management.activationLock" to "/fixed/home/.local/share/kast/activation.lock",
                 "management.replacementRecovery" to "/fixed/home/.local/share/kast/recovery/replacement",
+                "management.productRemoval" to "/fixed/home/.local/share/kast/recovery/installation/product-removal",
                 "management.workspaceStore" to "/fixed/home/.local/share/kast-workspaces",
                 "management.runtimeBaseStore" to "/fixed/home/.local/share/kast-runtime-bases",
             )
@@ -101,7 +104,10 @@ class InstallationLayoutTest {
                 "management.root" to layout.management.root,
                 "management.receipt" to layout.management.receipt,
                 "management.shutdownFence" to layout.management.shutdownFence,
+                "management.registrationLock" to layout.management.registrationLock,
+                "management.activationLock" to layout.management.activationLock,
                 "management.replacementRecovery" to layout.management.replacementRecovery,
+                "management.productRemoval" to layout.management.productRemoval,
                 "management.workspaceStore" to layout.management.workspaceStore,
                 "management.runtimeBaseStore" to layout.management.runtimeBaseStore,
             )
@@ -115,12 +121,16 @@ class InstallationLayoutTest {
             listOf(
                 "installation.json",
                 "bin/kast",
+                "bin/kast-query",
+                "bin/kast-query-complete",
                 "lib",
+                "lib/kast-cli.jar",
                 "share/kast",
                 "share/kast/product-selection.json",
                 "share/kast/build-record.json",
                 "share/kast/provider-catalog.json",
                 "share/kast/agent-tools",
+                "share/kast/agent-tools/plugins/kast/skills/kast",
                 "share/kast/libexec/kast-management",
                 "share/kast/libexec/kast-service",
                 "share/kast/libexec/kast-daemon",
@@ -129,6 +139,7 @@ class InstallationLayoutTest {
                 "share/kast/reset-fence-v1",
                 "share/kast/managed-install-v1",
                 "share/kast/install-candidate.sh",
+                "share/kast/private-python/bin/python3.12",
                 "state/run/c.sock",
                 "state/run/one-shot",
                 "state/run/tool-sessions",
@@ -136,12 +147,16 @@ class InstallationLayoutTest {
             listOf(
                     relative.MANIFEST,
                     relative.KAST_EXECUTABLE,
+                    relative.QUERY_EXECUTABLE,
+                    relative.QUERY_COMPLETE_EXECUTABLE,
                     relative.LIBRARIES,
+                    relative.library("kast-cli.jar"),
                     relative.SHARE,
                     relative.PRODUCT_SELECTION,
                     relative.BUILD_RECORD,
                     relative.PROVIDER_CATALOG,
                     relative.AGENT_TOOLS,
+                    relative.CLI_SKILL,
                     relative.MANAGEMENT_EXECUTABLE,
                     relative.SERVICE_EXECUTABLE,
                     relative.DAEMON_EXECUTABLE,
@@ -150,6 +165,7 @@ class InstallationLayoutTest {
                     relative.RESET_CAPABILITY,
                     relative.MANAGED_INSTALL_CAPABILITY,
                     relative.INSTALL_CANDIDATE,
+                    relative.PRIVATE_PYTHON_INTERPRETER,
                     relative.COORDINATOR_SOCKET,
                     relative.ONE_SHOT_INVOCATIONS,
                     relative.TOOL_SESSIONS,
@@ -157,8 +173,8 @@ class InstallationLayoutTest {
                 .map(InstallationRelativePath::value),
         )
         assertEquals(Path.of("share/kast/libexec/kast-management"), relative.MANAGEMENT_EXECUTABLE.asPath())
-        assertEquals(INSTALLATION_SHUTDOWN_CAPABILITY, relative.SHUTDOWN_CAPABILITY.value)
-        assertEquals(INSTALLATION_RESET_CAPABILITY, relative.RESET_CAPABILITY.value)
+        assertEquals("share/kast/lifecycle-fence-v1", INSTALLATION_SHUTDOWN_CAPABILITY)
+        assertEquals("share/kast/reset-fence-v1", INSTALLATION_RESET_CAPABILITY)
     }
 
     @Test

@@ -2,6 +2,7 @@ package io.github.amichne.kast.distribution.cli
 
 import io.github.amichne.kast.distribution.contract.ControlDistributionLimits
 import io.github.amichne.kast.distribution.contract.INSTALLATION_MANIFEST_SCHEMA_VERSION
+import io.github.amichne.kast.distribution.contract.InstallationLayout
 import io.github.amichne.kast.distribution.contract.InstallationReplacementReceipt
 import io.github.amichne.kast.distribution.contract.ManagedControlReservation
 import io.github.amichne.kast.distribution.managed.ControlInventoryAdmission
@@ -33,7 +34,7 @@ private constructor(private val root: Path, private val home: Path, private val 
                 addAll(
                     listOf(
                         "/bin/bash",
-                        directory.resolve(BRIDGE).toString(),
+                        InstallationLayout.Relative.INSTALL_CANDIDATE.under(directory).toString(),
                         "--recover-only",
                         "--install-root",
                         root.toString(),
@@ -80,7 +81,7 @@ private constructor(private val root: Path, private val home: Path, private val 
             val record = managementJson.decodeFromString(InstallationReplacementReceipt.serializer(), raw)
             if (
                 record.schemaVersion != 1 ||
-                    record.installation != root.resolve("installation").toString() ||
+                    record.installation != InstallationLayout.beneath(root).root.toString() ||
                     record.installationIdentity.owner != owner
             )
                 return rejectedRecordedInstaller()
@@ -99,7 +100,7 @@ private constructor(private val root: Path, private val home: Path, private val 
             if (staged != root.parent.resolve(".kast-install-${reservation.transaction}"))
                 return rejectedRecordedInstaller()
             val candidates =
-                listOf(staged, root.resolve("installation")).filter {
+                listOf(staged, InstallationLayout.beneath(root).root).filter {
                     physicalDirectory(it) && uninstallFilesystemIdentity(it) == record.installationIdentity
                 }
             if (candidates.size != 1) return rejectedRecordedInstaller()
@@ -114,7 +115,7 @@ private constructor(private val root: Path, private val home: Path, private val 
             reservation: ManagedControlReservation,
             candidate: Path,
         ): RecordedRecoveryInstallerAdmission {
-            val manifestPath = candidate.resolve("installation.json")
+            val manifestPath = InstallationLayout.of(candidate).payload.manifest
             val raw = readBoundedFile(manifestPath, ControlDistributionLimits.maximumManifestBytes.toLong())
             if (raw == null) return rejectedRecordedInstaller()
             if (!boundManifest(manifestPath, raw, reservation, record.installationIdentity.owner))
@@ -123,7 +124,7 @@ private constructor(private val root: Path, private val home: Path, private val 
             return if (
                 admittedPayload(
                     candidate,
-                    root.resolve("installation"),
+                    InstallationLayout.beneath(root).root,
                     manifest,
                     reservation,
                     record.installationIdentity.owner,
@@ -155,7 +156,12 @@ private fun admittedPayload(
 ): Boolean {
     if (!logicalLayoutMatches(manifest, logicalRoot) || !releaseIdentityMatches(manifest, reservation)) return false
     val expected = manifest.payloadFiles.map { it.path }.toSet()
-    if (expected.size != manifest.payloadFiles.size || BRIDGE !in expected || CAPABILITY !in expected) return false
+    if (
+        expected.size != manifest.payloadFiles.size ||
+            InstallationLayout.Relative.INSTALL_CANDIDATE.value !in expected ||
+            InstallationLayout.Relative.MANAGED_INSTALL_CAPABILITY.value !in expected
+    )
+        return false
     val inventory =
         when (val result = ControlPayloadInventory.admit(candidate)) {
             is ControlInventoryAdmission.Admitted -> result
@@ -168,7 +174,9 @@ private fun admittedPayload(
         uninstallFilesystemIdentity(path).owner == owner &&
             payloadModeMatches(path, entry.mode) &&
             payloadOwned(candidate, ownership, entry.path, logicalRoot)
-    } && readBoundedFile(candidate.resolve(CAPABILITY), MAXIMUM_CAPABILITY_BYTES) == "1\n"
+    } &&
+        readBoundedFile(InstallationLayout.Relative.MANAGED_INSTALL_CAPABILITY.under(candidate), MAXIMUM_CAPABILITY_BYTES) ==
+            "1\n"
 }
 
 private fun ownedJournal(root: Path, slot: Path, receipt: Path, owner: Long): Boolean =
@@ -216,8 +224,6 @@ private fun rejectedRecordedInstaller() =
     RecordedRecoveryInstallerAdmission.Rejected(BuildSelectionFailure.ARTIFACT_INVALID)
 
 private val recoveryManifestJson = Json { ignoreUnknownKeys = true }
-private const val BRIDGE = "share/kast/install-candidate.sh"
-private const val CAPABILITY = "share/kast/managed-install-v1"
 
 private const val MAXIMUM_CAPABILITY_BYTES = 4L
 private const val UNIX_PERMISSION_MASK = 0xFFF

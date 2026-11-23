@@ -1,6 +1,7 @@
 package io.github.amichne.kast.distribution.cli
 
 import io.github.amichne.kast.distribution.contract.ControlDistributionLimits
+import io.github.amichne.kast.distribution.contract.InstallationLayout
 import java.io.IOException
 import java.nio.file.Files
 import java.nio.file.Path
@@ -8,9 +9,7 @@ import java.nio.file.StandardOpenOption
 import java.nio.file.attribute.PosixFilePermissions
 import java.security.MessageDigest
 
-internal const val AGENT_TOOLS_RELATIVE_PATH = "share/kast/agent-tools"
-
-internal const val CLI_SKILL_RELATIVE_PATH = "$AGENT_TOOLS_RELATIVE_PATH/plugins/kast/skills/kast"
+internal val CLI_SKILL_RELATIVE_PATH: String = InstallationLayout.Relative.CLI_SKILL.value
 
 internal class AdmittedCliSkill private constructor(private val files: List<SkillFile>) {
     internal fun materialize(directory: Path) {
@@ -106,7 +105,7 @@ private constructor(
 
     companion object {
         fun admit(installation: Path, manifest: BundledManifest): SkillInventoryRead {
-            val directory = installation.resolve(CLI_SKILL_RELATIVE_PATH)
+            val directory = InstallationLayout.Relative.CLI_SKILL.under(installation)
             val paths =
                 when (val read = readSkillDirectory(directory)) {
                     is SkillDirectoryRead.Read -> read.files

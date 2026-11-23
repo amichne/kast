@@ -3,6 +3,7 @@ package io.github.amichne.kast.distribution.cli
 import io.github.amichne.kast.distribution.contract.ControlDistributionLimits
 import io.github.amichne.kast.distribution.contract.INSTALLATION_MANIFEST_SCHEMA_VERSION
 import io.github.amichne.kast.distribution.contract.InstallationFilesystemIdentity
+import io.github.amichne.kast.distribution.contract.InstallationLayout
 import io.github.amichne.kast.distribution.contract.InstallationShutdownRequest
 import io.github.amichne.kast.distribution.managed.removalProcessUid
 import java.nio.channels.FileChannel
@@ -157,8 +158,8 @@ internal fun retainedProductInstaller(root: Path, proof: ProductRemovalProof): P
     requireRemovalIdentity(bundle, proof.executionIdentity)
     admitRetainedProductFiles(root, proof, complete = true)
     val control = bundle.resolve("control")
-    val interpreter = control.resolve("share/kast/private-python/bin/python3.12")
-    val script = control.resolve("share/kast/install-candidate.sh")
+    val interpreter = InstallationLayout.Relative.PRIVATE_PYTHON_INTERPRETER.under(control)
+    val script = InstallationLayout.Relative.INSTALL_CANDIDATE.under(control)
     requireRemoval(Files.isExecutable(interpreter) && Files.isRegularFile(script, NOFOLLOW_LINKS))
     return script
 }
@@ -172,7 +173,7 @@ internal fun cleanupProductRemoval(root: Path, proof: ProductRemovalProof) {
     if (Files.exists(bundle, NOFOLLOW_LINKS)) {
         requireRemovalIdentity(bundle, proof.executionIdentity)
         val files = admitRetainedProductFiles(root, proof, complete = false)
-        val manifest = bundle.resolve("control/installation.json")
+        val manifest = InstallationLayout.of(bundle.resolve("control")).payload.manifest
         for ((path, expected) in
             files.entries
                 .filter { it.key != manifest }
@@ -260,7 +261,7 @@ private fun retainedPayloadInventory(
 ): MutableMap<Path, RetainedFile> {
     val bundle = productRemovalDirectory(root)
     val control = bundle.resolve("control")
-    val manifestPath = control.resolve("installation.json")
+    val manifestPath = InstallationLayout.of(control).payload.manifest
     val expected = linkedMapOf<Path, RetainedFile>()
     if (Files.exists(manifestPath, NOFOLLOW_LINKS)) {
         requireRemovalPath(manifestPath)

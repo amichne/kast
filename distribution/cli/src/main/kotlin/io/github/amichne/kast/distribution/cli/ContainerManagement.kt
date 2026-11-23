@@ -1,5 +1,6 @@
 package io.github.amichne.kast.distribution.cli
 
+import io.github.amichne.kast.distribution.contract.InstallationLayout
 import io.github.amichne.kast.kernel.Refinement
 import java.nio.file.Files
 import java.nio.file.LinkOption.NOFOLLOW_LINKS
@@ -55,13 +56,13 @@ internal fun shutdownContainerHost(
     val manifest = readBundledManifest(installation)
     if (
         manifest !is BundledManifestRead.Read ||
-            !payloadOwned(installation, manifest.manifest, "share/kast/libexec/kast-service")
+            !payloadOwned(installation, manifest.manifest, InstallationLayout.Relative.SERVICE_EXECUTABLE.value)
     )
         return Refinement.Rejected(ContainerFailure.RUNTIME_UNAVAILABLE)
     containerProgress(ContainerStage.SHUTDOWN, ContainerStageOutcome.STARTED)
     val exit =
         session.run(
-            listOf(installation.resolve("share/kast/libexec/kast-service").toString(), "disable"),
+            listOf(InstallationLayout.of(installation).payload.serviceExecutable.toString(), "disable"),
             container.home,
             containerEnvironment(container, environment),
             OwnedChildOutput.Diagnostics,

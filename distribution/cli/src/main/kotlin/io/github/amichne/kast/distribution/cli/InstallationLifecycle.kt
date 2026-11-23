@@ -1,7 +1,6 @@
 package io.github.amichne.kast.distribution.cli
 
 import io.github.amichne.kast.distribution.contract.INSTALLATION_MANIFEST_SCHEMA_VERSION
-import io.github.amichne.kast.distribution.contract.INSTALLATION_SHUTDOWN_CAPABILITY
 import io.github.amichne.kast.distribution.contract.INSTALLATION_SHUTDOWN_FENCE
 import io.github.amichne.kast.distribution.contract.InstallationLayout
 import io.github.amichne.kast.distribution.contract.InstallationShutdownRequest
@@ -168,12 +167,13 @@ private constructor(
     }
 
     private fun service(action: LifecycleServiceAction): LifecycleEffect {
-        val selected = root.resolve("installation")
-        val executable = selected.resolve("share/kast/libexec/kast-service")
+        val layout = InstallationLayout.beneath(root)
+        val selected = layout.root
+        val executable = layout.payload.serviceExecutable
         val current = readBundledManifest(selected)
         if (
             current !is BundledManifestRead.Read ||
-                !payloadOwned(selected, current.manifest, "share/kast/libexec/kast-service")
+                !payloadOwned(selected, current.manifest, InstallationLayout.Relative.SERVICE_EXECUTABLE.value)
         )
             return LifecycleEffect.Rejected(LifecycleFailure.OWNERSHIP_UNPROVEN)
         val selectedEnvironment = installationLifecycleEnvironment(home, selected, environment)
@@ -198,7 +198,7 @@ private constructor(
             platform: ContainerPlatform,
             execution: LifecycleExecution,
         ): Refinement<InstallationLifecycle, ContainerFailure> = containerFiles {
-            val installation = root.resolve("installation")
+            val installation = InstallationLayout.beneath(root).root
             when (val selected = InstalledProductSelection.read(installation, platform)) {
                 is Refinement.Rejected -> return@containerFiles selected
                 is Refinement.Refined -> Unit
@@ -207,7 +207,7 @@ private constructor(
             if (
                 read !is BundledManifestRead.Read ||
                     !supportsShutdown(installation, read.manifest) ||
-                    !payloadOwned(installation, read.manifest, "share/kast/libexec/kast-service")
+                    !payloadOwned(installation, read.manifest, InstallationLayout.Relative.SERVICE_EXECUTABLE.value)
             )
                 Refinement.Rejected(ContainerFailure.INVALID_RECORD)
             else
@@ -234,8 +234,8 @@ private fun attributes(path: Path): FenceAttributes =
     }
 
 private fun supportsShutdown(installation: Path, manifest: BundledManifest): Boolean =
-    payloadOwned(installation, manifest, INSTALLATION_SHUTDOWN_CAPABILITY) &&
-        readBoundedFile(installation.resolve(INSTALLATION_SHUTDOWN_CAPABILITY), CAPABILITY_BYTES) == "1\n"
+    payloadOwned(installation, manifest, InstallationLayout.Relative.SHUTDOWN_CAPABILITY.value) &&
+        readBoundedFile(InstallationLayout.of(installation).payload.shutdownCapability, CAPABILITY_BYTES) == "1\n"
 
 internal fun payloadOwned(
     installation: Path,

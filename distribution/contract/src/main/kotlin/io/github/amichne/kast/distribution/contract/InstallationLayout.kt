@@ -146,8 +146,17 @@ class InstallationLayout private constructor(
         val shutdownFence: Path
             get() = root.resolve(INSTALLATION_SHUTDOWN_FENCE)
 
+        val registrationLock: Path
+            get() = root.resolve("management.lock")
+
+        val activationLock: Path
+            get() = root.resolve("activation.lock")
+
         val replacementRecovery: Path
-            get() = root.resolve("recovery").resolve("replacement")
+            get() = root.resolve(RECOVERY_DIRECTORY).resolve("replacement")
+
+        val productRemoval: Path
+            get() = root.resolve(RECOVERY_DIRECTORY).resolve(INSTALLATION_DIRECTORY).resolve("product-removal")
 
         val workspaceStore: Path
             get() = root.resolveSibling("kast-workspaces")
@@ -162,13 +171,28 @@ class InstallationLayout private constructor(
      */
     object Relative {
         val MANIFEST: InstallationRelativePath = InstallationRelativePath.of("installation.json")
-        val KAST_EXECUTABLE: InstallationRelativePath = InstallationRelativePath.of("bin", "kast")
-        val LIBRARIES: InstallationRelativePath = InstallationRelativePath.of("lib")
+        val KAST_EXECUTABLE: InstallationRelativePath = InstallationRelativePath.of(BIN_DIRECTORY, "kast")
+        val QUERY_EXECUTABLE: InstallationRelativePath = InstallationRelativePath.of(BIN_DIRECTORY, "kast-query")
+        val QUERY_COMPLETE_EXECUTABLE: InstallationRelativePath =
+            InstallationRelativePath.of(BIN_DIRECTORY, "kast-query-complete")
+        val LIBRARIES: InstallationRelativePath = InstallationRelativePath.of(LIBRARY_DIRECTORY)
         val SHARE: InstallationRelativePath = InstallationRelativePath.of(SHARE_DIRECTORY, PRODUCT_DIRECTORY)
         val PRODUCT_SELECTION: InstallationRelativePath = share("product-selection.json")
         val BUILD_RECORD: InstallationRelativePath = share("build-record.json")
         val PROVIDER_CATALOG: InstallationRelativePath = share("provider-catalog.json")
-        val AGENT_TOOLS: InstallationRelativePath = share("agent-tools")
+        val AGENT_TOOLS: InstallationRelativePath = share(AGENT_TOOLS_DIRECTORY)
+
+        /** The bundled CLI skill the agent tools deliver. */
+        val CLI_SKILL: InstallationRelativePath =
+            InstallationRelativePath.of(
+                SHARE_DIRECTORY,
+                PRODUCT_DIRECTORY,
+                AGENT_TOOLS_DIRECTORY,
+                "plugins",
+                PRODUCT_DIRECTORY,
+                "skills",
+                PRODUCT_DIRECTORY,
+            )
         val MANAGEMENT_EXECUTABLE: InstallationRelativePath = libexec("kast-management")
         val SERVICE_EXECUTABLE: InstallationRelativePath = libexec("kast-service")
         val DAEMON_EXECUTABLE: InstallationRelativePath = libexec("kast-daemon")
@@ -177,12 +201,18 @@ class InstallationLayout private constructor(
         val RESET_CAPABILITY: InstallationRelativePath = share("reset-fence-v1")
         val MANAGED_INSTALL_CAPABILITY: InstallationRelativePath = share("managed-install-v1")
         val INSTALL_CANDIDATE: InstallationRelativePath = share("install-candidate.sh")
+        val PRIVATE_PYTHON_INTERPRETER: InstallationRelativePath =
+            InstallationRelativePath.of(SHARE_DIRECTORY, PRODUCT_DIRECTORY, "private-python", BIN_DIRECTORY, "python3.12")
         val COORDINATOR_SOCKET: InstallationRelativePath =
             InstallationRelativePath.of(STATE_DIRECTORY, "run", COORDINATOR_SOCKET_FILE)
         val ONE_SHOT_INVOCATIONS: InstallationRelativePath =
             InstallationRelativePath.of(STATE_DIRECTORY, "run", "one-shot")
         val TOOL_SESSIONS: InstallationRelativePath =
             InstallationRelativePath.of(STATE_DIRECTORY, "run", "tool-sessions")
+
+        /** One archive directly beneath `lib`. */
+        fun library(fileName: String): InstallationRelativePath =
+            InstallationRelativePath.of(LIBRARY_DIRECTORY, fileName)
 
         private fun share(name: String): InstallationRelativePath =
             InstallationRelativePath.of(SHARE_DIRECTORY, PRODUCT_DIRECTORY, name)
@@ -195,8 +225,12 @@ class InstallationLayout private constructor(
         private const val CONFIGURATION_DIRECTORY = "config"
         private const val STATE_DIRECTORY = "state"
         private const val SHARE_DIRECTORY = "share"
+        private const val BIN_DIRECTORY = "bin"
+        private const val LIBRARY_DIRECTORY = "lib"
+        private const val AGENT_TOOLS_DIRECTORY = "agent-tools"
         private const val PRODUCT_DIRECTORY = "kast"
         private const val INSTALLATION_DIRECTORY = "installation"
+        private const val RECOVERY_DIRECTORY = "recovery"
         private const val ENVIRONMENT_FILE = "environment"
         private const val READINESS_FILE = "service-readiness.json"
         private const val COORDINATOR_SOCKET_FILE = "c.sock"
