@@ -1,5 +1,6 @@
 package io.github.amichne.kast.distribution.cli
 
+import io.github.amichne.kast.distribution.contract.InstallationLayout
 import java.nio.file.Path
 import kotlin.system.exitProcess
 
@@ -59,7 +60,7 @@ private fun retireManagedInstallation(root: Path, environment: Map<String, Strin
     // Only managed products are retired here; an installation without a product selection is not owned.
     if (
         java.nio.file.Files.notExists(
-            root.resolve("installation/share/kast/product-selection.json"),
+            InstallationLayout.beneath(root).payload.productSelection,
             java.nio.file.LinkOption.NOFOLLOW_LINKS,
         )
     )

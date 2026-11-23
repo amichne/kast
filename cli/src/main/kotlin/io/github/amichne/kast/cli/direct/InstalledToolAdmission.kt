@@ -1,7 +1,6 @@
 package io.github.amichne.kast.cli.direct
 
-import io.github.amichne.kast.distribution.contract.INSTALLATION_SHUTDOWN_FENCE
-import io.github.amichne.kast.distribution.contract.installationResetFence
+import io.github.amichne.kast.distribution.contract.InstallationLayout
 import java.nio.file.Files
 import java.nio.file.LinkOption
 import java.nio.file.Path
@@ -15,12 +14,8 @@ internal enum class InstalledToolAdmission {
 /** Installation owners keep these admission markers until their operations complete. */
 internal fun observeInstalledToolAdmission(installation: Path): InstalledToolAdmission =
     try {
-        val paths =
-            listOf(
-                installation.parent.resolve(INSTALLATION_SHUTDOWN_FENCE),
-                installationResetFence(installation.parent),
-                installation.parent.resolve("recovery/replacement"),
-            )
+        val management = InstallationLayout.of(installation).management
+        val paths = listOf(management.shutdownFence, management.resetFence, management.replacementRecovery)
         when {
             paths.any { Files.exists(it, LinkOption.NOFOLLOW_LINKS) } -> InstalledToolAdmission.STOPPED
             paths.all { Files.notExists(it, LinkOption.NOFOLLOW_LINKS) } -> InstalledToolAdmission.AVAILABLE

@@ -29,6 +29,9 @@ private constructor(
     private val manifest: BundledManifest,
     private val execution: LifecycleExecution,
 ) {
+    private val shutdownFence: Path
+        get() = InstallationLayout.beneath(root).management.shutdownFence
+
     private var fenceIdentity: FenceAttributes = FenceAttributes.Rejected
 
     /** Workspace leases, rather than process termination, exclude active managed requests. */
@@ -58,7 +61,7 @@ private constructor(
 
     /** Only a committed removal journal may retain a fence created by this uninstall attempt. */
     fun <T> duringUninstallPreparation(action: () -> T): T {
-        val absent = Files.notExists(root.resolve(SHUTDOWN_FENCE), NOFOLLOW_LINKS)
+        val absent = Files.notExists(shutdownFence, NOFOLLOW_LINKS)
         return try {
             action()
         } finally {
@@ -92,7 +95,7 @@ private constructor(
                 is LifecycleEffect.Rejected -> return admitted
             }
         }
-        val path = root.resolve(SHUTDOWN_FENCE)
+        val path = shutdownFence
         val current = attributes(path)
         if (current !is FenceAttributes.Read || current != fenceIdentity)
             return LifecycleEffect.Rejected(LifecycleFailure.FENCE_REJECTED)
@@ -130,7 +133,7 @@ private constructor(
     }
 
     private fun fence(): LifecycleEffect {
-        val path = root.resolve(SHUTDOWN_FENCE)
+        val path = shutdownFence
         val expected = InstallationShutdownRequest(installation.toString())
         if (!Files.exists(path, NOFOLLOW_LINKS)) {
             Files.writeString(
@@ -146,7 +149,7 @@ private constructor(
 
     /** A completed installation may resume an exact persisted request without issuing another shutdown. */
     private fun admitExistingFence(): LifecycleEffect {
-        val path = root.resolve(SHUTDOWN_FENCE)
+        val path = shutdownFence
         val expected = InstallationShutdownRequest(installation.toString())
         val raw =
             readBoundedFile(path, RECORD_BYTES) ?: return LifecycleEffect.Rejected(LifecycleFailure.FENCE_REJECTED)

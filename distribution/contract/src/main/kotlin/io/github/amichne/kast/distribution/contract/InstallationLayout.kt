@@ -146,17 +146,27 @@ class InstallationLayout private constructor(
         val shutdownFence: Path
             get() = root.resolve(INSTALLATION_SHUTDOWN_FENCE)
 
+        /** The reset marker beside the management root, keyed by a digest of the management root path. */
+        val resetFence: Path
+            get() = installationResetFence(root)
+
         val registrationLock: Path
             get() = root.resolve("management.lock")
 
         val activationLock: Path
             get() = root.resolve("activation.lock")
 
+        val recovery: Path
+            get() = root.resolve("recovery")
+
         val replacementRecovery: Path
-            get() = root.resolve(RECOVERY_DIRECTORY).resolve("replacement")
+            get() = recovery.resolve("replacement")
+
+        val installationRecovery: Path
+            get() = recovery.resolve(INSTALLATION_DIRECTORY)
 
         val productRemoval: Path
-            get() = root.resolve(RECOVERY_DIRECTORY).resolve(INSTALLATION_DIRECTORY).resolve("product-removal")
+            get() = installationRecovery.resolve("product-removal")
 
         val workspaceStore: Path
             get() = root.resolveSibling("kast-workspaces")
@@ -230,7 +240,6 @@ class InstallationLayout private constructor(
         private const val AGENT_TOOLS_DIRECTORY = "agent-tools"
         private const val PRODUCT_DIRECTORY = "kast"
         private const val INSTALLATION_DIRECTORY = "installation"
-        private const val RECOVERY_DIRECTORY = "recovery"
         private const val ENVIRONMENT_FILE = "environment"
         private const val READINESS_FILE = "service-readiness.json"
         private const val COORDINATOR_SOCKET_FILE = "c.sock"

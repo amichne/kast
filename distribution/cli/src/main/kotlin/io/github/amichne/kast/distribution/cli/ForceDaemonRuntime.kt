@@ -224,7 +224,7 @@ internal class ForceDaemonRetirement(
                 is ResetRetirementPreparation.Prepared -> preparation.processes
                 is ResetRetirementPreparation.Rejected -> return preparation.effect
             }
-        val label = ResetServiceLabel.selected(root.resolve("installation"))
+        val label = ResetServiceLabel.selected(InstallationLayout.beneath(root).root)
         for (variant in ResetLaunchVariant.entries) {
             when (val job = retireJob(label, variant, home)) {
                 ResetEffect.Completed -> Unit

@@ -160,10 +160,11 @@ private fun passiveTransactionState(root: Path): Observation<PendingInstallation
     Observation.verified(pendingInstallationRecords(root))
 
 internal fun pendingInstallationRecords(root: Path): PendingInstallationRecords {
+    val management = InstallationLayout.beneath(root).management
     val pending = buildList {
-        if (Files.exists(root.resolve(SHUTDOWN_FENCE), LinkOption.NOFOLLOW_LINKS))
+        if (Files.exists(management.shutdownFence, LinkOption.NOFOLLOW_LINKS))
             add(PendingInstallationRecord.SHUTDOWN_FENCE)
-        val replacement = root.resolve("recovery/replacement")
+        val replacement = management.replacementRecovery
         if (Files.exists(replacement.resolve("receipt.json"), LinkOption.NOFOLLOW_LINKS))
             add(PendingInstallationRecord.REPLACEMENT_RECEIPT)
         else if (Files.exists(replacement, LinkOption.NOFOLLOW_LINKS))

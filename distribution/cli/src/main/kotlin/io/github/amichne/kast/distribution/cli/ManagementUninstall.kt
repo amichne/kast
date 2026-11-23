@@ -25,7 +25,10 @@ internal fun uninstallInstallation(
         removeInstallation(root, home, receipt, executeInstaller, observe, present, environment)
         Refinement.Refined(Unit)
     }
-    when (val removed = ContainerQueryLease.duringStoreRemoval(root.resolveSibling("kast-workspaces"), remove)) {
+    when (
+        val removed =
+            ContainerQueryLease.duringStoreRemoval(InstallationLayout.beneath(root).management.workspaceStore, remove)
+    ) {
         is Refinement.Refined -> Unit
         is Refinement.Rejected -> throw ManagementRejected("uninstall-workspaces", removed.failure.name)
     }
@@ -54,7 +57,7 @@ private fun removeInstallation(
 }
 
 private fun admitUninstallPayload(root: Path, receipt: ManagementReceipt) {
-    val payload = root.resolve("installation")
+    val payload = InstallationLayout.beneath(root).root
     requireUninstallRootInventory(root)
     requireUninstallExecutable(receipt, payload)
     if (!Files.exists(uninstallJournalPath(root), LinkOption.NOFOLLOW_LINKS)) return
@@ -75,7 +78,7 @@ private fun retireUninstallPayload(
     observe: (UninstallCleanupObservation) -> Unit,
     environment: Map<String, String>,
 ) {
-    val payload = root.resolve("installation")
+    val payload = InstallationLayout.beneath(root).root
     observe(UninstallCleanupObservation.Started(UninstallArtifact.CONTROL_PAYLOAD))
     if (Files.exists(payload, LinkOption.NOFOLLOW_LINKS)) {
         val script = prepareUninstallPayload(root, home, receipt, observe, environment)
@@ -115,7 +118,7 @@ private fun prepareUninstallPayload(
     observe: (UninstallCleanupObservation) -> Unit,
     environment: Map<String, String>,
 ): Path {
-    val payload = root.resolve("installation")
+    val payload = InstallationLayout.beneath(root).root
     if (Files.exists(uninstallJournalPath(root), LinkOption.NOFOLLOW_LINKS)) {
         val journal = readUninstallRetirement(root)
         val proof = journal.productRemoval
@@ -206,7 +209,7 @@ private fun removeUninstallRecovery(
 ) {
     observe(UninstallCleanupObservation.Started(UninstallArtifact.RECOVERY_BUNDLE))
     if (Files.exists(root, LinkOption.NOFOLLOW_LINKS))
-        when (val cleanup = removeRetiredRecovery(root.resolve("installation"), journal.recoveryProof)) {
+        when (val cleanup = removeRetiredRecovery(InstallationLayout.beneath(root).root, journal.recoveryProof)) {
             RecoveryRemovalOutcome.Removed -> Unit
             is RecoveryRemovalOutcome.Rejected -> {
                 observe(UninstallCleanupObservation.RecoveryRejected(cleanup.failure))
@@ -226,9 +229,10 @@ private fun finishUninstall(
     observe: (UninstallCleanupObservation) -> Unit,
 ) {
     val executable = Path.of(receipt.executable)
-    requireUninstallExecutable(receipt, root.resolve("installation"))
+    val layout = InstallationLayout.beneath(root)
+    requireUninstallExecutable(receipt, layout.root)
     removeUninstallArtifact(executable, UninstallArtifact.PUBLIC_EXECUTABLE, observe)
-    removeUninstallArtifact(root.resolve("management.lock"), UninstallArtifact.MANAGEMENT_LOCK, observe)
+    removeUninstallArtifact(layout.management.registrationLock, UninstallArtifact.MANAGEMENT_LOCK, observe)
     persistUninstallRetirement(
         root,
         receipt,

@@ -69,7 +69,7 @@ private constructor(private val root: Path, private val home: Path, private val 
             }
 
         private fun readRecordedInstaller(root: Path, home: Path): RecordedRecoveryInstallerAdmission {
-            val slot = root.resolve("recovery/replacement")
+            val slot = InstallationLayout.beneath(root).management.replacementRecovery
             val receipt = slot.resolve("receipt.json")
             val raw = readBoundedFile(receipt, ControlDistributionLimits.maximumReplacementReceiptBytes.toLong())
             if (raw == null)

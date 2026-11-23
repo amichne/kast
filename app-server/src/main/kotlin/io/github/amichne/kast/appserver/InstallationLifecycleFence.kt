@@ -1,7 +1,6 @@
 package io.github.amichne.kast.appserver
 
-import io.github.amichne.kast.distribution.contract.INSTALLATION_SHUTDOWN_FENCE
-import io.github.amichne.kast.distribution.contract.installationResetFence
+import io.github.amichne.kast.distribution.contract.InstallationLayout
 import java.io.IOException
 import java.nio.file.Files
 import java.nio.file.LinkOption
@@ -19,7 +18,10 @@ internal enum class InstallationLifecycleStartAdmission {
 internal object InstallationLifecycleFence {
     fun observe(installationRoot: Path): InstallationLifecycleStartAdmission =
         try {
-            if (present(installationRoot.parent.resolve(INSTALLATION_SHUTDOWN_FENCE)) || resetPresent(installationRoot))
+            if (
+                present(InstallationLayout.of(installationRoot).management.shutdownFence) ||
+                    resetPresent(installationRoot)
+            )
                 InstallationLifecycleStartAdmission.TRANSITION_IN_PROGRESS
             else InstallationLifecycleStartAdmission.AVAILABLE
         } catch (_: IOException) {
@@ -29,7 +31,7 @@ internal object InstallationLifecycleFence {
         }
 
     private fun resetPresent(installationRoot: Path): Boolean {
-        val marker = installationResetFence(installationRoot.parent)
+        val marker = InstallationLayout.of(installationRoot).management.resetFence
         if (!present(marker)) return false
         return when (ResetActivationAdmission.observe(marker, installationRoot)) {
             ResetActivationLease.HELD -> false
