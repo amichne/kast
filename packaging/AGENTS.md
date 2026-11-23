@@ -28,7 +28,6 @@ code_sources:
   - path: packaging/internal/installation/managed_release.py
   - path: packaging/internal/installation/managed_update_contract.py
   - path: packaging/internal/installation/managed_update_journal.py
-  - path: packaging/internal/installation/host_directory_exchange.py
   - path: packaging/tests/test-installer-entrypoint.py
 ---
 
@@ -105,7 +104,6 @@ Owns installer adapters, isolated runtime archives, offline lifecycle helpers, c
 - Keep prior Host bytes and the active receipt preimage until runtime completion or proven restoration.
 - The reload helper supplies internal compatibility admission and directory exchange. Its standalone command cannot replace the managed transaction.
 - Managed hot reload uses the same Host receipt through `commit_managed_reload` and `rollback_managed_reload`.
-- `host_directory_exchange.py` owns the macOS atomic directory swap. File exchange does not prove runtime activation.
 - `seal_managed` admits terminal file facts before cleanup. The outer coordinator separately proves the required Host state.
 - `managed_update_journal.py` owns shared recovery records. Keep it beside the offline recovery helper in the retained bundle.
 - Read the [candidate evidence guide](../docs/reviews/managed-installation-cli.md) before qualification or public rollout.
