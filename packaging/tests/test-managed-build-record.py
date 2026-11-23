@@ -2555,7 +2555,7 @@ class ProductActivationTest(unittest.TestCase):
                 self.assertEqual(
                     0, install.main(["--resolved-selection", str(selected), "--json"], self.source)
                 )
-            self.assertEqual([], json.loads(installed_output.getvalue())["notices"])
+            self.assertNotIn("notices", json.loads(installed_output.getvalue()))
         self.assertEqual(
             self.raw, (root / "installation/share/kast/build-record.json").read_bytes()
         )

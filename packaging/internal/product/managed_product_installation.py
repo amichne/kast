@@ -69,7 +69,6 @@ class ProductInstalled:
     executable: str
     type: Literal["PRODUCT_INSTALLED"] = "PRODUCT_INSTALLED"
     hostState: Literal["NOT_STARTED"] = "NOT_STARTED"
-    notices: tuple[journal.ManagedNotice, ...] = ()
 
 
 @dataclass(frozen=True)

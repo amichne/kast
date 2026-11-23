@@ -150,10 +150,6 @@ class PinnedBuild:
             raise Rejected(Failure.RECEIPT)
 
 
-class ManagedNotice(str, Enum):
-    HARNESS_REFRESH_REQUIRED = "HARNESS_REFRESH_REQUIRED"
-
-
 class ManagedPhase(str, Enum):
     PREPARED = "PREPARED"
     FENCED = "FENCED"
