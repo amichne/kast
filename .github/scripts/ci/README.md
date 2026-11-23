@@ -208,6 +208,8 @@ They run the semantic case classes too, but only the semantic accountant establi
 On a 2026 Apple silicon laptop with warm compilation, the three suites took 5 minutes 54 seconds of wall time for 783 cases.
 Their test time was 319 seconds for 558 relation cases, 126 seconds for 201 hosted cases, and 57 seconds for 24 symbol cases.
 The relation suite runs in one fork and bounds the wall time.
+In the complete Linux gate of pull request 1376, the relation suite took 15 minutes, the hosted suite 6 minutes, and the symbol suite 2 minutes, with overlap.
+That `Source obligations` job took 22 minutes, against 10 minutes before the gate, within its 60-minute limit.
 
 Each suite owns `build/native-test/<task>/` for its IDE configuration, system, and log directories.
 The configuration cache can run two suites of one project together, so they must not share those directories.
