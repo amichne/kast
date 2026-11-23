@@ -2,12 +2,10 @@ package io.github.amichne.kast.distribution.contract.configuration
 
 /** Fixed installation policies. Standalone script projections are checked against the generated catalogue. */
 object InstallationOperationalLimits {
-    const val retirementChildTimeoutMillis: Long = 60_000
     const val activationLockTimeoutMillis: Long = 30_000
     const val activationLockPollMillis: Long = 50
     const val downloadRetries: Long = 5
     const val downloadRetryDelayMillis: Long = 2_000
-    const val stateMaximumEntries: Long = 100_000
     const val hostSettlementTimeoutMillis: Long = 60_000
     const val hostActivationTimeoutMillis: Long = 120_000
 
@@ -24,13 +22,6 @@ object InstallationOperationalLimits {
                 hostActivationTimeoutMillis,
                 ConfigurationUnit.MILLISECONDS,
                 "hostActivationTimeoutMillis",
-            ),
-            limit(
-                "installation.retirement.child_timeout",
-                retirementChildTimeoutMillis,
-                ConfigurationUnit.MILLISECONDS,
-                "retirementChildTimeoutMillis",
-                projected = true,
             ),
             limit(
                 "installation.activation.lock_timeout",
@@ -56,13 +47,6 @@ object InstallationOperationalLimits {
                 downloadRetryDelayMillis,
                 ConfigurationUnit.MILLISECONDS,
                 "downloadRetryDelayMillis",
-                projected = true,
-            ),
-            limit(
-                "installation.state.maximum_entries",
-                stateMaximumEntries,
-                ConfigurationUnit.COUNT,
-                "stateMaximumEntries",
                 projected = true,
             ),
         )

@@ -11,7 +11,6 @@ enum class InstallationReplacementStage {
     PREPARED,
     PAYLOAD_COMMITTED,
     FINALIZING,
-    RECOVERY_REQUIRED,
 }
 
 /** One transient rollback baseline; it is removed only after the outer installer seals activation. */
@@ -53,10 +52,7 @@ enum class ManagedReplacementPhase {
     FENCED,
     SETTLED,
     CONTROL_COMMITTED,
-    HOST_COMMITTED,
     ACTIVATION_PROVEN,
-    RESTORING,
-    RESTORED,
 }
 
 /** Product selector publication; it shares the receipt's Control reservation and rollback slots. */
@@ -73,8 +69,7 @@ data class ProductReplacement(
 /**
  * The product installer's pending replacement journal, written only by `managed_update_journal.py`.
  *
- * Only a product journal is recoverable, so the reservation and product record are required and the installer's
- * `composition` field admits only its recorded `null`.
+ * Only a product journal is recoverable, so the reservation and product record are required.
  */
 @Serializable
 data class InstallationReplacementReceipt(
@@ -84,6 +79,5 @@ data class InstallationReplacementReceipt(
     val installationIdentity: InstallationFilesystemIdentity,
     val previous: PreviousInstallationPayload,
     val reservation: ManagedControlReservation,
-    @Required val composition: Nothing? = null,
     val product: ProductReplacement,
 )

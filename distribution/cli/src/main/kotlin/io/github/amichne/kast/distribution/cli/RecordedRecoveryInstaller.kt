@@ -84,26 +84,22 @@ private constructor(private val root: Path, private val home: Path, private val 
                     record.installationIdentity.owner != owner
             )
                 return rejectedRecordedInstaller()
-            return admitCandidate(root, home, slot, receipt, record, record.reservation)
+            return admitCandidate(root, home, receipt, record, record.reservation)
         }
 
         private fun admitCandidate(
             root: Path,
             home: Path,
-            slot: Path,
             receipt: Path,
             record: InstallationReplacementReceipt,
             reservation: ManagedControlReservation,
         ): RecordedRecoveryInstallerAdmission {
             val staged = Path.of(reservation.staged)
             if (staged.normalize() != staged) return rejectedRecordedInstaller()
-            if (
-                !(staged.parent == root && staged.fileName.toString().startsWith(".install-") ||
-                    staged == root.parent.resolve(".kast-install-${reservation.transaction}"))
-            )
+            if (staged != root.parent.resolve(".kast-install-${reservation.transaction}"))
                 return rejectedRecordedInstaller()
             val candidates =
-                listOf(staged, root.resolve("installation"), slot.resolve("rejected-control")).filter {
+                listOf(staged, root.resolve("installation")).filter {
                     physicalDirectory(it) && uninstallFilesystemIdentity(it) == record.installationIdentity
                 }
             if (candidates.size != 1) return rejectedRecordedInstaller()

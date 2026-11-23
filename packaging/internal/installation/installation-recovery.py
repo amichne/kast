@@ -30,72 +30,10 @@ from managed_update_journal import (
     PhysicalPrevious,
     ManagedFileAbsent,
     ManagedFilePresent,
-    ManagedHostAbsent,
-    ManagedHostPresent,
-    ManagedHostReplacement,
-    ManagedHostExistingLock,
-    ManagedHostStagedLock,
-    ManagedProfileMissing,
-    ManagedProfileCreated,
-    ManagedTrackStable,
-    ManagedTrackMain,
-    ManagedPinnedBuild,
-    ManagedComposition,
     Replacement,
     ManagedTreeWitness,
     ManagedShutdownFence,
 )
-
-
-class Status(str, Enum):
-    PREPARED = 'Prepared'
-    PLUGIN_PREPARED = 'PluginPrepared'
-    PLANNED = 'Planned'
-    ACTIVE = 'Active'
-    FINALIZING = 'UpgradeFinalizing'
-    SEALED = 'UpgradeFinalized'
-    CLEAN = 'CleanBaselineRestored'
-    UNRESOLVED = 'DetachedWithUnresolvedState'
-    BLOCKED = 'RecoveryBlocked'
-
-
-@dataclass(frozen=True)
-class Link:
-    path: str
-    target: str
-    priorTarget: typing.Optional[str]
-
-
-@dataclass(frozen=True)
-class Plugin:
-    destination: str
-    candidate: str
-    candidateIdentity: Identity
-    backup: str
-    priorIdentity: typing.Optional[Identity]
-    quarantine: str
-
-
-@dataclass(frozen=True)
-class LegacyReceipt:
-    schemaVersion: int
-    installation: str
-    installationIdentity: Identity
-    links: list[Link]
-    priorInstallation: typing.Optional[str]
-    plugin: typing.Optional[Plugin]
-    pluginRoot: typing.Optional[str]
-    stage: Status
-
-
-@dataclass(frozen=True)
-class Receipt:
-    schemaVersion: int
-    installation: str
-    installationIdentity: Identity
-    plugin: typing.Optional[Plugin]
-    pluginRoot: typing.Optional[str]
-    stage: Status
 
 
 def stream_digest(stream):
@@ -118,32 +56,12 @@ def decode(kind, value):
             raise Rejected(Failure.RECEIPT)
         return value
     if kind is Replacement and isinstance(value, dict):
-        value = {'reservation': None, 'composition': None, 'product': None} | value
-    if kind is ManagedHostReplacement and isinstance(value, dict):
-        value = {'lock': None} | value
-    if kind is ManagedComposition and isinstance(value, dict):
-        value = {'profileDirectories': [], 'binding': None, 'notices': [], 'priorRuntimeJson': None} | value
+        value = {'reservation': None, 'product': None} | value
     if origin is typing.Union or (origin is not None and origin is getattr(types, "UnionType", None)):
-        if kind == typing.Union[ManagedHostExistingLock, ManagedHostStagedLock, None]:
-            if value is None:
-                return None
-            if not isinstance(value, dict) or value.get('type') not in {'EXISTING', 'STAGED'}:
-                raise Rejected(Failure.RECEIPT)
-            return decode(ManagedHostExistingLock if value['type'] == 'EXISTING' else ManagedHostStagedLock, value)
-        if kind == typing.Union[ManagedTrackStable, ManagedTrackMain, ManagedPinnedBuild]:
-            variants = {'TrackStable': ManagedTrackStable, 'TrackMain': ManagedTrackMain, 'PinnedBuild': ManagedPinnedBuild}
-            if not isinstance(value, dict) or value.get('type') not in variants:
-                raise Rejected(Failure.RECEIPT)
-            return decode(variants[value['type']], value)
-        if kind == typing.Union[ManagedProfileMissing, ManagedProfileCreated]:
-            if not isinstance(value, dict) or value.get('type') not in {'MISSING', 'CREATED'}:
-                raise Rejected(Failure.RECEIPT)
-            return decode(ManagedProfileMissing if value['type'] == 'MISSING' else ManagedProfileCreated, value)
-        if kind in (typing.Union[ManagedFileAbsent, ManagedFilePresent], typing.Union[ManagedHostAbsent, ManagedHostPresent]):
+        if kind == typing.Union[ManagedFileAbsent, ManagedFilePresent]:
             if not isinstance(value, dict) or value.get('type') not in {'ABSENT', 'PRESENT'}:
                 raise Rejected(Failure.RECEIPT)
-            variants = (ManagedFileAbsent, ManagedFilePresent) if kind == typing.Union[ManagedFileAbsent, ManagedFilePresent] else (ManagedHostAbsent, ManagedHostPresent)
-            return decode(variants[0] if value['type'] == 'ABSENT' else variants[1], value)
+            return decode(ManagedFileAbsent if value['type'] == 'ABSENT' else ManagedFilePresent, value)
         if kind == typing.Union[NoPrevious, PhysicalPrevious]:
             if not isinstance(value, dict) or value.get('type') not in {'NONE', 'PHYSICAL'}:
                 raise Rejected(Failure.RECEIPT)
@@ -166,11 +84,7 @@ def decode(kind, value):
             raise Rejected(Failure.RECEIPT) from None
     if not isinstance(value, dict) or set(value) != {field.name for field in fields(kind)}:
         raise Rejected(Failure.RECEIPT)
-    if kind is ManagedComposition:
-        raw_runtime = value['priorRuntimeJson']
-        if raw_runtime is not None and (not isinstance(raw_runtime, str) or len(raw_runtime.encode('utf-8')) > 262144):
-            raise Rejected(Failure.RECEIPT)
-    return kind(**{field.name: value[field.name] if kind is ManagedComposition and field.name == 'priorRuntimeJson' else decode(field.type, value[field.name]) for field in fields(kind)})
+    return kind(**{field.name: decode(field.type, value[field.name]) for field in fields(kind)})
 
 
 def unique(pairs):
@@ -214,7 +128,7 @@ def save(path, document):
             temporary.unlink()
 
 
-def load(path, kind=Receipt):
+def load(path, kind):
     descriptor = os.open(path, os.O_RDONLY | os.O_NOFOLLOW)
     with os.fdopen(descriptor, 'rb') as source:
         observed = os.fstat(source.fileno())
@@ -226,8 +140,7 @@ def load(path, kind=Receipt):
         raise Rejected(Failure.RECEIPT)
     try:
         document = json.loads(raw, object_pairs_hook=unique)
-        selected = LegacyReceipt if kind is Receipt and isinstance(document, dict) and document.get('schemaVersion') in (1, 2) else kind
-        return decode(selected, document)
+        return decode(kind, document)
     except (ValueError, UnicodeDecodeError):
         raise Rejected(Failure.RECEIPT) from None
 
@@ -362,7 +275,7 @@ def managed_previous(root, transaction, previous, live_coordinator=False):
         options = [path for path in (root, transaction / 'payload') if os.path.lexists(path) and not path.is_symlink() and Identity.observe(path) == previous.identity]
         if len(options) != 1:
             raise Rejected(Failure.OWNERSHIP)
-        return options[0], root, root.parent / 'recovery/installation', managed_payload(options[0], root, previous.identity, live_coordinator=live_coordinator)
+        return options[0], root, managed_payload(options[0], root, previous.identity, live_coordinator=live_coordinator)
     if isinstance(previous, NoPrevious) and previous.type == 'NONE':
         if os.path.lexists(transaction / 'payload') or os.path.lexists(transaction / 'recovery'):
             raise Rejected(Failure.OWNERSHIP)
