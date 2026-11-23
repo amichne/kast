@@ -12,9 +12,10 @@ import java.util.HexFormat
  * admitting a root performs no filesystem effect and no eager failure. An architecture rule rejects new
  * installation-relative path literals outside this owner, so a later layout change edits this file alone.
  */
-class InstallationLayout private constructor(
+class InstallationLayout
+private constructor(
     /** The installation directory. */
-    val root: Path,
+    val root: Path
 ) {
     /** The management root that contains the installation directory and its lifecycle records. */
     val managementRoot: Path
@@ -55,7 +56,9 @@ class InstallationLayout private constructor(
 
         /** The saved overlay for one workspace, keyed by the SHA-256 of the workspace root path. */
         fun workspaceEnvironment(workspaceRoot: Path): Path =
-            directory.resolve("workspaces").resolve(WorkspaceOverlayIdentity.of(workspaceRoot).value)
+            directory
+                .resolve("workspaces")
+                .resolve(WorkspaceOverlayIdentity.of(workspaceRoot).value)
                 .resolve(ENVIRONMENT_FILE)
     }
 
@@ -176,8 +179,8 @@ class InstallationLayout private constructor(
     }
 
     /**
-     * Installation-relative paths in the `/`-separated form that installation manifests, capability checks, and
-     * the frontend catalog record. Each absolute payload accessor derives from the same value.
+     * Installation-relative paths in the `/`-separated form that installation manifests, capability checks, and the
+     * frontend catalog record. Each absolute payload accessor derives from the same value.
      */
     object Relative {
         val MANIFEST: InstallationRelativePath = InstallationRelativePath.of("installation.json")
@@ -212,7 +215,13 @@ class InstallationLayout private constructor(
         val MANAGED_INSTALL_CAPABILITY: InstallationRelativePath = share("managed-install-v1")
         val INSTALL_CANDIDATE: InstallationRelativePath = share("install-candidate.sh")
         val PRIVATE_PYTHON_INTERPRETER: InstallationRelativePath =
-            InstallationRelativePath.of(SHARE_DIRECTORY, PRODUCT_DIRECTORY, "private-python", BIN_DIRECTORY, "python3.12")
+            InstallationRelativePath.of(
+                SHARE_DIRECTORY,
+                PRODUCT_DIRECTORY,
+                "private-python",
+                BIN_DIRECTORY,
+                "python3.12",
+            )
         val COORDINATOR_SOCKET: InstallationRelativePath =
             InstallationRelativePath.of(STATE_DIRECTORY, "run", COORDINATOR_SOCKET_FILE)
         val ONE_SHOT_INVOCATIONS: InstallationRelativePath =
@@ -298,7 +307,9 @@ value class CoordinatorHostProfile private constructor(val value: String) {
         fun of(codexHome: String): CoordinatorHostProfile =
             CoordinatorHostProfile(
                 HexFormat.of()
-                    .formatHex(MessageDigest.getInstance("SHA-256").digest(codexHome.toByteArray(StandardCharsets.UTF_8)))
+                    .formatHex(
+                        MessageDigest.getInstance("SHA-256").digest(codexHome.toByteArray(StandardCharsets.UTF_8))
+                    )
                     .take(PROFILE_CHARACTERS)
             )
     }

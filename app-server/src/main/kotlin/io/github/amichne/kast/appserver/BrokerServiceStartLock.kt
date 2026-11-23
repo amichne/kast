@@ -1,8 +1,8 @@
 package io.github.amichne.kast.appserver
 
 import io.github.amichne.kast.appserver.runtime.UnixSocketOwnershipLeaseAcquisition
-import io.github.amichne.kast.distribution.contract.InstallationLayout
 import io.github.amichne.kast.appserver.runtime.UnixSocketPathOwnership
+import io.github.amichne.kast.distribution.contract.InstallationLayout
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.kernel.Validation
 import java.io.IOException
@@ -84,9 +84,7 @@ internal object BrokerServiceStartLock {
     private fun retireStalePublication(state: SemanticPublicationState.Stale): Boolean {
         return try {
             val key = admittedServiceStateFileKey(state.path, state.document) ?: return false
-            if (
-                !retireStaleSocket(InstallationLayout.of(state.installation).state.run.coordinatorSocket, state.socket)
-            )
+            if (!retireStaleSocket(InstallationLayout.of(state.installation).state.run.coordinatorSocket, state.socket))
                 return false
             if (admittedServiceStateFileKey(state.path, state.document) != key) return false
             Files.delete(state.path)

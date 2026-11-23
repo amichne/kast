@@ -252,9 +252,7 @@ private class InstalledKastControlProduct private constructor(val installation: 
      */
     fun readResource(resource: InstalledControlResource): InstalledControlResourceRead =
         try {
-            InstalledControlResourceRead.Read(
-                Files.readString(installation.payload.shareResource(resource.fileName))
-            )
+            InstalledControlResourceRead.Read(Files.readString(installation.payload.shareResource(resource.fileName)))
         } catch (_: IOException) {
             InstalledControlResourceRead.Rejected(resource)
         }

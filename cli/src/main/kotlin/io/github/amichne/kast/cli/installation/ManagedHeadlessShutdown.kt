@@ -2,9 +2,9 @@ package io.github.amichne.kast.cli.installation
 
 import io.github.amichne.kast.appserver.ide.IdeLifecycleClient
 import io.github.amichne.kast.appserver.ide.IdeLifecycleDeployment
+import io.github.amichne.kast.distribution.contract.InstallationLayout
 import io.github.amichne.kast.distribution.managed.ManagedHeadlessInstallation
 import io.github.amichne.kast.distribution.managed.SelectedIdeLaunch
-import io.github.amichne.kast.distribution.contract.InstallationLayout
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.protocol.contract.IdeHostRuntimeIdentity
 import io.github.amichne.kast.protocol.contract.IdeLifecycleFailure

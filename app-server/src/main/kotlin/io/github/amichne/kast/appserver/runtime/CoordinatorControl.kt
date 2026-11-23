@@ -18,9 +18,9 @@ import io.github.amichne.kast.appserver.WorkerControlFailure
 import io.github.amichne.kast.appserver.WorkspaceEnrollmentStore
 import io.github.amichne.kast.appserver.coordinatorConfigurationIdentity
 import io.github.amichne.kast.appserver.protocol.ThreadBindingOwner
-import io.github.amichne.kast.distribution.contract.InstallationLayout
 import io.github.amichne.kast.appserver.rejectedCoordinatorControl
 import io.github.amichne.kast.distribution.contract.HostedServiceStatus
+import io.github.amichne.kast.distribution.contract.InstallationLayout
 import io.github.amichne.kast.distribution.contract.configuration.ResolvedKastConfiguration
 import io.github.amichne.kast.distribution.managed.CanonicalRootDiscovery
 import io.github.amichne.kast.distribution.managed.FilesystemCanonicalRootDiscovery

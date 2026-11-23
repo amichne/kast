@@ -10,7 +10,9 @@ import java.nio.file.Path
 internal fun discoverInstalledControlRoot(): Refinement<InstallationLayout, InstalledKastControlProductFailure> =
     jvmControlRoot()
 
-internal fun admitNativeControlRoot(executable: Path): Refinement<InstallationLayout, InstalledKastControlProductFailure> =
+internal fun admitNativeControlRoot(
+    executable: Path
+): Refinement<InstallationLayout, InstalledKastControlProductFailure> =
     if (
         !executable.isAbsolute ||
             executable.normalize() != executable ||

@@ -175,8 +175,10 @@ private fun admittedPayload(
             payloadModeMatches(path, entry.mode) &&
             payloadOwned(candidate, ownership, entry.path, logicalRoot)
     } &&
-        readBoundedFile(InstallationLayout.Relative.MANAGED_INSTALL_CAPABILITY.under(candidate), MAXIMUM_CAPABILITY_BYTES) ==
-            "1\n"
+        readBoundedFile(
+            InstallationLayout.Relative.MANAGED_INSTALL_CAPABILITY.under(candidate),
+            MAXIMUM_CAPABILITY_BYTES,
+        ) == "1\n"
 }
 
 private fun ownedJournal(root: Path, slot: Path, receipt: Path, owner: Long): Boolean =

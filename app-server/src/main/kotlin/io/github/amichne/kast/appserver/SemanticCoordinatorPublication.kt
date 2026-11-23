@@ -245,7 +245,6 @@ private fun ownedMode(path: Path, owner: UserPrincipal, mode: Set<PosixFilePermi
 private val privateDirectory = PosixFilePermissions.fromString("rwx------")
 private val privateFile = PosixFilePermissions.fromString("rw-------")
 
-
 /**
  * The executable that launches the coordinator replaces itself with the installation's Host runtime, so a coordinator
  * peer runs that runtime's `java`, the one this process also runs. An unresolvable runtime matches no peer.

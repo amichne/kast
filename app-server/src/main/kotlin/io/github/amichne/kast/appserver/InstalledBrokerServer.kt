@@ -1,7 +1,6 @@
 package io.github.amichne.kast.appserver
 
 import io.github.amichne.kast.appserver.core.Broker
-import io.github.amichne.kast.distribution.contract.InstallationLayout
 import io.github.amichne.kast.appserver.core.BrokerLimits
 import io.github.amichne.kast.appserver.core.JsonLineBrokerInvocationActivitySink
 import io.github.amichne.kast.appserver.core.ProviderDefinition
@@ -29,6 +28,7 @@ import io.github.amichne.kast.appserver.runtime.ManagedCodexUpstream
 import io.github.amichne.kast.appserver.runtime.ManagedCodexUpstreamOptions
 import io.github.amichne.kast.appserver.runtime.ManagedCodexUpstreamStart
 import io.github.amichne.kast.appserver.runtime.ManagedCodexUpstreamTermination
+import io.github.amichne.kast.distribution.contract.InstallationLayout
 import io.github.amichne.kast.distribution.contract.configuration.ConfigurationOwner
 import io.github.amichne.kast.distribution.contract.configuration.ResolvedKastConfiguration
 import io.github.amichne.kast.kernel.Refinement
@@ -552,9 +552,7 @@ internal object InstalledBrokerHost {
                     )
             }
         val enrollment =
-            when (
-                val read = WorkspaceEnrollmentStore(options.installation.configuration.workspaceRegistry).read()
-            ) {
+            when (val read = WorkspaceEnrollmentStore(options.installation.configuration.workspaceRegistry).read()) {
                 is EnrollmentRead.Read -> read.enrollment
                 is EnrollmentRead.Rejected ->
                     return rejectHost(stage, InstalledBrokerServerFailure.THREAD_STORE_REJECTED)
