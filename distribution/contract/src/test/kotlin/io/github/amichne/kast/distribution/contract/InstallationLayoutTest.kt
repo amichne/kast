@@ -100,8 +100,44 @@ class InstallationLayoutTest {
                 ("/fixed/home/.local/share/kast/recovery/installation" to root.installationRecovery),
             "management.productRemoval" to
                 ("/fixed/home/.local/share/kast/recovery/installation/product-removal" to root.productRemoval),
-            "management.workspaceStore" to ("/fixed/home/.local/share/kast-workspaces" to root.workspaceStore),
-            "management.runtimeBaseStore" to ("/fixed/home/.local/share/kast-runtime-bases" to root.runtimeBaseStore),
+            "management.installation" to ("/fixed/home/.local/share/kast/installation" to root.installation),
+            "management.userHome" to ("/fixed/home" to checkNotNull(root.userHome)),
+        )
+    }
+
+    @Test
+    fun `the share-directory paths are byte-identical to the current layout`() {
+        val share = layout.share
+        assertPaths(
+            "shareRoot" to ("/fixed/home/.local/share" to layout.shareRoot.path),
+            "share.root" to ("/fixed/home/.local/share" to share.root),
+            "share.lifecycleLock" to ("/fixed/home/.local/share/kast.lock" to share.lifecycleLock),
+            "share.workspaceStore" to ("/fixed/home/.local/share/kast-workspaces" to share.workspaceStore),
+            "share.workspaceLifetimeLock" to
+                ("/fixed/home/.local/share/.kast-workspaces.lifetime.lock" to share.workspaceLifetimeLock),
+            "share.runtimeBaseStore" to ("/fixed/home/.local/share/kast-runtime-bases" to share.runtimeBaseStore),
+            "configuration.base" to (installation to layout.configuration.base),
+        )
+    }
+
+    @Test
+    fun `each root alone derives the same paths as the layout that holds it`() {
+        val managementRoot = ManagementRoot.of(management)
+        val shareRoot = ShareRoot.of(Path.of("/fixed/home/.local/share"))
+        assertEquals(layout.managementRoot, managementRoot)
+        assertEquals(layout.shareRoot, shareRoot)
+        assertEquals(shareRoot, managementRoot.shareRoot)
+        assertEquals(layout.management.receipt, managementRoot.management.receipt)
+        assertEquals(layout.share.workspaceStore, managementRoot.share.workspaceStore)
+        assertEquals(layout.share.lifecycleLock, shareRoot.share.lifecycleLock)
+        assertEquals(VersionRoot(Path.of(installation)), layout.version)
+    }
+
+    @Test
+    fun `the admission failure set reserves the stale-version outcome`() {
+        assertEquals(
+            listOf("VERSION_UNAVAILABLE", "VERSION_DISPLACED", "STALE_VERSION"),
+            InstallationLayoutFailure.entries.map { it.name },
         )
     }
 
