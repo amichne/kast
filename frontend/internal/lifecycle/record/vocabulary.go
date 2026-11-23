@@ -216,6 +216,15 @@ func DeveloperTag(version DeveloperVersion) ReleaseTag { return ReleaseTag{devel
 // Stable returns the public version of a stable tag.
 func (t ReleaseTag) Stable() (SemVer, bool) { return t.public, t.stable }
 
+// PublicVersionOf is the explicit public version a stable tag implies, nil for a preview tag.
+func (t ReleaseTag) PublicVersionOf() *SemVer {
+	if !t.stable {
+		return nil
+	}
+	version := t.public
+	return &version
+}
+
 // Developer returns the build version of a preview tag.
 func (t ReleaseTag) Developer() (DeveloperVersion, bool) { return t.developer, !t.stable }
 
