@@ -100,10 +100,11 @@ internal object InstallationParentDerivationOwners {
 
     /**
      * Container store owners in `:distribution:cli`: a workspace directory `<store>/containers/<id>` names its store,
-     * and a container profile's private home names its profile. Neither climbs an installation root.
+     * and a container profile's configuration file or private home names its profile. None climbs an installation root.
      */
     val containerStore: Set<JvmClassName> = setOf(
         JvmClassName("io/github/amichne/kast/distribution/cli/AdmittedWorkspace"),
+        JvmClassName("io/github/amichne/kast/distribution/cli/ContainerProfileRoot\$Companion"),
         JvmClassName("io/github/amichne/kast/distribution/cli/RejectedWorkspaceRemovalKt"),
     )
 
@@ -145,6 +146,7 @@ internal object InstallationPathDerivationOwners {
      */
     val containerProfile: Set<JvmClassName> = setOf(
         JvmClassName("$CLI/AdmittedContainer"),
+        JvmClassName("$CLI/ContainerProfileRoot"),
         JvmClassName("$CLI/ContainerStore"),
         JvmClassName("$CLI/ContainerStoreKt"),
         JvmClassName("$CLI/ContainerStateAdmissionKt"),

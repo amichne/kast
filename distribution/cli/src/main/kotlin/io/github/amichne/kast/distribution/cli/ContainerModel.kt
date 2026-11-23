@@ -137,10 +137,10 @@ internal constructor(
         get() = state.resolve("home")
 
     val configuration: Path
-        get() = profile.resolve("config/environment")
+        get() = ContainerProfileRoot.of(profile).configuration
 
     val selectedIde: Path
-        get() = profile.resolve("config/selected-ide.json")
+        get() = ContainerProfileRoot.of(profile).selectedIde
 
     val stopped: Path
         get() = directory.resolve("stopped.json")

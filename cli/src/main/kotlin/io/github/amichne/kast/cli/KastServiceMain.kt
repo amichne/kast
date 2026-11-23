@@ -257,29 +257,16 @@ private fun semanticRetirementRejected(retired: SemanticCoordinatorRetirement): 
     exitProcess(SERVICE_CONTROL_REJECTED_EXIT_CODE)
 }
 
-/**
- * The installation is the one that owns this executable. An explicit configuration file must be that installation's
- * own, so a selector never chooses another installation through its parent directories.
- */
-internal fun selectsOwnConfiguration(installation: InstallationLayout, configurationFile: String?): Boolean =
-    configurationFile == null ||
-        try {
-            Path.of(configurationFile) == installation.configuration.environment
-        } catch (_: java.nio.file.InvalidPathException) {
-            false
-        }
-
 private fun tryManagedHeadlessShutdown(arguments: List<String>): Boolean {
     if (arguments != listOf("disable") || System.getenv("KAST_MANAGED_HEADLESS_STATE") == null) return false
-    val installation =
-        when (val installed = installedKastExecutable()) {
-            is Refinement.Refined -> InstallationLayout.ofKastExecutable(installed.value)
-            is Refinement.Rejected -> null
-        }
+    val installed = installedKastExecutable()
     val outcome =
-        if (installation != null && selectsOwnConfiguration(installation, System.getenv("KAST_CONFIGURATION_FILE")))
+        if (installed is Refinement.Refined)
             io.github.amichne.kast.cli.installation.shutdownManagedHeadless(
-                installation,
+                io.github.amichne.kast.cli.installation.ManagedHeadlessRoot.select(
+                    InstallationLayout.ofKastExecutable(installed.value),
+                    System.getenv("KAST_CONFIGURATION_FILE"),
+                ),
                 Path.of(System.getProperty("user.home")),
                 Path.of(System.getenv("KAST_MANAGED_HEADLESS_STATE")),
             )

@@ -2,6 +2,7 @@ package io.github.amichne.kast.cli.installation
 
 import io.github.amichne.kast.appserver.ide.IdeLifecycleClient
 import io.github.amichne.kast.appserver.ide.IdeLifecycleDeployment
+import io.github.amichne.kast.distribution.cli.ContainerProfileRoot
 import io.github.amichne.kast.distribution.contract.InstallationLayout
 import io.github.amichne.kast.distribution.managed.ManagedHeadlessInstallation
 import io.github.amichne.kast.distribution.managed.SelectedIdeLaunch
@@ -33,18 +34,43 @@ internal sealed interface ManagedHeadlessShutdownOutcome {
     data class Rejected(val failure: ManagedHeadlessShutdownFailure) : ManagedHeadlessShutdownOutcome
 }
 
+/** The root whose recorded Host selection one managed shutdown reads; it reads nothing else beneath that root. */
+internal sealed interface ManagedHeadlessRoot {
+    val selectedIde: Path
+
+    data class Installation(val layout: InstallationLayout) : ManagedHeadlessRoot {
+        override val selectedIde: Path
+            get() = layout.configuration.selectedIde
+    }
+
+    data class Container(val profile: ContainerProfileRoot) : ManagedHeadlessRoot {
+        override val selectedIde: Path
+            get() = profile.selectedIde
+    }
+
+    companion object {
+        /**
+         * An absent selector, or the installation's own configuration file, selects the installation that owns this
+         * executable. Any other selector names a container profile, because a private workspace runs the installation's
+         * executable with its own configuration. A selector too shallow to name a profile selects the installation.
+         */
+        fun select(installation: InstallationLayout, configurationFile: String?): ManagedHeadlessRoot {
+            val file = configurationFile?.let(Path::of) ?: return Installation(installation)
+            if (file == installation.configuration.environment) return Installation(installation)
+            return ContainerProfileRoot.ofConfigurationFile(file)?.let(::Container) ?: Installation(installation)
+        }
+    }
+}
+
 /** An explicit private deployment uses the Host settlement protocol, never desktop service control. */
 internal fun shutdownManagedHeadless(
-    installation: InstallationLayout,
+    root: ManagedHeadlessRoot,
     home: Path,
     state: Path,
 ): ManagedHeadlessShutdownOutcome {
     val launch =
         try {
-            val bytes =
-                Files.newInputStream(installation.configuration.selectedIde).use {
-                    it.readNBytes(4097)
-                }
+            val bytes = Files.newInputStream(root.selectedIde).use { it.readNBytes(4097) }
             if (bytes.size > 4096)
                 return ManagedHeadlessShutdownOutcome.Rejected(ManagedHeadlessShutdownFailure.ADMISSION_REJECTED)
             Json.decodeFromString<SelectedIdeLaunch>(bytes.decodeToString()) as? SelectedIdeLaunch.Resolved

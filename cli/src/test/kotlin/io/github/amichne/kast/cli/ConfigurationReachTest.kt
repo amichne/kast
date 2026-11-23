@@ -3,24 +3,26 @@ package io.github.amichne.kast.cli
 import io.github.amichne.kast.cli.direct.ClientInstallationFailure
 import io.github.amichne.kast.cli.direct.InstalledClientContext
 import io.github.amichne.kast.cli.installation.InstallationManifest
+import io.github.amichne.kast.cli.installation.ManagedHeadlessRoot
 import io.github.amichne.kast.cli.installation.PayloadFile
 import io.github.amichne.kast.cli.installation.installationManifestJson
 import io.github.amichne.kast.distribution.contract.InstallationLayout
 import io.github.amichne.kast.kernel.Refinement
 import java.nio.file.Files
+import java.nio.file.InvalidPathException
 import java.nio.file.Path
 import java.security.MessageDigest
 import kotlinx.serialization.encodeToString
 import org.junit.jupiter.api.Assertions.assertEquals
-import org.junit.jupiter.api.Assertions.assertFalse
-import org.junit.jupiter.api.Assertions.assertTrue
+import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
 
 /**
- * Each `:cli` entry that selects the installation configuration reaches the file that
+ * Each `:cli` entry that defaults to the installation configuration reaches the file that
  * [InstallationLayout.configuration] names. Stage 8 moves that file from the version root to the management root by
- * changing the layout alone, so an entry that derived the file itself would fail here after that change.
+ * changing the layout alone, so an entry that derived the file itself would fail here after that change. An explicit
+ * selector is not an installation path: inside a private workspace it names the container profile.
  */
 class ConfigurationReachTest {
     private val layout = InstallationLayout.of(Path.of("/owned/home/.local/share/kast/installation"))
@@ -35,14 +37,59 @@ class ConfigurationReachTest {
     }
 
     @Test
-    fun `managed headless shutdown accepts only the layout's own configuration file`() {
-        assertTrue(selectsOwnConfiguration(layout, null))
-        assertTrue(selectsOwnConfiguration(layout, layout.configuration.environment.toString()))
-        assertFalse(selectsOwnConfiguration(layout, other.configuration.environment.toString()))
+    fun `managed shutdown reads the Host that a container profile's configuration file selects`() {
+        val container = "/owned/home/.local/share/kast-workspaces/containers/${"a".repeat(64)}"
+        for (profile in listOf(container, "$container/generations/b2088245-73e9-4603-9939-ce4556f8e5f9")) assertEquals(
+            "$profile/config/selected-ide.json",
+            selectedIde("$profile/config/environment"),
+        )
+        // The root is the file's grandparent whatever it names; the admission that follows decides what is valid.
+        assertEquals(
+            "/owned/other/.local/share/kast/installation/config/selected-ide.json",
+            selectedIde("/owned/other/.local/share/kast/installation/config/environment"),
+        )
+        assertEquals("relative/config/selected-ide.json", selectedIde("relative/config/environment"))
     }
 
     @Test
-    fun `the query client forwards only the layout's configuration file`(@TempDir temporary: Path) {
+    fun `managed shutdown without a container profile reads the executable's installation`() {
+        val installed = "/owned/home/.local/share/kast/installation/config/selected-ide.json"
+        assertEquals(installed, selectedIde(null))
+        assertEquals(installed, selectedIde("/owned/home/.local/share/kast/installation/config/environment"))
+        assertEquals(
+            ManagedHeadlessRoot.Installation(layout),
+            ManagedHeadlessRoot.select(layout, "/owned/home/.local/share/kast/installation/config/environment"),
+        )
+        for (shallow in listOf("/environment", "config/environment")) assertEquals(installed, selectedIde(shallow))
+    }
+
+    @Test
+    fun `managed shutdown keeps the uncaught outcome of a selector that has no parent or is no path`() {
+        for (selector in listOf("", "environment", "/")) assertThrows(
+            NullPointerException::class.java,
+            { selectedIde(selector) },
+            selector,
+        )
+        assertThrows(InvalidPathException::class.java) { selectedIde("invalid\u0000path") }
+    }
+
+    private fun selectedIde(selector: String?): String =
+        ManagedHeadlessRoot.select(layout, selector).selectedIde.toString()
+
+    @Test
+    fun `the query client forwards an explicit selector unchanged`(@TempDir temporary: Path) {
+        val owned = InstallationLayout.of(Files.createDirectories(temporary.toRealPath().resolve("installation")))
+        val payload = payload(owned)
+        record(owned, payload, owned.configuration.environment)
+        val profile = "/owned/home/.local/share/kast-workspaces/containers/${"a".repeat(64)}/config/environment"
+
+        val admitted = InstalledClientContext.admit(payload, mapOf(CONFIGURATION_FILE to profile)) as Refinement.Refined
+
+        assertEquals(profile, admitted.value.environment[CONFIGURATION_FILE])
+    }
+
+    @Test
+    fun `the query client defaults only to the layout's configuration file`(@TempDir temporary: Path) {
         val installation = Files.createDirectories(temporary.toRealPath().resolve("installation"))
         val owned = InstallationLayout.of(installation)
         val payload = payload(owned)

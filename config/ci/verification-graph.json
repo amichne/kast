@@ -222,7 +222,7 @@
         },
         {
             "path": "build-logic/src/main/kotlin/support/architecture/policy/InstallationPathDerivationRule.kt",
-            "sha256": "2af0c7ac61e10132b45bd4471db7673fb62ac11f37e862c172b2561eb9b53abc"
+            "sha256": "2a1b6fda899c3a55cd4015ac01691449f0a9ca7b65f5690509ed0d084e646ec7"
         },
         {
             "path": "build-logic/src/main/kotlin/support/architecture/policy/JvmEffectRules.kt",

@@ -19,8 +19,16 @@ import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 
 /** Inert vendor files plus production workspace admission; the peer supplies transport observations only. */
-internal class NativeManagedWorkspaceFixture(installation: Path, workspace: Path) {
-    constructor(fixture: NativePublicFixture) : this(fixture.installation, fixture.workspace)
+internal class NativeManagedWorkspaceFixture(
+    installation: Path,
+    workspace: Path,
+    /** The runtime's `bin/java`. Only a case that runs a private Control JVM supplies an executable launcher. */
+    private val javaLauncher: String = INERT_EXECUTABLE,
+) {
+    constructor(
+        fixture: NativePublicFixture,
+        javaLauncher: String = INERT_EXECUTABLE,
+    ) : this(fixture.installation, fixture.workspace, javaLauncher)
 
     val deployment: ManagedHeadlessInstallation
 
@@ -120,8 +128,8 @@ internal class NativeManagedWorkspaceFixture(installation: Path, workspace: Path
         val javaHome = if (mac) "$host/jbr/Contents/Home" else "$host/jbr"
         return mapOf(
                 "$productDirectory/product-info.json" to json.encodeToString(vendorProduct(mac)),
-                launcher to "must never execute",
-                "$javaHome/bin/java" to "must never execute",
+                launcher to INERT_EXECUTABLE,
+                "$javaHome/bin/java" to javaLauncher,
                 "$host/bin/idea.vmoptions" to "-Dvendor.required=true\n",
                 "$host/third-party-plugins/kast-managed-headless/lib/kast-managed-headless.jar" to "bootstrap",
                 "components/plugins/kast-ide-hosted/lib/kast-ide-hosted.jar" to "inert Host plugin",
@@ -158,6 +166,8 @@ internal class NativeManagedWorkspaceFixture(installation: Path, workspace: Path
         }
     }
 }
+
+private const val INERT_EXECUTABLE = "must never execute"
 
 private fun vendorProduct(mac: Boolean): NativeVendorProduct =
     NativeVendorProduct(
