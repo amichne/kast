@@ -123,6 +123,13 @@ def run_child(
 
 @contextmanager
 def management_lock(root: Path) -> Iterator[None]:
+    """Hold the POSIX record lock that Kotlin's FileChannel.tryLock takes on the same file.
+
+    flock and fcntl record locks are independent on Linux, so only a record lock excludes
+    `kast uninstall` and workspace edits. A record lock belongs to this process and is
+    released when any descriptor for the file closes here: never open this path again
+    while the lock is held.
+    """
     if root.resolve() != root:
         raise reject(contract.Stage.RE_ADMISSION, contract.Failure.OWNERSHIP_UNPROVEN)
     root.mkdir(parents=True, exist_ok=True)
@@ -131,7 +138,14 @@ def management_lock(root: Path) -> Iterator[None]:
         attributes = os.fstat(lock.fileno())
         if not stat.S_ISREG(attributes.st_mode) or attributes.st_uid != os.getuid():
             raise reject(contract.Stage.RE_ADMISSION, contract.Failure.OWNERSHIP_UNPROVEN)
-        fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        try:
+            fcntl.lockf(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except OSError as problem:
+            # POSIX lets F_SETLK report a conflicting holder as EACCES or EAGAIN; keep
+            # the single EAGAIN rejection that flock reported before.
+            if problem.errno in (errno.EACCES, errno.EAGAIN):
+                raise BlockingIOError(errno.EAGAIN, "management.lock is held") from None
+            raise
         yield
 
 
