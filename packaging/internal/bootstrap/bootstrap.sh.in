@@ -6,6 +6,8 @@ readonly INSTALL_DOWNLOAD_RETRY_DELAY_MILLIS=2000
 fail() { printf 'kast: %s\n' "$*" >&2; exit 1; }
 arguments=()
 selection=0
+dry_run=0
+preview_head=1
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --help|-h)
@@ -23,8 +25,11 @@ while [[ $# -gt 0 ]]; do
         --local-artifact:*) [[ -d "$2" && ! -L "$2" ]] || fail 'local artifact directory required' ;;
         *) fail 'unsupported channel' ;;
       esac
+      [[ "$1:$2" == --channel:preview ]] || preview_head=0
       selection=1; arguments+=("$1" "$2"); shift 2 ;;
-    --dry-run|--json|--recover-only) arguments+=("$1"); shift ;;
+    --dry-run) dry_run=1; arguments+=("$1"); shift ;;
+    --recover-only) preview_head=0; arguments+=("$1"); shift ;;
+    --json) arguments+=("$1"); shift ;;
     *) fail "unsupported product installation option: $1" ;;
   esac
 done
@@ -35,9 +40,11 @@ done
 # Platform admission precedes downloads, temporary storage, or installation effects.
 case "$(uname -s):$(uname -m)" in
   Darwin:arm64|Darwin:aarch64)
-    python_url='@MAC_URL@'; python_sha='@MAC_SHA@'; hasher=(shasum -a 256) ;;
+    python_url='@MAC_URL@'; python_sha='@MAC_SHA@'; hasher=(shasum -a 256)
+    bootstrap_url='@MAC_BOOTSTRAP_URL@'; bootstrap_sha='@MAC_BOOTSTRAP_SHA@' ;;
   Linux:x86_64|Linux:amd64)
-    python_url='@LINUX_URL@'; python_sha='@LINUX_SHA@'; hasher=(sha256sum) ;;
+    python_url='@LINUX_URL@'; python_sha='@LINUX_SHA@'; hasher=(sha256sum)
+    bootstrap_url='@LINUX_BOOTSTRAP_URL@'; bootstrap_sha='@LINUX_BOOTSTRAP_SHA@' ;;
   *) fail 'supported complete products: macOS ARM64 and Linux x86-64' ;;
 esac
 for tool in curl tar mktemp mkdir rm "${hasher[0]}"; do
@@ -58,6 +65,17 @@ verify() {
   actual="$("${hasher[@]}" "$1")"
   [[ "${actual%% *}" == "$2" ]] || fail 'bootstrap artifact digest mismatch'
 }
+# The pinned bootstrap plans the preview head from its published records. It reads one record schema, so every other
+# selection keeps the engine that also admits older records.
+if [[ "$dry_run:$preview_head" == 1:1 ]]; then
+  command -v chmod >/dev/null 2>&1 || fail 'required system tool unavailable: chmod'
+  fetch "$bootstrap_url" "$temporary/kast"
+  verify "$temporary/kast" "$bootstrap_sha"
+  chmod 700 "$temporary/kast"
+  status=0
+  "$temporary/kast" install "${arguments[@]}" || status=$?
+  exit "$status"
+fi
 fetch "$python_url" "$temporary/python.tar.gz"
 verify "$temporary/python.tar.gz" "$python_sha"
 fetch '@DEPENDENCY_URL@' "$temporary/defusedxml.whl"

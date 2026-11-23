@@ -20,6 +20,7 @@ from unittest.mock import patch
 try:
     import defusedxml
 
+    import bootstrap_release as published
     import generate_bootstrap as generator
     import private_interpreter as private
 except ModuleNotFoundError as missing:
@@ -326,6 +327,113 @@ class BootstrapTest(unittest.TestCase):
                 )
                 self.assertEqual([], list(home.iterdir()))
                 self.assertFalse(list(root.glob("kast-bootstrap.*")))
+
+    def test_only_a_preview_dry_run_uses_the_pinned_bootstrap(self) -> None:
+        for system, machine in (("Darwin", "arm64"), ("Linux", "x86_64")):
+            with self.subTest(system=system), tempfile.TemporaryDirectory() as temporary:
+                root = Path(temporary).resolve()
+                tools, home, local = root / "tools", root / "home", root / "local"
+                for directory in (tools, home, local):
+                    directory.mkdir()
+                for name in ("tar", "mktemp", "mkdir", "rm", "chmod"):
+                    tool = shutil.which(name, path=os.defpath)
+                    assert tool is not None
+                    (tools / name).symlink_to(tool)
+                hasher = shutil.which("shasum", path=os.defpath)
+                assert hasher is not None
+                (tools / "shasum").symlink_to(hasher)
+                script(tools / "sha256sum", f'#!/bin/sh\nexec {shlex.quote(hasher)} -a 256 "$@"\n')
+                script(
+                    tools / "uname",
+                    f'#!/bin/sh\ncase "$1" in -s) echo {system};; '
+                    f"-m) echo {machine};; *) exit 91;; esac\n",
+                )
+                # Scripted process-boundary evidence, not the published executable.
+                executable = root / "bootstrap"
+                script(executable, '#!/bin/sh\nprintf "%s\\n" "$@"\nexit 4\n')
+                pins = tuple(
+                    replace(pin, sha256=private.digest(executable))
+                    for pin in published.BOOTSTRAP_PINS
+                )
+                with patch.object(generator, "BOOTSTRAP_PINS", pins):
+                    installer = root / "install.sh"
+                    _ = installer.write_bytes(generator.render())
+                pin, python = (
+                    (pins[0], private.PINS[0]) if system == "Darwin" else (pins[1], private.PINS[1])
+                )
+                log = root / "transfers"
+                script(
+                    tools / "curl",
+                    '#!/bin/sh\nwhile [ "$#" -gt 1 ]; do\n'
+                    'if [ "$1" = --output ]; then destination=$2; fi\nshift\ndone\n'
+                    f'printf "%s\\n" "$1" >> {shlex.quote(str(log))}\n'
+                    f'[ "$1" = {shlex.quote(pin.url)} ] || exit 92\n'
+                    # A transfer carries bytes only, so the installer must set the mode itself.
+                    f'/bin/cat {shlex.quote(str(executable))} > "$destination"\n',
+                )
+
+                def run(
+                    *arguments: str,
+                    tools: Path = tools,
+                    home: Path = home,
+                    root: Path = root,
+                    log: Path = log,
+                    installer: Path = installer,
+                ) -> tuple[subprocess.CompletedProcess[str], list[str]]:
+                    log.unlink(missing_ok=True)
+                    result = subprocess.run(
+                        ["/bin/bash", str(installer), *arguments],
+                        env={"HOME": str(home), "PATH": str(tools), "TMPDIR": str(root)},
+                        capture_output=True,
+                        text=True,
+                        timeout=30,
+                    )
+                    self.assertEqual([], list(home.iterdir()))
+                    self.assertFalse(list(root.glob("kast-bootstrap.*")))
+                    return result, log.read_text().splitlines()
+
+                for arguments in (
+                    ("--dry-run",),
+                    ("--dry-run", "--json"),
+                    ("--channel", "preview", "--json", "--dry-run"),
+                ):
+                    result, transfers = run(*arguments)
+                    # The executable owns the status and the output.
+                    self.assertEqual(4, result.returncode, result.stderr)
+                    self.assertEqual(["install", *arguments], result.stdout.splitlines())
+                    self.assertEqual([pin.url], transfers)
+                for arguments in (
+                    (),
+                    ("--json",),
+                    ("--channel", "preview"),
+                    ("--dry-run", "--channel", "stable"),
+                    ("--dry-run", "--version", "1.2.3"),
+                    ("--dry-run", "--commit", "abcdef0"),
+                    ("--dry-run", "--recover-only"),
+                    ("--local-artifact", str(local), "--dry-run"),
+                ):
+                    result, transfers = run(*arguments)
+                    self.assertEqual((92, ""), (result.returncode, result.stdout))
+                    self.assertEqual([python.url], transfers)
+                # Bytes other than the pinned ones never run.
+                script(executable, '#!/bin/sh\nprintf "must not run\\n"\n')
+                result, transfers = run("--dry-run")
+                self.assertEqual((1, ""), (result.returncode, result.stdout))
+                self.assertIn("bootstrap artifact digest mismatch", result.stderr)
+                self.assertEqual([pin.url], transfers)
+
+    def test_bootstrap_pins_name_one_published_release_per_target(self) -> None:
+        self.assertRegex(published.TAG, r"\Abootstrap-[0-9a-f]{12}\Z")
+        self.assertEqual(
+            [pin.target for pin in private.PINS], [pin.target for pin in published.BOOTSTRAP_PINS]
+        )
+        for pin in published.BOOTSTRAP_PINS:
+            self.assertRegex(pin.sha256, r"\A[0-9a-f]{64}\Z")
+            self.assertEqual(
+                f"https://github.com/amichne/kast/releases/download/{published.TAG}"
+                f"/kast-bootstrap-{pin.target}",
+                pin.url,
+            )
 
     def test_installed_helper_without_private_support_never_falls_back_to_path(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:

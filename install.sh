@@ -6,6 +6,8 @@ readonly INSTALL_DOWNLOAD_RETRY_DELAY_MILLIS=2000
 fail() { printf 'kast: %s\n' "$*" >&2; exit 1; }
 arguments=()
 selection=0
+dry_run=0
+preview_head=1
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --help|-h)
@@ -23,8 +25,11 @@ while [[ $# -gt 0 ]]; do
         --local-artifact:*) [[ -d "$2" && ! -L "$2" ]] || fail 'local artifact directory required' ;;
         *) fail 'unsupported channel' ;;
       esac
+      [[ "$1:$2" == --channel:preview ]] || preview_head=0
       selection=1; arguments+=("$1" "$2"); shift 2 ;;
-    --dry-run|--json|--recover-only) arguments+=("$1"); shift ;;
+    --dry-run) dry_run=1; arguments+=("$1"); shift ;;
+    --recover-only) preview_head=0; arguments+=("$1"); shift ;;
+    --json) arguments+=("$1"); shift ;;
     *) fail "unsupported product installation option: $1" ;;
   esac
 done
@@ -35,9 +40,11 @@ done
 # Platform admission precedes downloads, temporary storage, or installation effects.
 case "$(uname -s):$(uname -m)" in
   Darwin:arm64|Darwin:aarch64)
-    python_url='https://github.com/astral-sh/python-build-standalone/releases/download/20260211/cpython-3.12.12%2B20260211-aarch64-apple-darwin-install_only_stripped.tar.gz'; python_sha='22625deaf5757e7c266cf1a096c9151a06b598b1e14632a2ec9993d58ec5fe84'; hasher=(shasum -a 256) ;;
+    python_url='https://github.com/astral-sh/python-build-standalone/releases/download/20260211/cpython-3.12.12%2B20260211-aarch64-apple-darwin-install_only_stripped.tar.gz'; python_sha='22625deaf5757e7c266cf1a096c9151a06b598b1e14632a2ec9993d58ec5fe84'; hasher=(shasum -a 256)
+    bootstrap_url='https://github.com/amichne/kast/releases/download/bootstrap-557978d7432f/kast-bootstrap-macos-aarch64'; bootstrap_sha='60451e1905f4991083939d1d841fae8740676eb2d5a45a3d095272a3c11d92ae' ;;
   Linux:x86_64|Linux:amd64)
-    python_url='https://github.com/astral-sh/python-build-standalone/releases/download/20260211/cpython-3.12.12%2B20260211-x86_64-unknown-linux-gnu-install_only_stripped.tar.gz'; python_sha='1dbaa624a09e15afe7efbdac08d42993135a68db8d34f986ef6977a6d77bdc3c'; hasher=(sha256sum) ;;
+    python_url='https://github.com/astral-sh/python-build-standalone/releases/download/20260211/cpython-3.12.12%2B20260211-x86_64-unknown-linux-gnu-install_only_stripped.tar.gz'; python_sha='1dbaa624a09e15afe7efbdac08d42993135a68db8d34f986ef6977a6d77bdc3c'; hasher=(sha256sum)
+    bootstrap_url='https://github.com/amichne/kast/releases/download/bootstrap-557978d7432f/kast-bootstrap-linux-x86_64'; bootstrap_sha='6d6a2ba78d3fa13df6d797f545171c81a11e08507cdcaad185a6a6f25ca7a5b8' ;;
   *) fail 'supported complete products: macOS ARM64 and Linux x86-64' ;;
 esac
 for tool in curl tar mktemp mkdir rm "${hasher[0]}"; do
@@ -58,6 +65,17 @@ verify() {
   actual="$("${hasher[@]}" "$1")"
   [[ "${actual%% *}" == "$2" ]] || fail 'bootstrap artifact digest mismatch'
 }
+# The pinned bootstrap plans the preview head from its published records. It reads one record schema, so every other
+# selection keeps the engine that also admits older records.
+if [[ "$dry_run:$preview_head" == 1:1 ]]; then
+  command -v chmod >/dev/null 2>&1 || fail 'required system tool unavailable: chmod'
+  fetch "$bootstrap_url" "$temporary/kast"
+  verify "$temporary/kast" "$bootstrap_sha"
+  chmod 700 "$temporary/kast"
+  status=0
+  "$temporary/kast" install "${arguments[@]}" || status=$?
+  exit "$status"
+fi
 fetch "$python_url" "$temporary/python.tar.gz"
 verify "$temporary/python.tar.gz" "$python_sha"
 fetch 'https://files.pythonhosted.org/packages/07/6c/aa3f2f849e01cb6a001cd8554a88d4c77c5c1a31c95bdf1cf9301e6d9ef4/defusedxml-0.7.1-py2.py3-none-any.whl' "$temporary/defusedxml.whl"
