@@ -33,6 +33,11 @@ dependencies {
 tasks.named<Test>("test") {
     useJUnitPlatform()
     jvmArgs("--enable-native-access=ALL-UNNAMED")
+    // ManagementFileLockTest runs the production Python management_lock in a child process.
+    inputs
+        .files(layout.projectDirectory.dir("../../packaging/internal/installation"))
+        .withPropertyName("pythonInstallation")
+        .withPathSensitivity(PathSensitivity.RELATIVE)
 }
 
 val generateVersion =
