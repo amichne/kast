@@ -63,9 +63,6 @@ class BootstrapTest(unittest.TestCase):
             "installation-lifecycle.py": (
                 "packaging/internal/installation/installation-lifecycle.py"
             ),
-            "host_directory_exchange.py": (
-                "packaging/internal/installation/host_directory_exchange.py"
-            ),
             "composed_bundle.py": "packaging/composed_bundle.py",
             "composition_platform.py": "packaging/internal/composition/composition_platform.py",
             "managed_headless.py": "packaging/managed_headless.py",
@@ -101,7 +98,6 @@ class BootstrapTest(unittest.TestCase):
             "managed_update_journal.py",
             "installation-recovery.py",
             "installation-lifecycle.py",
-            "host_directory_exchange.py",
             "composed_bundle.py",
             "composition_platform.py",
             "managed_headless.py",
