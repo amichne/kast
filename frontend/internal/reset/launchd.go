@@ -5,9 +5,6 @@ import (
 	"strings"
 )
 
-// launchctlUnknown is launchctl's status for a service that is not loaded.
-const launchctlUnknown = 113
-
 var assignment = regexp.MustCompile(`^[A-Za-z_][A-Za-z0-9_]*=`)
 
 // parseLabels reads the labels with Kast's prefix from `launchctl list`.

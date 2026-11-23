@@ -9,7 +9,11 @@ import (
 	"unsafe"
 )
 
-const launchctl = "/bin/launchctl"
+const (
+	launchctl = "/bin/launchctl"
+	// launchctlUnknown is launchctl's status for a service that is not loaded.
+	launchctlUnknown = 113
+)
 
 // nativeSupervisor is the user's launchd GUI domain, where Kast bootstraps its jobs.
 type nativeSupervisor struct{ uid int }
