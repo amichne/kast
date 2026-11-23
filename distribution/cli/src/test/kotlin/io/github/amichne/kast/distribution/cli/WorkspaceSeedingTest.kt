@@ -4,7 +4,12 @@ import io.github.amichne.kast.distribution.contract.HostExitIndexState
 import io.github.amichne.kast.distribution.contract.HostExitReason
 import io.github.amichne.kast.distribution.contract.HostExitRecord
 import io.github.amichne.kast.distribution.contract.configuration.WorkspaceDependencySharing
+import io.github.amichne.kast.distribution.managed.DependencyCacheRejection
+import io.github.amichne.kast.distribution.managed.DependencyCacheSource
+import io.github.amichne.kast.distribution.managed.RejectedDependencyCache
+import io.github.amichne.kast.distribution.managed.SharedDependencyCacheOutcome
 import io.github.amichne.kast.kernel.Refinement
+import java.nio.ByteBuffer
 import java.nio.channels.FileChannel
 import java.nio.file.Files
 import java.nio.file.Path
@@ -21,25 +26,44 @@ import org.junit.jupiter.api.io.TempDir
 
 class WorkspaceSeedingTest {
     @Test
-    fun `first workspace skips busy seeds and copies released artifacts after an empty cache`(
-        @TempDir temporary: Path
-    ) {
+    fun `first workspace copies a locked user cache and reports a skipped one`(@TempDir temporary: Path) {
         val root = temporary.toRealPath()
         val home = Files.createDirectory(root.resolve("shared"))
-        val empty = Files.createDirectories(home.resolve("caches/modules-2"))
-        Files.createDirectory(empty.resolve("files-2.1"))
-        Files.createFile(empty.resolve("modules-2.lock"))
         val donor = Files.createDirectory(root.resolve("donor"))
-        val lock = Files.createFile(donor.resolve("modules-2.lock"))
+        val lock = Files.write(donor.resolve("modules-2.lock"), gradleWriteState(0))
         Files.writeString(Files.createDirectory(donor.resolve("files-2.1")).resolve("sample.jar"), "sample")
         val staging = Files.createDirectory(root.resolve("staging"))
-        FileChannel.open(lock, WRITE).use { channel ->
-            channel.lock().use { prepareSharedDependencyCache(home, staging, donor) }
-        }
         val snapshot = home.resolve("kast-read-only")
+        val progress = mutableListOf<SharedDependencyCacheProgress>()
+        val prepare = { prepareSharedDependencyCache(home, staging, donor, progress::add) }
+        prepare()
         assertFalse(Files.exists(snapshot))
-        prepareSharedDependencyCache(home, staging, donor)
+        Files.write(lock, gradleWriteState(1))
+        FileChannel.open(lock, WRITE).use { channel -> channel.lock(0, 17, false).use { prepare() } }
         assertEquals("sample", Files.readString(snapshot.resolve("modules-2/files-2.1/sample.jar")))
+        prepare()
+        assertEquals(
+            listOf(
+                SharedDependencyCacheOutcome.Skipped(
+                    listOf(
+                        RejectedDependencyCache(
+                            DependencyCacheSource.SHARED_GRADLE,
+                            DependencyCacheRejection.SOURCE_UNAVAILABLE,
+                        ),
+                        RejectedDependencyCache(
+                            DependencyCacheSource.USER_GRADLE,
+                            DependencyCacheRejection.WRITE_IN_PROGRESS,
+                        ),
+                    )
+                ),
+                SharedDependencyCacheOutcome.Published(DependencyCacheSource.USER_GRADLE),
+            ),
+            progress.map { it.result },
+        )
+        val encoded = containerJson.parseToJsonElement(containerJson.encodeToString(progress.last())).jsonObject
+        assertEquals(setOf("result", "event"), encoded.keys)
+        assertEquals("kast_dependency_cache", encoded.getValue("event").jsonPrimitive.content)
+        assertEquals("PUBLISHED", encoded.getValue("result").jsonObject.getValue("type").jsonPrimitive.content)
     }
 
     @Test
@@ -51,7 +75,7 @@ class WorkspaceSeedingTest {
         val modules = Files.createDirectories(first.gradleHome.resolve("caches/modules-2"))
         val artifact = Files.createDirectories(modules.resolve("files-2.1/sample")).resolve("library.jar")
         Files.writeString(artifact, "published")
-        Files.writeString(modules.resolve("modules-2.lock"), "")
+        Files.write(modules.resolve("modules-2.lock"), gradleWriteState(1))
         Files.writeString(modules.resolve("gc.properties"), "")
         val second = creation(store, temporary, "second", null, WorkspaceDependencySharing.SHARED)
         (store.create(second, runtime) as Refinement.Refined)
@@ -439,6 +463,10 @@ class WorkspaceSeedFallbackTest {
         )
     }
 }
+
+/** The state region that Gradle keeps at the start of modules-2.lock; sequence zero marks a write in progress. */
+private fun gradleWriteState(sequence: Long): ByteArray =
+    ByteBuffer.allocate(17).put(3).putLong(1).putLong(sequence).array()
 
 private fun platform(): ContainerPlatform = (ContainerPlatform.current() as Refinement.Refined).value
 

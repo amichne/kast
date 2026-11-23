@@ -161,9 +161,11 @@ Upgrades, generation rebuilds, and repair preserve the recorded Gradle home.
 
 The shared Gradle home keeps wrapper distributions, dependencies, and build cache entries across workspaces.
 On creation, Kast looks for a populated `caches/modules-2` in its shared Gradle home, then in your `~/.gradle`.
-When Kast can lock the source cache, it copies the module cache once. It excludes lock files and `gc.properties`.
+Kast copies the module cache once. It excludes lock files and `gc.properties`. A Gradle daemon can hold the cache lock during the copy.
+Kast publishes the copy only if Gradle's recorded write state is settled and identical before and after it.
 Gradle reads the copy through `GRADLE_RO_DEP_CACHE` and writes misses to the shared Gradle home.
-If both caches are empty or busy, Gradle uses the writable cache. A later workspace creation can supply the copy.
+If no source qualifies, Gradle uses the writable cache. A later workspace creation can supply the copy.
+Creation reports the result as `event: kast_dependency_cache`, with a reason for each rejected source.
 An explicit `GRADLE_USER_HOME` selects that directory for writes. Kast creates the read-only copy only for its own shared Gradle home.
 
 Managed Gradle imports skip dependency source downloads and publish the Gradle model once, after resolution.
