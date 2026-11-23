@@ -380,7 +380,7 @@ class ReleaseAdmissionTest(unittest.TestCase):
         self,
     ) -> None:
         source = self.source("1.2.3")
-        selected = release.resolve_selection(None, None, None, source)
+        selected = release.resolve_selection("stable", None, None, source)
         assert isinstance(selected, release.StableSelection)
         admitted = release.stage_component_archives(selected, "262", self.stage, source)
         assert isinstance(admitted, release.AdmittedComposition)

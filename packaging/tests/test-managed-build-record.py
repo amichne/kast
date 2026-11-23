@@ -255,6 +255,8 @@ class ProductRecordTest(unittest.TestCase):
         assert isinstance(preview, release.ProductSelection)
         self.assertEqual("a" * 40, preview.mainRevision)
         self.assertEqual([release.CATALOG_URL], source.calls)
+        self.assertEqual(preview, release.resolve_selection(None, None, None, source))
+        self.assertEqual([release.CATALOG_URL] * 2, source.calls)
         pinned = release.resolve_selection(None, None, "a" * 12, source)
         assert isinstance(pinned, release.ProductSelection)
         self.assertEqual("PinnedBuild", pinned.policy)
