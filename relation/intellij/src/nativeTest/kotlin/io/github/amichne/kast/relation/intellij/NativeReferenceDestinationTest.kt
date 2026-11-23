@@ -68,7 +68,7 @@ class NativeReferenceDestinationTest : HeavyPlatformTestCase() {
             setOf(
                 Occurrence(PAYLOAD, PAYLOAD_SOURCE.offsetOf("Payload", "fun describe"), RelationReferenceContext.TYPE),
                 Occurrence(PAYLOAD_TEST, PAYLOAD_TEST_SOURCE.offsetOf("Payload", ":"), RelationReferenceContext.TYPE),
-                Occurrence(PAYLOAD_TEST, PAYLOAD_TEST_SOURCE.offsetOf("Payload(1)"), RelationReferenceContext.CODE),
+                Occurrence(PAYLOAD_TEST, PAYLOAD_TEST_SOURCE.offsetOf("Payload(1)"), RelationReferenceContext.TYPE),
             ),
             fixture.completeOccurrences(compilation),
         )
