@@ -463,6 +463,30 @@ Those versions currently change compiled Kotlin, the native executable, and plug
 A different release version therefore requires a separate build.
 Developer promotion never renames or edits a tested payload.
 
+### Bootstrap release
+
+The bootstrap is the Go frontend that a future `install.sh` downloads and verifies by digest.
+Its release is separate from every product release and from the preview channel.
+Build the two executables from the module's bytes and its `toolchain` line:
+
+```shell
+mise exec -- uv run --locked --script frontend/check bootstrap --output build/bootstrap
+```
+
+The frontend gate builds them from two directories and compares the bytes.
+
+Publication is a manual dispatch from `main`:
+
+```shell
+gh workflow run bootstrap-release.yml --ref main
+```
+
+The workflow runs the gate, builds the files, and creates the pre-release `bootstrap-<12 hex>`.
+The tag names the Git tree of `frontend/`, so a repeated run with the same files changes nothing.
+Other files, an incomplete draft, or a tag without a release stop the run.
+A bootstrap never becomes the latest release, because the stable channel reads that pointer.
+Pin the published digests in a separate pull request, after a local build produces the same digests.
+
 ### Build evidence and dependency trust
 
 CI pins Temurin 25.0.4 and retains Gradle task outputs.

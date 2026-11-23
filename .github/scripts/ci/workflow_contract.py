@@ -42,7 +42,13 @@ class Violation:
 # their own. Every workflow file must be in exactly one set.
 CHECK_WORKFLOWS = frozenset({"ci.yml", "docs.yml", "composed-linux.yml", "gradle-cache.yml"})
 PUBLICATION_WORKFLOWS = frozenset(
-    {"release.yml", "release-component.yml", "developer-release.yml", "openwiki-update.yml"}
+    {
+        "release.yml",
+        "release-component.yml",
+        "developer-release.yml",
+        "bootstrap-release.yml",
+        "openwiki-update.yml",
+    }
 )
 
 # Steps that cannot be tasks: they install the task runner's own prerequisites, report to the
