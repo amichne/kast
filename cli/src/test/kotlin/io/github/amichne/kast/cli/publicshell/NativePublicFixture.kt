@@ -48,7 +48,7 @@ internal class NativePublicFixture(val evidence: Path) : AutoCloseable {
         }
         Files.createDirectories(installation.resolve("share/kast"))
         Files.copy(product.resolve(CONTROL_CATALOG), installation.resolve(CONTROL_CATALOG))
-        writeRuntimeReceipt()
+        writeRuntimeBinding()
         Files.createDirectories(configuration.parent)
         Files.writeString(configuration, "")
         Files.createDirectories(installation.resolve("share/kast"))
@@ -172,23 +172,38 @@ internal class NativePublicFixture(val evidence: Path) : AutoCloseable {
     }
 
     /**
-     * The installer records the Host runtime root in the management receipt; the Control executable selects this
-     * platform's Java home inside it. Here that Java home is the test's own runtime.
+     * The installer binds the installation's runtime entry in `share/kast/product-selection.json`, and the entry's
+     * `runtime.json` names the same archive and manifest; the Control executable selects this platform's Java home
+     * inside that entry. Here that Java home is the test's own runtime.
      */
-    private fun writeRuntimeReceipt() {
+    private fun writeRuntimeBinding() {
         val catalog = Json.parseToJsonElement(Files.readString(installation.resolve(CONTROL_CATALOG))).jsonObject
         val homes = catalog.getValue("control").jsonObject.getValue("javaHomes").jsonObject
         val javaHome = runtimeRoot.resolve(homes.getValue(currentPlatform()).jsonPrimitive.content)
         Files.createDirectories(javaHome.parent)
         Files.createSymbolicLink(javaHome, Path.of(System.getProperty("java.home")).toRealPath())
+        // The Control executable digests the manifest and never decodes it.
+        val manifest = Files.writeString(runtimeRoot.resolve("manifest.json"), "runtime manifest fixture\n")
+        val json = Json { encodeDefaults = true }
         Files.writeString(
-            installation.parent.resolve("management.json"),
-            Json.encodeToString(RuntimeReceipt(RuntimeReference(runtimeRoot.toString()))),
+            runtimeRoot.resolve("runtime.json"),
+            json.encodeToString(RuntimeReceipt(RUNTIME_ARCHIVE, nativeDigest(manifest))) + "\n",
+        )
+        Files.writeString(
+            installation.resolve("share/kast/product-selection.json"),
+            json.encodeToString(
+                RuntimeSelection(
+                    target = currentPlatform(),
+                    runtimeRoot = runtimeRoot.toString(),
+                    runtimeManifestSha256 = nativeDigest(manifest),
+                )
+            ) + "\n",
         )
     }
 
+    /** The runtime store entry beside the management root, named by archive digest. */
     private val runtimeRoot: Path
-        get() = home.resolve("runtime")
+        get() = installation.parent.resolveSibling("kast-workspaces/runtimes/$RUNTIME_ARCHIVE")
 
     private fun digest(text: String): String =
         java.util.HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(text.toByteArray()))
@@ -251,10 +266,30 @@ private fun currentPlatform(): String {
     return "$os-$arch"
 }
 
-/** Only the runtime root the Control executable reads; every other receipt field stays the installer's. */
-@kotlinx.serialization.Serializable private data class RuntimeReceipt(val product: RuntimeReference)
+private val RUNTIME_ARCHIVE = "f".repeat(64)
 
-@kotlinx.serialization.Serializable private data class RuntimeReference(val runtimeRoot: String)
+/** `runtime.json` as the installer writes it (managed_product_installation.py:183-191). */
+@kotlinx.serialization.Serializable
+private data class RuntimeReceipt(val archiveSha256: String, val manifestSha256: String, val schemaVersion: Int = 1)
+
+/** `product-selection.json` in the installer's field order (managed_product.py:44-58). */
+@kotlinx.serialization.Serializable
+private data class RuntimeSelection(
+    val releaseTag: String = "developer-v0.0.0",
+    val publicVersion: String? = null,
+    val version: String = "0.0.0",
+    val sourceRevision: String = "a".repeat(40),
+    val sourceTree: String = "b".repeat(40),
+    val buildRecordSha256: String = "1".repeat(64),
+    val target: String,
+    val bundleSha256: String = "2".repeat(64),
+    val qualificationSha256: String = "3".repeat(64),
+    val runtimeRoot: String,
+    val runtimeArchiveSha256: String = RUNTIME_ARCHIVE,
+    val runtimeManifestSha256: String,
+    val policy: String = "PinnedBuild",
+    val schemaVersion: Int = 1,
+)
 
 private const val CONTROL_PAYLOAD = "share/kast/libexec/kast-management"
 private const val CONTROL_CATALOG = "share/kast/frontend.json"

@@ -398,6 +398,8 @@ val managedInstallationTest = tasks.register<VerificationReportTask>("managedIns
     description = "Proves immutable selection, managed replacement, and recorded recovery."
     sourceFiles.from(fileTree("packaging") { include("composed_bundle.py", "managed_headless.py", "internal/*/*.py", "internal/*/*.sh", "tests/*.py", "pyproject.toml", "uv.lock") })
     sourceFiles.from("install.sh", "packaging/internal/bootstrap/bootstrap.sh.in")
+    // test-managed-build-record.py pins the Go frontend's record fixtures to the installer's exact bytes.
+    sourceFiles.from(fileTree("frontend/internal/frontend/testdata/installed-records"))
     executableFile.set(validationExecutable("uv"))
     arguments.set(listOf("run", "--locked", "--project", "packaging", "pytest",
         "packaging/tests/test-managed-installation.py", "packaging/tests/test-managed-release.py",

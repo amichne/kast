@@ -39,12 +39,13 @@ func newFixture(t *testing.T) *fixture {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { os.RemoveAll(base) })
-	// The installation's parent holds its management receipt, as the installer lays it out.
+	// base stands for HOME/.local/share: the installation is base/kast/installation, and the runtime store is beside
+	// base/kast, as the installer lays them out.
 	root, err := filepath.EvalSymlinks(base)
 	if err != nil {
 		t.Fatal(err)
 	}
-	root = filepath.Join(root, "installation")
+	root = filepath.Join(root, "kast", "installation")
 	writeCatalog(t, root, validCatalog())
 	for _, directory := range []string{"share/kast/libexec", "libexec", "state/run"} {
 		if err := os.MkdirAll(filepath.Join(root, directory), 0o700); err != nil {
@@ -315,7 +316,7 @@ func TestASignalBeforeCompletionOwnsTheStatusAndCancelsTheRequest(t *testing.T) 
 func TestAnUnreachableCoordinatorLeavesTheInvocationToTheSameJvmEntry(t *testing.T) {
 	f := newFixture(t)
 	touchFrontend(t, f)
-	f.receipt(t, "/runtimes/abc")
+	f.installRuntime(t)
 	f.run(t, "", nil, "-Duser.home=/home/caller", "query", "--name", "Fixture")
 	if len(f.executed) != 1 || f.connections.Load() != 0 {
 		t.Fatalf("executed=%v connections=%d", f.executed, f.connections.Load())
@@ -336,7 +337,7 @@ func TestASocketInADirectoryOpenToOthersIsNeverDialed(t *testing.T) {
 	if err := os.Chmod(filepath.Join(f.root, "state", "run"), 0o755); err != nil {
 		t.Fatal(err)
 	}
-	f.receipt(t, "/runtimes/abc")
+	f.installRuntime(t)
 	f.run(t, "", nil, "query")
 	if f.connections.Load() != 0 || len(f.executed) != 1 {
 		t.Fatalf("an unprotected socket was trusted: connections=%d executed=%v", f.connections.Load(), f.executed)
@@ -417,7 +418,7 @@ func TestAnUnansweredHandshakeIsUnreachableWithinTheCatalogBound(t *testing.T) {
 			t.Cleanup(func() { conn.Close() })
 		}
 	}()
-	f.receipt(t, "/runtimes/abc")
+	f.installRuntime(t)
 	var stdout, stderr bytes.Buffer
 	statusWithin(t, 5*time.Second, func() int {
 		return f.runProcess(strings.NewReader(""), &stdout, &stderr, nil, nil, "query")
@@ -440,19 +441,17 @@ func TestHelpWithAnUnadmittedOutputSettingIsAnsweredByTheCoordinator(t *testing.
 	}
 }
 
-// receipt records a Host runtime root the way the installer's management receipt does.
-func (f *fixture) receipt(t *testing.T, runtimeRoot string) {
+// installRuntime records the installation's selection and its bound runtime entry, as the installer writes them, and
+// returns the entry.
+func (f *fixture) installRuntime(t *testing.T) string {
 	t.Helper()
-	encoded, _ := json.Marshal(map[string]any{"product": map[string]any{"runtimeRoot": runtimeRoot}})
-	if err := os.WriteFile(filepath.Join(filepath.Dir(f.root), "management.json"), encoded, 0o600); err != nil {
-		t.Fatal(err)
-	}
+	return writeInstalledRuntime(t, f.root)
 }
 
 func TestEveryEntryOtherThanPublicQueriesReplacesTheProcessWithTheJvmEntry(t *testing.T) {
 	f := newFixture(t)
 	touchFrontend(t, f)
-	f.receipt(t, "/runtimes/abc")
+	entry := f.installRuntime(t)
 	for _, arguments := range [][]string{
 		{"-Duser.home=/home/caller", "--internal-entrypoint=mcp", "--catalog", "common"},
 		{"-Xmx512m", "-XX:+UseSerialGC", "--internal-entrypoint=jq", "FILTER"},
@@ -465,7 +464,7 @@ func TestEveryEntryOtherThanPublicQueriesReplacesTheProcessWithTheJvmEntry(t *te
 			t.Fatalf("%v: unexpected outcome %+v executed=%v", arguments, got, f.executed)
 		}
 	}
-	want := []string{"/runtimes/abc/host/jbr/bin/java", "-Xlog:disable", "-Xlog:all=warning:stderr",
+	want := []string{filepath.Join(entry, "host/jbr/bin/java"), "-Xlog:disable", "-Xlog:all=warning:stderr",
 		"-Dkast.command=" + filepath.Join(f.root, payloadPath),
 		"-Duser.home=/home/caller", "-Xmx256m", "-cp",
 		filepath.Join(f.root, "lib/kast-cli.jar") + ":" + filepath.Join(f.root, "lib/kotlin-stdlib.jar"),
@@ -490,11 +489,27 @@ func TestPublicQueriesFromTheQueryEntryReachTheCoordinatorWithoutTheSelector(t *
 	}
 }
 
-func TestAMissingRuntimeReceiptIsABootstrapFailureBeforeAnyExec(t *testing.T) {
+func TestAMissingProductSelectionIsABootstrapFailureBeforeAnyExec(t *testing.T) {
 	f := newFixture(t)
 	touchFrontend(t, f)
+	// A management receipt beside the installation is not a fallback for the selection.
+	if err := os.WriteFile(filepath.Join(filepath.Dir(f.root), "management.json"), []byte("{}\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
 	if got := f.run(t, "", nil, "install"); got.status != 9 || len(f.executed) != 0 ||
-		!strings.Contains(got.stderr, "runtime is unavailable") {
+		got.stderr != "kast: the Kast runtime is unavailable "+
+			"(RECORD_UNAVAILABLE: share/kast/product-selection.json NOT_FOUND). Reinstall Kast.\n" {
+		t.Fatalf("unexpected outcome %+v executed=%v", got, f.executed)
+	}
+}
+
+func TestADamagedRuntimeEntryIsABootstrapFailureBeforeAnyExec(t *testing.T) {
+	f := newFixture(t)
+	touchFrontend(t, f)
+	entry := f.installRuntime(t)
+	replaceRecord(t, filepath.Join(entry, "manifest.json"), []byte("{}\n"))
+	if got := f.run(t, "", nil, "install"); got.status != 9 || len(f.executed) != 0 ||
+		!strings.Contains(got.stderr, "RUNTIME_ENTRY_DAMAGED: manifest.json SHA-256") {
 		t.Fatalf("unexpected outcome %+v executed=%v", got, f.executed)
 	}
 }
@@ -540,7 +555,7 @@ func TestALongSocketIsDialedThroughTheCoordinatorsAliasOnly(t *testing.T) {
 	run := filepath.Join(f.root, "state", "run")
 	digest := sha256.Sum256([]byte(run))
 	link := filepath.Join(aliasDirectory, "kast-uds-"+hex.EncodeToString(digest[:])[:32])
-	f.receipt(t, "/runtimes/abc")
+	f.installRuntime(t)
 	if f.run(t, "", nil, "query"); f.connections.Load() != 0 || len(f.executed) != 1 {
 		t.Fatalf("a missing alias was not unreachable: executed=%v", f.executed)
 	}
@@ -564,7 +579,7 @@ func TestALongSocketIsDialedThroughTheCoordinatorsAliasOnly(t *testing.T) {
 func TestTheInstalledClassDataArchiveIsUsedOnlyWhenItExists(t *testing.T) {
 	f := newFixture(t)
 	touchFrontend(t, f)
-	f.receipt(t, "/runtimes/abc")
+	f.installRuntime(t)
 	archive := filepath.Join(f.root, "lib", "control.jsa")
 	option := "-XX:SharedArchiveFile=" + archive
 	f.run(t, "", nil, "--version")
