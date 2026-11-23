@@ -36,57 +36,6 @@ from managed_update_journal import (
 )
 
 
-class Status(str, Enum):
-    PREPARED = 'Prepared'
-    PLUGIN_PREPARED = 'PluginPrepared'
-    PLANNED = 'Planned'
-    ACTIVE = 'Active'
-    FINALIZING = 'UpgradeFinalizing'
-    SEALED = 'UpgradeFinalized'
-    CLEAN = 'CleanBaselineRestored'
-    UNRESOLVED = 'DetachedWithUnresolvedState'
-    BLOCKED = 'RecoveryBlocked'
-
-
-@dataclass(frozen=True)
-class Link:
-    path: str
-    target: str
-    priorTarget: typing.Optional[str]
-
-
-@dataclass(frozen=True)
-class Plugin:
-    destination: str
-    candidate: str
-    candidateIdentity: Identity
-    backup: str
-    priorIdentity: typing.Optional[Identity]
-    quarantine: str
-
-
-@dataclass(frozen=True)
-class LegacyReceipt:
-    schemaVersion: int
-    installation: str
-    installationIdentity: Identity
-    links: list[Link]
-    priorInstallation: typing.Optional[str]
-    plugin: typing.Optional[Plugin]
-    pluginRoot: typing.Optional[str]
-    stage: Status
-
-
-@dataclass(frozen=True)
-class Receipt:
-    schemaVersion: int
-    installation: str
-    installationIdentity: Identity
-    plugin: typing.Optional[Plugin]
-    pluginRoot: typing.Optional[str]
-    stage: Status
-
-
 def stream_digest(stream):
     digest = hashlib.sha256()
     for block in iter(lambda: stream.read(65536), b''):
@@ -179,7 +128,7 @@ def save(path, document):
             temporary.unlink()
 
 
-def load(path, kind=Receipt):
+def load(path, kind):
     descriptor = os.open(path, os.O_RDONLY | os.O_NOFOLLOW)
     with os.fdopen(descriptor, 'rb') as source:
         observed = os.fstat(source.fileno())
@@ -191,8 +140,7 @@ def load(path, kind=Receipt):
         raise Rejected(Failure.RECEIPT)
     try:
         document = json.loads(raw, object_pairs_hook=unique)
-        selected = LegacyReceipt if kind is Receipt and isinstance(document, dict) and document.get('schemaVersion') in (1, 2) else kind
-        return decode(selected, document)
+        return decode(kind, document)
     except (ValueError, UnicodeDecodeError):
         raise Rejected(Failure.RECEIPT) from None
 
