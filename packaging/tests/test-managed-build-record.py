@@ -1455,6 +1455,33 @@ class ProductActivationTest(unittest.TestCase):
         pending.rmdir()
         self.assertEqual(0, self.remove_product(path))
 
+    def test_uninstall_journal_without_product_is_rejected(self) -> None:
+        path, _ = self.removal_journal()
+        payload = self.root / "installation"
+        selected = install.LIFECYCLE.ProductRemovalRoot(
+            payload, install.LIFECYCLE.FileIdentity.observe(payload)
+        )
+        # Deliberately incomplete journals: the product identity is a required field.
+        complete: dict[str, object] = json.loads(path.read_bytes())
+        _ = complete.pop("product")
+        no_workspaces: list[object] = []
+        journals: tuple[tuple[str, dict[str, object]], ...] = (
+            ("plain", complete),
+            ("workspace", {**complete, "workspaceRemovals": no_workspaces}),
+        )
+        for label, document in journals:
+            with self.subTest(journal=label):
+                raw = json.dumps(document).encode()
+                _ = path.write_bytes(raw)
+                with self.assertRaises(install.LIFECYCLE.Rejected) as rejected:
+                    _ = install.LIFECYCLE.admit_uninstall_journal(path, selected)
+                self.assertEqual(
+                    install.LIFECYCLE.Failure.RECOVERY_REJECTED, rejected.exception.failure
+                )
+                self.assertEqual(1, self.remove_product(path))
+                self.assertEqual(raw, path.read_bytes())
+                self.assertTrue(payload.is_dir())
+
     def test_product_removal_final_directory_interruption_is_retryable(self) -> None:
         path, record = self.removal_journal()
         payload = self.root / "installation"

@@ -118,7 +118,7 @@ class EmptyRecovery:
     type: str = field(default='EMPTY_RECOVERY', init=False)
 
 @dataclass(frozen=True)
-class UninstallRetirementJournal:
+class ProductUninstallRetirementJournal:
     installationRoot: str
     executable: str
     executableSha256: str
@@ -127,9 +127,6 @@ class UninstallRetirementJournal:
     managedRootIdentity: FileIdentity
     controlIdentity: FileIdentity
     recoveryProof: Union[AbsentRecovery, AdmittedRecovery, EmptyRecovery]
-
-@dataclass(frozen=True)
-class ProductUninstallRetirementJournal(UninstallRetirementJournal):
     product: 'ProductReference'
 
 @dataclass(frozen=True)
@@ -137,10 +134,6 @@ class WorkspaceRemoval:
     id: str
     identity: FileIdentity
     recordSha256: str
-
-@dataclass(frozen=True)
-class WorkspaceUninstallRetirementJournal(UninstallRetirementJournal):
-    workspaceRemovals: list[WorkspaceRemoval]
 
 @dataclass(frozen=True)
 class ProductWorkspaceUninstallRetirementJournal(ProductUninstallRetirementJournal):
@@ -216,8 +209,8 @@ def admit_uninstall_journal(path, installation):
         raise Rejected(Failure.RECOVERY_REJECTED)
     document = read_json(path, UNINSTALL_JOURNAL_MAXIMUM_BYTES, Failure.RECOVERY_REJECTED)
     expected_fields = ('installationRoot', 'executable', 'executableSha256', 'channel', 'type',
-                       'managedRootIdentity', 'controlIdentity', 'recoveryProof')
-    optional_fields = tuple(name for name in ('product', 'workspaceRemovals', 'productRemoval') if name in document)
+                       'managedRootIdentity', 'controlIdentity', 'recoveryProof', 'product')
+    optional_fields = tuple(name for name in ('workspaceRemovals', 'productRemoval') if name in document)
     exact_fields(document, expected_fields + optional_fields)
     executable = Path(document['executable'])
     if (document['installationRoot'] != str(installation.managed_root) or not executable.is_absolute()
@@ -226,26 +219,18 @@ def admit_uninstall_journal(path, installation):
             or re.fullmatch('[0-9a-f]{64}', document['executableSha256']) is None
             or document['type'] not in {'REMOVAL_REQUESTED', 'CONTROL_RETIRED'}):
         raise Rejected(Failure.RECOVERY_REJECTED)
-    journal = UninstallRetirementJournal(document['installationRoot'], document['executable'],
+    from managed_installation import RECOVERY
+    from managed_product import ProductReference
+    journal = ProductUninstallRetirementJournal(document['installationRoot'], document['executable'],
         document['executableSha256'], document['channel'], UninstallPhase(document['type']),
         journal_identity(document['managedRootIdentity']), journal_identity(document['controlIdentity']),
-        decode_recovery_proof(document['recoveryProof'], installation))
-    if 'product' in document:
-        from managed_installation import RECOVERY
-        from managed_product import ProductReference
-        reference = RECOVERY.decode(ProductReference, document['product'])
-        journal = ProductUninstallRetirementJournal(
-            journal.installationRoot, journal.executable, journal.executableSha256,
-            journal.channel, journal.type, journal.managedRootIdentity, journal.controlIdentity,
-            journal.recoveryProof, reference)
+        decode_recovery_proof(document['recoveryProof'], installation),
+        RECOVERY.decode(ProductReference, document['product']))
     if 'workspaceRemovals' in document:
-        kind = (ProductWorkspaceUninstallRetirementJournal if 'product' in document
-                else WorkspaceUninstallRetirementJournal)
-        journal = kind(**vars(journal), workspaceRemovals=workspace_removals(document['workspaceRemovals']))
+        journal = ProductWorkspaceUninstallRetirementJournal(
+            **vars(journal), workspaceRemovals=workspace_removals(document['workspaceRemovals']))
     if 'productRemoval' in document:
         from immutable_store import removal
-        if 'product' not in document:
-            raise Rejected(Failure.RECOVERY_REJECTED)
         kind = (RetainedWorkspaceProductUninstallJournal if 'workspaceRemovals' in document
                 else RetainedProductUninstallJournal)
         journal = kind(**vars(journal), productRemoval=removal(document['productRemoval']))
