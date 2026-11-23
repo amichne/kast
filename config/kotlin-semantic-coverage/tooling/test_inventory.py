@@ -471,6 +471,53 @@ def test_actual_54_resources_match_the_independent_manifests() -> None:
     assert report.issues == ()
 
 
+def test_actual_ledger_keeps_local_junit_facts_out_of_qualification() -> None:
+    report = subject.historical_ledger_guard(Path(__file__).resolve().parents[3])
+    assert report.issues == ()
+    assert report.fact_count == 107
+    assert len(report.historical_fact_ids) == 49
+    assert "CF-BASELINE" in report.historical_fact_ids
+    assert "CF-AUTHORITY" not in report.historical_fact_ids
+
+
+def owned_ledger(tmp_path: Path, cases: str) -> Path:
+    root = tmp_path / subject.SEMANTIC_COVERAGE
+    root.mkdir(parents=True)
+    _ = (root / subject.FACT_LEDGER).write_text(
+        "fact_id\tstatus\tevidence_limits\tsource_evidence\textra\n"
+        "CF-LOCAL\tOBSERVED_FIXTURE_PASS\tmutable\tbuild/test-results/x/TEST-a.xml\tx\n"
+        "CF-SOURCE\tAUTHORITY_ONLY\tnone\tpin.toml\tx\n"
+    )
+    _ = (root / "cases.tsv").write_text(cases)
+    _ = (root / "classifications.tsv").write_text("element_id\n")
+    _ = (root / "inventory-evidence-cases.tsv").write_text("case_id\n")
+    return tmp_path
+
+
+def test_ledger_guard_classifies_local_junit_citations_as_historical(tmp_path: Path) -> None:
+    report = subject.historical_ledger_guard(
+        owned_ledger(tmp_path, "case_id\nKCF-LOCAL\nCF-SOURCE\n")
+    )
+    assert report.issues == ()
+    assert report.historical_fact_ids == ("CF-LOCAL",)
+
+
+def test_ledger_guard_rejects_a_qualification_input_citing_a_historical_fact(
+    tmp_path: Path,
+) -> None:
+    report = subject.historical_ledger_guard(
+        owned_ledger(tmp_path, "case_id\tevidence\nKCF-1\tCF-LOCAL\n")
+    )
+    assert [(item.code, item.detail) for item in report.issues] == [
+        (subject.Code.HISTORICAL_EVIDENCE_CITED, "cases.tsv: CF-LOCAL")
+    ]
+
+
+def test_ledger_guard_fails_closed_without_the_ledger(tmp_path: Path) -> None:
+    report = subject.historical_ledger_guard(tmp_path)
+    assert code_set(report.issues) == {subject.Code.UNREADABLE}
+
+
 def test_owned_resource_guard_accepts_declared_inputs(tmp_path: Path) -> None:
     report = subject.resource_input_guard(owned_resource_inputs(tmp_path))
     assert report.status == "PASS"

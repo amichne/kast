@@ -62,7 +62,7 @@ Composes semantic services inside IntelliJ IDEA and owns hosted transport, query
 - Run `mise exec -- ./gradlew :runtime:hosted:headlessBootstrapPlugin` to package the bundled descriptor archive. This archive supplies no Host classes.
 - Read `hosted/NATIVE_FIXTURES.md` before native qualification.
 - Hosted declared-effect fixtures consume the relation-owned `compileDeclaredEffectFixture` archive. Each case keeps its own archive copy and project state.
-- `check` and `scopedCheck` include `dependencyFixtureTest` for archive isolation.
+- `check` and `scopedCheck` include `dependencyFixtureTest` for archive isolation and the complete `nativeFixtureTest` suite, which CI runs.
 - [HostedQueryPublicationProjectionTest.kt](hosted/src/test/kotlin/io/github/amichne/kast/runtime/hosted/HostedQueryPublicationProjectionTest.kt) - publication and projection cases.
 - [HostedQueryRetainedPresentationTest.kt](hosted/src/test/kotlin/io/github/amichne/kast/runtime/hosted/HostedQueryRetainedPresentationTest.kt) - retained output cases.
 

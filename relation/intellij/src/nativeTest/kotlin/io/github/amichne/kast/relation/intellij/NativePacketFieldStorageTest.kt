@@ -7,7 +7,11 @@ import io.github.amichne.kast.relation.contract.ValueFlowRead
 import io.github.amichne.kast.relation.contract.ValueFlowRequest
 import io.github.amichne.kast.relation.contract.ValueFlowStep
 import io.github.amichne.kast.relation.contract.ValueFlowUnsupportedCause
+import io.github.amichne.kast.relation.contract.ValueInvocationOperation
+import io.github.amichne.kast.relation.contract.ValueReceiverKind
+import io.github.amichne.kast.relation.contract.ValueRole
 import io.github.amichne.kast.relation.contract.ValueTransferKind
+import io.github.amichne.kast.symbol.contract.CanonicalCompilerSignature
 import io.github.amichne.kast.symbol.contract.ExactDeclarationTextRange
 import kotlinx.coroutines.runBlocking
 
@@ -25,11 +29,22 @@ class NativePacketFieldStorageTest : NativePacketValueFixtureTest() {
 
     fun testMutablePropertyKeepsItsFrontier() = rejected("fromMutable")
 
-    fun testComputedPropertyKeepsItsFrontier() = rejected("fromComputed")
+    /** Since 109f47e408 a computed getter is entered as a dispatch call, never as field storage. */
+    fun testComputedPropertyEntersItsGetterWithoutFieldStorage() {
+        val step = projection("fromComputed")
+        assertEquals(emptyList<Any>(), step.obligations)
+        val receiver = step.transfers.single()
+        assertEquals(ValueTransferKind.RECEIVER, receiver.kind)
+        val role = receiver.target.role as ValueRole.Receiver
+        assertEquals(ValueReceiverKind.DISPATCH, role.kind)
+        assertTrue(role.call.operation is ValueInvocationOperation.Getter)
+        val signature = role.call.callable.signature as CanonicalCompilerSignature.Property
+        assertEquals("fixture.controls.ComputedRequest.destination", signature.qualifiedIdentity.value)
+    }
 
     private fun rejected(function: String) {
         val step = projection(function)
-        assertEquals("Unproven field storage escaped: $function", emptyList<Any>(), step.transfers)
+        assertEquals("Unproven field storage escaped: $function", emptyList<Any>(), step.transfers.map { it.kind })
         assertEquals(listOf(ValueFlowUnsupportedCause.UNSUPPORTED_PROPERTY), step.obligations.map { it.cause })
     }
 

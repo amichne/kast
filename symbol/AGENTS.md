@@ -52,6 +52,7 @@ Defines declaration discovery and exact identity, with domain services and Kotli
 ## Entry Points
 
 - Gradle projects: `:symbol:contract`, `:symbol:service`, and `:symbol:intellij`.
+- `check` and `scopedCheck` in `:symbol:intellij` include the complete `nativeFixtureTest` suite, which CI runs.
 - `:symbol:intellij:semanticCoverageFixtureTest` proves local compiler owners through the pinned IntelliJ fixtures. The root `verifyKotlinSemanticCoverage` gate admits its exact case population.
 
 ## Navigation Hints

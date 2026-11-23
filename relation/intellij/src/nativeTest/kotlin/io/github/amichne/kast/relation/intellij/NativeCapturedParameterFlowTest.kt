@@ -254,11 +254,19 @@ class NativeCapturedParameterFlowTest : NativeReferenceFixtureTest() {
                 scope = scope,
                 projection = projection,
             )
+        assertDecodeContinuation(downstream)
+    }
+
+    private fun assertDecodeContinuation(downstream: ValueFlowRead) {
         when (downstream) {
             is ValueFlowRead.Observed -> assertTrue(downstream.step.transfers.isEmpty())
+            // Since 4f936a88a6 the dispatch rejection keeps its origin and cause instead of OUTSIDE_DOMAIN.
             is ValueFlowRead.Rejected ->
                 assertEquals(
-                    io.github.amichne.kast.relation.contract.ValueFlowRejection.OUTSIDE_DOMAIN,
+                    io.github.amichne.kast.relation.contract.ValueFlowRejection.Native.RelationRejected(
+                        io.github.amichne.kast.relation.contract.ValueNativeRelationOrigin.IMPLEMENTATION_DISPATCH,
+                        io.github.amichne.kast.relation.contract.RelationCompilerRejection.SCOPE_REJECTED,
+                    ),
                     downstream.cause,
                 )
             else -> fail("Unexpected decode continuation: $downstream")

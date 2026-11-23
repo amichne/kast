@@ -150,6 +150,10 @@ mise exec -- ./gradlew :distribution:cli:scopedCheck --continue
 
 The task includes formatting, both file-length guards, `Detekt`, and the module's unit tests.
 It does not assemble the product or compile the native command.
+In `:relation:intellij`, `:symbol:intellij`, and `:runtime:hosted`, it also runs the module's complete `nativeFixtureTest` suite.
+That suite starts the pinned IntelliJ Platform headless, and the relation suite alone takes about five minutes.
+Select one class with `--tests` on `nativeFixtureTest` for a faster edit loop.
+CI runs the same suites, as the [native compiler fixture gate](../.github/scripts/ci/README.md#native-compiler-fixture-gate) describes.
 Use fully qualified task paths to select modules.
 Repeat the same command after each source change.
 

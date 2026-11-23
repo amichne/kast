@@ -60,7 +60,7 @@ Defines one-hop semantic relationships, callback evidence, and value-flow facts 
 - Gradle projects: `:relation:contract`, `:relation:service`, and `:relation:intellij`.
 - Native fixtures live in `intellij/src/nativeTest`; their evidence differs from ordinary JVM tests.
 - `:relation:intellij:compileDeclaredEffectFixture` owns the immutable dependency archive for relation and hosted fixtures. Each case copies that archive into its temporary directory.
-- `check` and `scopedCheck` include `dependencyFixtureTest` for archive isolation.
+- `check` and `scopedCheck` include `dependencyFixtureTest` for archive isolation and the complete `nativeFixtureTest` suite, which CI runs.
 - [RelationServiceTest.kt](service/src/test/kotlin/io/github/amichne/kast/relation/service/RelationServiceTest.kt) - relation admission and finite outcomes.
 
 ## Navigation Hints
