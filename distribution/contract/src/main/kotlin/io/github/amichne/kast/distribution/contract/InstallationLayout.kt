@@ -54,7 +54,7 @@ private constructor(
 ) {
     /** Client configuration beneath `config`, derived from [ownedRoot]. */
     val configuration: Configuration
-        get() = Configuration(ownedRoot.resolve(CONFIGURATION_DIRECTORY))
+        get() = Configuration(ownedRoot)
 
     /** Coordinator state beneath `state`, derived from [ownedRoot]. */
     val state: State
@@ -83,7 +83,14 @@ private constructor(
     override fun toString(): String = "InstallationLayout(${managementRoot.path}, ${version.path})"
 
     /** `config`: the client configuration file, workspace overlays, the workspace registry, and the selected IDE. */
-    class Configuration internal constructor(val directory: Path) {
+    class Configuration
+    internal constructor(
+        /** The physical directory that holds `config`; readers inspect the components beneath it without links. */
+        val base: Path
+    ) {
+        val directory: Path
+            get() = base.resolve(CONFIGURATION_DIRECTORY)
+
         val environment: Path
             get() = directory.resolve(ENVIRONMENT_FILE)
 
@@ -336,10 +343,6 @@ private constructor(
 
         /** The layout whose version root contains a `bin/kast` executable. */
         fun ofKastExecutable(kast: Path): InstallationLayout = of(kast.parent.parent)
-
-        /** The installation whose `config/environment` is [configurationFile], or null when it has no such parent. */
-        fun ofConfigurationFile(configurationFile: Path): InstallationLayout? =
-            configurationFile.parent?.parent?.let(::of)
     }
 }
 

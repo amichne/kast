@@ -4,7 +4,6 @@ import io.github.amichne.kast.kernel.Refinement
 import java.nio.file.Files
 import java.nio.file.Path
 import org.junit.jupiter.api.Assertions.assertEquals
-import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Assumptions.assumeTrue
 import org.junit.jupiter.api.Test
@@ -156,8 +155,6 @@ class InstallationLayoutTest {
         val root = Path.of(installation)
         assertEquals(layout, InstallationLayout.of(root))
         assertEquals(layout, InstallationLayout.ofKastExecutable(root.resolve("bin/kast")))
-        assertEquals(layout, InstallationLayout.ofConfigurationFile(root.resolve("config/environment")))
-        assertNull(InstallationLayout.ofConfigurationFile(Path.of("environment")))
     }
 
     @Test

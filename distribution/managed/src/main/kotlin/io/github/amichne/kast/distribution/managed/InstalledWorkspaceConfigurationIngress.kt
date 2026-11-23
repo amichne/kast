@@ -40,12 +40,12 @@ object InstalledWorkspaceConfigurationIngress {
     fun load(installationRoot: Path, workspaceRoot: Path, environment: Map<String, String>): SavedConfigurationIngress {
         if (!physicalDirectory(installationRoot)) return rejected(SavedConfigurationIngressFailure.INVALID_INSTALLATION)
         if (!physicalDirectory(workspaceRoot)) return rejected(SavedConfigurationIngressFailure.INVALID_WORKSPACE)
-        val installationFile = InstallationLayout.of(installationRoot).configuration.environment
+        val configuration = InstallationLayout.of(installationRoot).configuration
         val explicit = environment[ConfigurationParameter.CONFIGURATION_FILE.key]
         val installation =
             when (
                 val read =
-                    if (explicit == null) optional(installationRoot, installationFile, environment)
+                    if (explicit == null) optional(configuration.base, configuration.environment, environment)
                     else InstalledSavedConfigurationIngress.read(explicit, environment)
             ) {
                 is SavedConfigurationIngress.Rejected -> return read
@@ -55,8 +55,8 @@ object InstalledWorkspaceConfigurationIngress {
             when (
                 val read =
                     optional(
-                        installationRoot,
-                        workspaceFile(installationRoot, workspaceRoot),
+                        configuration.base,
+                        configuration.workspaceEnvironment(workspaceRoot),
                         emptyMap(),
                     )
             ) {

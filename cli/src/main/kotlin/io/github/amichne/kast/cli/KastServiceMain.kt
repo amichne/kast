@@ -233,7 +233,7 @@ private fun retireSemanticOwner(requireFence: Boolean) {
             is Refinement.Refined ->
                 runBlocking {
                     retireFencedSemanticCoordinator(
-                        installed.value.parent.parent,
+                        InstallationLayout.ofKastExecutable(installed.value).version.path,
                         Path.of(System.getProperty("user.home")),
                     )
                 }
@@ -257,14 +257,29 @@ private fun semanticRetirementRejected(retired: SemanticCoordinatorRetirement): 
     exitProcess(SERVICE_CONTROL_REJECTED_EXIT_CODE)
 }
 
+/**
+ * The installation is the one that owns this executable. An explicit configuration file must be that installation's
+ * own, so a selector never chooses another installation through its parent directories.
+ */
+internal fun selectsOwnConfiguration(installation: InstallationLayout, configurationFile: String?): Boolean =
+    configurationFile == null ||
+        try {
+            Path.of(configurationFile) == installation.configuration.environment
+        } catch (_: java.nio.file.InvalidPathException) {
+            false
+        }
+
 private fun tryManagedHeadlessShutdown(arguments: List<String>): Boolean {
     if (arguments != listOf("disable") || System.getenv("KAST_MANAGED_HEADLESS_STATE") == null) return false
-    val installed = installedKastExecutable()
+    val installation =
+        when (val installed = installedKastExecutable()) {
+            is Refinement.Refined -> InstallationLayout.ofKastExecutable(installed.value)
+            is Refinement.Rejected -> null
+        }
     val outcome =
-        if (installed is Refinement.Refined)
+        if (installation != null && selectsOwnConfiguration(installation, System.getenv("KAST_CONFIGURATION_FILE")))
             io.github.amichne.kast.cli.installation.shutdownManagedHeadless(
-                System.getenv("KAST_CONFIGURATION_FILE")?.let { Path.of(it).parent.parent }
-                    ?: installed.value.parent.parent,
+                installation,
                 Path.of(System.getProperty("user.home")),
                 Path.of(System.getenv("KAST_MANAGED_HEADLESS_STATE")),
             )

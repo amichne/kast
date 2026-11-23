@@ -34,11 +34,15 @@ internal sealed interface ManagedHeadlessShutdownOutcome {
 }
 
 /** An explicit private deployment uses the Host settlement protocol, never desktop service control. */
-internal fun shutdownManagedHeadless(installation: Path, home: Path, state: Path): ManagedHeadlessShutdownOutcome {
+internal fun shutdownManagedHeadless(
+    installation: InstallationLayout,
+    home: Path,
+    state: Path,
+): ManagedHeadlessShutdownOutcome {
     val launch =
         try {
             val bytes =
-                Files.newInputStream(InstallationLayout.of(installation).configuration.selectedIde).use {
+                Files.newInputStream(installation.configuration.selectedIde).use {
                     it.readNBytes(4097)
                 }
             if (bytes.size > 4096)
