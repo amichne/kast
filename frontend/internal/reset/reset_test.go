@@ -160,6 +160,7 @@ func (f *fixture) install() []string {
 	f.write(filepath.Join(f.profile(), evidence), "unsettled change")
 	f.write(filepath.Join(f.generation(), evidence), "retired change")
 	f.write(filepath.Join(filepath.Dir(filepath.Dir(f.profile())), "container.json"), "workspace")
+	f.write(filepath.Join(f.share, ".kast-downloads/part"), "part")
 	f.write(filepath.Join(f.share, ".kast-prepare-abc_1234/receipt.json"), "{}")
 	f.write(filepath.Join(f.share, ".kast-uninstall-"+digest(f.root)+".json"), "{}")
 	f.write(filepath.Join(f.home, ".local/bin/.kast-managed-"+transaction+"-command"), "payload")
@@ -183,7 +184,8 @@ func (f *fixture) install() []string {
 		f.write(path, "foreign")
 	}
 	return []string{f.agent("a"), alias, codex, endpoint, f.root, filepath.Join(f.share, "kast-workspaces"),
-		filepath.Join(f.share, "kast-runtime-bases"), filepath.Join(f.share, ".kast-install-"+transaction),
+		filepath.Join(f.share, "kast-runtime-bases"), filepath.Join(f.share, ".kast-downloads"),
+		filepath.Join(f.share, ".kast-install-"+transaction),
 		filepath.Join(f.share, ".kast-prepare-abc_1234"), filepath.Join(f.share, ".kast-uninstall-"+digest(f.root)+".json"),
 		filepath.Join(f.home, ".local/bin/.kast-managed-"+transaction+"-command"), f.public}
 }
@@ -196,6 +198,7 @@ func (f *fixture) foreign() []string {
 		filepath.Join(f.share, "kast-local/pr-1/file"),
 		filepath.Join(f.share, "kast-notes/file"),
 		filepath.Join(f.share, ".kast-install-notes"),
+		filepath.Join(f.share, ".kast-downloads-notes"),
 		filepath.Join(f.share, ".kast-workspaces.lifetime.lock"),
 		filepath.Join(f.share, ".kast-uninstall-"+strings.Repeat("0", 64)+".json"),
 		filepath.Join(f.temporary, "kast-uds-"+strings.Repeat("0", 32)),

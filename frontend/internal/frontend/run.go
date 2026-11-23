@@ -7,10 +7,12 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"slices"
 	"strings"
 	"sync"
 	"syscall"
 
+	"github.com/amichne/kast/frontend/internal/install"
 	"github.com/amichne/kast/frontend/internal/reset"
 )
 
@@ -29,16 +31,22 @@ type Process struct {
 	Exec func(path string, argv []string, environment []string) error
 	// Reset performs `kast reset` on one home.
 	Reset func(home string, arguments []string, out io.Writer) error
+	// Install performs `kast install` with options on one home.
+	Install func(ctx context.Context, home, platform string, arguments []string, out, log io.Writer) error
 }
 
 // Run executes one invocation and returns the process status. The coordinator serves public queries, a reset runs here,
 // and every other invocation replaces this process with the installation's JVM entry.
 func Run(process Process) int {
 	environment := environmentMap(process.Environment)
-	// A reset precedes every read of the installation, so damage there cannot block it.
-	if parsed := parseInvocation(process.Arguments); parsed.entry == "management" && len(parsed.arguments) > 0 &&
-		parsed.arguments[0] == "reset" {
-		return runReset(process, environment["HOME"], parsed.arguments[1:])
+	// A reset and an installation precede every read of the installation, so damage or absence there cannot block them.
+	if parsed := parseInvocation(process.Arguments); parsed.entry == "management" && len(parsed.arguments) > 0 {
+		switch {
+		case parsed.arguments[0] == "reset":
+			return runReset(process, environment["HOME"], parsed.arguments[1:])
+		case installs(parsed.arguments):
+			return runInstall(process, environment["HOME"], parsed.arguments[1:])
+		}
 	}
 	installation, err := locateInstallation(process.Executable, environment)
 	if err != nil {
@@ -97,6 +105,45 @@ func runReset(process Process, home string, arguments []string) int {
 		return runtimeStatus
 	case signal := <-process.Signals:
 		diagnose(process.Stderr, "reset: interrupted. Run `kast reset` again to see what remains.")
+		if signal == syscall.SIGTERM {
+			return terminatedStatus
+		}
+		return interruptedStatus
+	}
+}
+
+// installs reports whether the arguments select one of this process's installation modes. The JVM owns every other
+// `install` vector, such as `install skill` and its help.
+func installs(arguments []string) bool {
+	return len(arguments) > 1 && arguments[0] == "install" && strings.HasPrefix(arguments[1], "--") &&
+		slices.ContainsFunc(arguments[1:], install.Mode)
+}
+
+// runInstall performs an installation beside the signal wait. A signal cancels its transfers, which keep their bytes.
+func runInstall(process Process, home string, arguments []string) int {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	finished := make(chan error, 1)
+	go func() {
+		finished <- process.Install(ctx, home, platform(), arguments, process.Stdout, process.Stderr)
+	}()
+	select {
+	case err := <-finished:
+		var rejection *install.Rejection
+		switch {
+		case err == nil:
+			return 0
+		case !errors.As(err, &rejection):
+			diagnose(process.Stderr, "install: "+err.Error())
+			return runtimeStatus
+		}
+		diagnose(process.Stderr, "install: "+rejection.Error()+"\n"+rejection.Next)
+		if rejection.Failure == install.UsageRejected {
+			return inputStatus
+		}
+		return runtimeStatus
+	case signal := <-process.Signals:
+		diagnose(process.Stderr, "install: interrupted.Run the same command again to continue.")
 		if signal == syscall.SIGTERM {
 			return terminatedStatus
 		}
