@@ -31,9 +31,11 @@ val generateVerificationGraph = tasks.register<GenerateVerificationGraphTask>("g
     reportFile.set(layout.buildDirectory.file("reports/ci/verification-graph.json"))
     graphInputs.from(moduleBuildFiles)
     graphInputs.from(buildFile, "settings.gradle.kts", "settings.gradle", "gradle.properties", "mise.toml", "gradle/libs.versions.toml")
-    graphInputs.from(fileTree("build-logic") {
-        include("*.gradle.kts", "src/main/**")
-    })
+    for (directory in listOf("build-logic", "build-logic/idea-libraries", "buildSrc")) {
+        graphInputs.from(fileTree(directory) {
+            include("*.gradle.kts", "src/main/**")
+        })
+    }
 }
 
 val verifyKastArchitecture = tasks.register<VerifyKastArchitectureTask>("verifyKastArchitecture") {
