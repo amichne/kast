@@ -57,6 +57,7 @@ internal fun selectedInstallation(root: Path): InstallationLayout {
                     when (admitted.failure) {
                         InstallationLayoutFailure.VERSION_UNAVAILABLE -> "installation is unavailable"
                         InstallationLayoutFailure.VERSION_DISPLACED -> "installation is invalid"
+                        InstallationLayoutFailure.STALE_VERSION -> "installation was replaced"
                     },
                 )
         }

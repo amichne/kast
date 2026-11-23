@@ -41,7 +41,7 @@ internal fun readWorkspaceStatuses(
     directory: Path,
 ): Observation<List<ManagedWorkspaceStatus>> {
     val statuses = containerFiles {
-        when (val store = containerStore(ManagementRoot.of(root).management.workspaceStore)) {
+        when (val store = containerStore(ManagementRoot.of(root).share.workspaceStore)) {
             is Refinement.Rejected -> store
             is Refinement.Refined ->
                 when (val entries = scopedWorkspaces(store.value, scope, directory)) {

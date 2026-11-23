@@ -10,7 +10,7 @@ internal fun retireManagedProduct(
     environment: Map<String, String>,
 ): Refinement<Unit, ContainerFailure> {
     val store =
-        when (val selected = containerStore(ManagementRoot.of(root).management.workspaceStore)) {
+        when (val selected = containerStore(ManagementRoot.of(root).share.workspaceStore)) {
             is Refinement.Rejected -> return selected
             is Refinement.Refined -> selected.value
         }

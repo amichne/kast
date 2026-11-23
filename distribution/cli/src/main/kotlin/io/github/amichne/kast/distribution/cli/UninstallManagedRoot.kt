@@ -171,7 +171,7 @@ internal fun cleanupProductRemoval(root: Path, proof: ProductRemovalProof) {
         proof.phase == ProductRemovalPhase.PREPARED &&
             Files.notExists(ManagementRoot.of(root).management.installation, NOFOLLOW_LINKS)
     )
-    removeEmptyProductStore(ManagementRoot.of(root).management.runtimeBaseStore, proof.baseStoreIdentity)
+    removeEmptyProductStore(ManagementRoot.of(root).share.runtimeBaseStore, proof.baseStoreIdentity)
     val bundle = productRemovalDirectory(root)
     if (Files.exists(bundle, NOFOLLOW_LINKS)) {
         requireRemovalIdentity(bundle, proof.executionIdentity)
@@ -203,7 +203,7 @@ internal fun cleanupProductRemoval(root: Path, proof: ProductRemovalProof) {
 }
 
 internal fun requireProductRuntimeStore(root: Path, proof: ProductRemovalProof) {
-    val directory = ManagementRoot.of(root).management.workspaceStore.resolve("runtimes")
+    val directory = ManagementRoot.of(root).share.workspaceStore.resolve("runtimes")
     if (Files.exists(directory, NOFOLLOW_LINKS)) {
         requireRemovalIdentity(directory, proof.runtimeStoreIdentity)
         requireRemoval(Files.list(directory).use { it.findAny().isEmpty })

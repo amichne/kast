@@ -18,7 +18,7 @@ internal data class ManagedWorkspaceRemoval(
 )
 
 internal fun uninstallWorkspaceStore(root: Path): ContainerStore =
-    requireWorkspaceRemoval(containerStore(ManagementRoot.of(root).management.workspaceStore))
+    requireWorkspaceRemoval(containerStore(ManagementRoot.of(root).share.workspaceStore))
 
 internal fun prepareProductWorkspaceRemoval(
     root: Path,

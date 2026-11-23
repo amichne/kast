@@ -70,13 +70,13 @@ internal fun resetPublicInstallation(
 ): ForceResetOutcome =
     when (
         val removal =
-            ContainerQueryLease.duringStoreRemoval(ManagementRoot.of(scope.root).management.workspaceStore) {
-                val management = ManagementRoot.of(scope.root).management
+            ContainerQueryLease.duringStoreRemoval(ManagementRoot.of(scope.root).share.workspaceStore) {
+                val management = ManagementRoot.of(scope.root)
                 val managedPaths =
                     listOf(
-                        management.workspaceStore,
-                        management.runtimeBaseStore,
-                        InstallationLayout.of(management.installation).payload.productSelection,
+                        management.share.workspaceStore,
+                        management.share.runtimeBaseStore,
+                        InstallationLayout.of(management.management.installation).payload.productSelection,
                     )
                 Refinement.Refined(
                     if (managedPaths.any { !Files.notExists(it, NOFOLLOW_LINKS) })

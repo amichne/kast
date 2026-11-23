@@ -89,6 +89,10 @@ internal constructor(
     val gradleHome: Path,
     val dependencySharing: WorkspaceDependencySharing = WorkspaceDependencySharing.PRIVATE,
 ) {
+    /** The container store root that holds [directory] as `containers/<id>`. */
+    val store: Path
+        get() = directory.parent.parent
+
     fun record(): ContainerRecord =
         ContainerRecord(
             id.text,

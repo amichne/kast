@@ -1,5 +1,6 @@
 package io.github.amichne.kast.distribution.cli
 
+import io.github.amichne.kast.distribution.contract.ShareRoot
 import io.github.amichne.kast.kernel.Refinement
 import java.nio.channels.FileChannel
 import java.nio.channels.FileLock
@@ -28,7 +29,7 @@ private constructor(
 
     fun admitGeneration(runtime: AdmittedContainerRuntime? = null): Refinement<AdmittedContainer, ContainerFailure> =
         whileActive {
-            ContainerStore(workspace.directory.parent.parent, platform).admitGeneration(workspace, runtime)
+            ContainerStore(workspace.store, platform).admitGeneration(workspace, runtime)
         }
 
     @Synchronized
@@ -74,7 +75,7 @@ private constructor(
         ): Refinement<T, ContainerFailure> = containerFiles {
             if (root.parent.toRealPath() != root.parent)
                 return@containerFiles Refinement.Rejected(ContainerFailure.FOREIGN_STATE)
-            when (val native = acquireNative(root.resolveSibling(".kast-workspaces.lifetime.lock"), shared)) {
+            when (val native = acquireNative(ShareRoot.of(root.parent).share.workspaceLifetimeLock, shared)) {
                 is Refinement.Rejected -> native
                 is Refinement.Refined ->
                     try {
@@ -236,7 +237,7 @@ private constructor(
             workspace: AdmittedWorkspace,
             platform: ContainerPlatform,
         ): Refinement<Unit, ContainerFailure> {
-            val store = ContainerStore(workspace.directory.parent.parent, platform)
+            val store = ContainerStore(workspace.store, platform)
             return when (val read = store.readWorkspace(workspace.directory)) {
                 is Refinement.Rejected -> read
                 is Refinement.Refined ->

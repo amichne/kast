@@ -100,7 +100,7 @@ internal fun executeWorkspaceStop(
 ) {
     val session = OwnedChildSession()
     val result =
-        when (val store = containerStore(ManagementRoot.of(root).management.workspaceStore)) {
+        when (val store = containerStore(ManagementRoot.of(root).share.workspaceStore)) {
             is Refinement.Rejected -> store
             is Refinement.Refined ->
                 stopManagedWorkspaces(store.value, command.scope, Path.of("").toAbsolutePath()) {

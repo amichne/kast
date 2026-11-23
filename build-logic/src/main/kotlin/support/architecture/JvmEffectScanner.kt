@@ -206,6 +206,9 @@ private class EffectClassVisitor(
             // The string constant whose value reaches the next call as its first argument, if any.
             private var operand: String? = null
 
+            // Consecutive `Path.getParent()` calls whose results feed each other directly.
+            private var parents = 0
+
             override fun visitMethodInsn(
                 opcode: Int,
                 owner: String,
@@ -219,6 +222,10 @@ private class EffectClassVisitor(
                     effects += EffectObservation(module.id, ForbiddenEffect.INSTALLATION_PATH_DERIVATION, caller, target)
                 }
                 operand = null
+                parents = InstallationParentDerivationRule.next(parents, target)
+                if (InstallationParentDerivationRule.climbs(parents, target)) {
+                    effects += EffectObservation(module.id, ForbiddenEffect.INSTALLATION_PARENT_DERIVATION, caller, target)
+                }
             }
 
             override fun visitFieldInsn(
@@ -229,6 +236,7 @@ private class EffectClassVisitor(
             ) {
                 record(caller, JvmMember.of(owner, name, descriptor))
                 operand = null
+                parents = 0
             }
 
             override fun visitTypeInsn(
@@ -238,43 +246,54 @@ private class EffectClassVisitor(
                 record(caller, typeMember(type))
                 // Kotlin passes an empty vararg array after the first `Path.of` argument.
                 if (opcode != Opcodes.ANEWARRAY || type != "java/lang/String") operand = null
+                parents = 0
             }
 
             override fun visitLdcInsn(value: Any?) {
                 recordConstant(caller, value)
                 operand = value as? String
+                // A constant here can only feed the null check that Kotlin inserts between two chained calls.
             }
 
             override fun visitInsn(opcode: Int) {
                 if (opcode != Opcodes.ICONST_0) operand = null
+                if (opcode != Opcodes.DUP) parents = 0
             }
 
             override fun visitIntInsn(opcode: Int, operand: Int) {
                 this.operand = null
+                parents = 0
             }
 
             override fun visitVarInsn(opcode: Int, varIndex: Int) {
                 operand = null
+                parents = 0
             }
 
             override fun visitJumpInsn(opcode: Int, label: Label) {
                 operand = null
+                // A safe call `parent?.parent` branches on the duplicated receiver and keeps the chain.
+                if (opcode != Opcodes.IFNULL && opcode != Opcodes.IFNONNULL) parents = 0
             }
 
             override fun visitIincInsn(varIndex: Int, increment: Int) {
                 operand = null
+                parents = 0
             }
 
             override fun visitTableSwitchInsn(minimum: Int, maximum: Int, default: Label, vararg labels: Label) {
                 operand = null
+                parents = 0
             }
 
             override fun visitLookupSwitchInsn(default: Label, keys: IntArray, labels: Array<out Label>) {
                 operand = null
+                parents = 0
             }
 
             override fun visitMultiANewArrayInsn(descriptor: String, dimensions: Int) {
                 operand = null
+                parents = 0
             }
 
             override fun visitInvokeDynamicInsn(
@@ -287,6 +306,7 @@ private class EffectClassVisitor(
                 bootstrapMethodArguments.forEach { recordConstant(caller, it) }
                 recordDescriptorTypes(caller, descriptor)
                 operand = concatenationPrefix(bootstrapMethodHandle, bootstrapMethodArguments)
+                parents = 0
             }
         }
     }

@@ -16,6 +16,29 @@ enum class InstallationLayoutFailure {
 
     /** The selected version entry resolves to a path other than its place beneath the physical management root. */
     VERSION_DISPLACED,
+
+    /**
+     * The code source lies in a version root that the management root no longer selects. The current layout selects
+     * the fixed entry `R/installation` and never yields this failure; stage 8 of the lifecycle design yields it when
+     * `R/current` names another version.
+     */
+    STALE_VERSION,
+}
+
+/**
+ * `S`: the share directory, `HOME/.local/share`. It holds the management root, the lifecycle lock, and the workspace
+ * and runtime-base stores beside the management root.
+ */
+@JvmInline
+value class ShareRoot private constructor(val path: Path) {
+    /** The lifecycle lock and the stores, derived from this share directory. */
+    val share: InstallationLayout.Share
+        get() = InstallationLayout.Share(path)
+
+    companion object {
+        /** The share directory at [path], as admitted by the caller. */
+        fun of(path: Path): ShareRoot = ShareRoot(path)
+    }
 }
 
 /**
@@ -24,9 +47,17 @@ enum class InstallationLayoutFailure {
  */
 @JvmInline
 value class ManagementRoot private constructor(val path: Path) {
-    /** Lifecycle records and stores, derived from this management root. */
+    /** Lifecycle records, derived from this management root. */
     val management: InstallationLayout.Management
         get() = InstallationLayout.Management(path)
+
+    /** `S`: the share directory that holds this management root. In the current and the target layout it is `R`'s parent. */
+    val shareRoot: ShareRoot
+        get() = ShareRoot.of(requireNotNull(path.parent) { "management root has no share directory: $path" })
+
+    /** The lifecycle lock and the stores beside this management root. */
+    val share: InstallationLayout.Share
+        get() = shareRoot.share
 
     companion object {
         /** The management root at [path], as admitted by the caller. */
@@ -40,10 +71,12 @@ value class ManagementRoot private constructor(val path: Path) {
 /**
  * The only Kotlin derivation of installation paths.
  *
- * The layout holds two roots: the management root `R` and the version root `V`. In the current layout `V` is
- * `R/installation` and `R` is the parent of `V`. Every accessor derives its path on access, so the pure accessors
- * perform no filesystem effect and no eager failure. An architecture rule rejects new installation-relative path
- * literals outside this owner, so a later layout change edits this file alone.
+ * The layout holds three roots: the share directory `S`, the management root `R`, and the version root `V`. In the
+ * current layout `V` is `R/installation`, `R` is the parent of `V`, and `S` is the parent of `R`. The layout stores
+ * `R` and `V` and derives `S` from `R` on access, so the three cannot disagree. Every accessor derives its path on
+ * access, so the pure accessors perform no filesystem effect and no eager failure. An architecture rule rejects new
+ * installation-relative path literals and `Path.getParent()` chains outside this owner, so a later layout change
+ * edits this file alone.
  */
 class InstallationLayout
 private constructor(
@@ -64,9 +97,17 @@ private constructor(
     val payload: Payload
         get() = Payload(version.path)
 
-    /** Lifecycle records and stores, derived from the management root. */
+    /** Lifecycle records, derived from the management root. */
     val management: Management
         get() = managementRoot.management
+
+    /** `S`: the share directory, derived from the management root. */
+    val shareRoot: ShareRoot
+        get() = managementRoot.shareRoot
+
+    /** The lifecycle lock and the stores, derived from the share directory. */
+    val share: Share
+        get() = shareRoot.share
 
     /**
      * The root of Kast-owned client configuration and coordinator state. The current layout keeps both inside the
@@ -197,7 +238,7 @@ private constructor(
         fun shareResource(fileName: String): Path = share.resolve(fileName)
     }
 
-    /** The management root: lifecycle records and the stores that live beside it. */
+    /** The management root: lifecycle records. The stores beside it belong to [Share]. */
     class Management internal constructor(val root: Path) {
         /**
          * The current layout's installation entry, `R/installation`, as the Kotlin lifecycle records name it when they
@@ -241,12 +282,23 @@ private constructor(
          */
         val userHome: Path?
             get() = root.parent?.parent?.parent
+    }
+
+    /** The share directory `S`: the lifecycle lock and the stores that live beside the management root. */
+    class Share internal constructor(val root: Path) {
+        /** `S/kast.lock`: the lifecycle lock of the target layout. No current reader or writer opens it. */
+        val lifecycleLock: Path
+            get() = root.resolve("kast.lock")
 
         val workspaceStore: Path
-            get() = root.resolveSibling("kast-workspaces")
+            get() = root.resolve("kast-workspaces")
+
+        /** The lock beside the workspace store that outlives the store's removal. */
+        val workspaceLifetimeLock: Path
+            get() = root.resolve(".kast-workspaces.lifetime.lock")
 
         val runtimeBaseStore: Path
-            get() = root.resolveSibling("kast-runtime-bases")
+            get() = root.resolve("kast-runtime-bases")
     }
 
     /**

@@ -37,6 +37,13 @@ private constructor(
     internal val record: ProductBuildRecord,
     private val revisions: List<ProductInputRevision>,
 ) {
+    /**
+     * The workspace store beside this installation. Admission requires the runtime root to be
+     * `runtimes/<sha>` beneath this store, so it is also the store that holds [runtime].
+     */
+    internal val workspaceStore: Path
+        get() = InstallationLayout.of(installation).share.workspaceStore
+
     /** Recheck the exact files covered by cold admission before workspace effects. */
     internal fun admitCurrent(): Refinement<Unit, ContainerFailure> = containerFiles {
         when {
@@ -185,7 +192,7 @@ private fun validInstalledProduct(
         return false
     val target = record.targets.singleOrNull { it.target == reference.target } ?: return false
     val layout = InstallationLayout.of(installation)
-    val runtimeRoot = layout.management.workspaceStore.resolve("runtimes/${target.runtime.sha256}")
+    val runtimeRoot = layout.share.workspaceStore.resolve("runtimes/${target.runtime.sha256}")
     return reference.buildRecordSha256 == sha256(layout.payload.buildRecord) &&
         reference.bundleSha256 == target.bundle.sha256 &&
         reference.qualificationSha256 == target.qualification.receipt.sha256 &&

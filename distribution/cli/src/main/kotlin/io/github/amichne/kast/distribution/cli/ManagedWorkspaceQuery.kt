@@ -98,7 +98,7 @@ private constructor(
             delegated: GradleImportEnvironment? = null,
         ): Refinement<ManagedWorkspaceQuery, WorkspaceAdmissionFailure> {
             val guarded =
-                ContainerQueryLease.duringStoreAdmission(product.runtime.root.parent.parent) {
+                ContainerQueryLease.duringStoreAdmission(product.workspaceStore) {
                     Refinement.Refined(
                         openSelected(product, root, inherited, ManagedWorkspaceWait(), access, seedHostProbe, delegated)
                     )
@@ -120,7 +120,7 @@ private constructor(
         ): Refinement<ManagedWorkspaceQuery, WorkspaceAdmissionFailure> {
             val store =
                 ContainerStore(
-                    product.runtime.root.parent.parent,
+                    product.workspaceStore,
                     product.runtime.manifest.platform,
                     seedHostProbe,
                     dependencyCacheSeed = inherited["HOME"]?.let { Path.of(it).resolve(".gradle/caches/modules-2") },

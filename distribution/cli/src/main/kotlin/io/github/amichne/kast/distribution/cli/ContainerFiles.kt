@@ -61,7 +61,7 @@ internal fun admitPrivateContainerDirectory(path: Path): Refinement<Path, Contai
 
 /** Current records keep retirement locks outside the directory that retirement can detach. */
 internal fun containerQueryLockPath(workspace: AdmittedWorkspace): Refinement<Path, ContainerFailure> =
-    when (val locks = privateContainerDirectory(workspace.directory.parent.parent.resolve("locks"))) {
+    when (val locks = privateContainerDirectory(workspace.store.resolve("locks"))) {
         is Refinement.Rejected -> locks
         is Refinement.Refined -> Refinement.Refined(locks.value.resolve("${workspace.id.text}.queries.lock"))
     }

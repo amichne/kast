@@ -193,6 +193,14 @@ class KastCleanSlatePolicyTest {
                 ForbiddenEffect.TOPOLOGY_PUBLICATION to setOf(ModuleId.EVIDENCE_TOPOLOGY_SQLITE),
                 ForbiddenEffect.INSTALLATION_PATH_DERIVATION to
                     setOf(ModuleId.DISTRIBUTION_CONTRACT, ModuleId.DISTRIBUTION_CLI),
+                ForbiddenEffect.INSTALLATION_PARENT_DERIVATION to
+                    setOf(
+                        ModuleId.DISTRIBUTION_CONTRACT,
+                        ModuleId.DISTRIBUTION_CLI,
+                        ModuleId.DISTRIBUTION_MANAGED,
+                        ModuleId.APP_SERVER,
+                        ModuleId.RUNTIME_HOSTED,
+                    ),
             ),
             owners,
         )
