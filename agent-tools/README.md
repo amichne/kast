@@ -65,8 +65,8 @@ Use `--path .` explicitly for the workspace root. Incomplete coverage does not e
 Set `KAST_DEBUG=1` to send preparation and response diagnostics to stderr.
 Normal commands keep these diagnostics silent. Library logs report errors only.
 
-`kast status` reports `BROKER_NOT_OBSERVED` when private-endpoint configuration lacks broker state.
-This reason describes broker evidence. It does not report a failed compiler epoch or establish workspace readiness.
+`kast status` reports the running coordinator's version, or `COORDINATOR_NOT_RUNNING`.
+`BROKER_NOT_OBSERVED` marks Codex facts that the running coordinator does not observe. Neither reason establishes workspace readiness.
 
 ## Contract and recovery
 

@@ -22,9 +22,11 @@ kast status --all --json
 The default scope is the current workspace. `--workspace` selects an exact workspace; `--all` selects all recorded workspaces.
 These selectors are mutually exclusive. Use `--all` outside a project to inspect the whole installation.
 Status reads local evidence without starting Java, granting trust, repairing state, or contacting release servers.
+If the coordinator runs, status asks it for its version. Status starts no coordinator and no Host.
 
 | Field | Meaning |
 | --- | --- |
+| `loadedVersion` | Version of the running coordinator. `COORDINATOR_NOT_RUNNING` and `COORDINATOR_STARTING` name the other known states. |
 | `installedBuild` | Recorded build identity on disk. |
 | `product` | Exact installed product composition. |
 | `updatePolicy` | Channel or pinned-build policy. |

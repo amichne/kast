@@ -108,8 +108,16 @@ class PassiveApplicationHostTest {
         Files.createSymbolicLink(fixture.descriptor, protected)
         val status =
             readApplicationHost(fixture.root, fixture.home) { error("symlink rejection precedes process inspection") }
-        assertEquals(ObservationState.UNAVAILABLE, status.state)
+        assertEquals("DESCRIPTOR_UNAVAILABLE", status.reason)
         assertEquals("preserve this file", Files.readString(protected))
+    }
+
+    @Test
+    fun `an absent advertisement stays distinct from one that cannot be read`() {
+        val fixture = fixture()
+        Files.delete(fixture.descriptor)
+        val status = readApplicationHost(fixture.root, fixture.home) { error("absence precedes process inspection") }
+        assertEquals("DESCRIPTOR_ABSENT", status.reason)
     }
 
     @Test

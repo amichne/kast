@@ -7,21 +7,9 @@ import io.github.amichne.kast.distribution.contract.HostedServiceStatus
 import io.github.amichne.kast.distribution.contract.INSTALLATION_MANIFEST_SCHEMA_VERSION
 import io.github.amichne.kast.distribution.contract.InstallationLayout
 import io.github.amichne.kast.kernel.Refinement
-import java.io.DataInputStream
-import java.net.StandardProtocolFamily
-import java.net.UnixDomainSocketAddress
-import java.nio.ByteBuffer
-import java.nio.channels.Channels
-import java.nio.channels.SocketChannel
 import java.nio.file.Files
 import java.nio.file.LinkOption
 import java.nio.file.Path
-import java.security.MessageDigest
-import java.security.SecureRandom
-import java.util.Base64
-import java.util.concurrent.Executors
-import java.util.concurrent.TimeUnit
-import java.util.concurrent.atomic.AtomicReference
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -30,10 +18,9 @@ import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonIgnoreUnknownKeys
 
-private const val EXCHANGE_DEADLINE_MILLIS = 1500L
-private const val MAXIMUM_FRAME_BYTES = 16384
-private const val MAXIMUM_HEADER_BYTES = 8192
-private const val WEBSOCKET_ACCEPT_GUID = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11"
+internal const val MAXIMUM_RUNTIME_RECORD_BYTES = 8192L
+internal const val LOADED_VERSION_UNAVAILABLE = "loaded_version_unavailable"
+internal const val HOST_EVIDENCE_REJECTED = "host_evidence_rejected"
 private val observationJson = Json { encodeDefaults = true }
 
 @Serializable
@@ -67,7 +54,7 @@ private data class RuntimeCoordinator(
 )
 
 @Serializable
-private data class RuntimeProjection(
+internal data class RuntimeProjection(
     val loadedVersion: String?,
     val activeWorkspaces: List<String>,
     val liveConnections: Int?,
@@ -82,7 +69,7 @@ private data class RuntimeEpoch(val schemaVersion: Int, val installation: String
 @Serializable
 @OptIn(ExperimentalSerializationApi::class)
 @JsonIgnoreUnknownKeys
-private data class RuntimeInstallDocument(val schemaVersion: Int, val installationRoot: String, val codexHome: String)
+internal data class RuntimeInstallDocument(val schemaVersion: Int, val installationRoot: String, val codexHome: String)
 
 @Serializable
 private enum class ReadinessType {
@@ -100,6 +87,9 @@ private data class RuntimeReadiness(
 
 @Serializable
 internal enum class RuntimeObservationFailure {
+    COORDINATOR_NOT_RUNNING,
+    COORDINATOR_STARTING,
+    COORDINATOR_STARTUP_REJECTED,
     BROKER_NOT_OBSERVED,
     EPOCH_UNAVAILABLE,
     EPOCH_REJECTED,
@@ -146,14 +136,17 @@ internal sealed interface PassiveRuntimeObservation {
     }
 }
 
-@Suppress("CognitiveComplexMethod", "CyclomaticComplexMethod", "LongMethod")
 internal fun observeRuntime(
     installation: Path,
     exchange: (Path, String) -> String? = ::boundedExchange,
-): PassiveRuntimeObservation {
+): PassiveRuntimeObservation =
+    observeSemanticCoordinator(installation, exchange) ?: observeBroker(installation, exchange)
+
+@Suppress("CyclomaticComplexMethod", "LongMethod")
+private fun observeBroker(installation: Path, exchange: (Path, String) -> String?): PassiveRuntimeObservation {
     val layout = InstallationLayout.of(installation)
     val epochRaw =
-        readBoundedFile(layout.state.epoch, MAXIMUM_HEADER_BYTES.toLong())
+        readBoundedFile(layout.state.epoch, MAXIMUM_RUNTIME_RECORD_BYTES)
             ?: return PassiveRuntimeObservation.Rejected(missingRuntimeEpoch(installation))
     val epoch =
         try {
@@ -167,24 +160,15 @@ internal fun observeRuntime(
             !validSha256(epoch.installation.removePrefix("sha256:"))
     )
         return PassiveRuntimeObservation.Rejected(RuntimeObservationFailure.EPOCH_REJECTED)
-    val manifestRaw =
-        readBoundedFile(layout.payload.manifest, 67_108_864)
-            ?: return PassiveRuntimeObservation.Rejected(RuntimeObservationFailure.MANIFEST_UNAVAILABLE)
     val manifest =
-        try {
-            observationJson.decodeFromString<RuntimeInstallDocument>(manifestRaw)
-        } catch (_: SerializationException) {
-            return PassiveRuntimeObservation.Rejected(RuntimeObservationFailure.MANIFEST_REJECTED)
+        when (val read = readRuntimeManifest(installation)) {
+            is Refinement.Refined -> read.value
+            is Refinement.Rejected -> return PassiveRuntimeObservation.Rejected(read.failure)
         }
-    if (
-        manifest.schemaVersion != INSTALLATION_MANIFEST_SCHEMA_VERSION ||
-            manifest.installationRoot != installation.toString()
-    )
-        return PassiveRuntimeObservation.Rejected(RuntimeObservationFailure.MANIFEST_REJECTED)
     val readinessRaw =
         readBoundedFile(
             layout.state.readiness(CoordinatorHostProfile.of(manifest.codexHome)),
-            MAXIMUM_HEADER_BYTES.toLong(),
+            MAXIMUM_RUNTIME_RECORD_BYTES,
         ) ?: return PassiveRuntimeObservation.Rejected(RuntimeObservationFailure.READINESS_UNAVAILABLE)
     val readiness =
         try {
@@ -205,23 +189,63 @@ internal fun observeRuntime(
             is Refinement.Refined -> selected.value
             is Refinement.Rejected -> return PassiveRuntimeObservation.Rejected(selected.failure)
         }
+    val projection =
+        when (val read = exchangeStatus(socket, epoch.installation, epoch.epoch, generation, exchange)) {
+            is Refinement.Refined -> read.value
+            is Refinement.Rejected -> return PassiveRuntimeObservation.Rejected(read.failure)
+        }
+    return PassiveRuntimeObservation.Observed(
+        generation,
+        projection.observedVersion(),
+        Observation.verified(projection.activeWorkspaces),
+        projection.liveConnections?.takeIf { it >= 0 }?.let(Observation.Companion::verified)
+            ?: Observation.unavailable("connection_count_unavailable"),
+        projectHostedServices(projection.hostedServices),
+    )
+}
+
+internal fun readRuntimeManifest(installation: Path): Refinement<RuntimeInstallDocument, RuntimeObservationFailure> {
+    val raw =
+        readBoundedFile(InstallationLayout.of(installation).payload.manifest, 67_108_864)
+            ?: return Refinement.Rejected(RuntimeObservationFailure.MANIFEST_UNAVAILABLE)
+    val manifest =
+        try {
+            observationJson.decodeFromString<RuntimeInstallDocument>(raw)
+        } catch (_: SerializationException) {
+            return Refinement.Rejected(RuntimeObservationFailure.MANIFEST_REJECTED)
+        }
+    return if (
+        manifest.schemaVersion != INSTALLATION_MANIFEST_SCHEMA_VERSION ||
+            manifest.installationRoot != installation.toString()
+    )
+        Refinement.Rejected(RuntimeObservationFailure.MANIFEST_REJECTED)
+    else Refinement.Refined(manifest)
+}
+
+/** One bounded status exchange, admitted only from the exact published owner. */
+internal fun exchangeStatus(
+    socket: Path,
+    installationId: String,
+    stateEpoch: String,
+    generation: RuntimeServiceGeneration,
+    exchange: (Path, String) -> String?,
+): Refinement<RuntimeProjection, RuntimeObservationFailure> {
     val response =
         exchange(socket, runtimeStatusRequestDocument())
-            ?: return PassiveRuntimeObservation.Rejected(RuntimeObservationFailure.EXCHANGE_UNAVAILABLE)
+            ?: return Refinement.Rejected(RuntimeObservationFailure.EXCHANGE_UNAVAILABLE)
     val status =
         try {
             observationJson.decodeFromString<RuntimeStatusResponse>(response)
         } catch (_: SerializationException) {
-            return PassiveRuntimeObservation.Rejected(RuntimeObservationFailure.RESPONSE_REJECTED)
+            return Refinement.Rejected(RuntimeObservationFailure.RESPONSE_REJECTED)
         }
     if (
-        status.coordinator.installationId != epoch.installation ||
-            status.coordinator.stateEpoch != epoch.epoch ||
-            status.coordinator.serviceGeneration != readiness.serviceInstanceId
+        status.coordinator.installationId != installationId ||
+            status.coordinator.stateEpoch != stateEpoch ||
+            status.coordinator.serviceGeneration != generation.value
     )
-        return PassiveRuntimeObservation.Rejected(RuntimeObservationFailure.IDENTITY_MISMATCH)
-    val projection =
-        status.projection ?: return PassiveRuntimeObservation.Rejected(RuntimeObservationFailure.PROJECTION_UNAVAILABLE)
+        return Refinement.Rejected(RuntimeObservationFailure.IDENTITY_MISMATCH)
+    val projection = status.projection ?: return Refinement.Rejected(RuntimeObservationFailure.PROJECTION_UNAVAILABLE)
     if (
         projection.activeWorkspaces.size > 256 ||
             projection.activeWorkspaces.any {
@@ -232,17 +256,13 @@ internal fun observeRuntime(
                 }
             }
     )
-        return PassiveRuntimeObservation.Rejected(RuntimeObservationFailure.PROJECTION_REJECTED)
-    val loaded = projection.loadedVersion?.takeIf { Regex("[0-9]+\\.[0-9]+\\.[0-9]+").matches(it) }
-    return PassiveRuntimeObservation.Observed(
-        generation,
-        loaded?.let(Observation.Companion::verified) ?: Observation.unavailable("loaded_version_unavailable"),
-        Observation.verified(projection.activeWorkspaces),
-        projection.liveConnections?.takeIf { it >= 0 }?.let(Observation.Companion::verified)
-            ?: Observation.unavailable("connection_count_unavailable"),
-        projectHostedServices(projection.hostedServices),
-    )
+        return Refinement.Rejected(RuntimeObservationFailure.PROJECTION_REJECTED)
+    return Refinement.Refined(projection)
 }
+
+internal fun RuntimeProjection.observedVersion(): Observation<String> =
+    loadedVersion?.takeIf { Regex("[0-9]+\\.[0-9]+\\.[0-9]+").matches(it) }?.let(Observation.Companion::verified)
+        ?: Observation.unavailable(LOADED_VERSION_UNAVAILABLE)
 
 /** Missing broker receipts describe broker evidence, never project or compiler readiness. */
 private fun missingRuntimeEpoch(installation: Path): RuntimeObservationFailure =
@@ -269,7 +289,7 @@ internal fun runtimeStatusRequestDocument(): String = observationJson.encodeToSt
 internal fun projectHostedServices(hosts: List<HostedServiceStatus>?): Observation<List<HostedServiceStatus>> {
     if (hosts.isNullOrEmpty()) return Observation.unavailable("host_evidence_unavailable")
     if (hosts.size > 256 || hosts.any { !validHostedServiceStatus(it) })
-        return Observation.unavailable("host_evidence_rejected")
+        return Observation.unavailable(HOST_EVIDENCE_REJECTED)
     return Observation.verified(hosts)
 }
 
@@ -305,87 +325,3 @@ private fun validHostIdentity(host: String, pid: Long): Boolean =
         } catch (_: IllegalArgumentException) {
             false
         }
-
-internal fun boundedExchange(socket: Path, request: String): String? {
-    val channel = AtomicReference<SocketChannel?>()
-    val executor = Executors.newSingleThreadExecutor()
-    return try {
-        val result =
-            executor.submit<String?> {
-                if (!Files.exists(socket, LinkOption.NOFOLLOW_LINKS)) return@submit null
-                SocketChannel.open(StandardProtocolFamily.UNIX).use {
-                    channel.set(it)
-                    it.connect(UnixDomainSocketAddress.of(socket))
-                    websocketExchange(it, request)
-                }
-            }
-        try {
-            result.get(EXCHANGE_DEADLINE_MILLIS, TimeUnit.MILLISECONDS)
-        } catch (_: Exception) {
-            result.cancel(true)
-            null
-        }
-    } finally {
-        try {
-            channel.get()?.close()
-        } catch (_: Exception) {
-            /* deadline closes the owned socket */
-        }
-        executor.shutdownNow()
-    }
-}
-
-private fun websocketExchange(channel: SocketChannel, request: String): String? {
-    val input = DataInputStream(Channels.newInputStream(channel))
-    val output = Channels.newOutputStream(channel)
-    val keyBytes = ByteArray(16).also(SecureRandom()::nextBytes)
-    val key = Base64.getEncoder().encodeToString(keyBytes)
-    val handshake =
-        "GET /kast-management HTTP/1.1\r\nHost: localhost\r\n" +
-            "Upgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Version: 13\r\n" +
-            "Sec-WebSocket-Key: $key\r\n\r\n"
-    output.write(handshake.toByteArray())
-    output.flush()
-    val header = readHeader(input) ?: return null
-    val accept =
-        Base64.getEncoder()
-            .encodeToString(MessageDigest.getInstance("SHA-1").digest((key + WEBSOCKET_ACCEPT_GUID).toByteArray()))
-    if (!header.startsWith("HTTP/1.1 101") || !header.contains("Sec-WebSocket-Accept: $accept", ignoreCase = true))
-        return null
-    val payload = request.toByteArray()
-    if (payload.size > MAXIMUM_FRAME_BYTES) return null
-    val mask = ByteArray(4).also(SecureRandom()::nextBytes)
-    val frame = ByteBuffer.allocate(payload.size + 8)
-    frame.put(0x81.toByte())
-    if (payload.size < 126) frame.put((0x80 or payload.size).toByte())
-    else {
-        frame.put(0xfe.toByte())
-        frame.putShort(payload.size.toShort())
-    }
-    frame.put(mask)
-    payload.forEachIndexed { index, byte -> frame.put((byte.toInt() xor mask[index % 4].toInt()).toByte()) }
-    output.write(frame.array(), 0, frame.position())
-    output.flush()
-    val first = input.readUnsignedByte()
-    if (first != 0x81) return null
-    val second = input.readUnsignedByte()
-    if (second and 0x80 != 0) return null
-    val size =
-        when (second) {
-            in 0..125 -> second
-            126 -> input.readUnsignedShort()
-            else -> return null
-        }
-    if (size > MAXIMUM_FRAME_BYTES) return null
-    return ByteArray(size).also(input::readFully).decodeToString()
-}
-
-private fun readHeader(input: DataInputStream): String? {
-    val bytes = ArrayList<Byte>()
-    while (bytes.size < MAXIMUM_HEADER_BYTES) {
-        bytes += input.readByte()
-        if (bytes.size >= 4 && bytes.takeLast(4) == listOf(13.toByte(), 10.toByte(), 13.toByte(), 10.toByte()))
-            return bytes.toByteArray().decodeToString()
-    }
-    return null
-}

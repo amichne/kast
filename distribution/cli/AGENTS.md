@@ -93,7 +93,9 @@ Keep installed bytes, loaded Host identity, update policy, and unresolved replac
 `PassiveApplicationHost` reads the existing application advertisement and admits its exact process incarnation.
 It starts no Java process and sends no lifecycle request.
 A loaded Host does not establish workspace readiness or compatibility through version equality.
-`BROKER_NOT_OBSERVED` describes absent broker evidence for private endpoints. It does not describe a compiler epoch or workspace readiness.
+`PassiveSemanticCoordinator` reads the readiness record and asks its exact generation for status. It starts no coordinator.
+`COORDINATOR_NOT_RUNNING` needs an exited recorded process, or neither a record nor a socket. Report every other gap as unknown.
+`BROKER_NOT_OBSERVED` describes absent broker evidence. It does not describe a compiler epoch or workspace readiness.
 
 Source checks do not establish native acceptance, stable publication, or public bootstrap activation.
 Read the [candidate evidence guide](../../docs/reviews/managed-installation-cli.md) for the release limits and source owners.
