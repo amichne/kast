@@ -83,6 +83,7 @@ class Code(StrEnum):
     SOURCE_PROVENANCE_REJECTED = "SOURCE_PROVENANCE_REJECTED"
     SOURCE_POPULATION_MISMATCH = "SOURCE_POPULATION_MISMATCH"
     SOURCE_BINARY_MISMATCH = "SOURCE_BINARY_MISMATCH"
+    HISTORICAL_EVIDENCE_CITED = "HISTORICAL_EVIDENCE_CITED"
 
 
 class Issue(Record):
@@ -1354,6 +1355,7 @@ class ResourceInputReport(Record):
     required_resource_count: int = 0
     observed_resource_count: int = 0
     reviewed_carrier_count: int = 0
+    historical_fact_count: int = 0
     issues: tuple[Issue, ...] = ()
 
 
@@ -1601,6 +1603,59 @@ def resource_input_guard(
     )
 
 
+SEMANTIC_COVERAGE = "config/kotlin-semantic-coverage"
+FACT_LEDGER = "compiler-facts.tsv"
+# Qualification reads only these authored inputs; JUnit evidence comes from the current run's reports.
+QUALIFICATION_INPUTS = ("cases.tsv", "classifications.tsv", "inventory-evidence-cases.tsv")
+JUNIT_REPORT_CITATION = re.compile(r"\.xml\b|build/test-results/")
+
+
+class LedgerFact(Record):
+    fact_id: Nonempty
+    status: Nonempty
+    evidence_limits: str
+    source_evidence: str
+
+    @property
+    def historical(self) -> bool:
+        """A cited JUnit report is a local run's mutable output, never current evidence."""
+        return any(
+            JUNIT_REPORT_CITATION.search(text)
+            for text in (self.evidence_limits, self.source_evidence)
+        )
+
+
+class HistoricalLedgerReport(Record):
+    fact_count: int
+    historical_fact_ids: tuple[str, ...]
+    issues: tuple[Issue, ...] = ()
+
+
+def historical_ledger_guard(repository: Path) -> HistoricalLedgerReport:
+    """Rejects any qualification input that cites a ledger fact recorded from a local JUnit report."""
+    root = repository / SEMANTIC_COVERAGE
+    match table(root / FACT_LEDGER, LedgerFact, subset=True):
+        case Rejected(issues=issues):
+            return HistoricalLedgerReport(fact_count=0, historical_fact_ids=(), issues=issues)
+        case Accepted(value=facts):
+            pass
+    historical = tuple(sorted(fact.fact_id for fact in facts if fact.historical))
+    issues = list(duplicate_issues(tuple(fact.fact_id for fact in facts), Code.INVALID_INPUT))
+    for name in QUALIFICATION_INPUTS:
+        match read_text(root / name):
+            case Rejected(issues=rejected):
+                issues.extend(rejected)
+            case Accepted(value=raw):
+                issues.extend(
+                    issue(Code.HISTORICAL_EVIDENCE_CITED, f"{name}: {fact_id}")
+                    for fact_id in historical
+                    if re.search(rf"(?<![A-Za-z0-9_-]){re.escape(fact_id)}(?![A-Za-z0-9_-])", raw)
+                )
+    return HistoricalLedgerReport(
+        fact_count=len(facts), historical_fact_ids=historical, issues=tuple(issues)
+    )
+
+
 def resource_command(repository: Path, review_path: Path | None) -> int:
     carrier_review: CarrierReview = _NO_CARRIER_REVIEW
     if review_path is not None:
@@ -1610,7 +1665,16 @@ def resource_command(repository: Path, review_path: Path | None) -> int:
                 return 1
             case Accepted(value=carrier_review):
                 pass
-    report = resource_input_guard(repository, carrier_review)
+    resources = resource_input_guard(repository, carrier_review)
+    ledger = historical_ledger_guard(repository)
+    issues = (*resources.issues, *ledger.issues)
+    report = resources.model_copy(
+        update={
+            "status": "FAIL" if issues else "PASS",
+            "historical_fact_count": len(ledger.historical_fact_ids),
+            "issues": issues,
+        }
+    )
     print(report.model_dump_json())
     return 0 if report.status == "PASS" else 1
 

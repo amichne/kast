@@ -14,7 +14,7 @@ The published visitor also equals the preserved visitor source.
 This proves exact correspondence for the audited FIR source scope.
 
 The producer POM, SPDX record, checksums, and complete source map reside in `upstream/provenance`.
-The strict gate needs both peer archives and the actual bundled jars.
+The strict gate needs both peer archives and the actual bundled JARs.
 The gate rejects a declared `EXACT_SOURCE` label without admitted source evidence.
 No public `ij262-34` Git tag resolved during this work.
 The entire compiler's build commit and non-FIR source correspondence remain unproved.
@@ -33,6 +33,12 @@ The adapter enum declares `ZERO`, `AT_MOST_ONCE`, `EXACTLY_ONCE`, `AT_LEAST_ONCE
 - `upstream/resolver-source-index.tsv` records 1332 upstream resolver source identities and their Git blob identities.
 - `selected-fixtures.tsv` pins six source fixtures and 18 upstream expected artifacts.
 - `inventory-evidence-cases.tsv` records two independently assigned R0 case IDs. The recorded baseline supplies their actual result identities.
+- `compiler-facts.tsv` is a research ledger, not a gate input. A row that cites a JUnit report or a `build/test-results/` directory describes one local run, so it is historical.
+
+The `inputs` gate derives the historical rows from those citations and reports their count.
+It rejects `cases.tsv`, `classifications.tsv`, or `inventory-evidence-cases.tsv` when one of them names a historical fact.
+Current native evidence comes from the `nativeFixtureTest` and `semanticCoverageFixtureTest` reports of the run under review.
+CI retains them in the `ci-source-reports-*` artifact.
 
 The selected upstream files preserve their bytes, directives, file and module markers, diagnostic markers, and expected output. Their hashes protect this preservation. The audit does not adapt or run these upstream fixtures.
 
@@ -74,7 +80,7 @@ uv run --locked --script inventory.py audit \
   --junit ../evidence/baseline/hosted/TEST-io.github.amichne.kast.runtime.hosted.NativeScopedCacheManagerTraceTest.xml
 ```
 
-The tool hashes the actual jars and reads their version resources. It runs `javap` against an owned snapshot of the admitted plugin bytes. The live visitor population must equal the upstream population. A replacement plugin fails even when the catalogue stays unchanged.
+The tool hashes the actual JARs and reads their version resources. It runs `javap` against an owned snapshot of the admitted plugin bytes. The live visitor population must equal the upstream population. A replacement plugin fails even when the catalogue stays unchanged.
 
 For the strict FIR source claim, add both published archives:
 
@@ -103,7 +109,7 @@ uv run --locked --script inventory.py execution \
   --junit /path/to/the/selected/actual/junit/reports
 ```
 
-The manifest needs `case_id` and `test_result_id` columns. A result identity has the form `classname#method`. Each case needs a distinct result identity. The parser keeps `PASS`, `FAIL`, `ERROR`, `SKIP`, and `NOT_RUN` separate. A suite-level error remains a separate setup or suite failure. A testcase error remains `ERROR` without an inferred cause.
+The manifest needs `case_id` and `test_result_id` columns. A result identity has the form `classname#method`. Each case needs a distinct result identity. The parser keeps `PASS`, `FAIL`, `ERROR`, `SKIP`, and `NOT_RUN` separate. A suite-level error remains a separate setup or suite failure. A test case error remains `ERROR` without an inferred cause.
 
 ## Frozen semantic resources
 
@@ -133,11 +139,11 @@ The resource gate proves file identity and population accounting. It does not pr
 
 ## Evidence limits
 
-The validator tests prove rejection of negative controls. A live control adds one archive entry while it keeps the original visitor bytecode. The changed archive fails with `DISTRIBUTION_CHANGED` under the unchanged catalogue. They do not provide new native semantic results. The copied baseline remains evidence of the recorded run only.
+The validation tests prove rejection of negative controls. A live control adds one archive entry while it keeps the original visitor bytecode. The changed archive fails with `DISTRIBUTION_CHANGED` under the unchanged catalogue. They do not provide new native semantic results. The copied baseline remains evidence of the recorded run only.
 
 The audit keeps the full FIR population. It does not use relevance classifications to prune descendants. The selected upstream fixtures remain `NOT RUN` through Kast. The audited FIR source correspondence now passes. Other compiler source scopes remain unproved.
 
-The tool reads owned inventory files, declared source files, adapter jars, and selected JUnit reports. It uses an owned temporary snapshot for the binary read. It does not change an installed IDE.
+The tool reads owned inventory files, declared source files, adapter JARs, and selected JUnit reports. It uses an owned temporary snapshot for the binary read. It does not change an installed IDE.
 
 ## Upstream provenance and license
 
