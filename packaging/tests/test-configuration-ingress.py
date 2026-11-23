@@ -17,18 +17,14 @@ class EmptyIngressPolicy:
 
 class ConfigurationIngressTest(unittest.TestCase):
     def test_operational_projection_drift_is_rejected_by_snapshot_check(self):
-        for altered in (None, 'INSTALL_DOWNLOAD_RETRIES', 'RETIREMENT_CHILD_TIMEOUT_MILLIS'):
+        for altered in (None, 'INSTALL_DOWNLOAD_RETRIES', 'INSTALL_DOWNLOAD_RETRY_DELAY_MILLIS'):
             with self.subTest(altered=altered), tempfile.TemporaryDirectory() as temporary:
                 root = Path(temporary)
-                (root / 'packaging/internal/installation').mkdir(parents=True)
                 shell = {'INSTALL_DOWNLOAD_RETRIES': 5, 'INSTALL_DOWNLOAD_RETRY_DELAY_MILLIS': 2000}
-                python = {'RETIREMENT_CHILD_TIMEOUT_MILLIS': 60000, 'STATE_MAXIMUM_ENTRIES': 100000}
-                keys = ['installation.download.retries', 'installation.download.retry_delay',
-                        'installation.retirement.child_timeout', 'installation.state.maximum_entries']
+                keys = ['installation.download.retries', 'installation.download.retry_delay']
                 schema = {'parameters': [], 'operationalLimits': [dict(key=key, value=value)
-                    for key, value in zip(keys, [*shell.values(), *python.values()])]}
+                    for key, value in zip(keys, shell.values())]}
                 (root / 'install.sh').write_text('\n'.join(f'readonly {key}={value + (key == altered)}' for key, value in shell.items()))
-                (root / 'packaging/internal/installation/installation-lifecycle.py').write_text('\n'.join(f'{key} = {value + (key == altered)}' for key, value in python.items()))
                 for name in ('generated.json', 'snapshot.json'):
                     (root / name).write_text(json.dumps(schema))
                 (root / 'policy.json').write_text('{"ingressOwners":[]}')

@@ -98,8 +98,7 @@ From the repository root, examples using the existing runners are:
   --tests 'io.github.amichne.kast.distribution.contract.configuration.KastConfigurationResolutionTest'
 ./gradlew :app-server:test \
   --tests 'io.github.amichne.kast.appserver.SavedConfigurationIngressTest'
-mise exec -- uv run --locked --project packaging pytest packaging/tests/test-installation-lifecycle.py::RetirementBoundaryTest
-mise exec -- uv run --locked --project packaging pytest packaging/tests/test-installation-lifecycle.py::RetirementAdapterTest
+python3 packaging/internal/verification/run-portable-tests.py packaging/tests/test-installation-recovery.py
 mise exec -- uv run --locked --project packaging python packaging/tests/test-installer-entrypoint.py InstallerEntrypointTest.test_obsolete_component_options_reject_before_effects
 ```
 

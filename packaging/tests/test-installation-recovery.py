@@ -13,6 +13,7 @@ import tempfile
 import unittest
 
 SCRIPT = Path(__file__).parents[1] / 'internal/installation/installation-recovery.py'
+LIFECYCLE = Path(__file__).parents[1] / 'internal/installation/installation-lifecycle.py'
 
 @dataclass(frozen=True)
 class PayloadFileFixture:
@@ -113,9 +114,73 @@ class ManagedControlRecoveryTest(unittest.TestCase):
         self.assertEqual('CONTROL_LIMIT_EXCEEDED', rejected.exception.failure.value)
         self.assertEqual({'failure': 'CONTROL_LIMIT_EXCEEDED',
             'limit': {'resource': 'PAYLOAD_FILES', 'maximum': 32768, 'observedAtLeast': 32769},
-            'retirement': None, 'status': 'rejected'}, json.loads(evidence.getvalue()))
+            'status': 'rejected'}, json.loads(evidence.getvalue()))
         self.assertEqual(before, manifest_path.read_bytes())
         self.assertEqual('selected', (self.stage / 'bin/kast-complete').read_text())
+
+
+class InstalledPayloadAdmissionTest(unittest.TestCase):
+    """The retained lifecycle owner admits one exact Control payload and nothing it does not name."""
+
+    def setUp(self):
+        temporary = tempfile.TemporaryDirectory(prefix='kast-payload-admission-')
+        self.addCleanup(temporary.cleanup)
+        self.outer = Path(temporary.name).resolve() / 'kast'
+        self.root = self.outer / 'installation'
+        (self.root / 'bin').mkdir(parents=True)
+        self.executable = self.root / 'bin/kast-complete'
+        self.executable.write_text('#!/bin/sh\nexit 0\n')
+        self.executable.chmod(0o700)
+        specification = importlib.util.spec_from_file_location('kast_payload_admission_fixture', LIFECYCLE)
+        self.lifecycle = importlib.util.module_from_spec(specification)
+        sys.modules[specification.name] = self.lifecycle
+        specification.loader.exec_module(self.lifecycle)
+        self.manifest = asdict(ControlManifestFixture(str(self.root), str(self.root / 'state'),
+            str(self.root / 'config/environment'), str(self.root / 'config/workspaces.json'),
+            (PayloadFileFixture('bin/kast-complete',
+                'sha256:' + hashlib.sha256(self.executable.read_bytes()).hexdigest(), 0o700),)))
+        self.save()
+
+    def save(self):
+        (self.root / 'installation.json').write_text(json.dumps(self.manifest))
+
+    def assert_manifest_rejected(self):
+        with self.assertRaises(self.lifecycle.Rejected) as rejected:
+            self.lifecycle.Installation.admit(str(self.root))
+        self.assertEqual(self.lifecycle.Failure.MANIFEST_REJECTED, rejected.exception.failure)
+
+    def test_exact_payload_is_admitted_at_its_single_installation_root(self):
+        admitted = self.lifecycle.Installation.admit(str(self.root))
+        self.assertEqual(self.outer, admitted.managed_root)
+        self.assertEqual(self.lifecycle.FileIdentity.observe(self.root), admitted.identity)
+
+    def test_manifest_large_enough_for_current_inventory_is_admitted(self):
+        self.manifest['boundedPadding'] = 'x' * 1_750_000
+        self.save()
+        self.lifecycle.Installation.admit(str(self.root))
+
+    def test_changed_payload_bytes_are_rejected(self):
+        self.executable.write_text('#!/bin/sh\nexit 1\n')
+        self.assert_manifest_rejected()
+        self.assertEqual('#!/bin/sh\nexit 1\n', self.executable.read_text())
+
+    def test_manifest_cannot_widen_owned_roots(self):
+        for key in ('stateRoot', 'configuration', 'workspaceRegistry'):
+            with self.subTest(key=key):
+                original = self.manifest[key]
+                self.manifest[key] = str(self.outer)
+                self.save()
+                self.assert_manifest_rejected()
+                self.manifest[key] = original
+
+    def test_selector_anchor_is_rejected_and_foreign_entry_preserved(self):
+        foreign = self.outer / 'current'
+        foreign.write_text('protected foreign entry')
+        self.manifest['externalAnchors'] = [
+            {'kind': 'current', 'path': str(foreign), 'expectedLinkTarget': 'versions/old'}]
+        self.save()
+        self.assert_manifest_rejected()
+        self.assertEqual('protected foreign entry', foreign.read_text())
 
 
 RECEIPTS = Path(__file__).parents[2] / 'distribution/contract/src/test/resources/replacement-receipt'

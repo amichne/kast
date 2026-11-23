@@ -50,7 +50,7 @@ Owns installer adapters, isolated runtime archives, offline lifecycle helpers, c
 - [composition_platform.py](internal/composition/composition_platform.py) - pinned macOS ARM64 and Linux x86-64 donors.
 - [composition_recipe.py](internal/composition/composition_recipe.py) - pinned roots and plugin provider candidates.
 - [composed_host_probe.py](internal/verification/composed_host_probe.py) - native callers, Java references, and result rejection.
-- [installation-lifecycle.py](internal/installation/installation-lifecycle.py) - selected-installation retirement and removal.
+- [installation-lifecycle.py](internal/installation/installation-lifecycle.py) - Control payload and uninstall journal admission.
 - [installation-recovery.py](internal/installation/installation-recovery.py) - exact tree, move and fence proofs for the product replacement journal.
 - [generate-public-query.py](internal/query/generate-public-query.py) - Kotlin and harness projections from the authored public schema.
 - [run-installed-product.py](internal/verification/run-installed-product.py) - complete-product native lifecycle acceptance with explicit qualified inputs.

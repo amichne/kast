@@ -349,7 +349,7 @@ def managed_payload(path, expected_root, identity, reservation=None, live_coordi
     try:
         lifecycle.verify_payload(path, document)
     except lifecycle.Rejected as problem:
-        lifecycle.observe_admission(lifecycle.LifecycleRejection(problem.failure, problem.limit, problem.retirement))
+        lifecycle.observe_admission(lifecycle.LifecycleRejection(problem.failure, problem.limit))
         if problem.failure is lifecycle.Failure.CONTROL_LIMIT_EXCEEDED:
             raise Rejected(Failure.CONTROL_LIMIT) from None
         raise Rejected(Failure.OWNERSHIP) from None
