@@ -44,7 +44,6 @@ class BootstrapImportTest(unittest.TestCase):
                 "managed_update_journal.py",
                 "installation-recovery.py",
                 "installation-lifecycle.py",
-                "host_directory_exchange.py",
             )
             for name in names:
                 source = generator.source_file(name)

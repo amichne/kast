@@ -7,7 +7,6 @@ tags:
 - kast
 - distribution
 code_sources:
-- path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/InstalledDaemonUpgrade.kt
 - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/runtime/DaemonUpgradeGate.kt
 - path: distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ForceInstallationReset.kt
 - path: distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ForceLifecycleStates.kt
@@ -22,8 +21,6 @@ code_sources:
 - path: packaging/internal/installation/installation-lifecycle.py
 - path: packaging/internal/installation/installation-recovery.py
 sources:
-  - id: openwiki-source-977a0730acc279a32f98ae18
-    resource: repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/InstalledDaemonUpgrade.kt
   - id: openwiki-source-c58b3f38ca46d44dd30a8771
     resource: repo://cli/src/main/kotlin/io/github/amichne/kast/cli/direct/InstalledToolAdmission.kt
   - id: openwiki-source-e4a9595c544ec2b876590037
@@ -92,10 +89,10 @@ sources:
     resource: repo://packaging/tests/test-installation-recovery.py
   - id: openwiki-source-abab1b24f64b3271633d720d
     resource: repo://packaging/tests/test-managed-build-record.py
-generated: { by: "codex", at: "2026-11-22T20:53:36.158Z" }
+generated: { by: "codex", at: "2026-11-23T00:44:58.019Z" }
 verified:
   - by: openwiki/0.9.0
-    at: 2026-11-22T20:53:36.158Z
+    at: 2026-11-23T00:44:58.019Z
 ---
 
 # Upgrade, shutdown, and guarded reset
@@ -156,11 +153,6 @@ These source-level removal boundaries still need full native qualification.
 
 The following coordinator contracts remain for existing lifecycle and recovery owners.
 They do not expose a public Control-only or force-reinstall route.
-`InstalledDaemonUpgrade` examines the selected service before an update request.
-It distinguishes an absent daemon, pending blockers, an exact sealed permit, an already-committed permit, and rejection.
-The permit keeps the selected daemon target and request identity through commit or cancellation.
-Uncertain service markers do not become an absent-service success.
-
 The daemon upgrade gate coordinates management, sessions, and invocation admission.
 An installer cannot independently retire the process while another lifecycle owner still admits work.
 Control-only replacement also needs current compatible Host evidence.
@@ -241,7 +233,6 @@ Actual launchd retirement and IDEA restart behavior need their separate native p
 
 ## Source owners
 
-- [InstalledDaemonUpgrade.kt](../../app-server/src/main/kotlin/io/github/amichne/kast/appserver/InstalledDaemonUpgrade.kt)
 - [DaemonUpgradeGate.kt](../../app-server/src/main/kotlin/io/github/amichne/kast/appserver/runtime/DaemonUpgradeGate.kt)
 - [ForceInstallationReset.kt](../../distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ForceInstallationReset.kt)
 - [ForceLifecycleStates.kt](../../distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ForceLifecycleStates.kt)

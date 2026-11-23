@@ -28,7 +28,6 @@ code_sources:
   - path: packaging/internal/installation/managed_release.py
   - path: packaging/internal/installation/managed_update_contract.py
   - path: packaging/internal/installation/managed_update_journal.py
-  - path: packaging/internal/installation/host_directory_exchange.py
   - path: packaging/tests/test-installer-entrypoint.py
 ---
 
@@ -51,7 +50,7 @@ Owns installer adapters, isolated runtime archives, offline lifecycle helpers, c
 - [composition_platform.py](internal/composition/composition_platform.py) - pinned macOS ARM64 and Linux x86-64 donors.
 - [composition_recipe.py](internal/composition/composition_recipe.py) - pinned roots and plugin provider candidates.
 - [composed_host_probe.py](internal/verification/composed_host_probe.py) - native callers, Java references, and result rejection.
-- [installation-lifecycle.py](internal/installation/installation-lifecycle.py) - selected-installation retirement and removal.
+- [installation-lifecycle.py](internal/installation/installation-lifecycle.py) - Control payload and uninstall journal admission.
 - [installation-recovery.py](internal/installation/installation-recovery.py) - exact tree, move and fence proofs for the product replacement journal.
 - [generate-public-query.py](internal/query/generate-public-query.py) - Kotlin and harness projections from the authored public schema.
 - [run-installed-product.py](internal/verification/run-installed-product.py) - complete-product native lifecycle acceptance with explicit qualified inputs.
@@ -105,7 +104,6 @@ Owns installer adapters, isolated runtime archives, offline lifecycle helpers, c
 - Keep prior Host bytes and the active receipt preimage until runtime completion or proven restoration.
 - The reload helper supplies internal compatibility admission and directory exchange. Its standalone command cannot replace the managed transaction.
 - Managed hot reload uses the same Host receipt through `commit_managed_reload` and `rollback_managed_reload`.
-- `host_directory_exchange.py` owns the macOS atomic directory swap. File exchange does not prove runtime activation.
 - `seal_managed` admits terminal file facts before cleanup. The outer coordinator separately proves the required Host state.
 - `managed_update_journal.py` owns shared recovery records. Keep it beside the offline recovery helper in the retained bundle.
 - Read the [candidate evidence guide](../docs/reviews/managed-installation-cli.md) before qualification or public rollout.

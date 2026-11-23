@@ -799,6 +799,20 @@ class ProductActivationTest(unittest.TestCase):
             all(url.startswith(f"{release.RELEASE_URL}/v1.2.3/") for url in self.source.calls)
         )
 
+    def test_management_receipt_rejects_retired_harness_fields(self) -> None:
+        result = activation.activate(self.root, self.home, self.admitted())
+        assert isinstance(result, activation.ProductInstalled), result
+        raw = (self.root / "management.json").read_bytes()
+        command, prior = Path(result.executable), self.root / "installation"
+        admitted = activation.read_management(raw, self.root, command, prior)
+        self.assertEqual(result.product, admitted.product)
+        for field in ("registrations", "guidance", "providers"):
+            with self.subTest(field=field):
+                document = json.loads(raw)
+                document[field] = []
+                with self.assertRaisesRegex(ValueError, "management fields"):
+                    _ = activation.read_management(json.dumps(document).encode(), self.root, command, prior)
+
     def test_workspace_overlay_survives_replacement_and_is_admitted_for_removal(self) -> None:
         admitted = self.admitted()
         result = activation.activate(self.root, self.home, admitted)
@@ -1454,6 +1468,33 @@ class ProductActivationTest(unittest.TestCase):
         self.assertEqual(raw, path.read_bytes())
         pending.rmdir()
         self.assertEqual(0, self.remove_product(path))
+
+    def test_uninstall_journal_without_product_is_rejected(self) -> None:
+        path, _ = self.removal_journal()
+        payload = self.root / "installation"
+        selected = install.LIFECYCLE.ProductRemovalRoot(
+            payload, install.LIFECYCLE.FileIdentity.observe(payload)
+        )
+        # Deliberately incomplete journals: the product identity is a required field.
+        complete: dict[str, object] = json.loads(path.read_bytes())
+        _ = complete.pop("product")
+        no_workspaces: list[object] = []
+        journals: tuple[tuple[str, dict[str, object]], ...] = (
+            ("plain", complete),
+            ("workspace", {**complete, "workspaceRemovals": no_workspaces}),
+        )
+        for label, document in journals:
+            with self.subTest(journal=label):
+                raw = json.dumps(document).encode()
+                _ = path.write_bytes(raw)
+                with self.assertRaises(install.LIFECYCLE.Rejected) as rejected:
+                    _ = install.LIFECYCLE.admit_uninstall_journal(path, selected)
+                self.assertEqual(
+                    install.LIFECYCLE.Failure.RECOVERY_REJECTED, rejected.exception.failure
+                )
+                self.assertEqual(1, self.remove_product(path))
+                self.assertEqual(raw, path.read_bytes())
+                self.assertTrue(payload.is_dir())
 
     def test_product_removal_final_directory_interruption_is_retryable(self) -> None:
         path, record = self.removal_journal()

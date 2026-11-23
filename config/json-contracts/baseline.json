@@ -1204,16 +1204,6 @@
     {
       "fingerprint": {
         "path": "app-server/src/test/kotlin/io/github/amichne/kast/appserver/InstalledBrokerServerTest.kt",
-        "scope": "type:InstalledBrokerServerTest/fun:installation lifecycle fence rejects direct server before state creation(4:Path)",
-        "kind": "JSON_LITERAL",
-        "sha256": "e951e0529a48f403ef1751f1c42d135f4e10447002446e0a84c5458be8e84ce7"
-      },
-      "count": 1,
-      "justification": "Existing test or fixture syntax; migrate fixed valid shapes when this expression changes."
-    },
-    {
-      "fingerprint": {
-        "path": "app-server/src/test/kotlin/io/github/amichne/kast/appserver/InstalledBrokerServerTest.kt",
         "scope": "type:InstalledBrokerServerTest/fun:installed composition publishes readiness and transparently serves the Codex socket(4:Path)/declaration:<anonymous>/declaration:<anonymous>",
         "kind": "JSON_LITERAL",
         "sha256": "08f3c47f073cbfc2c9f003a2b47fa16381b90830e953bf321eac8cb1d1698fcd"
@@ -1345,16 +1335,6 @@
       "fingerprint": {
         "path": "app-server/src/test/kotlin/io/github/amichne/kast/appserver/PersistentBrokerServiceTest.kt",
         "scope": "type:PersistentBrokerServiceTest/fun:installation lifecycle fence blocks login bootstrap before enrollment or stopped marker mutation(4:Path)",
-        "kind": "JSON_LITERAL",
-        "sha256": "e951e0529a48f403ef1751f1c42d135f4e10447002446e0a84c5458be8e84ce7"
-      },
-      "count": 1,
-      "justification": "Existing test or fixture syntax; migrate fixed valid shapes when this expression changes."
-    },
-    {
-      "fingerprint": {
-        "path": "app-server/src/test/kotlin/io/github/amichne/kast/appserver/PersistentBrokerServiceTest.kt",
-        "scope": "type:PersistentBrokerServiceTest/fun:installation lifecycle fence prevents launch inside service ownership lock(4:Path)",
         "kind": "JSON_LITERAL",
         "sha256": "e951e0529a48f403ef1751f1c42d135f4e10447002446e0a84c5458be8e84ce7"
       },

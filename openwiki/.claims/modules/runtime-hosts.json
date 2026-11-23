@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:ddc2b9f02a6232f01a7c12be1b646d66ce0fa50080471517cfee378352c242f3",
+  "pageVersion": "sha256:66bedd33e9b93fb40b2582c1ded201b3b08c047c8bad7d8dbdeeabde96cf4023",
   "claims": [
     {
       "id": "claim_cba32ff6d1504aa6a89a0a11ab8441d3",
@@ -24,15 +24,15 @@
     },
     {
       "id": "claim_fc7456fb11a24421b049cbdaab9b0301",
-      "statement": "Automatic startup remains fenced by detachment, shutdown, lifecycle transition or reset markers, and observation failures reject; reset startup is admitted only for an exact installation-bound ACTIVATING record plus a currently held exclusive reset lease.",
+      "statement": "Automatic startup remains fenced by the parent shutdown fence or a reset marker, and observation failures reject; reset startup is admitted only for an exact installation-bound ACTIVATING record plus a currently held exclusive reset lease.",
       "evidence": [
         {
-          "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/InstallationLifecycleFence.kt#L11-L43",
-          "version": "repo-lines-v1:sha256:f7e3058ab81570f083f218d6891a380d185486c662de2b2b094496dddc78c196:eyJzZWxlY3RlZExpbmVDb3VudCI6MzMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImI5OTA3ZGU0M2NlZjg5ZTUwNTc1NjJkZGNiY2RkYjkyMzg5ZTIyNTIxYzFiN2I2NjhlNWUwNGU1MjVlNDRmODYiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjE2NzAxMDVkOTM3YWRiMzgzNWM2YzY0MTczZWE2Nzg1NGMyODNmMDI0M2NhMzM2MDI1YWMyYmJlY2NhZjYwMDMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6Ijk5OWJkZWZlZWFjYTYzNDBlMDI5MGRjODZlODg5Yzg5ZDVlMTg5YWE1YmE0NGI1ODViM2I3MDczNGY0YTYyZDgifQ"
+          "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/InstallationLifecycleFence.kt",
+          "version": "repo-file-v1:sha256:6f6c373b9bfb3d0a75c95da1452ff308c3172d0cdc012768702fac6d8151b1b9"
         },
         {
-          "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/ResetActivationAdmission.kt#L16-L57",
-          "version": "repo-lines-v1:sha256:801f9fd706de7600c7c4eb6bad87d6d9ba3bd8bbb05ea221d9bde5fbba4574dd:eyJzZWxlY3RlZExpbmVDb3VudCI6NDIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjYzYzJiMTc2MmQxMDViNTY1YzAzZGI4ZWQzNzFmM2IxYjBiMWE3YzE1ZTQxYzRjODExMTkwMWVhZGMyMTRiZjkiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImU2YjA0NDkxNDY5NzIyZTgzNjNhOTRlNDA0NDUzOGUwMTNhMmEyMTdlMzZiMWU1NjhiYTYwYWNiN2I0YzhmMmUiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjE3MjFjMzIyMDNlZjJlOWY4YWYwZWMzNTczMDk3ZmYwZDI3ODFkNzg5M2JmNDI1NjA2ZjE2ZGI0ZjE2NWI2ZDMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjE5ZTc2MzU1Y2YxMTk5NDgwYzNmOTk4MzZiMTQ4NmM4NDFkODkxZmFhZDkwNGM2MDhlMDkzMDIyZDM3NTdhZWUifQ"
+          "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/ResetActivationAdmission.kt",
+          "version": "repo-file-v1:sha256:8a73ecce821279442ace244c5970fbb8d657f328139ec32304f65011cea25b3d"
         }
       ]
     },
@@ -455,6 +455,6 @@
   ],
   "verification": {
     "by": "openwiki/0.9.0",
-    "at": "2026-11-21T22:16:17.145Z"
+    "at": "2026-11-23T00:44:58.019Z"
   }
 }

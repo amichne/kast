@@ -28,14 +28,12 @@ REPOSITORY = PACKAGING.parent
 
 SOURCE_PATHS = {
     "bootstrap_entry.py": "bootstrap/bootstrap_entry.py",
-    "codex-mcp-registration.py": "installation/codex-mcp-registration.py",
     "composed_host.py": "composition/composed_host.py",
     "composition_descriptors.py": "composition/composition_descriptors.py",
     "composition_graph.py": "composition/composition_graph.py",
     "composition_index.py": "composition/composition_index.py",
     "composition_platform.py": "composition/composition_platform.py",
     "composition_recipe.py": "composition/composition_recipe.py",
-    "host_directory_exchange.py": "installation/host_directory_exchange.py",
     "immutable_store.py": "installation/immutable_store.py",
     "install-candidate.sh": "bootstrap/install-candidate.sh",
     "installation-lifecycle.py": "installation/installation-lifecycle.py",
@@ -70,7 +68,6 @@ SOURCES = (
     "managed_update_journal.py",
     "installation-recovery.py",
     "installation-lifecycle.py",
-    "host_directory_exchange.py",
     "composed_bundle.py",
     "composition_platform.py",
     "managed_headless.py",
@@ -82,12 +79,8 @@ SOURCES = (
 RETAINED = (
     "install-candidate.sh",
     "managed_installation.py.lock",
-    "codex-mcp-registration.py",
 )
-FIXED = (
-    "managed-install-v1",
-    "install-completion-v1",
-)
+FIXED = ("managed-install-v1",)
 
 
 def validate_members(names: Iterable[str]) -> tuple[str, ...]:

@@ -19,13 +19,7 @@ internal enum class InstallationLifecycleStartAdmission {
 internal object InstallationLifecycleFence {
     fun observe(installationRoot: Path): InstallationLifecycleStartAdmission =
         try {
-            val markers =
-                listOf(
-                    installationRoot.resolve(".recovery-detached"),
-                    installationRoot.parent.resolve(INSTALLATION_SHUTDOWN_FENCE),
-                    installationRoot.resolve(".lifecycle-transition.json"),
-                )
-            if (markers.any(::present) || resetPresent(installationRoot))
+            if (present(installationRoot.parent.resolve(INSTALLATION_SHUTDOWN_FENCE)) || resetPresent(installationRoot))
                 InstallationLifecycleStartAdmission.TRANSITION_IN_PROGRESS
             else InstallationLifecycleStartAdmission.AVAILABLE
         } catch (_: IOException) {

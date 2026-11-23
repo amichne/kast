@@ -63,9 +63,6 @@ class BootstrapTest(unittest.TestCase):
             "installation-lifecycle.py": (
                 "packaging/internal/installation/installation-lifecycle.py"
             ),
-            "host_directory_exchange.py": (
-                "packaging/internal/installation/host_directory_exchange.py"
-            ),
             "composed_bundle.py": "packaging/composed_bundle.py",
             "composition_platform.py": "packaging/internal/composition/composition_platform.py",
             "managed_headless.py": "packaging/managed_headless.py",
@@ -75,11 +72,7 @@ class BootstrapTest(unittest.TestCase):
             "managed_installation.py.lock": (
                 "packaging/internal/installation/managed_installation.py.lock"
             ),
-            "codex-mcp-registration.py": (
-                "packaging/internal/installation/codex-mcp-registration.py"
-            ),
             "managed-install-v1": "packaging/managed-install-v1",
-            "install-completion-v1": "packaging/install-completion-v1",
         }
         self.assertEqual(
             {name: repository / relative for name, relative in expected.items()}, files
@@ -104,7 +97,6 @@ class BootstrapTest(unittest.TestCase):
             "managed_update_journal.py",
             "installation-recovery.py",
             "installation-lifecycle.py",
-            "host_directory_exchange.py",
             "composed_bundle.py",
             "composition_platform.py",
             "managed_headless.py",
@@ -113,8 +105,6 @@ class BootstrapTest(unittest.TestCase):
             "install-candidate.sh",
             "managed_installation.py.lock",
             "managed-install-v1",
-            "install-completion-v1",
-            "codex-mcp-registration.py",
         }
         with tempfile.TemporaryDirectory() as temporary:
             output = Path(temporary) / "support"

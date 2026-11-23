@@ -40,11 +40,6 @@ class InstalledClientContextTest {
             context.environment["KAST_CONFIGURATION_FILE"],
         )
         assertEquals(InstalledToolAdmission.AVAILABLE, context.observe())
-        val detached = installation.resolve(".recovery-detached")
-        Files.writeString(detached, "detached")
-        assertEquals(InstalledToolAdmission.UNPROVEN, context.observe())
-        assertInstanceOf(Refinement.Rejected::class.java, InstalledClientContext.admit(payload, emptyMap()))
-        Files.delete(detached)
         Files.writeString(payload, "replacement")
         assertEquals(InstalledToolAdmission.UNPROVEN, context.observe())
         assertInstanceOf(Refinement.Rejected::class.java, InstalledClientContext.admit(payload, emptyMap()))
@@ -122,7 +117,7 @@ class InstalledClientContextTest {
     }
 
     @Test
-    fun `foreign detached symlinked and changed payloads cannot grant installation context`(@TempDir temporary: Path) {
+    fun `foreign symlinked and changed payloads cannot grant installation context`(@TempDir temporary: Path) {
         val payload = installedPayload(temporary.toRealPath(), "bin/kast-query")
         val context = admitted(payload)
         val foreign = Files.createDirectories(temporary.resolve("foreign/bin")).resolve("kast-query")
@@ -134,11 +129,6 @@ class InstalledClientContextTest {
             Refinement.Rejected::class.java,
             InstalledClientContext.admit(alias.resolve("bin/kast-query"), emptyMap()),
         )
-        val detached = payload.parent.parent.resolve(".recovery-detached")
-        Files.writeString(detached, "detached")
-        assertEquals(InstalledToolAdmission.UNPROVEN, context.observe())
-        assertInstanceOf(Refinement.Rejected::class.java, InstalledClientContext.admit(payload, emptyMap()))
-        Files.delete(detached)
         Files.delete(payload)
         Files.writeString(payload, "replacement")
         assertEquals(InstalledToolAdmission.UNPROVEN, context.observe())
@@ -171,10 +161,6 @@ class InstalledClientContextTest {
     fun `installed semantic entry preserves the exact coordinator startup rejection`(@TempDir temporary: Path) {
         val cases =
             mapOf<String, (Path) -> Unit>(
-                "daemon-operation-startup-installation-fenced" to
-                    { installation ->
-                        Files.writeString(installation.resolve(".lifecycle-transition.json"), "transition")
-                    },
                 "daemon-operation-startup-ownership-rejected" to
                     { installation ->
                         Files.createDirectories(installation.resolve("state/run"))

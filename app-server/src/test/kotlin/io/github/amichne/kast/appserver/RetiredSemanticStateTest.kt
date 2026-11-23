@@ -15,7 +15,7 @@ import org.junit.jupiter.api.Test
 class RetiredSemanticStateTest {
     @Test
     fun `retirement consumes owned coordinator artifacts and preserves invocation state`() =
-        withCoordinatorPayload { root, _ ->
+        withFenceableCoordinatorPayload { root, _ ->
             runBlocking {
                 val command = semanticLaunchFixture(root)
                 val run = Files.createDirectories(root.resolve("state/run"))
@@ -23,7 +23,7 @@ class RetiredSemanticStateTest {
                 val lock = Files.writeString(run.resolve("c.sock.lock"), "")
                 Files.writeString(command.log, "coordinator log")
                 Files.writeString(command.lock, "")
-                Files.createFile(root.resolve(".lifecycle-transition.json"))
+                fenceInstallation(root)
                 val foreign = Files.writeString(command.state.resolve("foreign"), "preserve")
                 assertEquals(
                     SemanticCoordinatorRetirement.OWNERSHIP_UNPROVEN,
@@ -42,23 +42,27 @@ class RetiredSemanticStateTest {
         }
 
     @Test
-    fun `retirement consumes an abandoned startup and preserves a live one`() = withCoordinatorPayload { root, _ ->
-        runBlocking {
-            val command = semanticLaunchFixture(root)
-            Files.writeString(command.log, "coordinator log")
-            Files.createFile(root.resolve(".lifecycle-transition.json"))
-            val live = checkNotNull(ServiceProcessIncarnation.capture(ProcessHandle.current()))
-            writeServiceState(command.readiness, starting(root, live))
-            val retained = Files.readAllBytes(command.readiness)
-            assertEquals(SemanticCoordinatorRetirement.OWNERSHIP_UNPROVEN, retireFencedSemanticCoordinator(root, root))
-            assertArrayEquals(retained, Files.readAllBytes(command.readiness))
+    fun `retirement consumes an abandoned startup and preserves a live one`() =
+        withFenceableCoordinatorPayload { root, _ ->
+            runBlocking {
+                val command = semanticLaunchFixture(root)
+                Files.writeString(command.log, "coordinator log")
+                fenceInstallation(root)
+                val live = checkNotNull(ServiceProcessIncarnation.capture(ProcessHandle.current()))
+                writeServiceState(command.readiness, starting(root, live))
+                val retained = Files.readAllBytes(command.readiness)
+                assertEquals(
+                    SemanticCoordinatorRetirement.OWNERSHIP_UNPROVEN,
+                    retireFencedSemanticCoordinator(root, root),
+                )
+                assertArrayEquals(retained, Files.readAllBytes(command.readiness))
 
-            Files.delete(command.readiness)
-            writeServiceState(command.readiness, starting(root, exitedProcess()))
-            assertEquals(SemanticCoordinatorRetirement.EXITED, retireFencedSemanticCoordinator(root, root))
-            assertFalse(Files.exists(command.state))
+                Files.delete(command.readiness)
+                writeServiceState(command.readiness, starting(root, exitedProcess()))
+                assertEquals(SemanticCoordinatorRetirement.EXITED, retireFencedSemanticCoordinator(root, root))
+                assertFalse(Files.exists(command.state))
+            }
         }
-    }
 
     private fun starting(root: Path, process: ServiceProcessIncarnation) =
         BrokerServiceStateDocument.Starting(

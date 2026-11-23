@@ -80,17 +80,10 @@ class DaemonUpgradeProtocolTest {
     }
 
     @Test
-    fun `only qualified committed update permits retirement resume`() {
+    fun `committed update admission keeps the exact target and candidate`() {
         val committed = DaemonUpgradeDocument.Committed("00000000-0000-0000-0000-000000000001", candidate)
         val response = DaemonManagementResponse.Update(target, committed)
-        val qualified = admitDaemonUpdate(response, target, candidate)
-        val document =
-            when (qualified) {
-                is Refinement.Refined -> qualified.value
-                is Refinement.Rejected -> throw AssertionError("Unexpected rejection: ${qualified.failure}")
-            }
-        val permit = InstalledCommittedUpgradePermit.admit(QualifiedDaemonUpdate(target, document))
-        assertInstanceOf(Refinement.Refined::class.java, permit)
+        assertEquals(Refinement.Refined(committed), admitDaemonUpdate(response, target, candidate))
 
         val rejection =
             Refinement.Rejected<DaemonManagementRejection>(
@@ -98,15 +91,6 @@ class DaemonUpgradeProtocolTest {
             )
         assertEquals(rejection, admitDaemonUpdate(response, target.copy(stateEpoch = "other"), candidate))
         assertEquals(rejection, admitDaemonUpdate(response, target, "b".repeat(64)))
-        assertEquals(
-            Refinement.Rejected<DaemonManagementFailure>(DaemonManagementFailure.RESPONSE_REJECTED),
-            InstalledCommittedUpgradePermit.admit(
-                QualifiedDaemonUpdate(
-                    target,
-                    DaemonUpgradeDocument.Sealed(committed.requestId, candidate),
-                )
-            ),
-        )
     }
 
     private val status =

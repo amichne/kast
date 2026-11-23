@@ -1,9 +1,6 @@
 package io.github.amichne.kast.distribution.managed
 
 import io.github.amichne.kast.distribution.contract.InstallationFilesystemIdentity
-import io.github.amichne.kast.kernel.Refinement
-import kotlinx.serialization.EncodeDefault
-import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
@@ -12,9 +9,6 @@ enum class RecoveryRemovalFailure {
     ROOT_REJECTED,
     INSTALLATION_NOT_RETIRED,
     OWNERSHIP_UNPROVEN,
-    RECEIPT_REJECTED,
-    RECOVERY_PENDING,
-    RECOVERY_UNRESOLVED,
     FOREIGN_CONTENT,
     IO_UNAVAILABLE,
 }
@@ -30,33 +24,6 @@ sealed interface ManagedRecoveryRemovalProof {
         val installation: String,
         val recoveryDirectoryIdentity: InstallationFilesystemIdentity,
     ) : ManagedRecoveryRemovalProof
-
-    @Serializable
-    @SerialName("ADMITTED_RECOVERY")
-    @OptIn(ExperimentalSerializationApi::class)
-    data class Admitted(
-        val installation: String,
-        val installationIdentity: InstallationFilesystemIdentity,
-        val recoveryDirectoryIdentity: InstallationFilesystemIdentity,
-        val bundleIdentity: InstallationFilesystemIdentity,
-        val receipt: CapturedRecoveryFile,
-        val recoveryScript: CapturedRecoveryFile,
-        val lifecycleScript: CapturedRecoveryFile,
-        @EncodeDefault(EncodeDefault.Mode.NEVER) val journalScript: CapturedRecoveryFile? = null,
-    ) : ManagedRecoveryRemovalProof
-}
-
-@Serializable
-data class CapturedRecoveryFile(val identity: InstallationFilesystemIdentity, val digest: RecoveryBundleDigest)
-
-@Serializable
-@JvmInline
-value class RecoveryBundleDigest private constructor(val value: String) {
-    companion object {
-        fun parse(value: String): Refinement<RecoveryBundleDigest, RecoveryRemovalFailure> =
-            if (value.matches(Regex("[0-9a-f]{64}"))) Refinement.Refined(RecoveryBundleDigest(value))
-            else Refinement.Rejected(RecoveryRemovalFailure.OWNERSHIP_UNPROVEN)
-    }
 }
 
 sealed interface RecoveryRemovalOutcome {
