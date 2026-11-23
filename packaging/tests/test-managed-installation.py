@@ -214,7 +214,8 @@ class ManagementLockTest(unittest.TestCase):
     the fix. macOS lets the two families conflict, so the same test passes there with either
     primitive and proves only the rejection mapping. The F_GETLK probe distinguishes the
     families on both platforms: Linux reports no lock for flock, and macOS reports an flock
-    holder as pid -1. Only a record lock reports the holding process.
+    holder as pid -1. Only a record lock reports the holding process. ManagementFileLockTest
+    in distribution/cli proves the same lockf holder excludes Kotlin's withRegistrationLock.
     """
 
     HOLDER = (
@@ -232,15 +233,6 @@ class ManagementLockTest(unittest.TestCase):
         "    shape='hhqqi4x'; request=struct.pack(shape,fcntl.F_WRLCK,0,0,0,0)\n"
         "    kind,_,_,_,pid=struct.unpack(shape,fcntl.fcntl(fd,fcntl.F_GETLK,request))\n"
         "print('UNLOCKED' if kind==fcntl.F_UNLCK else f'{kind} {pid}')\n"
-    )
-    JAVA_HOLDER = (
-        "import java.nio.channels.FileChannel;\n"
-        "import java.nio.file.*;\n"
-        "public class Holder { public static void main(String[] a) throws Exception {\n"
-        "  try (FileChannel c = FileChannel.open(Path.of(a[0]), StandardOpenOption.CREATE,"
-        " StandardOpenOption.WRITE); var l = c.tryLock()) {\n"
-        '    System.out.println(l == null ? "busy" : "locked"); System.out.flush();'
-        " System.in.read(); } } }\n"
     )
 
     @override
@@ -290,15 +282,6 @@ class ManagementLockTest(unittest.TestCase):
                 check=True,
             )
         self.assertEqual(f"{install.fcntl.F_WRLCK} {os.getpid()}", probe.stdout.strip())
-
-    @unittest.skipIf(shutil.which("java") is None, "no java on PATH for the FileLock holder")
-    def test_a_java_file_lock_holder_rejects_management(self) -> None:
-        source = self.root.parent / "Holder.java"
-        _ = source.write_text(self.JAVA_HOLDER)
-        java = shutil.which("java")
-        assert java is not None
-        _ = self.held_by([java, str(source), str(self.lock)])
-        self.assert_rejected_by_holder()
 
 
 if __name__ == "__main__":
