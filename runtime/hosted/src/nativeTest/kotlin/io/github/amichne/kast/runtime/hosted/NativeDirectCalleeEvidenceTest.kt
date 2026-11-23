@@ -81,9 +81,11 @@ class NativeDirectCalleeEvidenceTest : NativeSmartModeFixtureTest() {
     fun testTwoKnownNestedOwnersCompleteDirectCalleeQuery() =
         assertCompleteSupplier("fun entry() = kotlin.run { kotlin.run { wrapper { \"x\" } } }\n", NESTED_PROOF_BYTES)
 
+    // The forwarded supplier crosses two invocation owners, so its proof needs the nested grant.
     fun testKnownNestedForwardingCompletesDirectCalleeQuery() =
         assertCompleteSupplier(
-            "fun forward(f: () -> String) = kotlin.run { wrapper(f) }\nfun entry() = forward { \"x\" }\n"
+            "fun forward(f: () -> String) = kotlin.run { wrapper(f) }\nfun entry() = forward { \"x\" }\n",
+            NESTED_PROOF_BYTES,
         )
 
     fun testKnownNestedDefaultSupplierCompletesDirectCalleeQuery() =

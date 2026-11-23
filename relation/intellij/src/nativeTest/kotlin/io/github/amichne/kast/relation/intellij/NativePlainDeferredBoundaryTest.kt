@@ -4,6 +4,7 @@ import io.github.amichne.kast.relation.contract.RelationEndpoint
 import io.github.amichne.kast.relation.contract.RelationMeaning
 import io.github.amichne.kast.relation.contract.RelationRequest
 import io.github.amichne.kast.relation.contract.RelationSearchBoundary
+import io.github.amichne.kast.relation.contract.ValueCondition
 import io.github.amichne.kast.relation.contract.ValueFlowRead
 import io.github.amichne.kast.relation.contract.ValueFlowRejection
 import io.github.amichne.kast.relation.contract.ValueFlowRequest
@@ -15,7 +16,7 @@ import io.github.amichne.kast.relation.contract.ValueSite
 import io.github.amichne.kast.relation.contract.ValueTransferKind
 import kotlinx.coroutines.runBlocking
 
-/** The plain slice keeps deferred conditional and nested execution outside native admission. */
+/** The plain slice keeps nested execution outside native admission and qualifies conditional receiver reads. */
 class NativePlainDeferredBoundaryTest : NativePacketValueFixtureTest() {
     override val fixtureSdkName = "plain-deferred-boundary-jdk"
 
@@ -23,7 +24,8 @@ class NativePlainDeferredBoundaryTest : NativePacketValueFixtureTest() {
 
     fun testAnonymousFunctionValueSiteRetainsNestedExecutionRejection() = rejectsNested("anonymousRequest")
 
-    fun testSubtypeReceiverFieldRetainsAnObligationWithoutAFieldTransfer() = runBlocking {
+    /** Since cfdfcf4e45 the compiler's smart cast qualifies the field read instead of leaving an obligation. */
+    fun testSubtypeReceiverFieldCarriesItsStableReceiverRefinement() = runBlocking {
         val fixture = packetFixture(listOf(CONTROL))
         val owner = fixture.callableDeclaration(PacketDeclaration(CONTROL, "", "destination"))
         val source =
@@ -43,8 +45,24 @@ class NativePlainDeferredBoundaryTest : NativePacketValueFixtureTest() {
                 )
         assertTrue("Conditional receiver read failed: $read", read is ValueFlowRead.Observed)
         val step = (read as ValueFlowRead.Observed).step
-        assertTrue(step.obligations.any { it.cause == ValueFlowUnsupportedCause.UNSUPPORTED_EXPRESSION })
-        assertTrue(step.transfers.none { it.kind == ValueTransferKind.FIELD_READ })
+        assertEquals(
+            "Stable receiver facts retained obligations",
+            emptyList<ValueFlowUnsupportedCause>(),
+            step.obligations.map { it.cause },
+        )
+        assertEquals(
+            listOf(ValueTransferKind.LOCAL_READ, ValueTransferKind.FIELD_READ),
+            step.transfers.map { it.kind },
+        )
+        val field = step.transfers.single { it.kind == ValueTransferKind.FIELD_READ }
+        val condition = field.target.conditions.facts.single()
+        assertTrue("Unexpected field condition: $condition", condition is ValueCondition.StableReceiver)
+        condition as ValueCondition.StableReceiver
+        assertTrue(condition.origin.matches(source))
+        assertEquals(field.target.range, condition.useRange)
+        assertEquals(ValueReceiverKind.EXTENSION, condition.kind)
+        assertEquals("fixture.controls.deferred.Choice", condition.originalType.value)
+        assertEquals("fixture.controls.deferred.Selected", condition.refinedType.value)
     }
 
     private fun rejectsNested(name: String) = runBlocking {
