@@ -465,7 +465,8 @@ Developer promotion never renames or edits a tested payload.
 
 ### Bootstrap release
 
-The bootstrap is the Go frontend that a future `install.sh` downloads and verifies by digest.
+The bootstrap is the Go frontend that `install.sh` downloads and verifies by digest for a preview dry run.
+Every other selection uses the Python engine, which also admits older build records.
 Its release is separate from every product release and from the preview channel.
 Build the two executables from the module's bytes and its `toolchain` line:
 
@@ -486,6 +487,13 @@ The tag names the Git tree of `frontend/`, so a repeated run with the same files
 Other files, an incomplete draft, or a tag without a release stop the run.
 A bootstrap never becomes the latest release, because the stable channel reads that pointer.
 Pin the published digests in a separate pull request, after a local build produces the same digests.
+Edit `packaging/internal/bootstrap/bootstrap_release.py`, then regenerate `install.sh`:
+
+```shell
+mise exec -- uv run --locked --project packaging python packaging/internal/bootstrap/generate_bootstrap.py
+```
+
+A new build record version needs a new bootstrap release and pin, because a bootstrap reads one version.
 
 ### Build evidence and dependency trust
 

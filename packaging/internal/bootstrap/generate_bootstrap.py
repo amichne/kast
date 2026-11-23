@@ -19,6 +19,7 @@ sys.path.extend(
     + [str(Path(__file__).resolve().parents[2])]
 )
 
+from bootstrap_release import BOOTSTRAP_PINS
 from private_interpreter import DEPENDENCY_SHA256, DEPENDENCY_URL, PINS
 
 HERE = Path(__file__).resolve().parent
@@ -185,7 +186,12 @@ def render() -> bytes:
     compressed = bz2.compress(payload.getvalue())
     text = (HERE / "bootstrap.sh.in").read_text()
     mac, linux = PINS
+    mac_bootstrap, linux_bootstrap = BOOTSTRAP_PINS
     for name, value in (
+        ("MAC_BOOTSTRAP_URL", mac_bootstrap.url),
+        ("MAC_BOOTSTRAP_SHA", mac_bootstrap.sha256),
+        ("LINUX_BOOTSTRAP_URL", linux_bootstrap.url),
+        ("LINUX_BOOTSTRAP_SHA", linux_bootstrap.sha256),
         ("MAC_URL", mac.url),
         ("MAC_SHA", mac.sha256),
         ("LINUX_URL", linux.url),
