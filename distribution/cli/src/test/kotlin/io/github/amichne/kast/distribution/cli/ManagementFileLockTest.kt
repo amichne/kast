@@ -1,44 +1,63 @@
 package io.github.amichne.kast.distribution.cli
 
+import java.io.IOException
 import java.nio.file.Files
 import java.nio.file.Path
 import java.util.concurrent.TimeUnit
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertThrows
+import org.junit.jupiter.api.Assertions.assertTrue
+import org.junit.jupiter.api.Assertions.fail
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.Timeout
 import org.junit.jupiter.api.io.TempDir
 
 /**
- * The Python installer's management_lock takes fcntl.lockf on management.lock. Linux keeps flock and fcntl record locks
- * independent, so only a record-lock holder in another process proves that the Python and Kotlin owners exclude each
- * other.
+ * The Python installer and Kotlin management commands must exclude each other on management.lock. Linux keeps flock and
+ * fcntl record locks independent, so a child holding Python's production management_lock must reject Kotlin's
+ * FileChannel lock; this fails on Linux if management_lock returns to flock. macOS lets the two families conflict, so
+ * there it proves only the cross-language rejection.
  */
 class ManagementFileLockTest {
     @TempDir lateinit var temporary: Path
 
     @Test
     @Timeout(30)
-    fun `a python lockf holder rejects the registration lock until it releases`() {
-        val root = Files.createDirectory(temporary.resolve("kast"))
-        val lock = Files.createFile(root.resolve("management.lock"))
+    fun `python management_lock rejects the registration lock until it releases`() {
+        val installation = Path.of("../../packaging/internal/installation").toAbsolutePath().normalize()
+        assertTrue(
+            Files.isRegularFile(installation.resolve("managed_installation.py")),
+            "managed_installation.py is absent under $installation",
+        )
+        // management_lock admits only a physical root, and macOS temporary paths pass through /var.
+        val root = Files.createDirectory(temporary.resolve("kast")).toRealPath()
         val holder =
-            ProcessBuilder(
-                    "python3",
-                    "-c",
-                    "import fcntl,sys; f=open(sys.argv[1],'r+b'); fcntl.lockf(f,fcntl.LOCK_EX); " +
-                        "print('locked',flush=True); sys.stdin.read()",
-                    lock.toString(),
-                )
-                .redirectError(ProcessBuilder.Redirect.INHERIT)
-                .start()
+            try {
+                ProcessBuilder(
+                        "python3",
+                        "-I",
+                        "-B",
+                        "-c",
+                        "import sys; sys.path.insert(0, sys.argv[1]); from pathlib import Path; " +
+                            "import managed_installation as install\n" +
+                            "with install.management_lock(Path(sys.argv[2])):\n" +
+                            "    print('locked', flush=True); sys.stdin.read()",
+                        installation.toString(),
+                        root.toString(),
+                    )
+                    .redirectError(ProcessBuilder.Redirect.INHERIT)
+                    .start()
+            } catch (failure: IOException) {
+                fail<Process>("python3 must be on PATH to hold the production management_lock", failure)
+            }
         try {
             assertEquals("locked", holder.inputReader().readLine())
             var entered = false
             val rejected =
                 assertThrows(ManagementRejected::class.java) { withRegistrationLock(root) { entered = true } }
             assertEquals(ManagementRejected("registration-lock", "another operation is active"), rejected)
-            assertEquals(false, entered)
+            assertFalse(entered)
         } finally {
             holder.outputStream.close()
             holder.waitFor(10, TimeUnit.SECONDS)
