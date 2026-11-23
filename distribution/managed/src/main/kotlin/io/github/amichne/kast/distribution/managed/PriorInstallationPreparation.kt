@@ -1,5 +1,6 @@
 package io.github.amichne.kast.distribution.managed
 
+import io.github.amichne.kast.distribution.contract.InstallationLayout
 import java.nio.file.Files
 import java.nio.file.LinkOption
 import java.nio.file.Path
@@ -11,7 +12,8 @@ enum class PriorInstallationPreparation {
 
 fun resetInstallationTransport(installation: Path, home: Path): PriorInstallationPreparation {
     return try {
-        val run = installation.resolve("state/run")
+        val runtime = InstallationLayout.of(installation).state.run
+        val run = runtime.directory
         val alias =
             io.github.amichne.kast.distribution.managed.endpoint.InstalledEndpointAliases.transportPath(
                     run.resolve("kast-${"0".repeat(43)}.sock")
@@ -19,7 +21,7 @@ fun resetInstallationTransport(installation: Path, home: Path): PriorInstallatio
                 .parent
         val upstream =
             io.github.amichne.kast.distribution.managed.endpoint.InstalledUpstreamDirectories.transportPath(
-                    run.resolve("u.sock")
+                    runtime.upstreamSocket
                 )
                 .parent
         val owner = Files.getOwner(home, LinkOption.NOFOLLOW_LINKS)

@@ -3,6 +3,7 @@ package io.github.amichne.kast.distribution.cli
 import io.github.amichne.kast.distribution.contract.INSTALLATION_MANIFEST_SCHEMA_VERSION
 import io.github.amichne.kast.distribution.contract.INSTALLATION_SHUTDOWN_CAPABILITY
 import io.github.amichne.kast.distribution.contract.INSTALLATION_SHUTDOWN_FENCE
+import io.github.amichne.kast.distribution.contract.InstallationLayout
 import io.github.amichne.kast.distribution.contract.InstallationShutdownRequest
 import io.github.amichne.kast.kernel.Refinement
 import java.nio.file.Files
@@ -46,11 +47,11 @@ private constructor(
         }
 
     private fun retireSemanticService(): LifecycleEffect {
-        val state = installation.resolve("state")
+        val state = InstallationLayout.of(installation).state
         // Service startup must publish under state/broker before it creates its socket.
         if (
-            Files.notExists(state.resolve("broker"), NOFOLLOW_LINKS) &&
-                Files.notExists(state.resolve("run/c.sock"), NOFOLLOW_LINKS)
+            Files.notExists(state.brokers, NOFOLLOW_LINKS) &&
+                Files.notExists(state.run.coordinatorSocket, NOFOLLOW_LINKS)
         )
             return LifecycleEffect.Completed
         return service(LifecycleServiceAction.RETIRE_SEMANTIC)

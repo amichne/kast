@@ -1,6 +1,7 @@
 package io.github.amichne.kast.appserver
 
 import io.github.amichne.kast.appserver.runtime.UnixSocketOwnershipLeaseAcquisition
+import io.github.amichne.kast.distribution.contract.InstallationLayout
 import io.github.amichne.kast.appserver.runtime.UnixSocketPathOwnership
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.kernel.Validation
@@ -83,7 +84,10 @@ internal object BrokerServiceStartLock {
     private fun retireStalePublication(state: SemanticPublicationState.Stale): Boolean {
         return try {
             val key = admittedServiceStateFileKey(state.path, state.document) ?: return false
-            if (!retireStaleSocket(state.installation.resolve("state/run/c.sock"), state.socket)) return false
+            if (
+                !retireStaleSocket(InstallationLayout.of(state.installation).state.run.coordinatorSocket, state.socket)
+            )
+                return false
             if (admittedServiceStateFileKey(state.path, state.document) != key) return false
             Files.delete(state.path)
             true
@@ -247,7 +251,8 @@ internal object BrokerServiceStartLock {
             }
         if (!stopped) return false
         if (System.getProperty("os.name") == "Mac OS X" && !withdrawSemanticLaunchdJob(command)) return false
-        if (!removeSemanticSocketState(command.installation.resolve("state/run/c.sock"), owner)) return false
+        val socket = InstallationLayout.of(command.installation).state.run.coordinatorSocket
+        if (!removeSemanticSocketState(socket, owner)) return false
         val plist = command.state.resolve("semantic-service.plist")
         if (Files.notExists(plist, NOFOLLOW_LINKS)) return true
         if (!ownedFile(plist, owner)) return false

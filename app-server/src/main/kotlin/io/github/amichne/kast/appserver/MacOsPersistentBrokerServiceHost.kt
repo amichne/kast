@@ -479,8 +479,8 @@ internal class MacOsPersistentBrokerServiceHost(
 
     /** Explicit destructive recovery for state owned by this exact physical installation. */
     internal fun destructiveReset(command: BrokerServiceLaunchCommand): PersistentBrokerServiceAdmission {
-        val installationRoot = command.kast.parent.parent
-        val stateRoot = installationRoot.resolve("state")
+        val installationRoot = command.installation.root
+        val stateRoot = command.installation.state.directory
         val ownedTrees =
             ManagedInstallationTreeKind.entries.map { kind ->
                 ManagedInstallationOwnedTree.admit(

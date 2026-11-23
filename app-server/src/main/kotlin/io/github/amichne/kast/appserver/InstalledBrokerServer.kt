@@ -176,7 +176,7 @@ internal sealed interface InstalledBrokerServerConfiguration {
                 return rejected(InstalledBrokerServerConfigurationFailure.SOCKET_PATH_REJECTED)
             }
             val readiness =
-                when (val admitted = BrokerServiceReadiness.admit(stateDirectory, environment)) {
+                when (val admitted = BrokerServiceReadiness.admit(installation.readiness, environment)) {
                     is BrokerServiceReadinessAdmission.Admitted -> admitted.readiness
                     BrokerServiceReadinessAdmission.Rejected ->
                         return rejected(InstalledBrokerServerConfigurationFailure.READINESS_REJECTED)
@@ -671,7 +671,7 @@ internal sealed interface BrokerServiceReadiness {
 
     companion object {
         internal fun admit(
-            stateDirectory: Path,
+            ownedReadiness: Path,
             environment: Map<String, String>,
         ): BrokerServiceReadinessAdmission {
             val identity = environment["BROKER_SERVICE_IDENTITY"]
@@ -690,7 +690,7 @@ internal sealed interface BrokerServiceReadiness {
                 Managed.admit(
                     identity,
                     path,
-                    stateDirectory.resolve("service-readiness.json"),
+                    ownedReadiness,
                 ) ?: return BrokerServiceReadinessAdmission.Rejected
             return BrokerServiceReadinessAdmission.Admitted(managed)
         }

@@ -1,5 +1,6 @@
 package io.github.amichne.kast.appserver
 
+import io.github.amichne.kast.distribution.contract.InstallationLayout
 import io.github.amichne.kast.distribution.managed.CanonicalRoot
 import io.github.amichne.kast.kernel.Refinement
 import java.nio.file.Path
@@ -21,9 +22,8 @@ private constructor(
 
     companion object {
         fun readinessPath(installation: Path, home: Path): Path =
-            BrokerInstallationLayout.from(installation.resolve("bin/kast"), home.resolve(".codex"))
-                .broker
-                .resolve("service-readiness.json")
+            BrokerInstallationLayout.from(InstallationLayout.of(installation).payload.kast, home.resolve(".codex"))
+                .readiness
 
         suspend fun observe(
             installation: Path,

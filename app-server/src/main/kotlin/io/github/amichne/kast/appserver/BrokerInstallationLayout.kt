@@ -13,6 +13,7 @@ private constructor(
     val root: Path = installation.root
     val state: Path = installation.state.directory
     val broker: Path = installation.state.broker(hostProfile)
+    val readiness: Path = installation.state.readiness(hostProfile)
     val run: Path = installation.state.run.directory
     val privatePublicSocket: Path = BrokerEndpointAliases.transportPath(installation.state.run.coordinatorSocket)
     val upstreamSocket: Path = BrokerUpstreamDirectories.transportPath(installation.state.run.upstreamSocket)

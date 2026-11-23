@@ -5,6 +5,7 @@ import io.github.amichne.kast.appserver.PublicInvocationProtocol
 import io.github.amichne.kast.cli.KastControlMain
 import io.github.amichne.kast.distribution.cli.controlJavaHomes
 import io.github.amichne.kast.distribution.cli.publicQueryNamespaceNames
+import io.github.amichne.kast.distribution.contract.InstallationLayout
 import io.github.amichne.kast.distribution.contract.configuration.CliOutputFormat
 import io.github.amichne.kast.distribution.contract.configuration.selectCliOutputFormat
 import io.github.amichne.kast.distribution.managed.endpoint.InstalledEndpointAliases
@@ -36,7 +37,7 @@ object PublicFrontendCatalog {
         PublicFrontendCatalogDocument(
             schemaVersion = FRONTEND_CATALOG_SCHEMA_VERSION,
             invocationProtocol = PublicInvocationProtocol.version,
-            socket = "state/run/c.sock",
+            socket = InstallationLayout.Relative.COORDINATOR_SOCKET.value,
             socketAlias =
                 PublicFrontendSocketAlias(
                     MAXIMUM_UNIX_SOCKET_PATH_BYTES,

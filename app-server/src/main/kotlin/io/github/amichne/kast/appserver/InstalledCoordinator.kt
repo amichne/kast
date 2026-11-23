@@ -54,7 +54,7 @@ internal object InstalledCoordinatorConfiguration {
                 Files.setPosixFilePermissions(directory, PosixFilePermissions.fromString("rwx------"))
             }
             val readiness =
-                when (val admission = BrokerServiceReadiness.admit(layout.broker, environment)) {
+                when (val admission = BrokerServiceReadiness.admit(layout.readiness, environment)) {
                     is BrokerServiceReadinessAdmission.Admitted -> admission.readiness
                     BrokerServiceReadinessAdmission.Rejected ->
                         return reject(InstalledBrokerServerConfigurationFailure.READINESS_REJECTED)

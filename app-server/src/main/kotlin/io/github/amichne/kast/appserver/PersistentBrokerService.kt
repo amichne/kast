@@ -419,7 +419,7 @@ private constructor(
                     jvmUserHomeOption,
                     codexHome,
                     stateDirectory,
-                    stateDirectory.resolve("service-readiness.json"),
+                    installation.readiness,
                     publicEndpoint,
                     stateDirectory.resolve("service.log"),
                     stateDirectory.resolve("launch-environment"),

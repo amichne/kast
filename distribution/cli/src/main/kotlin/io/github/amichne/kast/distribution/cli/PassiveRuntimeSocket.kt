@@ -68,7 +68,7 @@ private fun validRuntimeHome(raw: String): Boolean =
     }
 
 private fun privateRuntimeSocket(installation: Path): Refinement<Path, RuntimeObservationFailure> {
-    val physical = installation.resolve("state/run/c.sock")
+    val physical = InstallationLayout.of(installation).state.run.coordinatorSocket
     if (physical.toString().toByteArray().size <= MAXIMUM_UNIX_SOCKET_PATH_BYTES) return Refinement.Refined(physical)
     val directory = physical.parent
     val hash =
