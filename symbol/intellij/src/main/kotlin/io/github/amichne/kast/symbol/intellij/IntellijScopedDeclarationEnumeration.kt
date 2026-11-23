@@ -20,6 +20,7 @@ import io.github.amichne.kast.workspace.intellij.read.IntellijReadObservation
 import io.github.amichne.kast.workspace.intellij.read.IntellijReadSearch
 import io.github.amichne.kast.workspace.intellij.read.call
 import io.github.amichne.kast.workspace.intellij.read.search
+import org.jetbrains.kotlin.psi.KtEnumEntry
 import org.jetbrains.kotlin.psi.KtFile
 import org.jetbrains.kotlin.psi.KtNamedDeclaration
 import org.jetbrains.kotlin.psi.KtNamedFunction
@@ -276,6 +277,9 @@ internal class ScopedKotlinDeclarationVisitor(
 
     private fun admit(declaration: KtNamedDeclaration): Boolean {
         if (localOnly && !declaration.isSupportedLocal()) return true
+        // Constraint admission, after the name check, turns a matched entry into a qualification, never a candidate.
+        if (declaration is KtEnumEntry)
+            return constraints.declarationKinds?.selectsEnumEntryFamily() != true || accept(declaration)
         val kind = declaration.discoveryCompilerKind() ?: return true
         return kind !in kinds || accept(declaration)
     }

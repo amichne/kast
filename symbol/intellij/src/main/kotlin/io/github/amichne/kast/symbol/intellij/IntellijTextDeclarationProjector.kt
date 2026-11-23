@@ -53,10 +53,14 @@ internal class IntellijTextDeclarationProjector(
             IntellijDiscoveryItemCompilerKindResult.EnumEntry,
             IntellijDiscoveryItemCompilerKindResult.Unsupported -> return IntellijTextOccurrenceAdmission.UNSUPPORTED
         }
-        return when (request.constraints.admit(owner, virtual.path, scope, policies, inspectPackage = false)) {
-            IntellijDiscoveryItemAdmission.ADMITTED -> IntellijTextOccurrenceAdmission.ADMITTED
-            IntellijDiscoveryItemAdmission.FILTERED -> IntellijTextOccurrenceAdmission.FILTERED
-            IntellijDiscoveryItemAdmission.UNSUPPORTED -> IntellijTextOccurrenceAdmission.UNSUPPORTED
+        return when (
+            request.constraints.admit(owner, virtual.path, scope, policies, request.target, inspectPackage = false)
+        ) {
+            IntellijDiscoveryConstraintAdmission.ADMITTED -> IntellijTextOccurrenceAdmission.ADMITTED
+            IntellijDiscoveryConstraintAdmission.FILTERED -> IntellijTextOccurrenceAdmission.FILTERED
+            // Text owners classify enum entries as unsupported above; a text target never selects them by name.
+            IntellijDiscoveryConstraintAdmission.UNSUPPORTED,
+            IntellijDiscoveryConstraintAdmission.UNSELECTABLE_ENUM_ENTRY -> IntellijTextOccurrenceAdmission.UNSUPPORTED
         }
     }
 
@@ -86,10 +90,11 @@ internal class IntellijTextDeclarationProjector(
         val owner = containing.owner
         val file = owner.containingFile ?: return PreparedTextOwner.Unsupported
         val virtual = PsiUtilCore.getVirtualFile(file) ?: return PreparedTextOwner.Unsupported
-        when (request.constraints.admit(owner, virtual.path, scope, policies)) {
-            IntellijDiscoveryItemAdmission.ADMITTED -> Unit
-            IntellijDiscoveryItemAdmission.FILTERED -> return PreparedTextOwner.Filtered
-            IntellijDiscoveryItemAdmission.UNSUPPORTED -> return PreparedTextOwner.Unsupported
+        when (request.constraints.admit(owner, virtual.path, scope, policies, request.target)) {
+            IntellijDiscoveryConstraintAdmission.ADMITTED -> Unit
+            IntellijDiscoveryConstraintAdmission.FILTERED -> return PreparedTextOwner.Filtered
+            IntellijDiscoveryConstraintAdmission.UNSUPPORTED,
+            IntellijDiscoveryConstraintAdmission.UNSELECTABLE_ENUM_ENTRY -> return PreparedTextOwner.Unsupported
         }
         val candidate =
             when (val projected = detachOwner(owner, virtual)) {

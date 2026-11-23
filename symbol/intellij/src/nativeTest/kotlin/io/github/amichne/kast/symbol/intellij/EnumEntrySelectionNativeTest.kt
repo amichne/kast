@@ -16,10 +16,14 @@ import io.github.amichne.kast.symbol.contract.CompilerSymbolKind
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryBudget
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryByteLimit
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryConstraints
+import io.github.amichne.kast.symbol.contract.SymbolDiscoveryContainment
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryDeclarationKinds
+import io.github.amichne.kast.symbol.contract.SymbolDiscoveryDirectory
+import io.github.amichne.kast.symbol.contract.SymbolDiscoveryDirectoryConstraint
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryMatch
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryOutcome
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryPattern
+import io.github.amichne.kast.symbol.contract.SymbolDiscoveryQualification
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryRequest
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryTarget
 import io.github.amichne.kast.symbol.contract.SymbolGeneratedSourcePolicy
@@ -37,25 +41,28 @@ import io.github.amichne.kast.workspace.contract.WorkspaceSourceRootKind
 import io.github.amichne.kast.workspace.contract.WorkspaceSourceRootProvenance
 
 /**
- * Enum entries have no supported compiler declaration kind. Exact-name selection under the public default kinds filters
- * a proven enum entry before candidate accounting, so a name that matches only an enum entry is a complete, empty
- * selection. A query relation hop from that seed rejects with `RELATION_SEED_EMPTY` in the query service.
+ * Enum entries have no supported compiler declaration kind. An exact-name selection under the public default kinds
+ * meets a same-named entry in the classlike family and cannot select it, so the selection is qualified with
+ * `ENUM_ENTRY_UNSELECTABLE` instead of reporting a complete, empty or complete, partial answer. Kinds without the
+ * classlike family prove the entry outside the selection.
  */
 class EnumEntrySelectionNativeTest : HeavyPlatformTestCase() {
     override fun getModuleType() = JavaModuleType.getModuleType()
 
     override fun runInDispatchThread() = false
 
-    fun testEnumEntryNameIsACompleteEmptySelection() {
+    fun testEnumEntryNameIsAQualifiedEmptySelection() {
         prepareSources(mapOf("Outcome.kt" to "package sample\n\nenum class Outcome { $TARGET, ACCEPTED }\n"))
         ApplicationManager.getApplication().runReadAction {
             val outcome = discover()
-            assertTrue(outcome.toString(), outcome is SymbolDiscoveryOutcome.Complete)
-            assertEquals(emptyList<String>(), (outcome as SymbolDiscoveryOutcome.Complete).batch.candidates)
+            assertTrue(outcome.toString(), outcome is SymbolDiscoveryOutcome.Qualified)
+            val qualified = outcome as SymbolDiscoveryOutcome.Qualified
+            assertEquals(setOf(SymbolDiscoveryQualification.ENUM_ENTRY_UNSELECTABLE), qualified.qualifications.values)
+            assertEquals(emptyList<String>(), qualified.batch.candidates)
         }
     }
 
-    fun testSameNamePropertyIsSelectedBesideTheFilteredEnumEntry() {
+    fun testSameNamePropertyIsSelectedBesideTheUnselectableEnumEntry() {
         prepareSources(
             mapOf(
                 "Outcome.kt" to "package sample\n\nenum class Outcome { $TARGET, ACCEPTED }\n",
@@ -64,15 +71,58 @@ class EnumEntrySelectionNativeTest : HeavyPlatformTestCase() {
         )
         ApplicationManager.getApplication().runReadAction {
             val outcome = discover()
-            assertTrue(outcome.toString(), outcome is SymbolDiscoveryOutcome.Complete)
-            val candidates = (outcome as SymbolDiscoveryOutcome.Complete).batch.candidates
+            assertTrue(outcome.toString(), outcome is SymbolDiscoveryOutcome.Qualified)
+            val qualified = outcome as SymbolDiscoveryOutcome.Qualified
+            assertEquals(setOf(SymbolDiscoveryQualification.ENUM_ENTRY_UNSELECTABLE), qualified.qualifications.values)
+            val candidates = qualified.batch.candidates
             assertEquals(listOf(TARGET), candidates.map { it.name.value })
             assertTrue(candidates.single().location.file.stableValue.endsWith("/src/Codes.kt"))
         }
     }
 
-    private fun discover(): SymbolDiscoveryOutcome {
-        val request = request()
+    fun testKindsWithoutTheClasslikeFamilyProveTheEntryOutsideTheSelection() {
+        prepareSources(mapOf("Outcome.kt" to "package sample\n\nenum class Outcome { $TARGET, ACCEPTED }\n"))
+        ApplicationManager.getApplication().runReadAction {
+            val outcome = discover(setOf(CompilerSymbolKind.FUNCTION, CompilerSymbolKind.PROPERTY))
+            assertTrue(outcome.toString(), outcome is SymbolDiscoveryOutcome.Complete)
+            assertEquals(emptyList<String>(), (outcome as SymbolDiscoveryOutcome.Complete).batch.candidates)
+        }
+    }
+
+    fun testScopedAndDirectoryRoutesMeetTheEntryToo() {
+        prepareSources(mapOf("Outcome.kt" to "package sample\n\nenum class Outcome { $TARGET, ACCEPTED }\n"))
+        val routes =
+            listOf(
+                Route(PUBLIC_DEFAULT_KINDS, SymbolDiscoveryMatch.FUZZY, directory = null),
+                Route(PUBLIC_DEFAULT_KINDS, SymbolDiscoveryMatch.EXACT_NAME, directory = "src"),
+                Route(setOf(CompilerSymbolKind.CLASSLIKE), SymbolDiscoveryMatch.EXACT_NAME, directory = "src"),
+            )
+        ApplicationManager.getApplication().runReadAction {
+            for (route in routes) {
+                val outcome = discover(route.kinds, route.match, route.directory)
+                assertTrue("$route: $outcome", outcome is SymbolDiscoveryOutcome.Qualified)
+                val qualified = outcome as SymbolDiscoveryOutcome.Qualified
+                assertTrue(
+                    "$route: ${qualified.qualifications}",
+                    SymbolDiscoveryQualification.ENUM_ENTRY_UNSELECTABLE in qualified.qualifications.values,
+                )
+                assertEquals("$route", emptyList<String>(), qualified.batch.candidates.map { it.name.value })
+            }
+        }
+    }
+
+    private data class Route(
+        val kinds: Set<CompilerSymbolKind>,
+        val match: SymbolDiscoveryMatch,
+        val directory: String?,
+    )
+
+    private fun discover(
+        kinds: Set<CompilerSymbolKind> = PUBLIC_DEFAULT_KINDS,
+        match: SymbolDiscoveryMatch = SymbolDiscoveryMatch.EXACT_NAME,
+        directory: String? = null,
+    ): SymbolDiscoveryOutcome {
+        val request = request(kinds, match, directory)
         val compiled = IntellijSearchScopeCompiler(request.constraints).compile(project, request.scope, model(request))
         assertTrue(compiled.toString(), compiled is IntellijSearchScopeCompilation.Compiled)
         val scope = (compiled as IntellijSearchScopeCompilation.Compiled).capability
@@ -101,7 +151,11 @@ class EnumEntrySelectionNativeTest : HeavyPlatformTestCase() {
         }
     }
 
-    private fun request(): SymbolDiscoveryRequest {
+    private fun request(
+        kinds: Set<CompilerSymbolKind>,
+        match: SymbolDiscoveryMatch,
+        directory: String?,
+    ): SymbolDiscoveryRequest {
         val root = CanonicalWorkspaceRoot.fromCanonicalPath(getOrCreateProjectBaseDir().toNioPath()).refined()
         return SymbolDiscoveryRequest(
             scope =
@@ -117,7 +171,7 @@ class EnumEntrySelectionNativeTest : HeavyPlatformTestCase() {
                 SymbolDiscoveryTarget.Name(
                     SymbolNameDiscoveryKind.SYMBOL,
                     SymbolDiscoveryPattern.parse(TARGET).refined(),
-                    SymbolDiscoveryMatch.EXACT_NAME,
+                    match,
                 ),
             budget =
                 SymbolDiscoveryBudget(
@@ -130,18 +184,14 @@ class EnumEntrySelectionNativeTest : HeavyPlatformTestCase() {
                 ),
             constraints =
                 SymbolDiscoveryConstraints(
-                    null,
-                    null,
-                    // The public default declaration kinds for a name selection.
-                    SymbolDiscoveryDeclarationKinds.from(
-                            setOf(
-                                CompilerSymbolKind.CLASSLIKE,
-                                CompilerSymbolKind.FUNCTION,
-                                CompilerSymbolKind.PROPERTY,
-                                CompilerSymbolKind.TYPE_ALIAS,
-                            )
+                    directory?.let { path ->
+                        SymbolDiscoveryDirectoryConstraint(
+                            SymbolDiscoveryDirectory.parse(path).refined(),
+                            SymbolDiscoveryContainment.DESCENDANTS,
                         )
-                        .refined(),
+                    },
+                    null,
+                    SymbolDiscoveryDeclarationKinds.from(kinds).refined(),
                 ),
         )
     }
@@ -175,5 +225,14 @@ class EnumEntrySelectionNativeTest : HeavyPlatformTestCase() {
         const val WORK_GRANT = 100_000L
         const val ELAPSED_GRANT = 60_000L
         const val BYTE_GRANT = 100_000L
+
+        /** The public default declaration kinds for a name selection. */
+        val PUBLIC_DEFAULT_KINDS =
+            setOf(
+                CompilerSymbolKind.CLASSLIKE,
+                CompilerSymbolKind.FUNCTION,
+                CompilerSymbolKind.PROPERTY,
+                CompilerSymbolKind.TYPE_ALIAS,
+            )
     }
 }

@@ -11,6 +11,7 @@ internal fun permanentDiscoveryLimitations(qualifications: Set<SymbolDiscoveryQu
                 SymbolDiscoveryQualification.BYTE_LIMIT_REACHED -> QueryLimitation.BYTE_LIMIT_REACHED
                 SymbolDiscoveryQualification.WORK_LIMIT_REACHED -> QueryLimitation.WORK_LIMIT_REACHED
                 SymbolDiscoveryQualification.TIME_LIMIT_REACHED -> QueryLimitation.TIME_LIMIT_REACHED
+                SymbolDiscoveryQualification.ENUM_ENTRY_UNSELECTABLE -> QueryLimitation.ENUM_ENTRY_UNSELECTABLE
                 SymbolDiscoveryQualification.RESULT_LIMIT_REACHED,
                 SymbolDiscoveryQualification.DUMB_MODE_TRANSITION,
                 SymbolDiscoveryQualification.PROVIDER_FAILURE,

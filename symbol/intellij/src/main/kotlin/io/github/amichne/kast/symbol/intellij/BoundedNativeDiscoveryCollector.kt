@@ -45,6 +45,7 @@ internal class BoundedNativeDiscoveryCollector(
     private val startedAt = clock.now()
     private val candidates = linkedSetOf<SymbolDiscoveryCandidate>()
     private val qualifications = linkedSetOf<SymbolDiscoveryQualification>()
+    private val deferredEnumEntries = linkedSetOf<NavigationItem>()
     var contributor: IntellijReadContributor = IntellijReadContributor.NONE
     private var failedObligation: SymbolDiscoveryProgress =
         SymbolDiscoveryProgress.Blocked(SymbolDiscoveryBlockCause.QUALIFIED_PROVIDER)
@@ -101,25 +102,7 @@ internal class BoundedNativeDiscoveryCollector(
             observation.count(IntellijReadCounter.SCOPE_FILTERED, contributor)
             return IntellijDiscoveryItemAdmission.FILTERED
         }
-        when (
-            request.constraints.admit(
-                item = item,
-                filePath = file.path,
-                compiledScope = compiledScope,
-                policies = policies,
-                inspectPackage = inspectPackage,
-            )
-        ) {
-            IntellijDiscoveryItemAdmission.ADMITTED -> Unit
-            IntellijDiscoveryItemAdmission.FILTERED -> {
-                observation.count(IntellijReadCounter.SCOPE_FILTERED, contributor)
-                return IntellijDiscoveryItemAdmission.FILTERED
-            }
-            IntellijDiscoveryItemAdmission.UNSUPPORTED -> {
-                qualify(SymbolDiscoveryQualification.UNSUPPORTED_ITEM)
-                return IntellijDiscoveryItemAdmission.FILTERED
-            }
-        }
+        if (!admitConstraints(item, file.path, inspectPackage)) return IntellijDiscoveryItemAdmission.FILTERED
         when (itemAdmission.admit(item)) {
             IntellijDiscoveryItemAdmission.ADMITTED -> Unit
             IntellijDiscoveryItemAdmission.FILTERED -> {
@@ -132,6 +115,45 @@ internal class BoundedNativeDiscoveryCollector(
             }
         }
         return IntellijDiscoveryItemAdmission.ADMITTED
+    }
+
+    private fun admitConstraints(item: NavigationItem, filePath: String, inspectPackage: Boolean): Boolean {
+        when (request.constraints.admit(item, filePath, compiledScope, policies, request.target, inspectPackage)) {
+            IntellijDiscoveryConstraintAdmission.ADMITTED -> return true
+            IntellijDiscoveryConstraintAdmission.FILTERED ->
+                observation.count(IntellijReadCounter.SCOPE_FILTERED, contributor)
+            IntellijDiscoveryConstraintAdmission.UNSUPPORTED -> qualify(SymbolDiscoveryQualification.UNSUPPORTED_ITEM)
+            IntellijDiscoveryConstraintAdmission.UNSELECTABLE_ENUM_ENTRY ->
+                // The entry never enters candidate, pending or result capacity. Package PSI stays outside native
+                // callbacks: an entry whose package is still unproven is settled when collection finishes.
+                if (inspectPackage || request.constraints.packageName == null) settleEnumEntry(item)
+                else deferredEnumEntries += item
+        }
+        return false
+    }
+
+    /** A matched enum entry inside every constraint is a selection the requested kinds cannot represent. */
+    private fun settleEnumEntry(item: NavigationItem) {
+        when (itemAdmission.admit(item)) {
+            IntellijDiscoveryItemAdmission.ADMITTED -> qualify(SymbolDiscoveryQualification.ENUM_ENTRY_UNSELECTABLE)
+            IntellijDiscoveryItemAdmission.FILTERED ->
+                observation.count(IntellijReadCounter.SCOPE_FILTERED, contributor)
+            IntellijDiscoveryItemAdmission.UNSUPPORTED -> qualify(SymbolDiscoveryQualification.UNSUPPORTED_ITEM)
+        }
+    }
+
+    /** Runs after native callbacks end, so package PSI for deferred entries stays outside index callbacks. */
+    private fun settleDeferredEnumEntries() {
+        val deferred = deferredEnumEntries.toList()
+        deferredEnumEntries.clear()
+        for (item in deferred) {
+            when (request.constraints.packageName.admitPackage { policies.itemPackage.inspect(item) }) {
+                IntellijDiscoveryItemAdmission.ADMITTED -> settleEnumEntry(item)
+                IntellijDiscoveryItemAdmission.FILTERED ->
+                    observation.count(IntellijReadCounter.SCOPE_FILTERED, contributor)
+                IntellijDiscoveryItemAdmission.UNSUPPORTED -> qualify(SymbolDiscoveryQualification.UNSUPPORTED_ITEM)
+            }
+        }
     }
 
     fun accept(item: NavigationItem): Boolean {
@@ -200,6 +222,7 @@ internal class BoundedNativeDiscoveryCollector(
     }
 
     fun finish(): IntellijNativeDiscoveryExecution {
+        settleDeferredEnumEntries()
         if (directoryAllowance?.expired() == true || request.elapsedExpired(elapsedSince(startedAt))) {
             qualify(SymbolDiscoveryQualification.TIME_LIMIT_REACHED)
         }
@@ -298,6 +321,7 @@ private fun SymbolDiscoveryQualification.observedTermination(): IntellijReadTerm
         SymbolDiscoveryQualification.DUMB_MODE_TRANSITION -> IntellijReadTermination.INDEXING
         SymbolDiscoveryQualification.EXACT_DEFINITION_UNAVAILABLE ->
             IntellijReadTermination.EXACT_REFINEMENT_UNAVAILABLE
+        SymbolDiscoveryQualification.ENUM_ENTRY_UNSELECTABLE -> IntellijReadTermination.ENUM_ENTRY_UNSELECTABLE
     }
 
 internal data class IntellijDiscoveryItemPolicies(

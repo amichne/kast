@@ -41,6 +41,9 @@ internal sealed interface IntellijClasslikeAstBinding {
             when {
                 node.javaClass == CompositeElement::class.java && node.elementType in CLASSLIKE_TYPES ->
                     ClasslikeAstPsiAdmission.REQUIRED
+                // A same-named enum entry qualifies a classlike name selection, so its PSI reaches admission.
+                node.javaClass == CompositeElement::class.java && node.elementType == KtNodeTypes.ENUM_ENTRY ->
+                    ClasslikeAstPsiAdmission.REQUIRED
                 node.javaClass == CompositeElement::class.java && node.elementType in nonClasslike ->
                     ClasslikeAstPsiAdmission.OMITTED
                 node.javaClass in SELF_PSI_LEAVES -> ClasslikeAstPsiAdmission.OMITTED
