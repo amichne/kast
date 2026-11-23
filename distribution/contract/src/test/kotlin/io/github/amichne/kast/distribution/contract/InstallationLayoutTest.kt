@@ -18,8 +18,8 @@ class InstallationLayoutTest {
     @Test
     fun `the installation and configuration paths are byte-identical to the current layout`() {
         assertPaths(
-            "root" to ("$installation" to layout.root),
-            "managementRoot" to ("/fixed/home/.local/share/kast" to layout.managementRoot),
+            "version" to ("$installation" to layout.version.path),
+            "managementRoot" to ("/fixed/home/.local/share/kast" to layout.managementRoot.path),
             "configuration.directory" to ("$installation/config" to layout.configuration.directory),
             "configuration.environment" to ("$installation/config/environment" to layout.configuration.environment),
             "configuration.workspaceRegistry" to
@@ -139,7 +139,7 @@ class InstallationLayoutTest {
         )
         assertEquals(
             "$installation/share/kast/libexec/kast-service",
-            InstallationLayout.Relative.SERVICE_EXECUTABLE.under(layout.root).toString(),
+            InstallationLayout.Relative.SERVICE_EXECUTABLE.under(layout.version.path).toString(),
         )
         assertEquals("share/kast/lifecycle-fence-v1", INSTALLATION_SHUTDOWN_CAPABILITY)
         assertEquals("share/kast/reset-fence-v1", INSTALLATION_RESET_CAPABILITY)

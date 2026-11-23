@@ -4,6 +4,7 @@ import io.github.amichne.kast.distribution.contract.INSTALLATION_MANIFEST_SCHEMA
 import io.github.amichne.kast.distribution.contract.INSTALLATION_SHUTDOWN_FENCE
 import io.github.amichne.kast.distribution.contract.InstallationLayout
 import io.github.amichne.kast.distribution.contract.InstallationShutdownRequest
+import io.github.amichne.kast.distribution.contract.ManagementRoot
 import io.github.amichne.kast.kernel.Refinement
 import java.nio.file.Files
 import java.nio.file.LinkOption.NOFOLLOW_LINKS
@@ -171,7 +172,7 @@ private constructor(
 
     private fun service(action: LifecycleServiceAction): LifecycleEffect {
         val layout = InstallationLayout.beneath(root)
-        val selected = layout.root
+        val selected = layout.version.path
         val executable = layout.payload.serviceExecutable
         val current = readBundledManifest(selected)
         if (
@@ -201,7 +202,7 @@ private constructor(
             platform: ContainerPlatform,
             execution: LifecycleExecution,
         ): Refinement<InstallationLifecycle, ContainerFailure> = containerFiles {
-            val installation = InstallationLayout.beneath(root).root
+            val installation = ManagementRoot.of(root).management.installation
             when (val selected = InstalledProductSelection.read(installation, platform)) {
                 is Refinement.Rejected -> return@containerFiles selected
                 is Refinement.Refined -> Unit

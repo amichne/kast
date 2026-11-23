@@ -1,6 +1,7 @@
 package io.github.amichne.kast.distribution.cli
 
 import io.github.amichne.kast.distribution.contract.InstallationLayout
+import io.github.amichne.kast.distribution.contract.ManagementRoot
 import io.github.amichne.kast.distribution.contract.NativeControlEntry
 import io.github.amichne.kast.distribution.contract.admitNativeControlProcessInvocation
 import io.github.amichne.kast.kernel.Refinement
@@ -224,7 +225,7 @@ internal class ForceDaemonRetirement(
                 is ResetRetirementPreparation.Prepared -> preparation.processes
                 is ResetRetirementPreparation.Rejected -> return preparation.effect
             }
-        val label = ResetServiceLabel.selected(InstallationLayout.beneath(root).root)
+        val label = ResetServiceLabel.selected(ManagementRoot.of(root).management.installation)
         for (variant in ResetLaunchVariant.entries) {
             when (val job = retireJob(label, variant, home)) {
                 ResetEffect.Completed -> Unit

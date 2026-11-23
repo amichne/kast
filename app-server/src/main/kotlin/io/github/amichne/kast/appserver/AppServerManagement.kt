@@ -137,7 +137,8 @@ internal constructor(
             }
         if (
             requiresLifecycleStart(action) &&
-                InstallationLifecycleFence.observe(installation.root) != InstallationLifecycleStartAdmission.AVAILABLE
+                InstallationLifecycleFence.observe(installation.version.path) !=
+                    InstallationLifecycleStartAdmission.AVAILABLE
         ) {
             return reject(AppServerManagementFailure.SERVICE_OWNERSHIP_UNPROVEN)
         }

@@ -1,6 +1,7 @@
 package io.github.amichne.kast.distribution.cli
 
 import io.github.amichne.kast.distribution.contract.InstallationLayout
+import io.github.amichne.kast.distribution.contract.ManagementRoot
 import io.github.amichne.kast.distribution.contract.configuration.WorkspaceDependencySharing
 import io.github.amichne.kast.kernel.Refinement
 import java.nio.file.Path
@@ -49,7 +50,7 @@ internal fun readWorkspaceStatuses(
                     is Refinement.Refined ->
                         Refinement.Refined(
                             entries.value.map {
-                                workspaceStatus(store.value, it, InstallationLayout.beneath(root).root)
+                                workspaceStatus(store.value, it, ManagementRoot.of(root).management.installation)
                             }
                         )
                 }

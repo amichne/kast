@@ -45,7 +45,7 @@ internal fun readBundledManifest(installation: Path): BundledManifestRead {
 @Suppress("ThrowsCount") // Each incomplete installation proof rejects before external commands run.
 internal fun selectedInstallation(root: Path): Path {
     val layout = InstallationLayout.beneath(root)
-    val payload = layout.root
+    val payload = layout.version.path
     if (
         Files.isSymbolicLink(payload) ||
             !Files.isDirectory(payload, LinkOption.NOFOLLOW_LINKS) ||
@@ -58,7 +58,7 @@ internal fun selectedInstallation(root: Path): Path {
         } catch (_: Exception) {
             throw ManagementRejected("installation-admission", "installation is unavailable")
         }
-    if (selected != InstallationLayout.beneath(root.toRealPath()).root)
+    if (selected != InstallationLayout.beneath(root.toRealPath()).version.path)
         throw ManagementRejected("installation-admission", "installation is invalid")
     val manifest =
         when (val read = readBundledManifest(selected)) {

@@ -1,6 +1,7 @@
 package io.github.amichne.kast.distribution.cli
 
 import io.github.amichne.kast.distribution.contract.InstallationLayout
+import io.github.amichne.kast.distribution.contract.ManagementRoot
 import io.github.amichne.kast.distribution.managed.RecoveryRemovalOutcome
 import io.github.amichne.kast.distribution.managed.admitRecoveryRemoval
 import io.github.amichne.kast.distribution.managed.removalProcessUid
@@ -57,7 +58,7 @@ private fun removeInstallation(
 }
 
 private fun admitUninstallPayload(root: Path, receipt: ManagementReceipt) {
-    val payload = InstallationLayout.beneath(root).root
+    val payload = ManagementRoot.of(root).management.installation
     requireUninstallRootInventory(root)
     requireUninstallExecutable(receipt, payload)
     if (!Files.exists(uninstallJournalPath(root), LinkOption.NOFOLLOW_LINKS)) return
@@ -78,7 +79,7 @@ private fun retireUninstallPayload(
     observe: (UninstallCleanupObservation) -> Unit,
     environment: Map<String, String>,
 ) {
-    val payload = InstallationLayout.beneath(root).root
+    val payload = ManagementRoot.of(root).management.installation
     observe(UninstallCleanupObservation.Started(UninstallArtifact.CONTROL_PAYLOAD))
     if (Files.exists(payload, LinkOption.NOFOLLOW_LINKS)) {
         val script = prepareUninstallPayload(root, home, receipt, observe, environment)
@@ -118,7 +119,7 @@ private fun prepareUninstallPayload(
     observe: (UninstallCleanupObservation) -> Unit,
     environment: Map<String, String>,
 ): Path {
-    val payload = InstallationLayout.beneath(root).root
+    val payload = ManagementRoot.of(root).management.installation
     if (Files.exists(uninstallJournalPath(root), LinkOption.NOFOLLOW_LINKS)) {
         val journal = readUninstallRetirement(root)
         val proof = journal.productRemoval
@@ -187,7 +188,7 @@ private fun requireRetainedUninstallInventory(
 }
 
 private fun ownedUninstallInstaller(root: Path): Path {
-    val payload = InstallationLayout.beneath(root).root
+    val payload = ManagementRoot.of(root).management.installation
     val relative = InstallationLayout.Relative.INSTALL_CANDIDATE.value
     val script = InstallationLayout.Relative.INSTALL_CANDIDATE.under(payload)
     val manifest =
@@ -209,7 +210,9 @@ private fun removeUninstallRecovery(
 ) {
     observe(UninstallCleanupObservation.Started(UninstallArtifact.RECOVERY_BUNDLE))
     if (Files.exists(root, LinkOption.NOFOLLOW_LINKS))
-        when (val cleanup = removeRetiredRecovery(InstallationLayout.beneath(root).root, journal.recoveryProof)) {
+        when (
+            val cleanup = removeRetiredRecovery(ManagementRoot.of(root).management.installation, journal.recoveryProof)
+        ) {
             RecoveryRemovalOutcome.Removed -> Unit
             is RecoveryRemovalOutcome.Rejected -> {
                 observe(UninstallCleanupObservation.RecoveryRejected(cleanup.failure))
@@ -230,7 +233,7 @@ private fun finishUninstall(
 ) {
     val executable = Path.of(receipt.executable)
     val layout = InstallationLayout.beneath(root)
-    requireUninstallExecutable(receipt, layout.root)
+    requireUninstallExecutable(receipt, layout.management.installation)
     removeUninstallArtifact(executable, UninstallArtifact.PUBLIC_EXECUTABLE, observe)
     removeUninstallArtifact(layout.management.registrationLock, UninstallArtifact.MANAGEMENT_LOCK, observe)
     persistUninstallRetirement(

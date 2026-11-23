@@ -84,7 +84,7 @@ private constructor(
                     is Refinement.Refined -> selected.value
                     is Refinement.Rejected -> return selected
                 }
-            val installation = layout.root
+            val installation = layout.version.path
             val manifest =
                 when (val admitted = admitManifest(layout)) {
                     is Refinement.Rejected -> return admitted
@@ -135,7 +135,7 @@ private constructor(
         private fun admitManifest(
             layout: InstallationLayout
         ): Refinement<AdmittedClientManifest, ClientInstallationFailure> {
-            val installation = layout.root
+            val installation = layout.version.path
             val manifestPath = layout.payload.manifest
             val revision =
                 try {

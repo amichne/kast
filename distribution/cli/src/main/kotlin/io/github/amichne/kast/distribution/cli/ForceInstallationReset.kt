@@ -1,6 +1,6 @@
 package io.github.amichne.kast.distribution.cli
 
-import io.github.amichne.kast.distribution.contract.InstallationLayout
+import io.github.amichne.kast.distribution.contract.ManagementRoot
 import io.github.amichne.kast.distribution.contract.installationResetFence
 import io.github.amichne.kast.distribution.managed.PriorInstallationPreparation
 import io.github.amichne.kast.distribution.managed.resetInstallationTransport
@@ -129,7 +129,7 @@ internal class ForceResetRoot private constructor(val path: Path) {
         }
 
     private fun removeCommands(scope: PublicResetScope): ResetEffect {
-        when (resetInstallationTransport(InstallationLayout.beneath(path).root, scope.home)) {
+        when (resetInstallationTransport(ManagementRoot.of(path).management.installation, scope.home)) {
             PriorInstallationPreparation.PREPARED -> Unit
             PriorInstallationPreparation.FILESYSTEM_REJECTED ->
                 return ResetEffect.Rejected(ForceResetFailure.FILESYSTEM_REJECTED)

@@ -6,42 +6,68 @@ import java.security.MessageDigest
 import java.util.HexFormat
 
 /**
- * The only Kotlin derivation of installation-relative paths.
+ * `R`: the management root, `HOME/.local/share/kast`. It holds the lifecycle records, the stores beside it, and the
+ * version root.
+ */
+@JvmInline
+value class ManagementRoot private constructor(val path: Path) {
+    /** Lifecycle records and stores, derived from this management root. */
+    val management: InstallationLayout.Management
+        get() = InstallationLayout.Management(path)
+
+    companion object {
+        /** The management root at [path], as admitted by the caller. */
+        fun of(path: Path): ManagementRoot = ManagementRoot(path)
+    }
+}
+
+/** `V`: the version root that holds one release payload. In the current layout it is `R/installation`. */
+@JvmInline value class VersionRoot internal constructor(val path: Path)
+
+/**
+ * The only Kotlin derivation of installation paths.
  *
- * The installation directory is `<management root>/installation`. Every accessor derives its path on access, so
- * admitting a root performs no filesystem effect and no eager failure. An architecture rule rejects new
- * installation-relative path literals outside this owner, so a later layout change edits this file alone.
+ * The layout holds two roots: the management root `R` and the version root `V`. In the current layout `V` is
+ * `R/installation` and `R` is the parent of `V`. Every accessor derives its path on access, so the pure accessors
+ * perform no filesystem effect and no eager failure. An architecture rule rejects new installation-relative path
+ * literals outside this owner, so a later layout change edits this file alone.
  */
 class InstallationLayout
 private constructor(
-    /** The installation directory. */
-    val root: Path
+    /** `R`: the management root. */
+    val managementRoot: ManagementRoot,
+    /** `V`: the version root. */
+    val version: VersionRoot,
 ) {
-    /** The management root that contains the installation directory and its lifecycle records. */
-    val managementRoot: Path
-        get() = root.parent
-
-    /** Client configuration beneath `config`. */
+    /** Client configuration beneath `config`, derived from [ownedRoot]. */
     val configuration: Configuration
-        get() = Configuration(root.resolve(CONFIGURATION_DIRECTORY))
+        get() = Configuration(ownedRoot.resolve(CONFIGURATION_DIRECTORY))
 
-    /** Coordinator state beneath `state`. */
+    /** Coordinator state beneath `state`, derived from [ownedRoot]. */
     val state: State
-        get() = State(root.resolve(STATE_DIRECTORY))
+        get() = State(ownedRoot.resolve(STATE_DIRECTORY))
 
-    /** Files the release payload delivers into the installation directory. */
+    /** Files the release payload delivers, derived from the version root. */
     val payload: Payload
-        get() = Payload(root)
+        get() = Payload(version.path)
 
-    /** Lifecycle records and stores beside the installation directory. */
+    /** Lifecycle records and stores, derived from the management root. */
     val management: Management
-        get() = Management(managementRoot)
+        get() = managementRoot.management
 
-    override fun equals(other: Any?): Boolean = other is InstallationLayout && other.root == root
+    /**
+     * The root of Kast-owned client configuration and coordinator state. The current layout keeps both inside the
+     * version root. Stage 8 of the lifecycle design moves them beneath the management root by changing this line.
+     */
+    private val ownedRoot: Path
+        get() = version.path
 
-    override fun hashCode(): Int = root.hashCode()
+    override fun equals(other: Any?): Boolean =
+        other is InstallationLayout && other.managementRoot == managementRoot && other.version == version
 
-    override fun toString(): String = "InstallationLayout($root)"
+    override fun hashCode(): Int = 31 * managementRoot.hashCode() + version.hashCode()
+
+    override fun toString(): String = "InstallationLayout(${managementRoot.path}, ${version.path})"
 
     /** `config`: the client configuration file, workspace overlays, the workspace registry, and the selected IDE. */
     class Configuration internal constructor(val directory: Path) {
@@ -143,6 +169,13 @@ private constructor(
 
     /** The management root: lifecycle records and the stores that live beside it. */
     class Management internal constructor(val root: Path) {
+        /**
+         * The current layout's installation entry, `R/installation`, as the Kotlin lifecycle records name it when they
+         * install, replace, or remove it. Runtime readers select the version root through the layout admission instead.
+         */
+        val installation: Path
+            get() = root.resolve(INSTALLATION_DIRECTORY)
+
         val receipt: Path
             get() = root.resolve("management.json")
 
@@ -253,19 +286,22 @@ private constructor(
         private const val READINESS_FILE = "service-readiness.json"
         private const val COORDINATOR_SOCKET_FILE = "c.sock"
 
-        /** The installation directory itself, as admitted by the caller. */
-        fun of(installation: Path): InstallationLayout = InstallationLayout(installation)
+        /**
+         * The layout whose version root is [version], as admitted by the caller. The management root derives upward
+         * from the version root: in the current layout it is the parent of `V`.
+         */
+        fun of(version: Path): InstallationLayout =
+            InstallationLayout(ManagementRoot.of(version.parent), VersionRoot(version))
 
         /** The installation directory beneath an admitted management root. */
-        fun beneath(managementRoot: Path): InstallationLayout =
-            InstallationLayout(managementRoot.resolve(INSTALLATION_DIRECTORY))
+        fun beneath(managementRoot: Path): InstallationLayout = of(managementRoot.resolve(INSTALLATION_DIRECTORY))
 
-        /** The installation that contains a `bin/kast` executable. */
-        fun ofKastExecutable(kast: Path): InstallationLayout = InstallationLayout(kast.parent.parent)
+        /** The layout whose version root contains a `bin/kast` executable. */
+        fun ofKastExecutable(kast: Path): InstallationLayout = of(kast.parent.parent)
 
         /** The installation whose `config/environment` is [configurationFile], or null when it has no such parent. */
         fun ofConfigurationFile(configurationFile: Path): InstallationLayout? =
-            configurationFile.parent?.parent?.let(::InstallationLayout)
+            configurationFile.parent?.parent?.let(::of)
     }
 }
 

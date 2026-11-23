@@ -5,6 +5,7 @@ import io.github.amichne.kast.distribution.contract.INSTALLATION_MANIFEST_SCHEMA
 import io.github.amichne.kast.distribution.contract.InstallationFilesystemIdentity
 import io.github.amichne.kast.distribution.contract.InstallationLayout
 import io.github.amichne.kast.distribution.contract.InstallationShutdownRequest
+import io.github.amichne.kast.distribution.contract.ManagementRoot
 import io.github.amichne.kast.distribution.managed.removalProcessUid
 import java.nio.channels.FileChannel
 import java.nio.file.Files
@@ -138,7 +139,7 @@ internal fun cleanupProductRemovalFence(root: Path) {
     val layout = InstallationLayout.beneath(root)
     val fence = layout.management.shutdownFence
     if (Files.exists(fence, NOFOLLOW_LINKS)) {
-        requireRemoval(Files.notExists(layout.root, NOFOLLOW_LINKS))
+        requireRemoval(Files.notExists(layout.management.installation, NOFOLLOW_LINKS))
         requireRemovalPath(fence)
         val identity = uninstallFilesystemIdentity(fence)
         val raw =
@@ -146,7 +147,7 @@ internal fun cleanupProductRemovalFence(root: Path) {
                 ?: throw ManagementRejected("uninstall-recovery", "retirement fence is unavailable")
         requireRemoval(
             decodeRemovalDocument<InstallationShutdownRequest>(raw) ==
-                InstallationShutdownRequest(layout.root.toString())
+                InstallationShutdownRequest(layout.management.installation.toString())
         )
         requireRemoval(uninstallFilesystemIdentity(fence) == identity)
         Files.delete(fence)
@@ -168,7 +169,7 @@ internal fun retainedProductInstaller(root: Path, proof: ProductRemovalProof): P
 internal fun cleanupProductRemoval(root: Path, proof: ProductRemovalProof) {
     requireRemoval(
         proof.phase == ProductRemovalPhase.PREPARED &&
-            Files.notExists(InstallationLayout.beneath(root).root, NOFOLLOW_LINKS)
+            Files.notExists(ManagementRoot.of(root).management.installation, NOFOLLOW_LINKS)
     )
     removeEmptyProductStore(InstallationLayout.beneath(root).management.runtimeBaseStore, proof.baseStoreIdentity)
     val bundle = productRemovalDirectory(root)
@@ -278,7 +279,7 @@ private fun retainedPayloadInventory(
             }
         requireRemoval(
             manifest.schemaVersion == INSTALLATION_MANIFEST_SCHEMA_VERSION &&
-                manifest.installationRoot == InstallationLayout.beneath(root).root.toString()
+                manifest.installationRoot == ManagementRoot.of(root).management.installation.toString()
         )
         for (entry in manifest.payloadFiles) {
             val relative = Path.of(entry.path)

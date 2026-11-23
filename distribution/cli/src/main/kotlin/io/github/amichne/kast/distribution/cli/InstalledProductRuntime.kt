@@ -1,6 +1,7 @@
 package io.github.amichne.kast.distribution.cli
 
 import io.github.amichne.kast.distribution.contract.InstallationLayout
+import io.github.amichne.kast.distribution.contract.ManagementRoot
 import io.github.amichne.kast.kernel.Refinement
 import java.nio.file.Files
 import java.nio.file.LinkOption.NOFOLLOW_LINKS
@@ -222,7 +223,9 @@ internal fun installedRepairSelection(root: Path): SelectionAdmission<ResolvedBu
             is Refinement.Rejected -> return SelectionAdmission.Rejected(BuildSelectionFailure.PLATFORM_UNAVAILABLE)
             is Refinement.Refined -> current.value
         }
-    return when (val selected = InstalledProductSelection.read(InstallationLayout.beneath(root).root, platform)) {
+    return when (
+        val selected = InstalledProductSelection.read(ManagementRoot.of(root).management.installation, platform)
+    ) {
         is Refinement.Rejected -> SelectionAdmission.Rejected(BuildSelectionFailure.ARTIFACT_INVALID)
         is Refinement.Refined -> {
             // Local product bytes exist only in their local directory; repair must not seek them remotely.

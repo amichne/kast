@@ -558,7 +558,7 @@ internal object InstalledBrokerHost {
                     return rejectHost(stage, InstalledBrokerServerFailure.THREAD_STORE_REJECTED)
             }
         val owner =
-            when (val admitted = BrokerInstallationState.admit(options.installation.root)) {
+            when (val admitted = BrokerInstallationState.admit(options.installation.version.path)) {
                 is Refinement.Refined -> admitted.value
                 is Refinement.Rejected ->
                     return rejectHost(
