@@ -73,7 +73,6 @@ class BootstrapTest(unittest.TestCase):
                 "packaging/internal/installation/managed_installation.py.lock"
             ),
             "managed-install-v1": "packaging/managed-install-v1",
-            "install-completion-v1": "packaging/install-completion-v1",
         }
         self.assertEqual(
             {name: repository / relative for name, relative in expected.items()}, files
@@ -106,7 +105,6 @@ class BootstrapTest(unittest.TestCase):
             "install-candidate.sh",
             "managed_installation.py.lock",
             "managed-install-v1",
-            "install-completion-v1",
         }
         with tempfile.TemporaryDirectory() as temporary:
             output = Path(temporary) / "support"

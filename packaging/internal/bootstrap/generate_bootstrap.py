@@ -80,10 +80,7 @@ RETAINED = (
     "install-candidate.sh",
     "managed_installation.py.lock",
 )
-FIXED = (
-    "managed-install-v1",
-    "install-completion-v1",
-)
+FIXED = ("managed-install-v1",)
 
 
 def validate_members(names: Iterable[str]) -> tuple[str, ...]:
