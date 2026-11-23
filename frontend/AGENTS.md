@@ -4,10 +4,15 @@ title: "Kast frontend"
 description: "Owns the Go Control executable: public queries through the persistent coordinator and every other entry on the JVM."
 resource: "repo://frontend"
 tags: [kast, frontend, coordinator]
-timestamp: "2026-11-18T00:00:00Z"
-source_revision: cf067e5fcdbc0de5db077e101d50f0c287edd4fd
+timestamp: "2026-11-23T00:00:00Z"
+source_revision: 80141523b63f25f64d98da433314951c94ace2f2
 code_sources:
   - path: frontend/cmd/kast/main.go
+  - path: frontend/internal/lifecycle/boundary_test.go
+  - path: frontend/internal/lifecycle/record/records.go
+  - path: frontend/internal/lifecycle/failure/failure.go
+  - path: frontend/internal/lifecycle/layout/classify.go
+  - path: frontend/internal/lifecycle/plan/install.go
   - path: frontend/internal/frontend/catalog.go
   - path: frontend/internal/frontend/control.go
   - path: frontend/internal/frontend/invocation.go
@@ -38,6 +43,16 @@ Read the [tracer evidence](../docs/reviews/go-frontend-tracer.md) for the measur
 - `go.mod` owns the Go release through its `toolchain` line and the analyzers through its `tool` lines.
   The `mise.toml` Go entry only provisions a matching `go` command.
 - Forward the argument vector, working directory, and environment unchanged. Never lower flags or model requests in Go.
+- The Go lifecycle commands are the one exception: `upgrade`, `uninstall`, `versions`, the bootstrap, and the handoff
+  entry. Go owns them, so Go parses their flags into typed selectors and operations.
+  Section 1.5 of the lifecycle design in #1375 lists them. No command routes to them yet.
+- Keep the lifecycle core in `internal/lifecycle` pure. Its packages import no package for files, processes, the
+  network, the clock, random numbers, or the environment. `internal/lifecycle/boundary_test.go` enforces this.
+  That test lists each package under `internal/lifecycle` as pure or as an effect adapter. Add each new package there.
+- Decode lifecycle records strictly. A record is one object with unique members and no trailing data.
+  Read `schemaVersion` first, and reject unknown members.
+  Only the selection envelope ignores unknown members, so a newer envelope never breaks an older binary.
+  Encode every field, including explicit nulls, in canonical compact form.
 - Route only the public query commands to the coordinator. `hook` and `workspace` read process-local state, so they run on the JVM.
 - Run the JVM by `exec`, so lifecycle owners observe one `java` process with the catalog's explicit class path and main class.
   Pass the invoked command as `-Dkast.command`, because the JVM cannot observe it after `exec`.
@@ -63,6 +78,16 @@ Read the [tracer evidence](../docs/reviews/go-frontend-tracer.md) for the measur
 - [run.go](internal/frontend/run.go) - start or join, status mapping, signals, and delivery.
 - [control.go](internal/frontend/control.go) - installation location, entry selection, and the JVM command.
 - [check](check) - the deterministic gate and the separate advisory scan.
+- [lifecycle](internal/lifecycle) - the pure lifecycle core from stage 1 of the installation lifecycle design in
+  #1375. No command calls it yet:
+  - `codec` - strict JSON object admission and canonical encoding.
+  - `record` - the current pointer, payload manifest, product selection at `schemaVersion` 2, build record, runtime
+    receipt and manifest binding, assembly record, and retirement document.
+  - `envelope` - the tolerant selection envelope and the strict handoff document.
+  - `failure` - one closed failure type, with evidence sealed per code, and the separate outcome union.
+  - `layout` - admission of an observed snapshot and its classification into the seven layout states.
+  - `selection` - selector parsing and resolution over envelopes.
+  - `plan` - each machine as a pure function from observations to typed effect intents.
 - [acceptance](acceptance) - case matrix, comparison, latency, first callers, and cancellation evidence.
 
 ## Entry Points
