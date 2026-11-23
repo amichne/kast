@@ -67,11 +67,11 @@ class GradleStage(Enum):
     ending as a silent job cancellation.
     """
 
-    # Qualification runs on the macOS runner, where Gradle 9.8.2's parallel project configuration
-    # intermittently starves: its thread dump shows the configuration coordinator waiting while no
-    # worker configures a project. One worker selects sequential configuration, as the macOS reset
-    # suites already do (#1302).
-    ASSEMBLY = ("assembly", 3000, 2)
+    # Gradle 9.8.2's parallel project configuration intermittently starves on the macOS and Linux
+    # runners: the thread dump shows the configuration coordinator waiting while no worker configures
+    # a project. `--no-parallel` does not select sequential configuration under isolated projects.
+    # One worker does, as the macOS reset suites already rely on (#1302, #1379).
+    ASSEMBLY = ("assembly", 3000, 1)
     QUALIFICATION = ("qualification", 1200, 1)
 
     def __init__(self, directory: str, seconds: int, workers: int) -> None:

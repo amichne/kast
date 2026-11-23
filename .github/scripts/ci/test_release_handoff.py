@@ -109,9 +109,11 @@ class ReleaseHandoffTest(unittest.TestCase):
                     self.assertEqual(stage.seconds, budget.seconds)
                     self.assertIn(f"--max-workers={stage.workers}", command)
 
-    def test_mac_qualification_configures_projects_sequentially(self):
-        # Parallel configuration starved on the macOS runner; one worker keeps it sequential.
-        self.assertEqual(1, release_handoff.GradleStage.QUALIFICATION.workers)
+    def test_every_stage_configures_projects_sequentially(self):
+        # Parallel configuration starved on both runners; one worker keeps it sequential.
+        for stage in release_handoff.GradleStage:
+            with self.subTest(stage=stage):
+                self.assertEqual(1, stage.workers)
 
     def test_gradle_budgets_stay_below_their_job_timeouts(self):
         workflow = (Path(__file__).resolve().parents[2] / "workflows/ci.yml").read_text()
