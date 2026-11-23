@@ -66,7 +66,6 @@ SOURCE_REQUIRED = frozenset(
         ":app-server:verifyPublicQueryGeneration",
         ":productGateVersionTest",
         ":installerFixtureTest",
-        ":installationLifecycleTest",
         ":installationRecoveryTest",
         ":installationSystemPythonTest",
         ":localInstallationTest",

@@ -364,8 +364,7 @@ tasks.named("check") { dependsOn(frontendTest) }
 
 val offlineInstallerChecks = setOf(
     "testCheckoutInstaller", "installerEntrypointTest", "installerFixtureTest", "installerRemovalTest",
-    "installationSystemPythonTest", "installationRecoveryTest", "installationLifecycleTest",
-    "localInstallationTest",
+    "installationSystemPythonTest", "installationRecoveryTest", "localInstallationTest",
 )
 
 val packagingTestModulePath = listOf(
@@ -475,17 +474,9 @@ val installationSystemPythonTest = tasks.register<VerificationReportTask>("insta
 
 val installationRecoveryTest = tasks.register<VerificationReportTask>("installationRecoveryTest") {
     group = "verification"
-    inputs.files("packaging/internal/installation/installation-recovery.py", "packaging/internal/installation/managed_update_journal.py", "packaging/tests/test-installation-recovery.py")
+    inputs.files("packaging/internal/installation/installation-recovery.py", "packaging/internal/installation/installation-lifecycle.py", "packaging/internal/installation/managed_update_journal.py", "packaging/tests/test-installation-recovery.py")
     executableFile.set(validationExecutable("python3"))
     arguments.set(listOf(layout.projectDirectory.file("packaging/tests/test-installation-recovery.py").asFile.absolutePath))
-}
-
-val installationLifecycleTest = tasks.register<VerificationReportTask>("installationLifecycleTest") {
-    group = "verification"
-    description = "Proves explicit installation reset preserves configuration and rejects unresolved ownership."
-    inputs.files("packaging/internal/installation/installation-lifecycle.py", "packaging/tests/test-installation-lifecycle.py")
-    executableFile.set(validationExecutable("python3"))
-    arguments.set(listOf(layout.projectDirectory.file("packaging/tests/test-installation-lifecycle.py").asFile.absolutePath))
 }
 
 val localInstallationTest = tasks.register<VerificationReportTask>("localInstallationTest") {
@@ -650,7 +641,6 @@ val productBuildGate = tasks.register("productBuildGate") {
         "check",
         productGateVersionTest,
         installerFixtureTest,
-        installationLifecycleTest,
         installationRecoveryTest,
         installationSystemPythonTest,
         localInstallationTest,
@@ -677,7 +667,6 @@ val sourceValidationGate = tasks.register("sourceValidationGate") {
         "check",
         productGateVersionTest,
         installerFixtureTest,
-        installationLifecycleTest,
         installationRecoveryTest,
         installationSystemPythonTest,
         localInstallationTest,

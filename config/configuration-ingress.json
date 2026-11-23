@@ -34,7 +34,6 @@
     "packaging/install-checkout.sh",
     "packaging/install-legacy.sh",
     "packaging/install-local.sh",
-    "packaging/internal/installation/installation-lifecycle.py",
     "packaging/tests/test-installer-fixture.py",
     "packaging/tests/test-install-checkout.py",
     "packaging/tests/test-installer-entrypoint.py",

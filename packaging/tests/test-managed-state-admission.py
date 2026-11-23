@@ -259,8 +259,8 @@ class RejectionMappingTest(unittest.TestCase):
                 ),
             ),
             (
-                lifecycle.Rejected(lifecycle.Failure.STATE_REJECTED),
-                contract.Rejected(self.PREPARATION, contract.Failure.OWNERSHIP_UNPROVEN, "STATE_REJECTED"),
+                lifecycle.Rejected(lifecycle.Failure.MANIFEST_REJECTED),
+                contract.Rejected(self.PREPARATION, contract.Failure.OWNERSHIP_UNPROVEN, "MANIFEST_REJECTED"),
             ),
             (
                 lifecycle.Rejected(lifecycle.Failure.CONTROL_LIMIT_EXCEEDED),
