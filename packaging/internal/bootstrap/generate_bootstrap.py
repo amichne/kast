@@ -28,7 +28,6 @@ REPOSITORY = PACKAGING.parent
 
 SOURCE_PATHS = {
     "bootstrap_entry.py": "bootstrap/bootstrap_entry.py",
-    "codex-mcp-registration.py": "installation/codex-mcp-registration.py",
     "composed_host.py": "composition/composed_host.py",
     "composition_descriptors.py": "composition/composition_descriptors.py",
     "composition_graph.py": "composition/composition_graph.py",
@@ -82,7 +81,6 @@ SOURCES = (
 RETAINED = (
     "install-candidate.sh",
     "managed_installation.py.lock",
-    "codex-mcp-registration.py",
 )
 FIXED = (
     "managed-install-v1",

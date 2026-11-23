@@ -75,9 +75,6 @@ class BootstrapTest(unittest.TestCase):
             "managed_installation.py.lock": (
                 "packaging/internal/installation/managed_installation.py.lock"
             ),
-            "codex-mcp-registration.py": (
-                "packaging/internal/installation/codex-mcp-registration.py"
-            ),
             "managed-install-v1": "packaging/managed-install-v1",
             "install-completion-v1": "packaging/install-completion-v1",
         }
@@ -114,7 +111,6 @@ class BootstrapTest(unittest.TestCase):
             "managed_installation.py.lock",
             "managed-install-v1",
             "install-completion-v1",
-            "codex-mcp-registration.py",
         }
         with tempfile.TemporaryDirectory() as temporary:
             output = Path(temporary) / "support"
