@@ -20,6 +20,8 @@ import (
 	"time"
 
 	"github.com/coder/websocket"
+
+	"github.com/amichne/kast/frontend/internal/reset"
 )
 
 // fixture is one installation with a scripted coordinator on its real Unix socket.
@@ -496,6 +498,73 @@ func TestAMissingRuntimeReceiptIsABootstrapFailureBeforeAnyExec(t *testing.T) {
 	if got := f.run(t, "", nil, "install"); got.status != 9 || len(f.executed) != 0 ||
 		!strings.Contains(got.stderr, "runtime is unavailable") {
 		t.Fatalf("unexpected outcome %+v executed=%v", got, f.executed)
+	}
+}
+
+// The scripted reset is the only effect these processes permit: Exec fails the test, and no installation exists.
+func resetProcess(t *testing.T, reset func(string, []string, io.Writer) error, stderr io.Writer,
+	arguments ...string) Process {
+	t.Helper()
+	return Process{
+		Executable:  filepath.Join(t.TempDir(), "absent", "kast"),
+		Arguments:   arguments,
+		Environment: []string{"HOME=/selected/home"},
+		Stdout:      io.Discard,
+		Stderr:      stderr,
+		Signals:     make(chan os.Signal),
+		Exec: func(string, []string, []string) error {
+			t.Error("a reset must not start the JVM")
+			return errors.New("unexpected exec")
+		},
+		Reset: reset,
+	}
+}
+
+func TestAResetRunsWithoutAnInstallationAndMapsItsFailuresToPublishedStatuses(t *testing.T) {
+	for want, failure := range map[int]error{
+		0: nil,
+		2: &reset.Rejection{Failure: reset.UsageRejected, Detail: "usage"},
+		4: &reset.Rejection{Failure: reset.BackupRejected, Detail: "unreadable"},
+	} {
+		var stderr bytes.Buffer
+		calls := 0
+		status := Run(resetProcess(t, func(home string, arguments []string, _ io.Writer) error {
+			calls++
+			if home != "/selected/home" || !slices.Equal(arguments, []string{"--yes"}) {
+				t.Errorf("reset of %q with %v", home, arguments)
+			}
+			return failure
+		}, &stderr, "-Duser.home=/selected/home", "reset", "--yes"))
+		if status != want || calls != 1 || (failure != nil && !strings.Contains(stderr.String(), failure.Error())) {
+			t.Errorf("status %d after %d calls, want %d: %s", status, calls, want, stderr.String())
+		}
+	}
+}
+
+func TestASignalEndsAReset(t *testing.T) {
+	for signal, want := range map[os.Signal]int{syscall.SIGINT: 130, syscall.SIGTERM: 143} {
+		released := make(chan struct{})
+		t.Cleanup(func() { close(released) })
+		signals := make(chan os.Signal, 1)
+		signals <- signal
+		process := resetProcess(t, func(string, []string, io.Writer) error { <-released; return nil }, io.Discard, "reset")
+		process.Signals = signals
+		if status := statusWithin(t, 5*time.Second, func() int { return Run(process) }); status != want {
+			t.Errorf("%v: status %d, want %d", signal, status, want)
+		}
+	}
+}
+
+func TestOnlyTheManagementEntryResets(t *testing.T) {
+	f := newFixture(t)
+	touchFrontend(t, f)
+	f.receipt(t, "/runtimes/abc")
+	for _, arguments := range [][]string{{"--internal-entrypoint=daemon", "reset"}, {"install", "reset"}} {
+		f.executed = nil
+		// A reset here would panic: the fixture provides none.
+		if f.run(t, "", nil, arguments...); len(f.executed) != 1 {
+			t.Errorf("%v: executed %v", arguments, f.executed)
+		}
 	}
 }
 

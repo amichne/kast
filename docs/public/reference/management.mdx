@@ -5,7 +5,7 @@ icon: "folder-open"
 hideFooterPagination: true
 ---
 
-The public management verbs are `config`, `install`, `status`, `stop`, `versions`, `upgrade`, and `uninstall`.
+The public management verbs are `config`, `install`, `status`, `stop`, `versions`, `upgrade`, `uninstall`, and `reset`.
 Semantic commands use the same installed managed runtime through the CLI and MCP.
 See [installation limits](/reference/installation) for the current implementation and native acceptance status.
 
@@ -160,6 +160,41 @@ Foreign siblings, foreign owners, or `.kast` recovery evidence prevent that clea
 Removing one workspace does not remove the shared cache.
 If ownership or retirement cannot be proved, keep the recovery output instead of deleting paths manually.
 Native removal acceptance remains part of the qualification work; this guide is not evidence that it passed.
+
+<span id="reset" />
+
+## Reset a damaged installation
+
+Use `kast reset` when `kast uninstall` or a repair fails. It reads no installation record and starts no Java.
+
+1. Save the work in your agents.
+2. Examine what Kast will stop and delete:
+
+   ```shell
+   kast reset
+   ```
+
+3. Run the reset from a terminal that Kast did not start:
+
+   ```shell
+   kast reset --yes
+   ```
+
+4. Run the installation command that the reset prints.
+
+The reset stops the Kast service jobs, then the processes whose executable is in the installation.
+It deletes the management root, the workspace and runtime stores, the login agents, the `/tmp` entries, and the `kast` command that Kast wrote.
+It does not follow links, and it skips and lists each entry that is not a Kast entry.
+The reset does not stop a Gradle daemon that uses your own Java.
+
+Your repositories, external Gradle homes, agent configuration, and `~/.kast` stay in place.
+Before it deletes a file, the reset copies the client configuration and the change evidence of each workspace.
+The copy is in `~/.local/share/kast-reset-backup-TIME`. If the copy fails, the reset deletes nothing.
+The change evidence can hold the original source of an unsettled change. A new installation does not read it.
+
+Each failure prints a code and its cause. `HOME_REJECTED`, `ROOT_REJECTED`, `STOP_REJECTED`, and `BACKUP_REJECTED` delete nothing.
+After `RESET_INCOMPLETE` or an interruption, correct what the output lists, then repeat `kast reset --yes`.
+The reset deletes the `kast` command last.
 
 ## Change agents
 
