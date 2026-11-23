@@ -190,7 +190,14 @@ private constructor(
                 "-Didea.system.path=${runtime.state}/system",
                 "-Didea.log.path=${runtime.state}/log",
                 "-Didea.plugins.path=${runtime.plugins}",
-            ) + linuxHeadlessOptions(runtime.launch.layout)
+            ) + GRADLE_IMPORT_OPTIONS + linuxHeadlessOptions(runtime.launch.layout)
+
+        /**
+         * The Host serves no read before the complete model settles. Publish that model once, without the partial phase
+         * models that restart scans during Gradle resolution, and without one event per download chunk.
+         */
+        private val GRADLE_IMPORT_OPTIONS =
+            listOf("-Dgradle.phased.sync.enabled=false", "-Dgradle.output.sync.progress.events=false")
 
         private fun linuxHeadlessOptions(layout: SelectedIdeLayout): List<String> =
             if (layout == SelectedIdeLayout.LINUX_DIRECTORY) {
