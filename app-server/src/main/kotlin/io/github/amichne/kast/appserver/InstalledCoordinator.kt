@@ -30,10 +30,8 @@ internal object InstalledCoordinatorConfiguration {
                     return reject(InstalledBrokerServerConfigurationFailure.KAST_EXECUTABLE_REJECTED)
             }
         val installation = InstallationLayout.ofKastExecutable(executable)
-        if (
-            InstallationLifecycleFence.observe(installation.version.path) !=
-                InstallationLifecycleStartAdmission.AVAILABLE
-        )
+        val fence = InstallationLifecycleFence.observe(installation.version.path)
+        if (fence != InstallationLifecycleStartAdmission.AVAILABLE)
             return reject(InstalledBrokerServerConfigurationFailure.STATE_DIRECTORY_REJECTED)
         val admittedConfiguration =
             when (val admission = InstalledBrokerConfigurationIngress.admit(environment)) {
