@@ -90,7 +90,7 @@ internal sealed interface InstalledBrokerServerConfiguration {
                         return rejected(InstalledBrokerServerConfigurationFailure.KAST_EXECUTABLE_REJECTED)
                 }
             if (
-                InstallationLifecycleFence.observe(kast.path.parent.parent) !=
+                InstallationLifecycleFence.observe(InstallationLayout.ofKastExecutable(kast.path).version.path) !=
                     InstallationLifecycleStartAdmission.AVAILABLE
             ) {
                 return rejected(InstalledBrokerServerConfigurationFailure.STATE_DIRECTORY_REJECTED)
@@ -558,7 +558,7 @@ internal object InstalledBrokerHost {
                     return rejectHost(stage, InstalledBrokerServerFailure.THREAD_STORE_REJECTED)
             }
         val owner =
-            when (val admitted = BrokerInstallationState.admit(options.installation.root)) {
+            when (val admitted = BrokerInstallationState.admit(options.installation.version.path)) {
                 is Refinement.Refined -> admitted.value
                 is Refinement.Rejected ->
                     return rejectHost(

@@ -20,9 +20,11 @@ internal fun admitNativeControlRoot(
     )
         Refinement.Rejected(InstalledKastControlProductFailure.NATIVE_LAYOUT_INVALID)
     else
-        when (val root = executable.parent?.parent?.parent?.parent) {
+        when (
+            val layout = InstallationLayout.containing(executable, InstallationLayout.Relative.MANAGEMENT_EXECUTABLE)
+        ) {
             null -> Refinement.Rejected(InstalledKastControlProductFailure.NATIVE_LAYOUT_INVALID)
-            else -> Refinement.Refined(InstallationLayout.of(root))
+            else -> Refinement.Refined(layout)
         }
 
 private fun jvmControlRoot(): Refinement<InstallationLayout, InstalledKastControlProductFailure> =
@@ -42,8 +44,14 @@ private fun admitJvmControlRoot(codeSource: Path): Refinement<InstallationLayout
     return if (libraries == null || libraries.fileName.toString() != InstallationLayout.Relative.LIBRARIES.value)
         Refinement.Rejected(InstalledKastControlProductFailure.LIBRARY_DIRECTORY_INVALID)
     else
-        when (val root = libraries.parent) {
+        when (
+            val layout =
+                InstallationLayout.containing(
+                    codeSource,
+                    InstallationLayout.Relative.library(codeSource.fileName.toString()),
+                )
+        ) {
             null -> Refinement.Rejected(InstalledKastControlProductFailure.PRODUCT_ROOT_UNAVAILABLE)
-            else -> Refinement.Refined(InstallationLayout.of(root))
+            else -> Refinement.Refined(layout)
         }
 }

@@ -128,7 +128,7 @@ private constructor(
     /** Only an installation lifecycle transition retires this generation; ordinary workspace stop never does. */
     private fun retire(): DaemonRetirementAdmission {
         if (
-            InstallationLifecycleFence.observe(installation.root) !=
+            InstallationLifecycleFence.observe(installation.version.path) !=
                 InstallationLifecycleStartAdmission.TRANSITION_IN_PROGRESS
         )
             return DaemonRetirementAdmission.UNFENCED
@@ -189,7 +189,8 @@ private constructor(
 
     private fun available(): Boolean =
         !closed.get() &&
-            InstallationLifecycleFence.observe(installation.root) == InstallationLifecycleStartAdmission.AVAILABLE &&
+            InstallationLifecycleFence.observe(installation.version.path) ==
+                InstallationLifecycleStartAdmission.AVAILABLE &&
             try {
                 Files.readAttributes(
                     stoppedMarker,
@@ -219,7 +220,7 @@ private constructor(
             requestRetirement: (() -> Unit)? = null,
         ): Refinement<CoordinatorControl, WorkerControlFailure> =
             try {
-                val installationRoot = installation.root
+                val installationRoot = installation.version.path
                 val legacy = installation.state.legacyWorkers
                 when {
                     installationRoot.toRealPath() != installationRoot ||

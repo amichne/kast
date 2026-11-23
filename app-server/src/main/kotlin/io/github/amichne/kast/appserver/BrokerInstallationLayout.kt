@@ -10,7 +10,7 @@ private constructor(
     val installation: InstallationLayout,
     val hostProfile: CoordinatorHostProfile,
 ) {
-    val root: Path = installation.root
+    val root: Path = installation.version.path
     val state: Path = installation.state.directory
     val broker: Path = installation.state.broker(hostProfile)
     val readiness: Path = installation.state.readiness(hostProfile)

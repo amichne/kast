@@ -37,7 +37,7 @@ object PublicFrontendCatalog {
         PublicFrontendCatalogDocument(
             schemaVersion = FRONTEND_CATALOG_SCHEMA_VERSION,
             invocationProtocol = PublicInvocationProtocol.version,
-            socket = InstallationLayout.Relative.COORDINATOR_SOCKET.value,
+            socket = InstallationLayout.Owned.COORDINATOR_SOCKET.value,
             socketAlias =
                 PublicFrontendSocketAlias(
                     MAXIMUM_UNIX_SOCKET_PATH_BYTES,

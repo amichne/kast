@@ -1,7 +1,7 @@
 package io.github.amichne.kast.distribution.cli
 
-import io.github.amichne.kast.distribution.contract.InstallationLayout
 import io.github.amichne.kast.distribution.contract.InstalledBuildIdentity
+import io.github.amichne.kast.distribution.contract.ManagementRoot
 import io.github.amichne.kast.distribution.contract.UpdatePolicy
 import io.github.amichne.kast.kernel.Refinement
 import java.nio.file.Path
@@ -47,7 +47,7 @@ internal data class ProductManagementReceipt(
 }
 
 internal fun validManagementProduct(root: Path, receipt: ManagementReceipt): Boolean {
-    val installation = InstallationLayout.beneath(root).root
+    val installation = ManagementRoot.of(root).management.installation
     if (java.nio.file.Files.notExists(installation, java.nio.file.LinkOption.NOFOLLOW_LINKS))
         return validRetiredProduct(root, receipt)
     val platform =
@@ -66,7 +66,7 @@ private fun validRetiredProduct(root: Path, receipt: ManagementReceipt): Boolean
     try {
         val journal = readUninstallRetirement(root)
         requireUninstallRetirement(root, receipt)
-        val payload = InstallationLayout.beneath(root).root
+        val payload = ManagementRoot.of(root).management.installation
         val retired =
             java.nio.file.Files.notExists(payload, java.nio.file.LinkOption.NOFOLLOW_LINKS) ||
                 (journal.productRemoval?.phase == ProductRemovalPhase.PREPARED &&

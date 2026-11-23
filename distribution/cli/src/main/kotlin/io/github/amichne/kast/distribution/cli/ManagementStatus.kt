@@ -4,6 +4,7 @@ import io.github.amichne.kast.distribution.contract.HostedServiceStatus
 import io.github.amichne.kast.distribution.contract.INSTALLATION_MANIFEST_SCHEMA_VERSION
 import io.github.amichne.kast.distribution.contract.InstallationLayout
 import io.github.amichne.kast.distribution.contract.InstalledBuildIdentity
+import io.github.amichne.kast.distribution.contract.ManagementRoot
 import io.github.amichne.kast.distribution.contract.UpdatePolicy
 import java.nio.file.Files
 import java.nio.file.LinkOption
@@ -120,7 +121,7 @@ internal fun readStatus(
         applicationHost =
             if (receipt is ReceiptRead.Read) Observation.unavailable("WORKSPACE_SCOPED")
             else
-                root.parent?.parent?.parent?.let { readApplicationHost(root, it) }
+                ManagementRoot.of(root).management.userHome?.let { readApplicationHost(root, it) }
                     ?: Observation.unavailable("user_home_unavailable"),
         product =
             if (receipt is ReceiptRead.Read) Observation.verified(receipt.receipt.product)
@@ -160,7 +161,7 @@ private fun passiveTransactionState(root: Path): Observation<PendingInstallation
     Observation.verified(pendingInstallationRecords(root))
 
 internal fun pendingInstallationRecords(root: Path): PendingInstallationRecords {
-    val management = InstallationLayout.beneath(root).management
+    val management = ManagementRoot.of(root).management
     val pending = buildList {
         if (Files.exists(management.shutdownFence, LinkOption.NOFOLLOW_LINKS))
             add(PendingInstallationRecord.SHUTDOWN_FENCE)
@@ -176,7 +177,7 @@ internal fun pendingInstallationRecords(root: Path): PendingInstallationRecords 
 private fun resolvedInstallation(root: Path, receipt: ReceiptRead): Path? {
     if (receipt !is ReceiptRead.Read) return null
     return try {
-        selectedInstallation(root)
+        selectedInstallation(root).version.path
     } catch (_: ManagementRejected) {
         null
     }

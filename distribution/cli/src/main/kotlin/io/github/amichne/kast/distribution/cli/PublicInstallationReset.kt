@@ -1,6 +1,7 @@
 package io.github.amichne.kast.distribution.cli
 
 import io.github.amichne.kast.distribution.contract.InstallationLayout
+import io.github.amichne.kast.distribution.contract.ManagementRoot
 import io.github.amichne.kast.kernel.Refinement
 import java.nio.file.Files
 import java.nio.file.LinkOption.NOFOLLOW_LINKS
@@ -69,13 +70,13 @@ internal fun resetPublicInstallation(
 ): ForceResetOutcome =
     when (
         val removal =
-            ContainerQueryLease.duringStoreRemoval(InstallationLayout.beneath(scope.root).management.workspaceStore) {
-                val layout = InstallationLayout.beneath(scope.root)
+            ContainerQueryLease.duringStoreRemoval(ManagementRoot.of(scope.root).share.workspaceStore) {
+                val management = ManagementRoot.of(scope.root)
                 val managedPaths =
                     listOf(
-                        layout.management.workspaceStore,
-                        layout.management.runtimeBaseStore,
-                        layout.payload.productSelection,
+                        management.share.workspaceStore,
+                        management.share.runtimeBaseStore,
+                        InstallationLayout.of(management.management.installation).payload.productSelection,
                     )
                 Refinement.Refined(
                     if (managedPaths.any { !Files.notExists(it, NOFOLLOW_LINKS) })

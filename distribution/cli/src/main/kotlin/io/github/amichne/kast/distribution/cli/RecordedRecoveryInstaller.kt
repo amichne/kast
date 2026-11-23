@@ -5,6 +5,7 @@ import io.github.amichne.kast.distribution.contract.INSTALLATION_MANIFEST_SCHEMA
 import io.github.amichne.kast.distribution.contract.InstallationLayout
 import io.github.amichne.kast.distribution.contract.InstallationReplacementReceipt
 import io.github.amichne.kast.distribution.contract.ManagedControlReservation
+import io.github.amichne.kast.distribution.contract.ManagementRoot
 import io.github.amichne.kast.distribution.managed.ControlInventoryAdmission
 import io.github.amichne.kast.distribution.managed.ControlPayloadInventory
 import java.io.IOException
@@ -69,7 +70,7 @@ private constructor(private val root: Path, private val home: Path, private val 
             }
 
         private fun readRecordedInstaller(root: Path, home: Path): RecordedRecoveryInstallerAdmission {
-            val slot = InstallationLayout.beneath(root).management.replacementRecovery
+            val slot = ManagementRoot.of(root).management.replacementRecovery
             val receipt = slot.resolve("receipt.json")
             val raw = readBoundedFile(receipt, ControlDistributionLimits.maximumReplacementReceiptBytes.toLong())
             if (raw == null)
@@ -81,7 +82,7 @@ private constructor(private val root: Path, private val home: Path, private val 
             val record = managementJson.decodeFromString(InstallationReplacementReceipt.serializer(), raw)
             if (
                 record.schemaVersion != 1 ||
-                    record.installation != InstallationLayout.beneath(root).root.toString() ||
+                    record.installation != ManagementRoot.of(root).management.installation.toString() ||
                     record.installationIdentity.owner != owner
             )
                 return rejectedRecordedInstaller()
@@ -100,7 +101,7 @@ private constructor(private val root: Path, private val home: Path, private val 
             if (staged != root.parent.resolve(".kast-install-${reservation.transaction}"))
                 return rejectedRecordedInstaller()
             val candidates =
-                listOf(staged, InstallationLayout.beneath(root).root).filter {
+                listOf(staged, ManagementRoot.of(root).management.installation).filter {
                     physicalDirectory(it) && uninstallFilesystemIdentity(it) == record.installationIdentity
                 }
             if (candidates.size != 1) return rejectedRecordedInstaller()
@@ -124,7 +125,7 @@ private constructor(private val root: Path, private val home: Path, private val 
             return if (
                 admittedPayload(
                     candidate,
-                    InstallationLayout.beneath(root).root,
+                    ManagementRoot.of(root).management.installation,
                     manifest,
                     reservation,
                     record.installationIdentity.owner,

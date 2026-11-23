@@ -360,7 +360,7 @@ internal class MacOsPersistentBrokerServiceHost(
             val execution =
                 BrokerServiceStartLock.withAcquired(command.serviceLock) {
                     if (
-                        InstallationLifecycleFence.observe(command.kast.parent.parent) !=
+                        InstallationLifecycleFence.observe(command.installation.version.path) !=
                             InstallationLifecycleStartAdmission.AVAILABLE
                     ) {
                         rejected(PersistentBrokerServiceFailure.DISABLED)
@@ -396,7 +396,7 @@ internal class MacOsPersistentBrokerServiceHost(
 
     private fun resumeLoginExclusively(command: BrokerServiceLaunchCommand): PersistentBrokerServiceAdmission {
         if (
-            InstallationLifecycleFence.observe(command.kast.parent.parent) !=
+            InstallationLifecycleFence.observe(command.installation.version.path) !=
                 InstallationLifecycleStartAdmission.AVAILABLE || !loginEvidenceAdmitted(command)
         )
             return rejected(PersistentBrokerServiceFailure.DISABLED)
@@ -479,7 +479,7 @@ internal class MacOsPersistentBrokerServiceHost(
 
     /** Explicit destructive recovery for state owned by this exact physical installation. */
     internal fun destructiveReset(command: BrokerServiceLaunchCommand): PersistentBrokerServiceAdmission {
-        val installationRoot = command.installation.root
+        val installationRoot = command.installation.version.path
         val stateRoot = command.installation.state.directory
         val ownedTrees =
             ManagedInstallationTreeKind.entries.map { kind ->

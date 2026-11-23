@@ -203,7 +203,10 @@ private object ModuleRoleBoundaries {
             setOf(ModuleRole.KERNEL, ModuleRole.CONTRACT),
             safeReadCosts,
             setOf(ModuleRole.KERNEL, ModuleRole.CONTRACT),
-            allowedScopedEffects = setOf(ForbiddenEffect.INSTALLATION_PATH_DERIVATION),
+            allowedScopedEffects = setOf(
+                ForbiddenEffect.INSTALLATION_PATH_DERIVATION,
+                ForbiddenEffect.INSTALLATION_PARENT_DERIVATION,
+            ),
         )
         ModuleRole.SPI -> boundary(
             role,
@@ -262,7 +265,8 @@ private object ModuleRoleBoundaries {
                 ForbiddenEffect.ENDPOINT_DESCRIPTOR_WRITE,
             ),
             allowedScopedEffects = setOf(ForbiddenEffect.FILESYSTEM_WRITE, ForbiddenEffect.PHYSICAL_SOURCE_READ, ForbiddenEffect.SOURCE_CONTENT_HASH,
-                ForbiddenEffect.GRADLE_IMPORT, ForbiddenEffect.RECURSIVE_VFS_REFRESH, ForbiddenEffect.PROJECT_OPEN),
+                ForbiddenEffect.GRADLE_IMPORT, ForbiddenEffect.RECURSIVE_VFS_REFRESH, ForbiddenEffect.PROJECT_OPEN,
+                ForbiddenEffect.INSTALLATION_PARENT_DERIVATION),
         )
         ModuleRole.INTELLIJ_READ_ADAPTER -> boundary(
             role,
@@ -299,6 +303,7 @@ private object ModuleRoleBoundaries {
                 ForbiddenEffect.FILESYSTEM_WRITE,
                 ForbiddenEffect.SOURCE_FILESYSTEM_WRITE,
             ),
+            allowedScopedEffects = setOf(ForbiddenEffect.INSTALLATION_PARENT_DERIVATION),
         )
         ModuleRole.SQLITE_ADAPTER -> boundary(
             role,
@@ -350,7 +355,7 @@ private object ModuleRoleBoundaries {
             setOf(ModuleRole.KERNEL, ModuleRole.CONTRACT, ModuleRole.FILESYSTEM_WRITE_ADAPTER),
             setOf(ModuleCost.HOST_NEUTRAL, ModuleCost.PHYSICAL_EFFECT),
             allowedEffects = setOf(ForbiddenEffect.PROCESS_CONTROL),
-            allowedScopedEffects = setOf(ForbiddenEffect.FILESYSTEM_WRITE),
+            allowedScopedEffects = setOf(ForbiddenEffect.FILESYSTEM_WRITE, ForbiddenEffect.INSTALLATION_PARENT_DERIVATION),
         )
         ModuleRole.CLI -> boundary(
             role,
@@ -359,7 +364,11 @@ private object ModuleRoleBoundaries {
             setOf(ModuleRole.APP_SERVER, ModuleRole.KERNEL, ModuleRole.CONTRACT, ModuleRole.FILESYSTEM_WRITE_ADAPTER),
             setOf(ModuleCost.RUNTIME_ORCHESTRATION, ModuleCost.HOST_NEUTRAL, ModuleCost.PHYSICAL_EFFECT),
             allowedEffects = setOf(ForbiddenEffect.PROCESS_CONTROL),
-            allowedScopedEffects = setOf(ForbiddenEffect.FILESYSTEM_WRITE, ForbiddenEffect.INSTALLATION_PATH_DERIVATION),
+            allowedScopedEffects = setOf(
+                ForbiddenEffect.FILESYSTEM_WRITE,
+                ForbiddenEffect.INSTALLATION_PATH_DERIVATION,
+                ForbiddenEffect.INSTALLATION_PARENT_DERIVATION,
+            ),
         )
         ModuleRole.INDEXER_HOST -> boundary(
             role,

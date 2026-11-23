@@ -1,6 +1,6 @@
 package io.github.amichne.kast.distribution.cli
 
-import io.github.amichne.kast.distribution.contract.InstallationLayout
+import io.github.amichne.kast.distribution.contract.ManagementRoot
 import io.github.amichne.kast.distribution.contract.configuration.WorkspaceDependencySharing
 import io.github.amichne.kast.kernel.Refinement
 import java.nio.file.Path
@@ -41,7 +41,7 @@ internal fun readWorkspaceStatuses(
     directory: Path,
 ): Observation<List<ManagedWorkspaceStatus>> {
     val statuses = containerFiles {
-        when (val store = containerStore(InstallationLayout.beneath(root).management.workspaceStore)) {
+        when (val store = containerStore(ManagementRoot.of(root).share.workspaceStore)) {
             is Refinement.Rejected -> store
             is Refinement.Refined ->
                 when (val entries = scopedWorkspaces(store.value, scope, directory)) {
@@ -49,7 +49,7 @@ internal fun readWorkspaceStatuses(
                     is Refinement.Refined ->
                         Refinement.Refined(
                             entries.value.map {
-                                workspaceStatus(store.value, it, InstallationLayout.beneath(root).root)
+                                workspaceStatus(store.value, it, ManagementRoot.of(root).management.installation)
                             }
                         )
                 }

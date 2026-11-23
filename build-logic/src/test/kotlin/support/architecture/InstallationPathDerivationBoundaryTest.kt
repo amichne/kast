@@ -29,7 +29,18 @@ class InstallationPathDerivationBoundaryTest {
             .filter { it.effect == ForbiddenEffect.INSTALLATION_PATH_DERIVATION }
             .mapTo(sortedSetOf()) { it.caller.name.value }
 
-        assertEquals(sortedSetOf("configuration", "manifest", "management", "readiness"), derivations)
+        assertEquals(
+            sortedSetOf(
+                "configuration",
+                "lifecycleLock",
+                "lifetimeLock",
+                "management",
+                "manifest",
+                "readiness",
+                "workspaceStore",
+            ),
+            derivations,
+        )
     }
 
     @Test
@@ -163,6 +174,12 @@ class InstallationPathDerivationBoundaryTest {
         fun management(executable: Path): Boolean = executable.endsWith(Path.of("share/kast/libexec/kast-management"))
 
         fun manifest(root: Path): Path = root.resolve("installation.json")
+
+        fun lifecycleLock(share: Path): Path = share.resolve("kast.lock")
+
+        fun workspaceStore(management: Path): Path = management.resolveSibling("kast-workspaces")
+
+        fun lifetimeLock(store: Path): Path = store.resolveSibling(".kast-workspaces.lifetime.lock")
 
         fun unrelated(root: Path, java: Path): List<Path> =
             listOf(root.resolve("shared/gradle"), java.resolve("bin"), root.resolve(".local/share/kast"))

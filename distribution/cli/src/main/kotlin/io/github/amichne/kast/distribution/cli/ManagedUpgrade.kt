@@ -90,7 +90,7 @@ internal fun executeManagedUpgrade(
             is SelectionAdmission.Admitted -> result.value
             is SelectionAdmission.Rejected -> return ManagedUpgradeOutcome.Rejected(result.reason)
         }
-    val installation = selectedInstallation(root)
+    val installation = selectedInstallation(root).version.path
     val bridge =
         admittedInstallerBridge(installation)
             ?: return ManagedUpgradeOutcome.Rejected(BuildSelectionFailure.INSTALLER_CONTRACT_UNSUPPORTED)
@@ -167,7 +167,7 @@ private sealed interface InstalledRecoveryBridge {
 
 private fun installedRecoveryBridge(root: Path): InstalledRecoveryBridge =
     try {
-        val installation = selectedInstallation(root)
+        val installation = selectedInstallation(root).version.path
         when (val bridge = admittedInstallerBridge(installation)) {
             null -> InstalledRecoveryBridge.Unavailable
             else -> InstalledRecoveryBridge.Admitted(installation, bridge)

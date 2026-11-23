@@ -5,6 +5,7 @@ import io.github.amichne.kast.appserver.runtime.BrokerUpstreamConnectionAdmissio
 import io.github.amichne.kast.appserver.runtime.BrokerUpstreamFrame
 import io.github.amichne.kast.appserver.runtime.BrokerUpstreamSend
 import io.github.amichne.kast.appserver.runtime.connectCodexUnixWebSocket
+import io.github.amichne.kast.distribution.contract.InstallationLayout
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.protocol.registry.OperationExecutionBudget
 import java.nio.file.Path
@@ -96,7 +97,7 @@ internal class InstalledCoordinatorClient(private val kast: Path) {
 
     private fun published(command: BrokerServiceLaunchCommand): Refinement<Published, WorkerControlFailure> {
         return try {
-            val root = kast.toRealPath().parent.parent
+            val root = InstallationLayout.ofKastExecutable(kast.toRealPath()).version.path
             val owner =
                 when (val observed = BrokerInstallationState.observe(root)) {
                     is Refinement.Refined -> observed.value

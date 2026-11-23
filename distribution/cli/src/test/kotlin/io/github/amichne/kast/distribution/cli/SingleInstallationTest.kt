@@ -17,7 +17,7 @@ class SingleInstallationTest {
     fun `management admits one ordinary installation and all integration paths use that location`() {
         val (root, _) = integrationFixture(temporary)
         val installation = root.resolve("installation").toRealPath()
-        assertEquals(installation, selectedInstallation(root))
+        assertEquals(installation, selectedInstallation(root).version.path)
         assertFalse(Files.isSymbolicLink(installation))
         assertEquals(
             listOf("installation", "management.json"),

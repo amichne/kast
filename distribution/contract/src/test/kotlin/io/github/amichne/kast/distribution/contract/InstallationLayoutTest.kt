@@ -1,9 +1,16 @@
 package io.github.amichne.kast.distribution.contract
 
+import io.github.amichne.kast.kernel.Refinement
+import java.nio.file.Files
 import java.nio.file.Path
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertNull
+import org.junit.jupiter.api.Assertions.assertTrue
+import org.junit.jupiter.api.Assumptions.assumeTrue
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.assertInstanceOf
+import org.junit.jupiter.api.io.TempDir
 
 /**
  * Pins every path the layout produces for a fixed root. The expected strings are written independently of the layout;
@@ -11,15 +18,15 @@ import org.junit.jupiter.api.Test
  */
 class InstallationLayoutTest {
     private val management = Path.of("/fixed/home/.local/share/kast")
-    private val layout = InstallationLayout.beneath(management)
     private val installation = "/fixed/home/.local/share/kast/installation"
+    private val layout = InstallationLayout.of(Path.of(installation))
     private val profile = CoordinatorHostProfile.of("/fixed/home/.codex")
 
     @Test
     fun `the installation and configuration paths are byte-identical to the current layout`() {
         assertPaths(
-            "root" to ("$installation" to layout.root),
-            "managementRoot" to ("/fixed/home/.local/share/kast" to layout.managementRoot),
+            "version" to ("$installation" to layout.version.path),
+            "managementRoot" to ("/fixed/home/.local/share/kast" to layout.managementRoot.path),
             "configuration.directory" to ("$installation/config" to layout.configuration.directory),
             "configuration.environment" to ("$installation/config/environment" to layout.configuration.environment),
             "configuration.workspaceRegistry" to
@@ -93,8 +100,44 @@ class InstallationLayoutTest {
                 ("/fixed/home/.local/share/kast/recovery/installation" to root.installationRecovery),
             "management.productRemoval" to
                 ("/fixed/home/.local/share/kast/recovery/installation/product-removal" to root.productRemoval),
-            "management.workspaceStore" to ("/fixed/home/.local/share/kast-workspaces" to root.workspaceStore),
-            "management.runtimeBaseStore" to ("/fixed/home/.local/share/kast-runtime-bases" to root.runtimeBaseStore),
+            "management.installation" to ("/fixed/home/.local/share/kast/installation" to root.installation),
+            "management.userHome" to ("/fixed/home" to checkNotNull(root.userHome)),
+        )
+    }
+
+    @Test
+    fun `the share-directory paths are byte-identical to the current layout`() {
+        val share = layout.share
+        assertPaths(
+            "shareRoot" to ("/fixed/home/.local/share" to layout.shareRoot.path),
+            "share.root" to ("/fixed/home/.local/share" to share.root),
+            "share.lifecycleLock" to ("/fixed/home/.local/share/kast.lock" to share.lifecycleLock),
+            "share.workspaceStore" to ("/fixed/home/.local/share/kast-workspaces" to share.workspaceStore),
+            "share.workspaceLifetimeLock" to
+                ("/fixed/home/.local/share/.kast-workspaces.lifetime.lock" to share.workspaceLifetimeLock),
+            "share.runtimeBaseStore" to ("/fixed/home/.local/share/kast-runtime-bases" to share.runtimeBaseStore),
+            "configuration.base" to (installation to layout.configuration.base),
+        )
+    }
+
+    @Test
+    fun `each root alone derives the same paths as the layout that holds it`() {
+        val managementRoot = ManagementRoot.of(management)
+        val shareRoot = ShareRoot.of(Path.of("/fixed/home/.local/share"))
+        assertEquals(layout.managementRoot, managementRoot)
+        assertEquals(layout.shareRoot, shareRoot)
+        assertEquals(shareRoot, managementRoot.shareRoot)
+        assertEquals(layout.management.receipt, managementRoot.management.receipt)
+        assertEquals(layout.share.workspaceStore, managementRoot.share.workspaceStore)
+        assertEquals(layout.share.lifecycleLock, shareRoot.share.lifecycleLock)
+        assertEquals(VersionRoot(Path.of(installation)), layout.version)
+    }
+
+    @Test
+    fun `the admission failure set reserves the stale-version outcome`() {
+        assertEquals(
+            listOf("VERSION_UNAVAILABLE", "VERSION_DISPLACED", "STALE_VERSION"),
+            InstallationLayoutFailure.entries.map { it.name },
         )
     }
 
@@ -124,11 +167,21 @@ class InstallationLayoutTest {
                 "share/kast/managed-install-v1" to relative.MANAGED_INSTALL_CAPABILITY,
                 "share/kast/install-candidate.sh" to relative.INSTALL_CANDIDATE,
                 "share/kast/private-python/bin/python3.12" to relative.PRIVATE_PYTHON_INTERPRETER,
-                "state/run/c.sock" to relative.COORDINATOR_SOCKET,
-                "state/run/one-shot" to relative.ONE_SHOT_INVOCATIONS,
-                "state/run/tool-sessions" to relative.TOOL_SESSIONS,
             )
         assertEquals(expected.keys.toList(), expected.values.map(InstallationRelativePath::value))
+    }
+
+    @Test
+    fun `owned-root relative paths keep their recorded form and match the run accessors`() {
+        val owned = InstallationLayout.Owned
+        val expected =
+            linkedMapOf(
+                "state/run/c.sock" to owned.COORDINATOR_SOCKET,
+                "state/run/one-shot" to owned.ONE_SHOT_INVOCATIONS,
+                "state/run/tool-sessions" to owned.TOOL_SESSIONS,
+            )
+        assertEquals(expected.keys.toList(), expected.values.map(OwnedRelativePath::value))
+        assertEquals("$installation/state/run/c.sock", layout.state.run.coordinatorSocket.toString())
     }
 
     @Test
@@ -139,7 +192,7 @@ class InstallationLayoutTest {
         )
         assertEquals(
             "$installation/share/kast/libexec/kast-service",
-            InstallationLayout.Relative.SERVICE_EXECUTABLE.under(layout.root).toString(),
+            InstallationLayout.Relative.SERVICE_EXECUTABLE.under(layout.version.path).toString(),
         )
         assertEquals("share/kast/lifecycle-fence-v1", INSTALLATION_SHUTDOWN_CAPABILITY)
         assertEquals("share/kast/reset-fence-v1", INSTALLATION_RESET_CAPABILITY)
@@ -150,9 +203,79 @@ class InstallationLayoutTest {
         val root = Path.of(installation)
         assertEquals(layout, InstallationLayout.of(root))
         assertEquals(layout, InstallationLayout.ofKastExecutable(root.resolve("bin/kast")))
-        assertEquals(layout, InstallationLayout.ofConfigurationFile(root.resolve("config/environment")))
-        assertNull(InstallationLayout.ofConfigurationFile(Path.of("environment")))
     }
+
+    @Test
+    fun `a payload file locates its version root through the layout, not its own parent chain`() {
+        val relative = InstallationLayout.Relative
+        val root = Path.of(installation)
+        assertEquals(
+            layout,
+            InstallationLayout.containing(
+                root.resolve("share/kast/libexec/kast-management"),
+                relative.MANAGEMENT_EXECUTABLE,
+            ),
+        )
+        assertEquals(layout, InstallationLayout.containing(root.resolve("bin/kast-query"), relative.QUERY_EXECUTABLE))
+        assertEquals(
+            layout,
+            InstallationLayout.containing(root.resolve("lib/kast-cli.jar"), relative.library("kast-cli.jar")),
+        )
+        assertNull(InstallationLayout.containing(root.resolve("bin/kast"), relative.QUERY_EXECUTABLE))
+        assertNull(InstallationLayout.containing(Path.of("/lib/kast-cli.jar"), relative.library("kast-cli.jar")))
+        assertNull(InstallationLayout.containing(Path.of("lib/kast-cli.jar"), relative.library("kast-cli.jar")))
+    }
+
+    @Test
+    fun `readiness membership accepts only a per-host readiness record beneath the broker directory`() {
+        val state = layout.state
+        assertTrue(state.holdsReadiness(Path.of("$installation/state/broker/f9cc2b730341a2cf/service-readiness.json")))
+        assertFalse(state.holdsReadiness(Path.of("$installation/state/broker/service-readiness.json")))
+        assertFalse(state.holdsReadiness(Path.of("$installation/state/broker/f9cc2b730341a2cf/service.log")))
+        assertFalse(state.holdsReadiness(Path.of("/other/state/broker/f9cc2b730341a2cf/service-readiness.json")))
+    }
+
+    @Test
+    fun `admission selects the physical installation entry beneath the physical management root`(
+        @TempDir temporary: Path
+    ) {
+        val physical = Files.createDirectories(temporary.resolve("home/.local/share/kast")).toRealPath()
+        Files.createDirectory(physical.resolve("installation"))
+        val linkedHome = Files.createSymbolicLink(temporary.resolve("linked-home"), temporary.resolve("home"))
+
+        val admitted = InstallationLayout.admit(ManagementRoot.of(linkedHome.resolve(".local/share/kast")))
+
+        val layout = assertInstanceOf<Refinement.Refined<InstallationLayout>>(admitted).value
+        assertEquals("$physical/installation", layout.version.path.toString())
+        assertEquals(physical.toString(), layout.managementRoot.path.toString())
+    }
+
+    @Test
+    fun `admission rejects an absent, linked, or non-directory installation entry`(@TempDir temporary: Path) {
+        val root = Files.createDirectories(temporary.resolve("kast")).toRealPath()
+        val entry = root.resolve("installation")
+        assertEquals(Refinement.Rejected(InstallationLayoutFailure.VERSION_UNAVAILABLE), admit(root))
+
+        val target = Files.createDirectory(temporary.resolve("elsewhere"))
+        Files.createSymbolicLink(entry, target)
+        assertEquals(Refinement.Rejected(InstallationLayoutFailure.VERSION_UNAVAILABLE), admit(root))
+        assertTrue(Files.isDirectory(target), "admission must not change the link target")
+
+        Files.delete(entry)
+        Files.writeString(entry, "not a directory")
+        assertEquals(Refinement.Rejected(InstallationLayoutFailure.VERSION_UNAVAILABLE), admit(root))
+    }
+
+    @Test
+    fun `admission rejects an entry whose physical name differs from the version root`(@TempDir temporary: Path) {
+        val root = Files.createDirectories(temporary.resolve("kast")).toRealPath()
+        Files.createDirectory(root.resolve("INSTALLATION"))
+        assumeTrue(Files.isDirectory(root.resolve("installation")), "needs a case-insensitive file system")
+
+        assertEquals(Refinement.Rejected(InstallationLayoutFailure.VERSION_DISPLACED), admit(root))
+    }
+
+    private fun admit(root: Path) = InstallationLayout.admit(ManagementRoot.of(root))
 
     private fun assertPaths(vararg cases: Pair<String, Pair<String, Path>>) {
         assertEquals(

@@ -59,6 +59,7 @@ enum class ForbiddenEffect {
     TOPOLOGY_BUILD_AUTHORITY,
     TOPOLOGY_PUBLICATION,
     INSTALLATION_PATH_DERIVATION,
+    INSTALLATION_PARENT_DERIVATION,
 }
 
 enum class ModuleId(val projectPath: String) {

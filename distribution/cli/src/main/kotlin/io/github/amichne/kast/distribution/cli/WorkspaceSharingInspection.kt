@@ -46,7 +46,7 @@ internal fun inspectWorkspaceSharing(
     environment: Map<String, String>,
 ): WorkspaceSharingInspection {
     val recorded =
-        when (val store = containerStore(InstallationLayout.of(installation).management.workspaceStore)) {
+        when (val store = containerStore(InstallationLayout.of(installation).share.workspaceStore)) {
             is Refinement.Rejected -> return WorkspaceSharingInspection.Unavailable(store.failure)
             is Refinement.Refined -> store.value.workspace(workspace.path)
         }

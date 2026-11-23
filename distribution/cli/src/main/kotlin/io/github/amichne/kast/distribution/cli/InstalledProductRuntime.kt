@@ -1,6 +1,7 @@
 package io.github.amichne.kast.distribution.cli
 
 import io.github.amichne.kast.distribution.contract.InstallationLayout
+import io.github.amichne.kast.distribution.contract.ManagementRoot
 import io.github.amichne.kast.kernel.Refinement
 import java.nio.file.Files
 import java.nio.file.LinkOption.NOFOLLOW_LINKS
@@ -36,6 +37,13 @@ private constructor(
     internal val record: ProductBuildRecord,
     private val revisions: List<ProductInputRevision>,
 ) {
+    /**
+     * The workspace store beside this installation. Admission requires the runtime root to be `runtimes/<sha>` beneath
+     * this store, so it is also the store that holds [runtime].
+     */
+    internal val workspaceStore: Path
+        get() = InstallationLayout.of(installation).share.workspaceStore
+
     /** Recheck the exact files covered by cold admission before workspace effects. */
     internal fun admitCurrent(): Refinement<Unit, ContainerFailure> = containerFiles {
         when {
@@ -184,7 +192,7 @@ private fun validInstalledProduct(
         return false
     val target = record.targets.singleOrNull { it.target == reference.target } ?: return false
     val layout = InstallationLayout.of(installation)
-    val runtimeRoot = layout.management.workspaceStore.resolve("runtimes/${target.runtime.sha256}")
+    val runtimeRoot = layout.share.workspaceStore.resolve("runtimes/${target.runtime.sha256}")
     return reference.buildRecordSha256 == sha256(layout.payload.buildRecord) &&
         reference.bundleSha256 == target.bundle.sha256 &&
         reference.qualificationSha256 == target.qualification.receipt.sha256 &&
@@ -222,7 +230,9 @@ internal fun installedRepairSelection(root: Path): SelectionAdmission<ResolvedBu
             is Refinement.Rejected -> return SelectionAdmission.Rejected(BuildSelectionFailure.PLATFORM_UNAVAILABLE)
             is Refinement.Refined -> current.value
         }
-    return when (val selected = InstalledProductSelection.read(InstallationLayout.beneath(root).root, platform)) {
+    return when (
+        val selected = InstalledProductSelection.read(ManagementRoot.of(root).management.installation, platform)
+    ) {
         is Refinement.Rejected -> SelectionAdmission.Rejected(BuildSelectionFailure.ARTIFACT_INVALID)
         is Refinement.Refined -> {
             // Local product bytes exist only in their local directory; repair must not seek them remotely.

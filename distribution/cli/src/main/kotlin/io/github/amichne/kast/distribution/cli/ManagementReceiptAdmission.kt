@@ -1,8 +1,8 @@
 package io.github.amichne.kast.distribution.cli
 
-import io.github.amichne.kast.distribution.contract.InstallationLayout
 import io.github.amichne.kast.distribution.contract.InstalledBuildIdentity
 import io.github.amichne.kast.distribution.contract.ManagementBuildBinding
+import io.github.amichne.kast.distribution.contract.ManagementRoot
 import io.github.amichne.kast.distribution.contract.UpdatePolicy
 import java.nio.file.Path
 import kotlinx.serialization.Serializable
@@ -38,7 +38,7 @@ internal sealed interface ReceiptRead {
     data class Unavailable(val reason: String) : ReceiptRead
 }
 
-internal fun receiptPath(root: Path): Path = InstallationLayout.beneath(root).management.receipt
+internal fun receiptPath(root: Path): Path = ManagementRoot.of(root).management.receipt
 
 private fun decodeReceipt(raw: String): ReceiptRead {
     val receipt =

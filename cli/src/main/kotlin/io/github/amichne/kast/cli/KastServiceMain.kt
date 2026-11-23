@@ -233,7 +233,7 @@ private fun retireSemanticOwner(requireFence: Boolean) {
             is Refinement.Refined ->
                 runBlocking {
                     retireFencedSemanticCoordinator(
-                        installed.value.parent.parent,
+                        InstallationLayout.ofKastExecutable(installed.value).version.path,
                         Path.of(System.getProperty("user.home")),
                     )
                 }
@@ -263,8 +263,10 @@ private fun tryManagedHeadlessShutdown(arguments: List<String>): Boolean {
     val outcome =
         if (installed is Refinement.Refined)
             io.github.amichne.kast.cli.installation.shutdownManagedHeadless(
-                System.getenv("KAST_CONFIGURATION_FILE")?.let { Path.of(it).parent.parent }
-                    ?: installed.value.parent.parent,
+                io.github.amichne.kast.cli.installation.ManagedHeadlessRoot.select(
+                    InstallationLayout.ofKastExecutable(installed.value),
+                    System.getenv("KAST_CONFIGURATION_FILE"),
+                ),
                 Path.of(System.getProperty("user.home")),
                 Path.of(System.getenv("KAST_MANAGED_HEADLESS_STATE")),
             )

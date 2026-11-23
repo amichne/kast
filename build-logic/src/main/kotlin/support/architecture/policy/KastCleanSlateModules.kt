@@ -29,6 +29,7 @@ internal object KastCleanSlateModules {
             ModuleId.KERNEL,
             scopedEffects = mapOf(
                 ForbiddenEffect.INSTALLATION_PATH_DERIVATION to InstallationPathDerivationOwners.layout,
+                ForbiddenEffect.INSTALLATION_PARENT_DERIVATION to InstallationParentDerivationOwners.layout,
             ),
         ),
         target(ModuleId.DISTRIBUTION_OUTPUT, ModuleRole.TRANSPORT, ModuleId.DISTRIBUTION_CONTRACT),
@@ -74,6 +75,8 @@ internal object KastCleanSlateModules {
             ),
                 // Workspace container profiles, not the installation, own these `config` and `state` paths.
                 ForbiddenEffect.INSTALLATION_PATH_DERIVATION to InstallationPathDerivationOwners.containerProfile,
+                // Container store parent chains climb a store or a profile, not an installation root.
+                ForbiddenEffect.INSTALLATION_PARENT_DERIVATION to InstallationParentDerivationOwners.containerStore,
             ),
         ),
         target(
@@ -81,6 +84,9 @@ internal object KastCleanSlateModules {
             ModuleRole.FILESYSTEM_WRITE_ADAPTER,
             ModuleId.DISTRIBUTION_CONTRACT,
             effects = setOf(ForbiddenEffect.FILESYSTEM_WRITE),
+            scopedEffects = mapOf(
+                ForbiddenEffect.INSTALLATION_PARENT_DERIVATION to InstallationParentDerivationOwners.endpointAlias,
+            ),
         ),
         target(
             ModuleId.PROTOCOL_CONTRACT,
@@ -380,7 +386,9 @@ internal object KastCleanSlateModules {
                     JvmClassName(
                         "io/github/amichne/kast/appserver/runtime/UnixSocketPathOwnership",
                     ),
-            )),
+            ),
+                ForbiddenEffect.INSTALLATION_PARENT_DERIVATION to InstallationParentDerivationOwners.appServer,
+            ),
         ),
         target(
             ModuleId.CLI,
@@ -473,6 +481,7 @@ internal object KastCleanSlateModules {
                     JvmClassName("io/github/amichne/kast/runtime/hosted/lifecycle/IdeLifecycleNative\$close\$result\$1"),
                 ),
                 ForbiddenEffect.RECURSIVE_VFS_REFRESH to setOf(HostedWorkspaceRefreshAuthority.owner, HostedWorkspaceRefreshAuthority.bundleOwner),
+                ForbiddenEffect.INSTALLATION_PARENT_DERIVATION to InstallationParentDerivationOwners.hostedEndpoint,
             ),
         ),
         ModulePolicy(ModuleId.INDEXER, ModuleLifecycle.RETIRED, ModuleRole.INDEXER_HOST, emptySet(), emptySet()),

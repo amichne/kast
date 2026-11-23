@@ -28,9 +28,16 @@ internal sealed interface ConfigurationInspectionHandling {
     class Handled(val exit: CliExit) : ConfigurationInspectionHandling
 }
 
-/** Passive configuration ingress runs before provider loading, installation admission, or runtime effects. */
+/**
+ * Passive configuration ingress runs before provider loading or runtime effects. The caller passes the code-source
+ * admission of its own installation, so configuration reads go through that layout.
+ */
 internal object ConfigurationCliInspection {
-    fun inspect(arguments: List<String>, environment: Map<String, String>): ConfigurationInspectionHandling {
+    fun inspect(
+        arguments: List<String>,
+        environment: Map<String, String>,
+        installation: Refinement<InstallationLayout, InstalledKastControlProductFailure>,
+    ): ConfigurationInspectionHandling {
         if (arguments.firstOrNull() != "config") return ConfigurationInspectionHandling.Unrelated
         val supplied = arguments.drop(1)
         if (supplied == listOf("--help") || supplied == listOf("-h")) return help()
@@ -112,8 +119,8 @@ internal object ConfigurationCliInspection {
                             )
                         )
                     }
-                val installation =
-                    paths.first.parent?.parent
+                val layout =
+                    selectedLayout(installation, paths.first)
                         ?: return complete(
                             failureFactory.create(
                                 ConfigurationInspectionFailureDocument(
@@ -122,7 +129,7 @@ internal object ConfigurationCliInspection {
                                 )
                             )
                         )
-                InstalledWorkspaceConfigurationIngress.load(installation, paths.second, environment)
+                InstalledWorkspaceConfigurationIngress.load(layout.version.path, paths.second, environment)
             } else if (validationFile == null) InstalledSavedConfigurationIngress.load(environment)
             else InstalledSavedConfigurationIngress.read(validationFile, environment)
         val source =
@@ -177,7 +184,7 @@ internal object ConfigurationCliInspection {
                 )
             )
         }
-        val applied = observeApplied(environment, resolved, workspaceText)
+        val applied = observeApplied(installation, environment, resolved, workspaceText)
         if (show)
             return complete(
                 showFactory.create(
@@ -208,7 +215,21 @@ internal object ConfigurationCliInspection {
         )
     }
 
+    /**
+     * The admitted installation whose configuration file [selector] names. A selector cannot choose another
+     * installation: the layout, not the selector's parents, owns where configuration lives.
+     */
+    private fun selectedLayout(
+        installation: Refinement<InstallationLayout, InstalledKastControlProductFailure>,
+        selector: Path,
+    ): InstallationLayout? =
+        when (installation) {
+            is Refinement.Rejected -> null
+            is Refinement.Refined -> installation.value.takeIf { selector == it.configuration.environment }
+        }
+
     private fun observeApplied(
+        installation: Refinement<InstallationLayout, InstalledKastControlProductFailure>,
         environment: Map<String, String>,
         configuration: ResolvedKastConfiguration,
         workspace: String?,
@@ -224,19 +245,14 @@ internal object ConfigurationCliInspection {
                     AppliedConfigurationUnavailable.INSTALLATION_UNSELECTED
                 )
         return try {
-            val selected = Path.of(selector)
-            val installation =
-                InstallationLayout.ofConfigurationFile(selected)
+            val layout =
+                selectedLayout(installation, Path.of(selector))
                     ?: return AppliedConfigurationInspection.Unobserved(
                         AppliedConfigurationUnavailable.INSTALLATION_UNSELECTED
                     )
-            if (selected != installation.configuration.environment)
-                return AppliedConfigurationInspection.Unobserved(
-                    AppliedConfigurationUnavailable.INSTALLATION_UNSELECTED
-                )
             runBlocking {
                 InstalledConfigurationAppliedInspection.read(
-                    installation.payload.kast,
+                    layout.payload.kast,
                     Path.of(home),
                     environment,
                     configuration,

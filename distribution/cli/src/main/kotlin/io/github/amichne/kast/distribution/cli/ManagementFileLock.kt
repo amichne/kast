@@ -1,6 +1,6 @@
 package io.github.amichne.kast.distribution.cli
 
-import io.github.amichne.kast.distribution.contract.InstallationLayout
+import io.github.amichne.kast.distribution.contract.ManagementRoot
 import java.nio.channels.FileChannel
 import java.nio.file.Files
 import java.nio.file.LinkOption
@@ -9,12 +9,12 @@ import java.nio.file.StandardOpenOption
 import java.nio.file.attribute.PosixFilePermissions
 
 internal fun <T> withRegistrationLock(root: Path, action: () -> T): T =
-    withManagementFileLock(InstallationLayout.beneath(root).management.registrationLock, "registration-lock", action)
+    withManagementFileLock(ManagementRoot.of(root).management.registrationLock, "registration-lock", action)
 
 /** The standalone installer uses a POSIX record lock on activation.lock for replacement and removal. */
 internal fun <T> withWorkspaceEditLock(root: Path, action: () -> T): T =
     withRegistrationLock(root) {
-        withManagementFileLock(InstallationLayout.beneath(root).management.activationLock, "activation-lock", action)
+        withManagementFileLock(ManagementRoot.of(root).management.activationLock, "activation-lock", action)
     }
 
 @Suppress("ThrowsCount")
