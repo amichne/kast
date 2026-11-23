@@ -19,16 +19,13 @@ import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
-import org.junit.jupiter.params.ParameterizedTest
-import org.junit.jupiter.params.provider.ValueSource
 
 class RecordedRecoveryInstallerTest {
     @TempDir lateinit var temporary: Path
 
-    @ParameterizedTest
-    @ValueSource(booleans = [false, true])
-    fun `a pending product journal resumes through the recorded staged installer`(exterior: Boolean) {
-        val fixture = fixture(exterior)
+    @Test
+    fun `a pending product journal resumes through the recorded staged installer`() {
+        val fixture = fixture()
         val before = Files.readAllBytes(fixture.receipt)
         var calls = 0
         val result =
@@ -62,6 +59,18 @@ class RecordedRecoveryInstallerTest {
         assertEquals(1, calls)
         assertEquals(before.toList(), Files.readAllBytes(fixture.receipt).toList())
         assertFalse(Files.exists(fixture.root.resolve("installation")))
+    }
+
+    @Test
+    fun `a journal staged inside the installation root rejects before a recovery child`() {
+        assertRejected(fixture(interior = true))
+    }
+
+    @Test
+    fun `a payload moved to the rejected-control slot rejects before a recovery child`() {
+        val fixture = fixture()
+        Files.move(fixture.staged, fixture.root.resolve("recovery/replacement/rejected-control"))
+        assertRejected(fixture)
     }
 
     @Test
@@ -192,7 +201,7 @@ class RecordedRecoveryInstallerTest {
 
     @Test
     fun `an exterior stage for another transaction cannot become the recovery candidate`() {
-        val fixture = fixture(exterior = true)
+        val fixture = fixture()
         Files.writeString(
             fixture.receipt,
             managementJson.encodeToString(
@@ -221,13 +230,13 @@ class RecordedRecoveryInstallerTest {
         assertEquals(before.toList(), Files.readAllBytes(fixture.receipt).toList())
     }
 
-    private fun fixture(exterior: Boolean = false): Fixture {
+    private fun fixture(interior: Boolean = false): Fixture {
         val root = Files.createDirectory(temporary.toRealPath().resolve("kast"))
         val home = Files.createDirectory(temporary.toRealPath().resolve("home"))
         val staged =
             Files.createDirectory(
-                if (exterior) root.parent.resolve(".kast-install-12345678-1234-1234-1234-123456789abc")
-                else root.resolve(".install-selected")
+                if (interior) root.resolve(".install-12345678-1234-1234-1234-123456789abc")
+                else root.parent.resolve(".kast-install-12345678-1234-1234-1234-123456789abc")
             )
         val files =
             listOf(

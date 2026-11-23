@@ -856,11 +856,7 @@ def resume_locked(
         or record.installation != str(active)
         or record.schemaVersion != 1
         or str(uuid.UUID(reservation.transaction)) != reservation.transaction
-        or reservation.staged
-        not in (
-            str(root.parent / (".kast-install-" + reservation.transaction)),
-            str(root / (".install-" + reservation.transaction)),
-        )
+        or reservation.staged != str(root.parent / (".kast-install-" + reservation.transaction))
         or selected.management.destination != str(root / "management.json")
         or selected.publicExecutable.destination != str(home / ".local/bin/kast")
         or selected.phase
@@ -940,7 +936,7 @@ def resume_locked(
         verify_previous(prior[0], selected.previousManifestSha256)
         if prior[0] == active:
             install.emit(contract.Stage.CONTROL_REPLACEMENT, "STARTED")
-            install.RECOVERY.managed_move(active, slot / "payload", prior[3])
+            install.RECOVERY.managed_move(active, slot / "payload", prior[2])
     if current == staged:
         install.RECOVERY.managed_move(staged, active, witness)
     if selected.phase != journal.ManagedPhase.ACTIVATION_PROVEN:

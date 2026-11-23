@@ -275,7 +275,7 @@ def managed_previous(root, transaction, previous, live_coordinator=False):
         options = [path for path in (root, transaction / 'payload') if os.path.lexists(path) and not path.is_symlink() and Identity.observe(path) == previous.identity]
         if len(options) != 1:
             raise Rejected(Failure.OWNERSHIP)
-        return options[0], root, root.parent / 'recovery/installation', managed_payload(options[0], root, previous.identity, live_coordinator=live_coordinator)
+        return options[0], root, managed_payload(options[0], root, previous.identity, live_coordinator=live_coordinator)
     if isinstance(previous, NoPrevious) and previous.type == 'NONE':
         if os.path.lexists(transaction / 'payload') or os.path.lexists(transaction / 'recovery'):
             raise Rejected(Failure.OWNERSHIP)

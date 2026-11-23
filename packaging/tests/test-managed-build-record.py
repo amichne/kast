@@ -1902,6 +1902,22 @@ class ProductActivationTest(unittest.TestCase):
         self.assertEqual(calls, tuple(self.source.calls))
         self.assertFalse(pending.exists())
 
+    def test_a_journal_staged_inside_the_installation_root_is_rejected(self) -> None:
+        admitted = self.admitted()
+        with patch.object(install, "replace_file", side_effect=KeyboardInterrupt):
+            result = activation.activate(self.root, self.home, admitted)
+        self.assertIsInstance(result, contract.RecoveryRequired)
+        pending = self.root / "recovery/replacement/receipt.json"
+        record = install.RECOVERY.load(pending, journal.Replacement)
+        assert record.reservation is not None
+        interior = str(self.root / (".install-" + record.reservation.transaction))
+        install.RECOVERY.save(
+            pending, replace(record, reservation=replace(record.reservation, staged=interior))
+        )
+        recorded = pending.read_bytes()
+        self.assertNotIsInstance(activation.resume(self.root, self.home), activation.ProductInstalled)
+        self.assertEqual(recorded, pending.read_bytes())
+
     def test_preparation_failure_never_publishes_an_incomplete_journal(self) -> None:
         admitted = self.admitted()
         with patch.object(install, "saved_file", side_effect=OSError("preimage unavailable")):
