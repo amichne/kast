@@ -4,8 +4,10 @@
 
 Add the `queue` label, or comment `@mergifyio queue`, to queue a pull request for `main`.
 Comment `@mergifyio dequeue` to remove it.
-Mergify brings it up to date with `main`, waits for `CI required checks` on that exact result, and squash-merges it.
-One pull request is validated at a time, on the pull request itself.
+A pull request needs `Source feedback` to enter the queue.
+Mergify puts the exact result for `main` on a draft pull request under `mergify/merge-queue/`, waits for `CI required checks` there, and squash-merges the original.
+One pull request is validated at a time.
+The GitHub branch rules for `main` must list the Mergify app as an exempt bypass actor, because the original pull request does not carry the required check.
 `.mergify.yml` owns the queue rules. GitHub's native merge queue needs an organization-owned repository.
 
 ## Run a CI check locally
