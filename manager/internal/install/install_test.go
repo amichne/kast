@@ -198,6 +198,12 @@ func (f *fixture) run(arguments ...string) error {
 }
 
 func (f *fixture) runContext(ctx context.Context, arguments ...string) error {
+	// The fixture publishes a preview. TestNoSelectorFollowsTheStableChannel proves the default channel.
+	if !slices.ContainsFunc(arguments, func(argument string) bool {
+		return argument == "--channel" || argument == "--version" || argument == "--commit"
+	}) {
+		arguments = append(slices.Clone(arguments), "--channel", "preview")
+	}
 	f.out.Reset()
 	f.log.Reset()
 	return f.install().Run(ctx, arguments)
@@ -628,6 +634,22 @@ func TestStableAndVersionFollowTheReleaseMapping(t *testing.T) {
 				"schemaVersion": 1, "publicVersion": "1.2.4", "buildRecordSha256": digest(raw)})
 			f.requireFailure(RecordInvalid, f.run(append([]string{"--dry-run"}, arguments...)...))
 		})
+	}
+}
+
+func TestNoSelectorFollowsTheStableChannel(t *testing.T) {
+	f := newFixture(t)
+	raw := f.pages[releases+"/"+tag+"/build-record.json"]
+	f.pages[stableURL] = f.encode(map[string]any{"tag_name": "v1.2.3", "draft": false, "prerelease": false})
+	f.pages[releases+"/v1.2.3/release-mapping.json"] = f.encode(map[string]any{
+		"schemaVersion": 1, "publicVersion": "1.2.3", "buildRecordSha256": digest(raw)})
+	f.pages[releases+"/v1.2.3/build-record.json"] = raw
+	// The fixture publishes a preview too, which an unselected installation must not choose.
+	if err := f.install().Run(context.Background(), []string{"--dry-run"}); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(f.out.String(), "Kast 1.2.3 (stable) for macOS ARM64") {
+		t.Errorf("output %q", f.out.String())
 	}
 }
 

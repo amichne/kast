@@ -348,7 +348,7 @@ class BootstrapTest(unittest.TestCase):
                 self.assertEqual([], list(home.iterdir()))
                 self.assertFalse(list(root.glob("kast-bootstrap.*")))
 
-    def test_only_a_preview_dry_run_uses_the_pinned_bootstrap(self) -> None:
+    def test_only_a_channel_dry_run_uses_the_pinned_bootstrap(self) -> None:
         for system, machine in (("Darwin", "arm64"), ("Linux", "x86_64")):
             with self.subTest(system=system), tempfile.TemporaryDirectory() as temporary:
                 root = Path(temporary).resolve()
@@ -412,21 +412,23 @@ class BootstrapTest(unittest.TestCase):
                     self.assertFalse(list(root.glob("kast-bootstrap.*")))
                     return result, log.read_text().splitlines()
 
-                for arguments in (
-                    ("--dry-run",),
-                    ("--dry-run", "--json"),
-                    ("--channel", "preview", "--json", "--dry-run"),
+                stable = ("--channel", "stable")
+                for arguments, added in (
+                    (("--dry-run",), stable),
+                    (("--dry-run", "--json"), stable),
+                    (("--dry-run", *stable), ()),
+                    (("--channel", "preview", "--json", "--dry-run"), ()),
                 ):
                     result, transfers = run(*arguments)
                     # The executable owns the status and the output.
                     self.assertEqual(4, result.returncode, result.stderr)
-                    self.assertEqual(["install", *arguments], result.stdout.splitlines())
+                    self.assertEqual(["install", *arguments, *added], result.stdout.splitlines())
                     self.assertEqual([pin.url], transfers)
                 for arguments in (
                     (),
                     ("--json",),
+                    stable,
                     ("--channel", "preview"),
-                    ("--dry-run", "--channel", "stable"),
                     ("--dry-run", "--version", "1.2.3"),
                     ("--dry-run", "--commit", "abcdef0"),
                     ("--dry-run", "--recover-only"),

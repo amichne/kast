@@ -38,10 +38,10 @@ Kast supplies its private runtime. You do not need desktop IDEA, Python, or uv.
     Run this command from any directory. You do not need a checkout of the Kast repository.
 
     ```shell
-    /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/amichne/kast/main/install.sh)" -- --channel preview
+    /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/amichne/kast/main/install.sh)"
     ```
 
-    `--channel preview` selects a complete preview build. Step 2 connects your agent.
+    The installer selects the latest stable build. Step 2 connects your agent.
     Installation does not grant project trust or start a Host.
 
     If your shell cannot find `kast`, add the directory that the installer prints to your `PATH`, then open a new terminal.
@@ -50,7 +50,7 @@ Kast supplies its private runtime. You do not need desktop IDEA, Python, or uv.
       Installing or updating can end running Kast sessions. Save your work in your agent first.
 
       ```shell
-      kast upgrade --channel preview
+      kast upgrade --channel stable
       ```
 
       Kast manages its own runtime; no desktop restart is needed.

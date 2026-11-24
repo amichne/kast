@@ -26,7 +26,7 @@ Your project still supplies its build configuration, dependencies, and any requi
 ## Remote initial install
 
 ```shell
-/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/amichne/kast/main/install.sh)" -- --channel preview
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/amichne/kast/main/install.sh)"
 ```
 
 ### Replace an earlier installation
@@ -46,8 +46,8 @@ To confirm in advance, add `--replace-existing`:
 
 The installer selects one complete product: an immutable vendor base and exact Control, Host, and agent components.
 It verifies the selected records and bytes before activation. A missing component is a failure, not permission to mix builds.
-Without a selector, it installs the latest preview build.
-With `--dry-run`, it names that preview build and its download size. It downloads no product file and installs nothing.
+Without a selector, it installs the latest stable build. Add `-- --channel preview` to select the latest preview build.
+With `--dry-run`, it names the channel's build and its download size. It downloads no product file and installs nothing.
 Installation does not grant trust to a project or start its Host.
 
 The installation directory is `$HOME/.local/share/kast`.
@@ -96,8 +96,8 @@ Upgrade, recorded recovery, and product removal reuse admitted private support; 
 
 ```shell
 kast versions
-kast upgrade --channel preview --dry-run
-kast upgrade --channel preview
+kast upgrade --channel stable --dry-run
+kast upgrade --channel stable
 ```
 
 `preview` selects a complete preview build. `stable` selects a complete stable build.

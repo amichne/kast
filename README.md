@@ -21,7 +21,7 @@ Setup takes three steps.
 1. Install Kast from any directory.
 
    ```shell
-   /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/amichne/kast/main/install.sh)" -- --channel preview
+   /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/amichne/kast/main/install.sh)"
    ```
 
    The installer selects one complete build. Step 2 connects your agent.

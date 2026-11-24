@@ -1075,7 +1075,7 @@ def decode_selection(raw: bytes) -> Selection | ProductSelection | Rejected:
 def resolve_selection(
     channel: str | None, version: str | None, commit: str | None, source: ReleaseSource
 ) -> Selection | ProductSelection | Rejected:
-    requested = commit or version or channel or "preview"
+    requested = commit or version or channel or "stable"
     if sum(value is not None for value in (channel, version, commit)) > 1:
         return Rejected(Failure.SELECTORS_CONFLICT, Stage.SELECTION, requested)
     if version is not None:
@@ -1090,7 +1090,7 @@ def resolve_selection(
         return Rejected(Failure.SELECTOR_INVALID, Stage.SELECTION, requested)
     if channel not in (None, "stable", "preview"):
         return Rejected(Failure.SELECTOR_INVALID, Stage.SELECTION, requested)
-    if channel == "stable":
+    if commit is None and channel != "preview":
         raw = source.read(STABLE_URL, MAXIMUM_RECORD_BYTES)
         if isinstance(raw, TRANSFER_REJECTIONS):
             return Rejected(

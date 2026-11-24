@@ -11,8 +11,8 @@ The native `kast` command is the primary interface.
 
 Kotlin developers who already work with a coding agent are the primary readers.
 The setup path supports a first installation without a checkout or an existing Kast CLI.
-The remote installer selects the latest qualified development build with `--channel preview`.
-An existing installation uses `kast upgrade --channel preview`.
+The remote installer selects the latest stable build. `--channel preview` selects the latest qualified development build.
+An existing installation uses `kast upgrade --channel stable`.
 
 ## Source authority
 
