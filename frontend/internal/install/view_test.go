@@ -282,6 +282,31 @@ func TestATerminalDownloadOfHeldFilesShowsThem(t *testing.T) {
 	}
 }
 
+func TestHeldFilesAreCompleteWithoutReceivedBytes(t *testing.T) {
+	f := newFixture(t)
+	if err := f.run("--download-only"); err != nil {
+		t.Fatal(err)
+	}
+	found, err := f.install().resolve(context.Background(), channelHead{preview})
+	if err != nil {
+		t.Fatal(err)
+	}
+	store, err := openStore(f.home)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer store.close()
+	p := newProgress(found.parts, time.Now)
+	if _, err := f.install().fill(context.Background(), store, found, p, io.Discard); err != nil {
+		t.Fatal(err)
+	}
+	for _, file := range p.snapshot().files {
+		if file != (fileProgress{file.role, complete, file.total, file.total, file.total}) {
+			t.Errorf("file %+v", file)
+		}
+	}
+}
+
 func TestAFailedTerminalDownloadRestoresTheCursorBeforeItReturns(t *testing.T) {
 	f := newFixture(t)
 	f.terminal = true
