@@ -30,9 +30,12 @@ An installation holds two marketplaces, each with the plugin `kast@kast`:
 `.codex-plugin/plugin.json` is the one authored identity. The generator derives the Claude Code manifest and marketplace from it.
 
 ```sh
-claude plugin marketplace add <directory> && claude plugin install kast@kast
-codex plugin marketplace add <directory> && codex plugin add kast@kast
+kast agent install claude
+kast agent install codex --without-mcp
+kast agent remove codex
 ```
+
+These commands run each agent's own plugin commands. Without `--without-mcp`, the second directory is the source.
 
 Start a fresh agent session. A completed plugin installation does not establish content in an existing agent session.
 Codex runs the session hook only after the user trusts it.

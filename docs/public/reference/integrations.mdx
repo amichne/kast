@@ -7,7 +7,7 @@ hideFooterPagination: true
 ---
 
 The Kast installation includes one plugin for Claude Code and Codex. It holds the Kast skill, a session hook, and the Kast MCP server.
-Your agent installs the plugin with its own commands. Kast writes no agent configuration.
+`kast agent` runs your agent's own plugin commands. Kast writes no agent configuration.
 
 ## Before you start
 
@@ -18,27 +18,17 @@ Your agent installs the plugin with its own commands. Kast writes no agent confi
 
 ## 1. Install the plugin
 
-The default installation keeps the plugin in this directory:
-
-```shell
-KAST_PLUGIN="$HOME/.local/share/kast/installation/share/kast/agent-tools/compositions/mcp"
-```
-
-For another installation root, replace `$HOME/.local/share/kast`.
-
 <Tabs>
   <Tab title="Claude Code">
     ```shell
-    claude plugin marketplace add "$KAST_PLUGIN"
-    claude plugin install kast@kast
+    kast agent install claude
     ```
 
     The skill appears as `kast:kast`.
   </Tab>
   <Tab title="Codex">
     ```shell
-    codex plugin marketplace add "$KAST_PLUGIN"
-    codex plugin add kast@kast
+    kast agent install codex
     ```
 
     Codex skips a new hook until you trust it. Run `/hooks` in a session, then review the Kast session hook.
@@ -47,7 +37,9 @@ For another installation root, replace `$HOME/.local/share/kast`.
 
 The plugin applies to all your projects. Outside a Gradle project, the session hook adds nothing to the session.
 
-To install the skill and hook without the MCP server, remove `/compositions/mcp` from the directory.
+Add `--without-mcp` to install only the skill and hook. Run the command again without it to add the MCP server.
+
+Another marketplace named `kast` stops the command with `MARKETPLACE_FOREIGN`, and nothing changes. The output names the command that removes it.
 
 <span id="3-apply-the-configuration" />
 
@@ -73,7 +65,7 @@ The [MCP contract](/reference/mcp-catalog) describes the server's tools and repl
 An upgrade can change the plugin.
 
 - Claude Code reads the plugin from the installation. Start a new session.
-- Codex keeps a copy. Run `codex plugin add kast@kast` again, then start a new session.
+- Codex keeps a copy. Run `kast agent install codex` again, then start a new session. `kast upgrade` does not do this.
 
 A changed hook needs a new review in Codex.
 
@@ -82,14 +74,12 @@ A changed hook needs a new review in Codex.
 <Tabs>
   <Tab title="Claude Code">
     ```shell
-    claude plugin uninstall kast@kast
-    claude plugin marketplace remove kast
+    kast agent remove claude
     ```
   </Tab>
   <Tab title="Codex">
     ```shell
-    codex plugin remove kast@kast
-    codex plugin marketplace remove kast
+    kast agent remove codex
     ```
   </Tab>
 </Tabs>
