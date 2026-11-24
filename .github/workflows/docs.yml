@@ -33,7 +33,7 @@ jobs:
           python-version-file: .python-version
 
       - name: Install declared tools and separate reader Vale
-        uses: jdx/mise-action@5228313ee0372e111a38da051671ca30fc5a96db # v3
+        uses: jdx/mise-action@924e7c586e33d7d4bae9c14e26c5d22e2beb6e78 # v5.3.0
         with:
           install_args: uv java node vale@3.24.0 vale@3.25.1
 
