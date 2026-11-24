@@ -620,9 +620,9 @@ func TestStableAndVersionFollowTheReleaseMapping(t *testing.T) {
 		t.Run(arguments[0], func(t *testing.T) {
 			f := newFixture(t)
 			raw := f.pages[releases+"/"+tag+"/build-record.json"]
-			f.pages[stableURL] = f.encode(map[string]any{"tag_name": "v1.2.3", "draft": false, "prerelease": false, "id": 7})
-			f.pages[releases+"/v1.2.3/release-mapping.json"] = f.encode(map[string]any{
+			f.pages[stableURL] = f.encode(map[string]any{
 				"schemaVersion": 1, "publicVersion": "1.2.3", "buildRecordSha256": digest(raw)})
+			f.pages[releases+"/v1.2.3/release-mapping.json"] = f.pages[stableURL]
 			f.pages[releases+"/v1.2.3/build-record.json"] = raw
 			if err := f.run(append([]string{"--dry-run"}, arguments...)...); err != nil {
 				t.Fatal(err)
@@ -640,9 +640,16 @@ func TestStableAndVersionFollowTheReleaseMapping(t *testing.T) {
 func TestNoSelectorFollowsTheStableChannel(t *testing.T) {
 	f := newFixture(t)
 	raw := f.pages[releases+"/"+tag+"/build-record.json"]
-	f.pages[stableURL] = f.encode(map[string]any{"tag_name": "v1.2.3", "draft": false, "prerelease": false})
-	f.pages[releases+"/v1.2.3/release-mapping.json"] = f.encode(map[string]any{
+	if strings.Contains(stableURL, "api.github.com") {
+		t.Errorf("the stable channel reads the rate-limited API: %s", stableURL)
+	}
+	for _, invalid := range []string{"{}", `{"schemaVersion":1,"publicVersion":"v1.2.3","buildRecordSha256":"` + digest(raw) + `"}`} {
+		f.pages[stableURL] = []byte(invalid)
+		f.requireFailure(RecordInvalid, f.install().Run(context.Background(), []string{"--dry-run"}))
+	}
+	f.pages[stableURL] = f.encode(map[string]any{
 		"schemaVersion": 1, "publicVersion": "1.2.3", "buildRecordSha256": digest(raw)})
+	f.pages[releases+"/v1.2.3/release-mapping.json"] = f.pages[stableURL]
 	f.pages[releases+"/v1.2.3/build-record.json"] = raw
 	// The fixture publishes a preview too, which an unselected installation must not choose.
 	if err := f.install().Run(context.Background(), []string{"--dry-run"}); err != nil {

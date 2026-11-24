@@ -1,7 +1,6 @@
 package io.github.amichne.kast.cli.publicshell
 
 import java.nio.file.Path
-import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
@@ -84,7 +83,7 @@ class NativeReleaseCatalogTest {
 
     @Test
     fun `native versions rejects an oversized HTTPS document`(@TempDir directory: Path) {
-        val large = json.encodeToString(StableDocument(body = "x".repeat(65_536)))
+        val large = json.encodeToString(StableDocument(publicVersion = "x".repeat(65_536)))
         ReleaseHttpsFixture(directory, listOf(stable().copy(body = large))).use { peer ->
             val result = peer.versions()
             assertRejected(result, "CATALOG_UNAVAILABLE")
@@ -124,7 +123,11 @@ class NativeReleaseCatalogTest {
     }
 
     private fun stable() =
-        ReleaseHttpReply("api.github.com", "/repos/amichne/kast/releases/latest", json.encodeToString(StableDocument()))
+        ReleaseHttpReply(
+            "github.com",
+            "/amichne/kast/releases/latest/download/release-mapping.json",
+            json.encodeToString(StableDocument()),
+        )
 
     private fun catalog() =
         ReleaseHttpReply(
@@ -136,10 +139,9 @@ class NativeReleaseCatalogTest {
 
 @Serializable
 private data class StableDocument(
-    @SerialName("tag_name") val tag: String = "v1.2.3",
-    val draft: Boolean = false,
-    val prerelease: Boolean = false,
-    val body: String = "",
+    val schemaVersion: Int = 1,
+    val publicVersion: String = "1.2.3",
+    val buildRecordSha256: String = "9".repeat(64),
 )
 
 @Serializable

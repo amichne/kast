@@ -246,8 +246,16 @@ class ProductRecordTest(unittest.TestCase):
                 )
 
     def test_no_selector_tracks_the_latest_stable_release(self) -> None:
-        latest = {"tag_name": "v1.2.3", "draft": False, "prerelease": False}
+        latest = asdict(release.ReleaseMapping(1, "1.2.3", "d" * 64))
         source = Source({release.STABLE_URL: json.dumps(latest).encode()})
+        self.assertNotIn("api.github.com", release.STABLE_URL)
+        for invalid in (b"{", b"{}", json.dumps(latest | {"publicVersion": "v1.2.3"}).encode()):
+            with self.subTest(invalid=invalid):
+                rejected = release.resolve_selection(
+                    "stable", None, None, Source({release.STABLE_URL: invalid})
+                )
+                assert isinstance(rejected, release.Rejected)
+                self.assertEqual(release.Failure.CATALOG_UNAVAILABLE, rejected.reason)
         selected = release.resolve_selection(None, None, None, source)
         self.assertEqual(
             release.StableSelection("1.2.3", "v1.2.3", release.StablePolicy.TRACK), selected

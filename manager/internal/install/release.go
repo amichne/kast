@@ -13,9 +13,10 @@ import (
 
 // The publisher's names, as managed_release.py reads them.
 const (
-	repository    = "amichne/kast"
-	catalogURL    = "https://raw.githubusercontent.com/" + repository + "/developer-latest/builds.json"
-	stableURL     = "https://api.github.com/repos/" + repository + "/releases/latest"
+	repository = "amichne/kast"
+	catalogURL = "https://raw.githubusercontent.com/" + repository + "/developer-latest/builds.json"
+	// GitHub's API limits unauthenticated reads per address, so this is the latest stable release's own mapping.
+	stableURL     = "https://github.com/" + repository + "/releases/latest/download/release-mapping.json"
 	releases      = "https://github.com/" + repository + "/releases/download"
 	recordSchema  = 3
 	maximumRecord = 64 << 10
@@ -211,20 +212,11 @@ func (i *Install) refer(ctx context.Context, selected selector) (reference, erro
 		if err != nil {
 			return reference{}, err
 		}
-		// GitHub's document has many other members, which may change.
-		var latest struct {
-			Tag        string `json:"tag_name"`
-			Draft      bool   `json:"draft"`
-			Prerelease bool   `json:"prerelease"`
+		var latest mappingDocument
+		if strict(raw, &latest) != nil || latest.SchemaVersion != 1 || !versionForm.MatchString(latest.PublicVersion) {
+			return reference{}, reject(RecordInvalid, "the latest stable release mapping is invalid")
 		}
-		version, tagged := "", false
-		if err = json.Unmarshal(raw, &latest); err == nil {
-			version, tagged = strings.CutPrefix(latest.Tag, "v")
-		}
-		if !tagged || latest.Draft || latest.Prerelease || !versionForm.MatchString(version) {
-			return reference{}, reject(RecordInvalid, "GitHub names no stable release")
-		}
-		return i.mapped(ctx, version)
+		return i.mapped(ctx, latest.PublicVersion)
 	case oneCommit:
 		return i.catalogued(ctx, selected.prefix)
 	default:

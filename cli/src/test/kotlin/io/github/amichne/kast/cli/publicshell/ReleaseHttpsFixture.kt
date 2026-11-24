@@ -157,7 +157,7 @@ internal class ReleaseHttpsFixture(
                     "-validity",
                     "1",
                     "-ext",
-                    "SAN=dns:api.github.com,dns:raw.githubusercontent.com",
+                    "SAN=dns:github.com,dns:raw.githubusercontent.com",
                 )
                 .redirectErrorStream(true)
                 .redirectOutput(directory.resolve("keytool.log").toFile())

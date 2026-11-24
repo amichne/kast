@@ -70,13 +70,6 @@ class BuildResource:
 
 
 @dataclass(frozen=True)
-class StableRelease:
-    tag_name: str
-    draft: bool = False
-    prerelease: bool = False
-
-
-@dataclass(frozen=True)
 class Catalog:
     builds: tuple[release.MainEntry, ...]
     schemaVersion: int = 1
@@ -133,7 +126,7 @@ type JsonFixture = (
     | release.HostedContract
     | ControlRecord
     | HostRecord
-    | StableRelease
+    | release.ReleaseMapping
     | Catalog
     | Candidate
     | Promotion
@@ -327,7 +320,7 @@ class ReleaseAdmissionTest(unittest.TestCase):
                     "263",
                 )
             )
-        assets[release.STABLE_URL] = encoded(StableRelease("v" + version))
+        assets[release.STABLE_URL] = encoded(release.ReleaseMapping(1, version, "d" * 64))
         return Source(
             assets
             | {
