@@ -676,7 +676,6 @@ class ProductProducerTest(unittest.TestCase):
         jobs = dict(
             re.findall(r"(?ms)^  ([\w-]+):\n(.*?)(?=^  [\w-]+:\n|\Z)", ci.split("\njobs:\n", 1)[1])
         )
-        self.assertNotIn("composed-products", jobs)
         mac = jobs["composed-macos"]
         # Qualification and sealing run beside source validation; the join keeps the source proof.
         self.assertIn("needs: [scope, assembly]", mac)
@@ -700,7 +699,7 @@ class ProductProducerTest(unittest.TestCase):
         self.assertIn("needs: sealed-product", jobs["installed-product"])
         self.assertIn("run: mise run ci:acceptance ", jobs["installed-product"])
         self.assertIn("product_lifecycle_probe.py", task_run("ci:acceptance"))
-        self.assertIn("kotlin, complete-product]", jobs["required"])
+        self.assertIn("kotlin, complete-product, two-platform-product]", jobs["required"])
         self.assertLess(
             jobs["required"].index('test "$COMPLETE_PRODUCT_RESULT" = success'),
             jobs["required"].index("run: mise run ci:outcome"),

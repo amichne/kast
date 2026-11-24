@@ -328,6 +328,54 @@ jobs:
       release_target: macos-aarch64
       assembled_artifact_id: ${{ needs.assembly.outputs.artifact_id }}
 
+  composed-linux:
+    name: Linux complete-product qualification
+    # Linux assembles its own release, so it waits for no Mac input.
+    needs: scope
+    if: >-
+      needs.scope.outputs.product == 'run' && vars.KAST_MACOS_CHECKS == 'true' &&
+      vars.KAST_NATIVE_COMPILATION != 'false' &&
+      (inputs.rollout == '' || inputs.rollout == 'none')
+    uses: ./.github/workflows/composed-linux.yml
+    with:
+      version: 0.0.${{ github.run_number }}
+      complete_product: true
+      release_target: linux-x86_64
+
+  # No release reads this record yet. It proves both targets from one source, and a retained
+  # main record can become the first upgrade baseline that has a Linux target.
+  two-platform-product:
+    name: Seal both product targets without rebuilding
+    needs: [scope, composed-macos, composed-linux]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: Install the task runner
+        uses: jdx/mise-action@5228313ee0372e111a38da051671ca30fc5a96db # v3
+        with:
+          install: false
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
+        with:
+          name: kast-qualified-product-macos-aarch64-${{ github.sha }}-${{ github.run_id }}-${{ needs.composed-macos.outputs.run_attempt }}
+          path: build/product-inputs/macos-aarch64
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
+        with:
+          name: kast-qualified-product-linux-x86_64-${{ github.sha }}-${{ github.run_id }}-${{ needs.composed-linux.outputs.run_attempt }}
+          path: build/product-inputs/linux-x86_64
+      - name: Seal the two-platform build record
+        run: mise run ci:seal-two-platform
+      - uses: actions/upload-artifact@v7.0.2
+        with:
+          name: ci-product-two-platform-${{ github.sha }}-${{ github.run_attempt }}
+          path: build/product-two-platform/
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 30
+
   sealed-product:
     name: Seal the qualified Mac product
     # Sealing reads only the qualified Mac product inputs. Source proof gates the join,
@@ -509,7 +557,7 @@ jobs:
 
   required:
     name: CI required checks
-    needs: [scope, source, documentation, portable, kotlin, complete-product]
+    needs: [scope, source, documentation, portable, kotlin, complete-product, two-platform-product]
     if: always() && (inputs.rollout == '' || inputs.rollout == 'none')
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -533,6 +581,12 @@ jobs:
         env:
           COMPLETE_PRODUCT_RESULT: ${{ needs.complete-product.result }}
         run: test "$COMPLETE_PRODUCT_RESULT" = success
+
+      - name: Require Linux qualification for the selected product gate
+        if: needs.scope.outputs.product == 'run'
+        env:
+          TWO_PLATFORM_RESULT: ${{ needs.two-platform-product.result }}
+        run: test "$TWO_PLATFORM_RESULT" = success
 
       - name: Seal successful validation outcome
         env:
