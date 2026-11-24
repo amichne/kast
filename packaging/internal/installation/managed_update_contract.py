@@ -29,6 +29,8 @@ class Failure(StrEnum):
     CHILD_TIMEOUT = "CHILD_TIMEOUT"
     CANCELLED = "CANCELLED"
     PLATFORM_UNAVAILABLE = "PLATFORM_UNAVAILABLE"
+    # The installed records are not ones this installer admits: only a reset replaces them.
+    PRIOR_INSTALLATION_UNSUPPORTED = "PRIOR_INSTALLATION_UNSUPPORTED"
     # State admission: a check names the entries it refused through StateEntries.
     UNOWNED_STATE_ENTRY = "UNOWNED_STATE_ENTRY"
     MISSING_STATE_ENTRY = "MISSING_STATE_ENTRY"

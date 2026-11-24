@@ -74,7 +74,6 @@ class Rejected:
     reason: Failure
     stage: Stage
     requested: str
-    platform: str = PLATFORM
     selectable: tuple[str, ...] = ()
     transfer: TransferRejected | None = None
 

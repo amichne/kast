@@ -60,7 +60,6 @@ class ManagedHeadlessTest(unittest.TestCase):
                         "reason": "INSTALLER_CONTRACT_UNSUPPORTED",
                         "stage": "RECORDS",
                         "requested": "0.0.0",
-                        "platform": "macos-aarch64",
                         "selectable": (),
                         "transfer": None,
                     },

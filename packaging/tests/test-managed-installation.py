@@ -161,6 +161,18 @@ class TransferRejectionPresentationTest(unittest.TestCase):
             json.loads(stdout),
         )
 
+    def test_a_rejection_names_the_observed_host(self) -> None:
+        stdout = io.StringIO()
+        with (
+            tempfile.TemporaryDirectory(prefix="kast-transfer-") as temporary,
+            patch.dict(os.environ, {"HOME": str(Path(temporary).resolve())}),
+            patch.object(install.platform, "system", return_value="Linux"),
+            patch.object(install.platform, "machine", return_value="x86_64"),
+            contextlib.redirect_stdout(stdout),
+        ):
+            _ = install.main(["--version", "0.52.0", "--json"], UntrustedReleaseSource())
+        self.assertEqual("linux-x86_64", json.loads(stdout.getvalue())["platform"])
+
     def test_human_rejection_names_the_certificate_bundle_remedy(self) -> None:
         code, stdout, stderr, _ = self.run_install(["--channel", "preview"])
         self.assertNotEqual(0, code)

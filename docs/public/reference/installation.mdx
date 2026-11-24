@@ -29,7 +29,20 @@ Your project still supplies its build configuration, dependencies, and any requi
 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/amichne/kast/main/install.sh)" -- --channel preview
 ```
 
-On a Mac with an older two-platform preview, run the remote installer once to move to the Mac-only preview. Then use `kast upgrade` for later updates.
+### Replace an earlier installation
+
+Kast cannot upgrade some earlier versions in place, including `0.52.0`. From one of these, run the remote installer above instead of `kast upgrade`.
+The installer downloads and verifies the new product first. It then lists what to stop and delete, and asks you to confirm.
+It copies your client configuration to a backup directory before it deletes anything, and prints that directory.
+
+Without a terminal, or with `--json`, the installer does not ask. It changes nothing and exits with status `3`.
+To confirm in advance, add `--replace-existing`:
+
+```shell
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/amichne/kast/main/install.sh)" -- --channel preview --replace-existing
+```
+
+### What the installer does
 
 The installer selects one complete product: an immutable vendor base and exact Control, Host, and agent components.
 It verifies the selected records and bytes before activation. A missing component is a failure, not permission to mix builds.
