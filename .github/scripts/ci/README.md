@@ -285,14 +285,13 @@ The failure is `GRADLE_TIMED_OUT`, not a silent job cancellation.
 
 Ubuntu assembles the shared release and runs source validation.
 The hosted Mac restores the exact assembled release and qualifies the macOS ARM64 runtime.
-The sealed record identifies the Mac archives and their digests.
-Installed acceptance exercises the shipped Control, coordinator, and Host against those bytes.
-Two jobs run its parts in parallel, each on its own runner: `installed-upgrade` upgrades a queried baseline, and `installed-fresh` covers every other case.
-The join admits both parts only on one product and one baseline, and writes the receipt that a release reads.
-A missing or failed Mac receipt blocks the required check and preview publication.
-Ubuntu also assembles and qualifies the Linux x86-64 product. A failure blocks the required check.
-The `two-platform-product` job seals one record for both targets and retains it for 30 days. No release reads that record.
-Installed acceptance still exercises only the Mac product. Earlier two-platform records still need both receipts.
+Ubuntu also assembles and qualifies the Linux x86-64 product.
+`sealed-product` seals one record that identifies the archives of both targets and their digests.
+Installed acceptance exercises the shipped Control, coordinator, and Host against those bytes on both platforms.
+Four jobs run in parallel, each on its own runner: for each target, the upgrade part upgrades a queried baseline, and the fresh part covers every other case.
+The join admits both parts of both targets only on one product and one baseline, and writes the receipts that a release reads.
+A missing or failed receipt on either platform blocks the required check and preview publication.
+The pinned baseline is a two-platform record without installed acceptance. `UNACCEPTED_SEED_SHA256` admits exactly that record, and the next baseline pin removes it.
 
 ### Rerun failed product jobs
 

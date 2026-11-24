@@ -335,45 +335,12 @@ jobs:
       complete_product: true
       release_target: linux-x86_64
 
-  # No release reads this record yet. It proves both targets from one source, and a retained
-  # main record can become the first upgrade baseline that has a Linux target.
-  two-platform-product:
-    name: Seal both product targets without rebuilding
-    needs: [scope, composed-macos, composed-linux]
-    runs-on: ubuntu-24.04
-    timeout-minutes: 30
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          ref: ${{ github.sha }}
-          persist-credentials: false
-      - name: Install the task runner
-        uses: jdx/mise-action@5228313ee0372e111a38da051671ca30fc5a96db # v3
-        with:
-          install: false
-      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
-        with:
-          name: kast-qualified-product-macos-aarch64-${{ github.sha }}-${{ github.run_id }}-${{ needs.composed-macos.outputs.run_attempt }}
-          path: build/product-inputs/macos-aarch64
-      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
-        with:
-          name: kast-qualified-product-linux-x86_64-${{ github.sha }}-${{ github.run_id }}-${{ needs.composed-linux.outputs.run_attempt }}
-          path: build/product-inputs/linux-x86_64
-      - name: Seal the two-platform build record
-        run: mise run ci:seal-two-platform
-      - uses: actions/upload-artifact@v7.0.2
-        with:
-          name: ci-product-two-platform-${{ github.sha }}-${{ github.run_attempt }}
-          path: build/product-two-platform/
-          if-no-files-found: error
-          compression-level: 0
-          retention-days: 30
-
   sealed-product:
-    name: Seal the qualified Mac product
-    # Sealing reads only the qualified Mac product inputs. Source proof gates the join,
+    # Baseline admission requires this job name.
+    name: Seal both product targets without rebuilding
+    # Sealing reads only the qualified product inputs. Source proof gates the join,
     # so installed acceptance starts as soon as the product is sealed.
-    needs: [scope, composed-macos]
+    needs: [scope, composed-macos, composed-linux]
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     # Each product artifact carries the attempt of the job that produced it. A rerun of
@@ -394,6 +361,10 @@ jobs:
         with:
           name: kast-qualified-product-macos-aarch64-${{ github.sha }}-${{ github.run_id }}-${{ needs.composed-macos.outputs.run_attempt }}
           path: build/product-inputs/macos-aarch64
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
+        with:
+          name: kast-qualified-product-linux-x86_64-${{ github.sha }}-${{ github.run_id }}-${{ needs.composed-linux.outputs.run_attempt }}
+          path: build/product-inputs/linux-x86_64
       - name: Seal the complete immutable build record
         run: mise run ci:seal
       - uses: actions/upload-artifact@v7.0.2
@@ -404,26 +375,46 @@ jobs:
           compression-level: 0
           retention-days: 30
 
-  # The parts together prove every acceptance case. Each has its own runner and HOME.
-  installed-upgrade:
-    name: Installed upgrade acceptance
+  # The parts together prove every acceptance case for a target. Each has its own runner and HOME.
+  installed-macos-upgrade:
+    name: Installed macOS upgrade acceptance
     needs: sealed-product
     uses: ./.github/workflows/installed-acceptance.yml
     with:
+      target: macos-aarch64
       part: upgrade
       sealed_run_attempt: ${{ needs.sealed-product.outputs.run_attempt }}
 
-  installed-fresh:
-    name: Installed fresh acceptance
+  installed-macos-fresh:
+    name: Installed macOS fresh acceptance
     needs: sealed-product
     uses: ./.github/workflows/installed-acceptance.yml
     with:
+      target: macos-aarch64
+      part: fresh
+      sealed_run_attempt: ${{ needs.sealed-product.outputs.run_attempt }}
+
+  installed-linux-upgrade:
+    name: Installed Linux upgrade acceptance
+    needs: sealed-product
+    uses: ./.github/workflows/installed-acceptance.yml
+    with:
+      target: linux-x86_64
+      part: upgrade
+      sealed_run_attempt: ${{ needs.sealed-product.outputs.run_attempt }}
+
+  installed-linux-fresh:
+    name: Installed Linux fresh acceptance
+    needs: sealed-product
+    uses: ./.github/workflows/installed-acceptance.yml
+    with:
+      target: linux-x86_64
       part: fresh
       sealed_run_attempt: ${{ needs.sealed-product.outputs.run_attempt }}
 
   complete-product:
     name: Join installed acceptance without rewriting the build record
-    needs: [source-work, sealed-product, installed-upgrade, installed-fresh]
+    needs: [source-work, sealed-product, installed-macos-upgrade, installed-macos-fresh, installed-linux-upgrade, installed-linux-fresh]
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     steps:
@@ -441,11 +432,19 @@ jobs:
           path: build/product-sealed
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
         with:
-          name: kast-installed-upgrade-macos-aarch64-${{ github.sha }}-${{ github.run_id }}-${{ needs.installed-upgrade.outputs.run_attempt }}
+          name: kast-installed-upgrade-macos-aarch64-${{ github.sha }}-${{ github.run_id }}-${{ needs.installed-macos-upgrade.outputs.run_attempt }}
           path: build/product-acceptance
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
         with:
-          name: kast-installed-fresh-macos-aarch64-${{ github.sha }}-${{ github.run_id }}-${{ needs.installed-fresh.outputs.run_attempt }}
+          name: kast-installed-fresh-macos-aarch64-${{ github.sha }}-${{ github.run_id }}-${{ needs.installed-macos-fresh.outputs.run_attempt }}
+          path: build/product-acceptance
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
+        with:
+          name: kast-installed-upgrade-linux-x86_64-${{ github.sha }}-${{ github.run_id }}-${{ needs.installed-linux-upgrade.outputs.run_attempt }}
+          path: build/product-acceptance
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
+        with:
+          name: kast-installed-fresh-linux-x86_64-${{ github.sha }}-${{ github.run_id }}-${{ needs.installed-linux-fresh.outputs.run_attempt }}
           path: build/product-acceptance
       - name: Join installed acceptance to the sealed record
         run: mise run ci:join
@@ -503,7 +502,7 @@ jobs:
   # result for main, or a run on main, has selected the product gate and can report it.
   required:
     name: ${{ github.event_name == 'pull_request' && !startsWith(github.head_ref, 'mergify/merge-queue/') && 'Pull request checks' || 'CI required checks' }}
-    needs: [scope, source, documentation, portable, kotlin, complete-product, two-platform-product]
+    needs: [scope, source, documentation, portable, kotlin, complete-product]
     if: always() && (inputs.rollout == '' || inputs.rollout == 'none')
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -522,17 +521,11 @@ jobs:
           CI_NEEDS: ${{ toJSON(needs) }}
         run: mise run ci:required
 
-      - name: Require Mac installed acceptance for the selected product gate
+      - name: Require installed acceptance on both platforms for the selected product gate
         if: needs.scope.outputs.product == 'run'
         env:
           COMPLETE_PRODUCT_RESULT: ${{ needs.complete-product.result }}
         run: mise run ci:require-result "$COMPLETE_PRODUCT_RESULT" success
-
-      - name: Require Linux qualification for the selected product gate
-        if: needs.scope.outputs.product == 'run'
-        env:
-          TWO_PLATFORM_RESULT: ${{ needs.two-platform-product.result }}
-        run: mise run ci:require-result "$TWO_PLATFORM_RESULT" success
 
       - name: Seal successful validation outcome
         env:
