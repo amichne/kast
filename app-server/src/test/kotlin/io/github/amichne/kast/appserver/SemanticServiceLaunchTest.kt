@@ -8,6 +8,8 @@ import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.condition.EnabledOnOs
+import org.junit.jupiter.api.condition.OS
 
 class SemanticServiceLaunchTest {
     @Test
@@ -126,9 +128,13 @@ class SemanticServiceLaunchTest {
         Files.setPosixFilePermissions(executable, PosixFilePermissions.fromString("rwx------"))
         val command = checkNotNull(SemanticServiceLaunch.admit(root, root, mapOf("TMPDIR" to "/tmp/\$literal")))
         val runtime = createLinuxUserRuntime(root)
+        Files.createFile(Files.createDirectory(runtime.resolve("systemd")).resolve("private"))
         val calls = mutableListOf<List<String>>()
         val host =
-            LinuxPersistentBrokerServiceHost(runtime.parent) { arguments, _ ->
+            LinuxPersistentBrokerServiceHost(
+                runtime.parent,
+                detach = { error("A user with a manager needs no detached start") },
+            ) { arguments, _ ->
                 assertEquals(listOf("/usr/bin/env", "-i", "XDG_RUNTIME_DIR=$runtime"), arguments.take(3))
                 val commandArguments = arguments.drop(3)
                 calls += commandArguments
@@ -159,15 +165,149 @@ class SemanticServiceLaunchTest {
         assertTrue(calls[1].contains("TMPDIR=/tmp/\$\$literal"))
         assertTrue(calls[1].contains(executable.toString()))
         assertEquals("--semantic", calls[1].last())
+    }
 
+    @Test
+    fun `a user without a systemd manager starts one detached service and waits for its publication`() =
+        withCoordinatorPayload { root, _ ->
+            val command = linuxCommand(root)
+            val base = Files.createDirectory(root.resolve("run-user"))
+            val runtime = base.resolve(Files.getAttribute(root, "unix:uid").toString())
+            for (present in listOf(false, true)) {
+                // Neither an absent runtime directory nor one without a manager socket can own a unit.
+                if (present)
+                    Files.createDirectory(
+                        runtime,
+                        PosixFilePermissions.asFileAttribute(PosixFilePermissions.fromString("rwx------")),
+                    )
+                val started = mutableListOf<SemanticServiceLaunch>()
+                val publications =
+                    ArrayDeque(
+                        listOf(
+                            SemanticPublicationState.Missing,
+                            SemanticPublicationState.Missing,
+                            SemanticPublicationState.Starting("generation"),
+                        )
+                    )
+                var pauses = 0
+                val host =
+                    linuxHost(
+                        base,
+                        detach = {
+                            started += it
+                            LaunchctlInvocation.Completed
+                        },
+                        observe = { publications.removeFirst() },
+                        pause = { pauses++ },
+                    )
+                assertEquals(Refinement.Refined(Unit), host.submitSemantic(command))
+                assertEquals(listOf(command), started)
+                assertEquals(0, publications.size)
+                assertEquals(2, pauses)
+            }
+        }
+
+    @Test
+    fun `a detached service that never publishes releases its callers after a bounded wait`() =
+        withCoordinatorPayload { root, _ ->
+            var starts = 0
+            var pauses = 0L
+            val host =
+                linuxHost(
+                    Files.createDirectory(root.resolve("run-user")),
+                    detach = {
+                        starts++
+                        LaunchctlInvocation.Completed
+                    },
+                    observe = { SemanticPublicationState.Missing },
+                    pause = { pauses++ },
+                )
+            assertEquals(
+                Refinement.Rejected(PersistentBrokerServiceFailure.STARTUP_TIMED_OUT),
+                host.submitSemantic(linuxCommand(root)),
+            )
+            assertEquals(1, starts)
+            assertEquals(
+                BrokerOperationalLimits.serviceStartup.value / BrokerOperationalLimits.servicePoll.value,
+                pauses,
+            )
+        }
+
+    @Test
+    fun `a rejected detached start is a submission failure without an observation`() =
+        withCoordinatorPayload { root, _ ->
+            val host =
+                linuxHost(
+                    Files.createDirectory(root.resolve("run-user")),
+                    detach = { LaunchctlInvocation.Rejected },
+                    observe = { error("Nothing started") },
+                    pause = { error("Nothing started") },
+                )
+            assertEquals(
+                Refinement.Rejected(PersistentBrokerServiceFailure.SERVICE_SUBMISSION_REJECTED),
+                host.submitSemantic(linuxCommand(root)),
+            )
+        }
+
+    @Test
+    fun `an unowned user runtime directory never falls back to a detached start`() = withCoordinatorPayload { root, _ ->
+        val runtime = createLinuxUserRuntime(root)
         Files.setPosixFilePermissions(runtime, PosixFilePermissions.fromString("rwxr-xr-x"))
+        val host =
+            linuxHost(
+                runtime.parent,
+                detach = { error("The runtime directory is not admitted") },
+                observe = { error("Nothing started") },
+                pause = { error("Nothing started") },
+            )
         assertEquals(
-            io.github.amichne.kast.kernel.Refinement.Rejected(
-                PersistentBrokerServiceFailure.SERVICE_OBSERVATION_REJECTED
-            ),
-            host.submitSemantic(command),
+            Refinement.Rejected(PersistentBrokerServiceFailure.SERVICE_OBSERVATION_REJECTED),
+            host.submitSemantic(linuxCommand(root)),
         )
-        assertEquals(2, calls.size)
+    }
+
+    @Test
+    @EnabledOnOs(OS.LINUX)
+    fun `a detached service runs in its own session with only its declared environment`() =
+        withCoordinatorPayload { root, _ ->
+            val command = linuxCommand(root)
+            Files.write(
+                command.executable,
+                listOf(
+                    "#!/bin/sh",
+                    "echo session $(cut -d' ' -f6 /proc/$$/stat)",
+                    "echo arguments $*",
+                    "echo home \$HOME",
+                ),
+            )
+            Files.createDirectories(command.state)
+            Files.createFile(command.log)
+            assertEquals(LaunchctlInvocation.Completed, startDetached(command))
+            val deadline = System.nanoTime() + 10_000_000_000L
+            while (!Files.readString(command.log).contains("home ") && System.nanoTime() < deadline) Thread.sleep(20)
+            val lines = Files.readAllLines(command.log).associate { it.substringBefore(' ') to it.substringAfter(' ') }
+            val caller = Files.readString(Path.of("/proc/self/stat")).substringAfterLast(") ").split(' ')[3]
+            assertFalse(lines.getValue("session") == caller)
+            assertTrue(lines.getValue("arguments").endsWith("--internal-entrypoint=daemon --semantic"))
+            assertEquals(root.toString(), lines.getValue("home"))
+        }
+
+    private fun linuxHost(
+        base: Path,
+        detach: (SemanticServiceLaunch) -> LaunchctlInvocation,
+        observe: (SemanticServiceLaunch) -> SemanticPublicationState,
+        pause: () -> Unit,
+    ) =
+        LinuxPersistentBrokerServiceHost(base, detach, observe, pause) { arguments, _ ->
+            error("No manager can receive $arguments")
+        }
+
+    private fun linuxCommand(root: Path): SemanticServiceLaunch {
+        val executable = root.resolve("share/kast/libexec/kast-management")
+        Files.createDirectories(executable.parent)
+        Files.writeString(executable, "fixture")
+        Files.setPosixFilePermissions(executable, PosixFilePermissions.fromString("rwx------"))
+        return checkNotNull(SemanticServiceLaunch.admit(root, root, emptyMap()))
     }
 
     private fun createLinuxUserRuntime(root: Path): Path {

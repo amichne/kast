@@ -29,16 +29,21 @@ internal fun interface LaunchctlInvoker {
     ): LaunchctlInvocation
 }
 
-/** Bounds the supervisor command. Submitted services run in the supervisor's own process scope. */
+/**
+ * Bounds the supervisor command. Submitted services run in the supervisor's own process scope. [configure] can replace
+ * the discarded output of a command whose service inherits it.
+ */
 internal fun invokeServiceSupervisor(
     arguments: List<String>,
     exitContract: LaunchctlExitContract = LaunchctlExitContract.CompletionOnly,
+    configure: ProcessBuilder.() -> Unit = {},
 ): LaunchctlInvocation {
     val process =
         try {
             ProcessBuilder(arguments)
                 .redirectOutput(ProcessBuilder.Redirect.DISCARD)
                 .redirectError(ProcessBuilder.Redirect.DISCARD)
+                .apply(configure)
                 .start()
         } catch (_: IOException) {
             return LaunchctlInvocation.Rejected

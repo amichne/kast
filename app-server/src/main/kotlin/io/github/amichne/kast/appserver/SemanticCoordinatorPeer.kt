@@ -67,16 +67,17 @@ internal data class SemanticCoordinatorPeer(
 @Serializable
 internal data class ServiceProcessIncarnation(val pid: Long, val startedAt: String) {
     /**
-     * Only an admitted record followed by a vanished process or a different start at this pid proves that the recorded
-     * incarnation exited.
+     * Only an admitted record followed by a vanished process, an exited process that no parent reaped, or a different
+     * start at this pid proves that the recorded incarnation exited.
      */
-    fun observe(): SemanticPeerIncarnation {
+    fun observe(processes: Path = Path.of("/proc")): SemanticPeerIncarnation {
         if (pid <= 0 || !canonicalStart()) return SemanticPeerIncarnation.UNPROVEN
         val process = ProcessHandle.of(pid).orElse(null) ?: return SemanticPeerIncarnation.EXITED
         val started = process.info().startInstant().orElse(null)
         return when {
             started != null && started.toString() != startedAt -> SemanticPeerIncarnation.EXITED
             !process.isAlive -> SemanticPeerIncarnation.EXITED
+            awaitsReaping(processes.resolve("$pid/stat")) -> SemanticPeerIncarnation.EXITED
             started == null -> SemanticPeerIncarnation.UNPROVEN
             else -> SemanticPeerIncarnation.LIVE
         }
@@ -86,6 +87,20 @@ internal data class ServiceProcessIncarnation(val pid: Long, val startedAt: Stri
         try {
             Instant.parse(startedAt).toString() == startedAt
         } catch (_: DateTimeParseException) {
+            false
+        }
+
+    /**
+     * Linux reports an exited process as alive until its parent reaps it, and a container's first process may never do
+     * so. The state follows the parenthesized command, which can itself contain parentheses. Other systems have no such
+     * file, and an unreadable one proves nothing.
+     */
+    private fun awaitsReaping(stat: Path): Boolean =
+        try {
+            Files.readString(stat, Charsets.ISO_8859_1).substringAfterLast(") ", "").firstOrNull() == 'Z'
+        } catch (_: IOException) {
+            false
+        } catch (_: SecurityException) {
             false
         }
 
