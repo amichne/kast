@@ -12,8 +12,10 @@ import io.github.amichne.kast.workspace.intellij.read.IntellijReadObservation
 import io.github.amichne.kast.workspace.intellij.read.IntellijReadPhase
 import org.jetbrains.kotlin.idea.references.KtReference
 import org.jetbrains.kotlin.psi.KtCallElement
+import org.jetbrains.kotlin.psi.KtCallExpression
 import org.jetbrains.kotlin.psi.KtCallableReferenceExpression
 import org.jetbrains.kotlin.psi.KtNamedDeclaration
+import org.jetbrains.kotlin.psi.KtOperationReferenceExpression
 
 /** One native call-site discovery, retaining exact sites and confirming only the unconsumed suffix. */
 internal class IntellijCalleeInventory(
@@ -37,35 +39,86 @@ internal class IntellijCalleeInventory(
                     cancellationCheck()
                     if (collector.admitProviderEnumeration() != IntellijRelationProviderEnumerationAdmission.READY)
                         false
-                    else
-                        when (element) {
-                            is KtCallElement -> collect(element, subject, inventory)
-                            is KtCallableReferenceExpression -> collectReference(element, subject, inventory)
-                            else -> true
-                        }
+                    else collectSite(element, subject, inventory)
                 },
             )
         return inventory.finish(exhausted, RelationProviderState::callees)
     }
 
+    private fun collectSite(
+        element: PsiElement,
+        subject: KtNamedDeclaration,
+        inventory: IntellijRelationInventory<RelationProviderLocator.Callee>,
+    ): Boolean {
+        val ordinary =
+            when (element) {
+                is KtCallElement -> collect(element, subject, inventory)
+                is KtCallableReferenceExpression -> collectReference(element, subject, inventory)
+                is KtOperationReferenceExpression -> !element.isInfixName() || collectInfix(element, subject, inventory)
+                else -> true
+            }
+        return ordinary && collectConvention(element, subject, inventory)
+    }
+
+    private fun collectInfix(
+        operation: KtOperationReferenceExpression,
+        subject: KtNamedDeclaration,
+        inventory: IntellijRelationInventory<RelationProviderLocator.Callee>,
+    ): Boolean = collectReferences(operation, subject, inventory, operation.conventionReferences())
+
+    private fun collectConvention(
+        site: PsiElement,
+        subject: KtNamedDeclaration,
+        inventory: IntellijRelationInventory<RelationProviderLocator.Callee>,
+    ): Boolean {
+        val roles = site.conventionRoles()
+        if (roles.isEmpty()) return true
+        val owner = site.nearestDeclaration()
+        if (owner.enclosing()?.declaration !== subject) return true
+        val references = site.conventionReferences()
+        // Every call expression is a possible invoke site, so a missing invoke reference is not a missing call.
+        if (references.isEmpty()) return site is KtCallExpression || unresolvedSite()
+        return references.all { reference ->
+            roles.all { role ->
+                collector.admitProviderCandidate() == IntellijRelationProviderEnumerationAdmission.READY &&
+                    inventory.append(locators.callee(CalleeProviderItem.Convention(reference, role, owner)))
+            }
+        }
+    }
+
+    private fun unresolvedSite(): Boolean {
+        collector.blockPartition(RelationLimitation.UNRESOLVED_TARGET)
+        return false
+    }
+
+    private fun ContainingDeclaration.enclosing(): ContainingDeclaration.Found? =
+        when (this) {
+            is ContainingDeclaration.Deferred -> enclosingDeclaration() as? ContainingDeclaration.Found
+            is ContainingDeclaration.Found -> this
+            ContainingDeclaration.Unsupported -> null
+        }
+
     private fun collectReference(
         expression: KtCallableReferenceExpression,
         subject: KtNamedDeclaration,
         inventory: IntellijRelationInventory<RelationProviderLocator.Callee>,
+    ): Boolean =
+        collectReferences(
+            expression,
+            subject,
+            inventory,
+            expression.callableReference.references.filterIsInstance<KtReference>(),
+        )
+
+    private fun collectReferences(
+        site: PsiElement,
+        subject: KtNamedDeclaration,
+        inventory: IntellijRelationInventory<RelationProviderLocator.Callee>,
+        references: List<KtReference>,
     ): Boolean {
-        val owner = expression.nearestDeclaration()
-        val enclosing =
-            when (owner) {
-                is ContainingDeclaration.Deferred -> owner.enclosingDeclaration()
-                is ContainingDeclaration.Found,
-                ContainingDeclaration.Unsupported -> owner
-            }
-        if (enclosing !is ContainingDeclaration.Found || enclosing.declaration !== subject) return true
-        val references = expression.callableReference.references.filterIsInstance<KtReference>()
-        if (references.isEmpty()) {
-            collector.blockPartition(RelationLimitation.UNRESOLVED_TARGET)
-            return false
-        }
+        val owner = site.nearestDeclaration()
+        if (owner.enclosing()?.declaration !== subject) return true
+        if (references.isEmpty()) return unresolvedSite()
         return references.all { reference ->
             collector.admitProviderCandidate() == IntellijRelationProviderEnumerationAdmission.READY &&
                 inventory.append(locators.callee(CalleeProviderItem.Reference(reference, owner)))
@@ -78,13 +131,7 @@ internal class IntellijCalleeInventory(
         inventory: IntellijRelationInventory<RelationProviderLocator.Callee>,
     ): Boolean {
         val owner = call.nearestDeclaration()
-        val enclosing =
-            when (owner) {
-                is ContainingDeclaration.Deferred -> owner.enclosingDeclaration()
-                is ContainingDeclaration.Found,
-                ContainingDeclaration.Unsupported -> owner
-            }
-        if (enclosing !is ContainingDeclaration.Found || enclosing.declaration !== subject) return true
+        if (owner.enclosing()?.declaration !== subject) return true
         if (collector.admitProviderCandidate() != IntellijRelationProviderEnumerationAdmission.READY) return false
         if (
             owner is ContainingDeclaration.Found &&

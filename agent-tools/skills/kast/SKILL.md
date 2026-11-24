@@ -49,6 +49,7 @@ Run commands from the workspace root, or add `--workspace /absolute/root`. Set t
 verdict='{type, status: .document.status, exhaustive: .document.coverage.exhaustive,
   failures: .document.original_evidence_summary.failure_count,
   omissions: .document.original_evidence_summary.omission_count,
+  total: (.document.row_window.total // (.document.items | length)),
   rows: .document.row_window.type, next_cursor: .document.next_cursor,
   result: .document.retention.reference,
   items: [.document.items[]? |
@@ -74,6 +75,7 @@ Match the strength of each claim to the verdict:
 | Qualified or rejected | "At least these." Report the omissions and failures. Never claim absence. |
 
 `rows` set to `MORE` means that more rows exist. The query still reports `complete`.
+`total` counts every row of the query, not only this page. Do not read pages to count rows.
 Read the next page with `kast result read`. Use the original output kind for every page.
 Never repeat a query to recover output.
 
@@ -163,6 +165,7 @@ Project each use site with this filter:
 uses='{type, status: .document.status, exhaustive: .document.coverage.exhaustive,
   failures: .document.original_evidence_summary.failure_count,
   omissions: .document.original_evidence_summary.omission_count,
+  total: (.document.row_window.total // (.document.items | length)),
   rows: .document.row_window.type, next_cursor: .document.next_cursor,
   result: .document.retention.reference,
   items: [.document.items[]? | {target: .occurrence.target.qualifiedIdentity,
@@ -217,6 +220,25 @@ kast diagnostic check --path services/orders/src/main/kotlin --max-diagnostics 5
 
 Report the diagnostics and their coverage. An incomplete empty diagnostic result does not prove a clean scope.
 
+**How many times is `A` used, and by how many functions:**
+
+```sh
+kast query --ref "$A" --relation references --output occurrences --max-results 1 --jq "$uses"
+kast query --request owners.json --jq "$verdict"
+```
+
+Write `owners.json` with the ref of `A`:
+
+```json
+{"request":{"type":"RUN","source":{"type":"SYMBOL_REFS","symbolRefs":["REF_OF_A"]},
+  "steps":[{"type":"EXPAND_RELATION","relation":"REFERENCES"},{"type":"DISTINCT_SYMBOLS"}],
+  "executionBudget":{"maxResults":1},
+  "terminalStep":{"type":"EMIT","output":{"type":"SYMBOLS","fields":["NAME"]}}}}
+```
+
+The first `total` counts use sites. The second counts the declarations that own them.
+A plain `references` query emits one symbol row for each use, so its `total` counts uses.
+
 **Several hops of one relation:** adapt the installed `WALK` example:
 
 ```sh
@@ -257,6 +279,11 @@ If Kast cannot answer, use ordinary source reads and state the limitation.
 - Source sets default to `main` and `test`. Pass each `--source-set` that the task requests.
 - A lambda stored in a constructor or a non-inline parameter has no caller in the enclosing function.
   A `CALLERS` stage can reject with `CALLBACK_GRAPH_UNPROVEN`. See [stored lambdas](public-cli.md#calls-inside-stored-lambdas).
+- To count use sites, use `references`. `callers` omits calls in stored lambdas, such as most coroutine builder bodies.
+- Operators, loops, destructuring, and delegates call functions without call syntax. `callers` and `callees` include them.
+  Incoming reads of operator `next`, `hasNext`, `getValue`, `setValue`, or `set` stay qualified. Report "at least these".
+- Selection finds workspace source only. A library name, such as `listOfNotNull`, returns a complete, empty result.
+  That result says nothing about its uses. Use text search for library uses, and report "at least these".
 - Static resolution excludes reflection, dependency injection, and runtime dispatch that the compiler cannot see.
 
 See the guide for [operation choices](public-cli.md#choose-the-operation-first), [request documents](public-cli.md#request-documents), [optional MCP tools](public-cli.md#optional-mcp-tools), and [fresh sessions](public-cli.md#fresh-sessions).

@@ -200,7 +200,9 @@ private fun IntellijExactReferenceShape.admits(reference: KtReference): Boolean 
             // An implicit invoke reference owns the entire call, including arguments, rather than its callee name.
             // The native reference type proves the call shape; K2 confirmation still proves the selected target.
             IntellijExactReferenceShape.CALL ->
-                reference is KtInvokeFunctionReference || reference.element.isCallCallee()
+                reference is KtInvokeFunctionReference ||
+                    reference.element.isCallCallee() ||
+                    reference.element.isConventionCallSite()
             IntellijExactReferenceShape.TYPE ->
                 PsiTreeUtil.getParentOfType(reference.element, KtTypeReference::class.java, false) != null
         }
