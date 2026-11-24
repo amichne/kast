@@ -113,6 +113,61 @@ class SharedNativeFixtureIdeaTest {
         assertRejected(supplied, "its product-info.json has no valid buildNumber")
     }
 
+    @Test
+    fun `selected jars keep path order across archives and follow the extraction`() {
+        fixture()
+        val names = listOf("lib/z.jar", "lib/a.jar", "lib/nested/m.jar", "plugins/Kotlin/lib/k.jar")
+        val other = mapOf("lib/notes.txt" to "text", "plugins/Kotlin/lib/jps/skipped.jar" to "jps", "bin/tool.jar" to "bin")
+        val expected = listOf("lib/a.jar", "lib/nested/m.jar", "lib/z.jar", "plugins/Kotlin/lib/k.jar")
+        for (order in listOf(names, names.reversed())) {
+            archive(order.associateWith { it } + other)
+            GradleRunner.create().withProjectDir(root.toFile()).withArguments(
+                ":relation:intellij:clean", "--no-watch-fs", "-Dorg.gradle.jvmargs=-Xmx512m",
+            ).build()
+            // The first pass extracts the distribution after the configuration cache stored its task graph.
+            repeat(2) {
+                val listed = listJars()
+                assertEquals(expected, listed)
+            }
+        }
+        archive(mapOf("lib/b.jar" to "only"))
+        assertEquals(listOf("lib/b.jar"), listJars())
+    }
+
+    @Test
+    fun `a synchronization before the extraction resolves no jars and does not fail`() {
+        fixture()
+        archive(mapOf("lib/a.jar" to "a"))
+        val synchronized =
+            GradleRunner.create().withProjectDir(root.toFile()).withArguments(
+                "-Psynchronize=true", "help", "--no-watch-fs", "-Dorg.gradle.jvmargs=-Xmx512m",
+            ).build()
+        assertTrue(synchronized.output.contains("synchronized jars: []")) { synchronized.output.takeLast(4_096) }
+        assertNull(synchronized.task(PRODUCER))
+        assertEquals(listOf("lib/a.jar"), listJars())
+    }
+
+    @Test
+    fun `patterns match names as file trees do`() {
+        assertTrue(antPattern("lib/**/*.jar").matches("lib/a.jar"))
+        assertTrue(antPattern("lib/**/*.jar").matches("lib/a/b/c.jar"))
+        assertTrue(antPattern("plugins/Kotlin/lib/jps/**").matches("plugins/Kotlin/lib/jps/a/b.jar"))
+        assertTrue(antPattern("lib/intellij.libraries.ktor.*.jar").matches("lib/intellij.libraries.ktor.utils.jar"))
+        assertTrue(!antPattern("lib/*.jar").matches("lib/nested/a.jar"))
+        assertTrue(!antPattern("lib/**/*.jar").matches("plugins/lib/a.jar"))
+        assertTrue(!antPattern("lib/a.jar").matches("lib/aXjar"))
+    }
+
+    private fun listJars(): List<String> {
+        val result =
+            GradleRunner.create().withProjectDir(root.toFile()).withArguments(
+                ":symbol:intellij:listJars", "--configuration-cache", "--no-watch-fs", "--console=plain",
+                "-Dorg.gradle.jvmargs=-Xmx512m",
+            ).build()
+        assertTrue(result.task(PRODUCER) != null) { result.output.takeLast(4_096) }
+        return root.resolve("symbol/intellij/build/jars.txt").readText().lines().filter { it.isNotEmpty() }
+    }
+
     private fun assertRejected(supplied: Path, problem: String) {
         root.resolve("idea.zip").writeText("invalid archive must remain unobserved with an explicit home")
         val rejected = runner("-PnativeFixtureIdeaHome=$supplied").buildAndFail()
@@ -158,6 +213,22 @@ class SharedNativeFixtureIdeaTest {
                 tasks.register('observe', Sync) {
                     from(sdk.contents)
                     into(layout.buildDirectory.dir('observed'))
+                }
+                def jars = sdk.jars(['lib/**/*.jar', 'plugins/Kotlin/lib/**/*.jar'], ['plugins/Kotlin/lib/jps/**'])
+                configurations { classpath }
+                dependencies { classpath jars }
+                if (providers.gradleProperty('synchronize').isPresent()) {
+                    println "synchronized jars: " + configurations.classpath.files.collect { it.name }
+                }
+                def home = sdk.home.get().asFile.toPath()
+                def output = layout.buildDirectory.file('jars.txt')
+                def resolved = files(configurations.classpath)
+                tasks.register('listJars') {
+                    inputs.files(resolved)
+                    outputs.file(output)
+                    doLast {
+                        output.get().asFile.text = resolved.files.collect { home.relativize(it.toPath()).toString() }.join('\n')
+                    }
                 }
             }
             """.trimIndent(),

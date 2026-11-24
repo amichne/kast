@@ -78,16 +78,17 @@ kotlin.target.compilations.getByName("nativeTest").associateWith(kotlin.target.c
 val nativeFixtureIdea = SharedNativeFixtureIdea.select(project, ideaPlatformBuild)
 val nativeIdeaHome = nativeFixtureIdea.home
 val nativeIdeaLibraries =
-    nativeFixtureIdea.contents.asFileTree.matching {
-        include(
-            "lib/**/*.jar",
-            "plugins/java/lib/**/*.jar",
-            "plugins/platform-structuralSearch-plugin/lib/**/*.jar",
-            "plugins/Kotlin/lib/**/*.jar",
-            "plugins/toml/lib/**/*.jar",
-        )
-        exclude("plugins/Kotlin/lib/jps/**", "plugins/Kotlin/lib/kotlinc/**")
-    }
+    nativeFixtureIdea.jars(
+        includes =
+            listOf(
+                "lib/**/*.jar",
+                "plugins/java/lib/**/*.jar",
+                "plugins/platform-structuralSearch-plugin/lib/**/*.jar",
+                "plugins/Kotlin/lib/**/*.jar",
+                "plugins/toml/lib/**/*.jar",
+            ),
+        excludes = listOf("plugins/Kotlin/lib/jps/**", "plugins/Kotlin/lib/kotlinc/**"),
+    )
 
 dependencies {
     add(nativeTest.implementationConfigurationName, nativeIdeaLibraries)

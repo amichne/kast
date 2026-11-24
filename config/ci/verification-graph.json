@@ -330,7 +330,7 @@
         },
         {
             "path": "build-logic/src/main/kotlin/support/tasks/nativefixtures/SharedNativeFixtureIdea.kt",
-            "sha256": "58fbfed9df53b15afeb1d33cd4265276115c4b33f483adab3b9fc1257aecacd2"
+            "sha256": "1e687f8404d55d9ffa7f7e13674f1d5887e7621745541c6c97271d46e8fb1fed"
         },
         {
             "path": "build-logic/src/main/kotlin/support/tasks/verification/DistributionArtifactPaths.kt",
@@ -470,7 +470,7 @@
         },
         {
             "path": "relation/intellij/build.gradle.kts",
-            "sha256": "7d63bb4fd0682540d7158c59db1dbcbaf3a5b113b3ab5c8b116dc6a0e7473ed8"
+            "sha256": "42bd2d9d33e3bfba508877b6f5274a4d4a81b22e7e67673d7ed23e84c30e3f1e"
         },
         {
             "path": "relation/service/build.gradle.kts",
@@ -478,7 +478,7 @@
         },
         {
             "path": "runtime/hosted/build.gradle.kts",
-            "sha256": "9760a36dc692ee9ad4a39f5fd9d2a295664f3aea9b7ecc074ea6207d776bd33e"
+            "sha256": "d48776384da4b7244250be16b5762d963660bec90e3db340cc65d0f5fab6d8c6"
         },
         {
             "path": "settings.gradle.kts",
@@ -502,7 +502,7 @@
         },
         {
             "path": "symbol/intellij/build.gradle.kts",
-            "sha256": "a488430c5b0fe6f564a589ffc91ed553c224204389be352b9929f80da0a54ab2"
+            "sha256": "eead5be6937b3d520544eedf263982d28ae0731713cddb90d1f51b8fa1574eea"
         },
         {
             "path": "symbol/service/build.gradle.kts",
