@@ -43,6 +43,8 @@ Read the [tracer evidence](../docs/reviews/go-frontend-tracer.md) for the measur
 - `go.mod` owns the Go release through its `toolchain` line and the analyzers through its `tool` lines.
   The `mise.toml` Go entry only provisions a matching `go` command.
 - Keep the bootstrap executables a function of the module's bytes and the `toolchain` line. `install.sh` pins their digests.
+- After a dependency or toolchain change, run `frontend/check notices`. The gate rejects `THIRD_PARTY_NOTICES.txt` when it differs from the packages in the executable.
+  That file covers only the Go executable. It does not cover the JVM libraries of a product.
 - Forward the argument vector, working directory, and environment unchanged. Never lower flags or model requests in Go.
 - Route only the public query commands to the coordinator. `hook` and `workspace` read process-local state, so they run on the JVM.
 - Run the JVM by `exec`, so lifecycle owners observe one `java` process with the catalog's explicit class path and main class.

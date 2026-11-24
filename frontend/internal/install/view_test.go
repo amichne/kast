@@ -252,11 +252,15 @@ func TestATerminalDownloadShowsEveryFileAndRestoresTheCursor(t *testing.T) {
 	if strings.Contains(log, "\x1b[?2004h") || strings.Contains(log, "\x1b[?1049h") {
 		t.Errorf("the view changes paste or screen mode: %q", log)
 	}
+	// The renderer writes only changed cells, so a file's label and its later mark can be apart.
 	text := ansi.Strip(log)
 	for _, label := range []string{"Kast", "Analysis runtime", "Qualification", "IntelliJ base"} {
-		if !strings.Contains(text, "✓ "+label) {
+		if !strings.Contains(text, label) {
 			t.Errorf("missing %q in %q", label, text)
 		}
+	}
+	if strings.Count(text, "✓") < len(f.assets) {
+		t.Errorf("marks in %q", text)
 	}
 	// The result stays plain, so standard output is the same on a terminal and in a file.
 	if out := f.out.String(); strings.Contains(out, "\x1b") || !strings.Contains(out, "Nothing was installed.") {
@@ -273,8 +277,33 @@ func TestATerminalDownloadOfHeldFilesShowsThem(t *testing.T) {
 	if err := f.run("--download-only"); err != nil {
 		t.Fatal(err)
 	}
-	if text := ansi.Strip(f.log.String()); strings.Count(text, "already here") < len(f.assets) {
+	if text := ansi.Strip(f.log.String()); strings.Count(text, "✓") < len(f.assets) {
 		t.Errorf("log %q", text)
+	}
+}
+
+func TestHeldFilesAreCompleteWithoutReceivedBytes(t *testing.T) {
+	f := newFixture(t)
+	if err := f.run("--download-only"); err != nil {
+		t.Fatal(err)
+	}
+	found, err := f.install().resolve(context.Background(), channelHead{preview})
+	if err != nil {
+		t.Fatal(err)
+	}
+	store, err := openStore(f.home)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer store.close()
+	p := newProgress(found.parts, time.Now)
+	if _, err := f.install().fill(context.Background(), store, found, p, io.Discard); err != nil {
+		t.Fatal(err)
+	}
+	for _, file := range p.snapshot().files {
+		if file != (fileProgress{file.role, complete, file.total, file.total, file.total}) {
+			t.Errorf("file %+v", file)
+		}
 	}
 }
 
@@ -284,7 +313,7 @@ func TestAFailedTerminalDownloadRestoresTheCursorBeforeItReturns(t *testing.T) {
 	f.faults[f.baseURL()] = []fault{{status: 404}}
 	f.requireFailure(BuildNotFound, f.run("--download-only"))
 	if log := f.log.String(); strings.LastIndex(log, showCursor) < strings.LastIndex(log, hideCursor) ||
-		!strings.Contains(ansi.Strip(log), "✗ IntelliJ base") {
+		strings.Count(log, "✗") != 1 || !strings.Contains(ansi.Strip(log), "IntelliJ base") {
 		t.Errorf("log %q", log)
 	}
 }

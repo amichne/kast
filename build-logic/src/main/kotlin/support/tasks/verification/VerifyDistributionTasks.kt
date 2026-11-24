@@ -167,6 +167,7 @@ abstract class VerifyControlDistributionTask : DefaultTask() {
             "share/kast/wire-schema.json",
             "share/kast/ide-host.json",
             "share/kast/licenses/LICENSE",
+            "share/kast/licenses/frontend/THIRD_PARTY_NOTICES.txt",
         )
         val libraries = entries.any { entry -> entry.startsWith("lib/") && entry.endsWith(".jar") }
         check(libraries && (required + guidanceDistributionEntries()).all(entries::contains)) {
