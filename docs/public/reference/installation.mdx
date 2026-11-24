@@ -6,11 +6,7 @@ icon: "download"
 ---
 
 Use the remote installer for initial setup, then `kast upgrade` for updates.
-New previews provide a managed Host for macOS ARM64 and Linux x86-64. Desktop IDEA is not a prerequisite.
-
-<Warning>
-  This page describes the managed-runtime contract under implementation. Native acceptance and publication are not yet complete. The remote main installer is not evidence that this branch is available.
-</Warning>
+Since `0.53.0`, Kast provides a managed Host for macOS ARM64 and Linux x86-64. Desktop IDEA is not a prerequisite.
 
 <span id="before-you-install" />
 
@@ -39,7 +35,7 @@ Without a terminal, or with `--json`, the installer does not ask. It changes not
 To confirm in advance, add `--replace-existing`:
 
 ```shell
-/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/amichne/kast/main/install.sh)" -- --channel preview --replace-existing
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/amichne/kast/main/install.sh)" -- --replace-existing
 ```
 
 ### What the installer does

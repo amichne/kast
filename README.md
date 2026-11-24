@@ -14,7 +14,6 @@ You need:
 - A coding agent, such as Claude Code or Codex.
 
 Kast supplies its runtime. You do not need desktop IDEA, Python, or uv.
-This branch documents the managed-runtime contract; native acceptance and publication are not yet complete.
 
 Setup takes three steps.
 
