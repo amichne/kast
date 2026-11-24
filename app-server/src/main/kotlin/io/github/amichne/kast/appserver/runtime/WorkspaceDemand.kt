@@ -290,8 +290,10 @@ private enum class MovedReadDetail {
     MOVED
 }
 
+/** The stages from which a Host restarts a moved read (HostedQueryProgress.restartAfterMovedRead). */
 @Serializable
 private enum class MovedReadStage {
+    EPOCH_OBSERVATION,
     MODEL_CAPTURE,
     CONTENT_REVALIDATION,
 }

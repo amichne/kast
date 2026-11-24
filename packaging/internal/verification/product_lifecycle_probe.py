@@ -238,7 +238,7 @@ class NativeCaseResult:
                     "outcome": "rejected",
                     "failure": "FRESHNESS_REJECTED",
                     "detail": "MOVED",
-                    "stage": "CONTENT_REVALIDATION" | "MODEL_CAPTURE",
+                    "stage": "CONTENT_REVALIDATION" | "EPOCH_OBSERVATION" | "MODEL_CAPTURE",
                     "recovery": {"kind": "restart_read"},
                 },
             }:
