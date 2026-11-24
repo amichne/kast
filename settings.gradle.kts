@@ -1,8 +1,11 @@
+// A repository that answers 429 or 5xx ends resolution, and Gradle never asks the next one. So Maven
+// Central comes last, behind its mirror. The portal stays first here, because it generates its own
+// plugin markers and the recorded checksums are those.
 pluginManagement {
     repositories {
         gradlePluginPortal()
-        mavenCentral()
         maven("https://maven-central.storage-download.googleapis.com/maven2/")
+        mavenCentral()
     }
 }
 
@@ -59,11 +62,11 @@ dependencyResolutionManagement {
 
     repositories {
 
-        mavenCentral()
         maven("https://maven-central.storage-download.googleapis.com/maven2/")
         maven("https://repo.gradle.org/gradle/libs-releases")
         maven("https://packages.jetbrains.team/maven/p/ij/intellij-dependencies")
         maven("https://www.jetbrains.com/intellij-repository/releases")
+        mavenCentral()
 
     }
 }
