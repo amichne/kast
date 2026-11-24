@@ -293,8 +293,9 @@ class AcceptanceTest(unittest.TestCase):
         ):
             response = json.dumps(asdict(MovedReply(document))).encode()
             self.assertFalse(probe.NativeCaseResult(status, response).requests_fresh_read())
-        capture = json.dumps(asdict(MovedReply(replace(moved, stage="MODEL_CAPTURE")))).encode()
-        self.assertTrue(probe.NativeCaseResult(10, capture).requests_fresh_read())
+        for stage in ("EPOCH_OBSERVATION", "MODEL_CAPTURE"):
+            capture = json.dumps(asdict(MovedReply(replace(moved, stage=stage)))).encode()
+            self.assertTrue(probe.NativeCaseResult(10, capture).requests_fresh_read())
 
     def test_go_and_jvm_callers_must_identify_the_same_serving_process(self) -> None:
         generation = "19785c96-1977-4cb6-8388-592dc0c36bf5"

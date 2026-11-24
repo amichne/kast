@@ -41,8 +41,15 @@ class PublicShellExitTest {
         val captured = checkNotNull(javaClass.getResource("/rpc/hosted-read-moved.json")).readText()
         val reply = Json.decodeFromString<ToolRpcReply>(captured)
         assertEquals(PublicShellExit.SEMANTIC, preparePublicReply(reply).exit)
-        val invalid = captured.replace("CONTENT_REVALIDATION", "UNKNOWN_STAGE")
-        assertEquals(PublicShellExit.PROTOCOL, preparePublicReply(Json.decodeFromString<ToolRpcReply>(invalid)).exit)
+        fun exitAt(stage: String) =
+            preparePublicReply(Json.decodeFromString<ToolRpcReply>(captured.replace("CONTENT_REVALIDATION", stage)))
+                .exit
+        assertEquals(PublicShellExit.SEMANTIC, exitAt("MODEL_CAPTURE"))
+        assertEquals(PublicShellExit.SEMANTIC, exitAt("EPOCH_OBSERVATION"))
+        for (stage in listOf("REQUEST_ADMISSION", "PROJECT_ADMISSION", "SEMANTIC_READ", "UNKNOWN_STAGE")) assertEquals(
+            PublicShellExit.PROTOCOL,
+            exitAt(stage),
+        )
     }
 
     @Test

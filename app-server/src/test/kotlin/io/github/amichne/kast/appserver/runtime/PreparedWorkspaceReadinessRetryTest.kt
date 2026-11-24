@@ -89,8 +89,8 @@ class PreparedWorkspaceReadinessRetryTest {
     }
 
     @Test
-    fun `prepared reads retry only moved freshness at model capture or content revalidation`() = runTest {
-        for (stage in listOf("MODEL_CAPTURE", "CONTENT_REVALIDATION")) {
+    fun `prepared reads retry only moved freshness at the stages that restart a read`() = runTest {
+        for (stage in listOf("EPOCH_OBSERVATION", "MODEL_CAPTURE", "CONTENT_REVALIDATION")) {
             val fixture = RetryCase()
             val preparations = WorkspacePreparations(this, fixture::open)
             try {
