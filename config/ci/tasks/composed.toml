@@ -12,6 +12,7 @@
 # Additional prefix: [Linux] a Linux x86-64 host.
 
 ["composed:source"]
+extends = "fixed"
 description = "Require a clean checkout at the expected source revision"
 run = 'bash .github/scripts/release/admit-source.sh --expected-source-revision "${GITHUB_SHA:-$(git rev-parse HEAD)}"'
 
@@ -21,6 +22,7 @@ depends = ["composed:source"]
 run = 'python3 .github/scripts/release/candidate_admission.py --version "${BUNDLE_VERSION-0.0.0}" --action-revision "${ACTION_REVISION-}"'
 
 ["composed:storage"]
+extends = "fixed"
 description = "Require free workspace and /tmp scratch space for composed assembly"
 run = 'python3 .github/scripts/ci/build_storage.py check --minimum-bytes 8589934592 "${GITHUB_WORKSPACE:-$PWD}" /tmp'
 
@@ -29,6 +31,7 @@ description = "[Linux] [network] Prepare APT-authenticated Linux runtime support
 run = "python3 packaging/internal/composition/composed_ci.py linux-support"
 
 ["composed:lint"]
+extends = "fixed"
 description = "Ruff and Pyright for the shared composition Python source"
 run = [
   "uv run --locked --project packaging ruff check packaging/internal/composition/composed_release.py packaging/internal/composition/composed_ci.py packaging/internal/verification/composed_host_probe.py packaging/tests/test_composition_release.py packaging/tests/test_composition_ci.py",
@@ -37,14 +40,17 @@ run = [
 ]
 
 ["composed:tests"]
+extends = "fixed"
 description = "Composition, runtime archive, and managed headless suites on this host's platform"
 run = "uv run --locked --project packaging pytest packaging/tests/test_composition_*.py packaging/tests/test_runtime_archive.py packaging/tests/test-managed-headless.py -q"
 
 ["composed:restore"]
+extends = "fixed"
 description = "[macOS] [artifacts] Admit the retained CI release in build/handoff-input"
 run = 'uv run --locked --script .github/scripts/ci/release_handoff.py restore --version "${BUNDLE_VERSION-0.0.0}"'
 
 ["composed:bootstrap"]
+extends = "fixed"
 description = "[network] Assemble the managed headless bootstrap for a retained release"
 run = 'python3 packaging/internal/composition/composed_ci.py bootstrap --version "${BUNDLE_VERSION-0.0.0}" --source-revision "${GITHUB_SHA:-$(git rev-parse HEAD)}"'
 
@@ -57,6 +63,7 @@ description = "[network] Download the pinned donor and assemble the composed arc
 run = 'python3 packaging/internal/composition/composed_ci.py assemble --version "${BUNDLE_VERSION-0.0.0}" --source-revision "${GITHUB_SHA:-$(git rev-parse HEAD)}"'
 
 ["composed:discard"]
+extends = "fixed"
 description = "Discard the donor and assembly scratch inputs before qualification"
 run = "python3 packaging/internal/composition/composed_ci.py discard"
 

@@ -88,9 +88,9 @@ Owns the public semantic CLI, private process modes, direct tool sessions, insta
 ## Entry Points
 
 - Gradle project: `:cli`.
-- Focused public CLI cases: `mise exec -- ./gradlew :cli:test --tests 'io.github.amichne.kast.cli.publicshell.*'`. This task excludes the native launcher suite.
+- Focused public CLI cases: `mise run gradle :cli:test --tests 'io.github.amichne.kast.cli.publicshell.*'`. This task excludes the native launcher suite.
 - The production renderer owns TOON bytes. The test-only `Ktoon` decoder supplies an independent equality oracle.
-- Control composition: `mise exec -- ./gradlew :publicLauncherTest`. The root task runs the staged Control product: the Go executable, its `lib`, and its catalog, against a local peer.
+- Control composition: `mise run launcher`. The root Gradle task runs the staged Control product: the Go executable, its `lib`, and its catalog, against a local peer.
 - `KastControlMain` is the single JVM entry behind the Go Control executable. It composes the existing command owners.
 - `distribution/cli` owns management commands. `NativeControlInvocation` owns private mode admission.
 - `assembleControlLayout` supplies the launchers and the `jvm-control-v1` layout marker.

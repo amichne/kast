@@ -10,4 +10,12 @@ go = "1.27.4"
 _.path = ["{{config_root}}/bin"]
 
 [task_config]
-includes = ["config/ci/tasks/ci.toml", "config/ci/tasks/docs.toml", "config/ci/tasks/composed.toml"]
+includes = ["config/ci/tasks/dev.toml", "config/ci/tasks/release.toml", "config/ci/tasks/ci.toml", "config/ci/tasks/docs.toml", "config/ci/tasks/composed.toml"]
+
+# CI installs the tools each job needs. Running a task must not fetch unrelated tools.
+[settings]
+task.run_auto_install = false
+
+# A workflow with fixed inputs rejects extra arguments before its first step.
+[task_templates.fixed]
+usage = 'arg "[unused]" var=#true var_max=0'

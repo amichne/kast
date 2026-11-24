@@ -68,15 +68,15 @@ Owns installer adapters, isolated runtime archives, offline lifecycle helpers, c
 - Public installation starts at the root `install.sh`.
 - `install-candidate.sh` invokes the candidate coordinator. It does not replace the current public bootstrap.
 - Candidate admission reads `managed-install-v1`, component manifests, and immutable selected assets before active installation effects.
-- For offline packaging tests, run `python3 packaging/internal/verification/run-portable-tests.py` from the repository root.
-- For managed and composition cases, run `mise exec -- uv run --locked --project packaging pytest packaging -q`.
+- For offline packaging tests, run `mise run suite` from the repository root.
+- For managed and composition cases, run `mise run packaging`.
 - The portable runner selects `test-*.py`. The project command also selects `test_composition_*.py`.
 - Use the [isolated runtime instructions](../docs/public/reference/installation.mdx#isolated-runtime) for archive installation.
 - Read the [composition review](../docs/reviews/composed-analysis-host.md) for donor inputs, assembly commands, and native evidence limits.
 - The Gradle task `installedProductTest` needs complete candidate and different qualified baseline products, pinned interpreter inputs, and new evidence paths.
 - Native reset scripts need the disposable installation setup stated in their own arguments and documentation.
 - [test-installer-entrypoint.py](tests/test-installer-entrypoint.py) - canonical bootstrap ingress and complete-product acceptance input rejection.
-- For hook envelopes and workspace preparation commands, run `mise exec -- uv run --locked --project packaging pytest packaging/tests/test-agent-onboarding.py`.
+- For hook envelopes and workspace preparation commands, run `mise run packaging-python -m pytest packaging/tests/test-agent-onboarding.py`.
 - These cases examine configured commands and host envelopes. They do not establish live IntelliJ preparation.
 
 ## Navigation Hints

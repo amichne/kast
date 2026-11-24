@@ -20,8 +20,8 @@ without activation, run commands through mise:
 
 ```shell
 mise install
-mise exec -- ./gradlew :app-server:check
-mise exec -- git push
+mise run gradle :app-server:check
+mise tasks
 ```
 
 The Control executable is a Go binary. `manager/go.mod` selects its Go release, and
@@ -94,12 +94,12 @@ test flag. Unrelated test cleanup belongs in a separate change.
 From the repository root, examples using the existing runners are:
 
 ```shell
-./gradlew :distribution:contract:test \
+mise run gradle :distribution:contract:test \
   --tests 'io.github.amichne.kast.distribution.contract.configuration.KastConfigurationResolutionTest'
-./gradlew :app-server:test \
+mise run gradle :app-server:test \
   --tests 'io.github.amichne.kast.appserver.SavedConfigurationIngressTest'
-python3 packaging/internal/verification/run-portable-tests.py packaging/tests/test-installation-recovery.py
-mise exec -- uv run --locked --project packaging python packaging/tests/test-installer-entrypoint.py InstallerEntrypointTest.test_obsolete_component_options_reject_before_effects
+mise run suite packaging/tests/test-installation-recovery.py
+mise run packaging-python packaging/tests/test-installer-entrypoint.py InstallerEntrypointTest.test_obsolete_component_options_reject_before_effects
 ```
 
 These selectors require no product assembly, release download or native acceptance.
@@ -123,7 +123,7 @@ Build Scan publication is opt-in.
 After you accept the public service terms, request a scan with:
 
 ```shell
-mise exec -- ./gradlew help --scan -PkastBuildScanTerms=yes
+mise run gradle help --scan -PkastBuildScanTerms=yes
 ```
 
 The public service receives build metadata, dependency details, and console output.
@@ -134,7 +134,7 @@ An uncommitted edit still needs a separate diff record for exact source identity
 For build-logic edits, select the needed test class:
 
 ```shell
-mise exec -- ./gradlew -p build-logic test --tests '*VerificationGraphTaskTest'
+mise run gradle -p build-logic test --tests '*VerificationGraphTaskTest'
 ```
 
 The `test` task excludes the separate JSON parser suite.
@@ -142,10 +142,10 @@ The build-logic `check` task still includes both suites.
 
 ### Use the scoped edit loop
 
-Run the module's `scopedCheck` task with `--continue` to collect independent failures:
+Run the module's Gradle `scopedCheck` task. It continues after a failure to collect independent failures:
 
 ```shell
-mise exec -- ./gradlew :distribution:cli:scopedCheck --continue
+mise run module :distribution:cli
 ```
 
 The task includes formatting, both file-length guards, `Detekt`, and the module's unit tests.
@@ -154,18 +154,16 @@ In `:relation:intellij`, `:symbol:intellij`, and `:runtime:hosted`, it also runs
 That suite starts the pinned IntelliJ Platform headless, and the relation suite alone takes about five minutes.
 Select one class with `--tests` on `nativeFixtureTest` for a faster edit loop.
 CI runs the same suites, as the [native compiler fixture gate](../.github/scripts/ci/README.md#native-compiler-fixture-gate) describes.
-Use fully qualified task paths to select modules.
+Use fully qualified module paths, and name several to run them together.
 Repeat the same command after each source change.
 
-For a change to prose, include the glossary task and select files for Vale:
+For a change to prose, run the glossary task and Vale for the changed files:
 
 ```shell
-mise exec -- ./gradlew :distribution:cli:scopedCheck \
-  verifyDocumentationGlossary verifyScopedProse \
-  -PkastProsePaths=docs/development.md,docs/internal/tooling/README.md --continue
+mise run prose docs/development.md docs/internal/tooling/README.md
 ```
 
-`kastProsePaths` accepts distinct repository-relative `.md`, `.mdx`, and `.txt` paths separated by commas.
+The task accepts distinct repository-relative `.md`, `.mdx`, and `.txt` paths.
 Absolute paths, parent traversal, empty entries, and duplicate entries reject before Vale starts.
 The pinned prose assessment remains a separate necessary step for changed prose.
 
@@ -186,8 +184,7 @@ Some packaging suites import modules that only their runner puts on the module p
 Run one or more of those suites through the portable runner, which supplies the module path and an owned home:
 
 ```shell
-mise exec -- uv run --locked --project packaging python \
-  packaging/internal/verification/run-portable-tests.py packaging/tests/test-managed-bootstrap.py
+mise run suite packaging/tests/test-managed-bootstrap.py
 ```
 
 Each argument must name a `packaging/tests/test-*.py` suite; the runner rejects any other path.
@@ -197,21 +194,21 @@ A suite that starts without its module path exits with a message that names this
 Each generator has a `--check` mode that rejects stale output without changing files:
 
 ```shell
-python3 packaging/internal/bootstrap/generate_bootstrap.py --check
-python3 packaging/internal/query/generate-public-query.py --check
+mise run bootstrap-generate --check
+mise run query-generate --check
 ```
 
 The first command compares the root `install.sh` with the bootstrap template.
 The second command compares the public query projections with the authored tool schema.
 
-`source_validation.py` needs a clean committed tree, so it cannot check work before a commit.
-Before a commit, run `fast_checks.py` and the `scopedCheck` task of each changed module.
+The `ci:source` and `affected` tasks need a clean committed tree, so they cannot check work before a commit.
+Before a commit, run `mise run fast` and the `module` task for each changed module.
 Add the single-suite and generator checks above for the files that you changed.
 
 Run all offline packaging suites in an isolated Linux container with:
 
 ```shell
-./packaging/internal/verification/run-portable-tests-container.sh
+mise run ci:portable
 ```
 
 The runner mounts the checkout read-only, disables network access, and gives each
@@ -226,7 +223,7 @@ CI runs this container suite on a disposable Ubuntu runner for every pull reques
 and main push, alongside the macOS product checks.
 
 Run the same offline inventory without Docker using
-`python3 packaging/internal/verification/run-portable-tests.py`; add suite paths to [run only those suites](#run-one-suite-or-one-generator-check). A container pass proves the offline installer contract
+`mise run suite`; add suite paths to [run only those suites](#run-one-suite-or-one-generator-check). A container pass proves the offline installer contract
 and process tests on Linux. It does not establish native IDEA or Codex behavior.
 
 Report the command, observed result and evidence level: pure policy, private
@@ -260,12 +257,12 @@ continuation retention grant. Increasing a result-page grant does not enlarge it
 Run the local feedback loop while editing, including on an uncommitted tree:
 
 ```shell
-uv run --locked --script .github/scripts/ci/fast_checks.py
+mise run fast
 ```
 
-Use uv 0.12.9 or newer. The script selects Python 3.12 and locked test dependencies.
-The first invocation can download that environment. After provisioning it, add
-`--offline` to `uv run` to reject dependency downloads.
+Mise provides uv 0.12.9. The task selects Python 3.12 and locked test dependencies.
+The first invocation can download that environment. After provisioning it, set
+`UV_OFFLINE=1` to reject dependency downloads.
 
 The command runs CI decisions, candidate and release rules, and the portable
 packaging inventory. Each stage reports its outcome and elapsed time. A failed
@@ -291,7 +288,7 @@ The repository instead declares opt-in [pre-commit](https://pre-commit.com) hook
 `.pre-commit-config.yaml`:
 
 ```shell
-uvx pre-commit@4.7.0 install --hook-type pre-commit --hook-type pre-push
+mise run hooks
 ```
 
 A commit that touches CI or release files runs the CI decision suites.
@@ -303,10 +300,10 @@ Use `git push --no-verify` to skip the hooks for one push.
 Run complete local qualification explicitly.
 
 ```shell
-mise exec -- uv run --locked --script .github/scripts/ci/fast_checks.py pre-push
+mise run pre-push
 ```
 
-The `pre-push` mode starts the product gate after the cheap checks pass.
+The `pre-push` task starts the product gate after the cheap checks pass.
 The product gate needs a clean committed checkout and uses version `0.0.0`.
 Its receipt identifies the source revision and tree. Release candidates use
 their own explicit version and qualification.
@@ -329,7 +326,7 @@ Supply the resulting component receipt, pinned interpreter inputs, and an explic
 macOS sandbox profile to the local probe. Use a fresh evidence directory.
 
 ```shell
-mise exec -- uv run --locked --project packaging python packaging/internal/verification/local_product_probe.py \
+mise run product-probe \
   --bundle "$BUNDLE" --runtime "$RUNTIME" --qualification "$QUALIFICATION" \
   --private-python-archive "$PRIVATE_PYTHON_ARCHIVE" \
   --private-dependency "$PRIVATE_DEPENDENCY" --sandbox "$SANDBOX" \
@@ -359,7 +356,7 @@ A job that leaked before this check, or from a one-off experiment HOME, keeps a
 headless Host resident. To list such jobs, run:
 
 ```shell
-python3 packaging/internal/verification/harness_launchd.py
+mise run harness-launchd
 ```
 
 Add `--retire` to boot out the listed jobs. The command selects a job only when
@@ -381,7 +378,7 @@ checkout as a managed product you can keep using. Use it to run a branch with
 private workspace containers before release. It never replaces the user installation.
 
 ```shell
-mise exec -- uv run --locked --project packaging python packaging/internal/product/local_product_install.py \
+mise run local-product \
   install --root ~/.local/share/kast-local/my-branch --source /path/to/clean/checkout
 cd /path/to/workspace && ~/.local/share/kast-local/my-branch/bin/kast query --name MyClass --json
 ```
@@ -471,7 +468,7 @@ Its release is separate from every product release and from the preview channel.
 Build the two executables from the module's bytes and its `toolchain` line:
 
 ```shell
-mise exec -- uv run --locked --script manager/check bootstrap --output build/bootstrap
+mise run bootstrap:build --output build/bootstrap
 ```
 
 The frontend gate builds them from two directories and compares the bytes.
@@ -479,7 +476,7 @@ The output also holds the third-party notices of those executables.
 After a Go dependency or toolchain change, regenerate the notices:
 
 ```shell
-mise exec -- uv run --locked --script manager/check notices
+mise run frontend-notices
 ```
 
 The gate rejects notices that differ from the packages in the executable.
@@ -500,7 +497,7 @@ Pin the published digests in a separate pull request, after a local build produc
 Edit `packaging/internal/bootstrap/bootstrap_release.py`, then regenerate `install.sh`:
 
 ```shell
-mise exec -- uv run --locked --project packaging python packaging/internal/bootstrap/generate_bootstrap.py
+mise run bootstrap-generate
 ```
 
 A new build record version needs a new bootstrap release and pin, because a bootstrap reads one version.
@@ -515,8 +512,8 @@ Gradle profiles remain in `build/reports/profile`.
 These reports support comparisons on matched source, toolchain, options, and runner capacity.
 
 ```shell
-./gradlew build
-./gradlew assembleRelease
+mise run build
+mise run gradle assembleRelease
 ```
 
 Dependency verification uses the checked `gradle/verification-metadata.xml` in strict mode.
@@ -551,8 +548,8 @@ It does not replace the user's installation. The desktop checkout scripts and Gr
 Producer tooling retains independent component release inputs and package tasks:
 
 ```shell
-./gradlew assembleControlRelease -PcontrolVersion=0.50.0
-./gradlew assembleHostRelease -PhostedPluginVersion=0.49.0
+mise run gradle assembleControlRelease -PcontrolVersion=0.50.0
+mise run gradle assembleHostRelease -PhostedPluginVersion=0.49.0
 ```
 
 A control release requires the canonical hosted contract and no host archive.
@@ -569,12 +566,13 @@ failure leaves the installation available and reports failure.
 
 Kast uses one Mintlify site with four reader tracks: Tutorials, How-to guides, Reference, and Explanation. The README presents product value and the default installation path.
 
-From `docs/public`, run:
+From the repository root, run:
 
 ```shell
-npx mint@4.2.841 validate
-npx mint@4.2.841 broken-links
-npx mint@4.2.841 dev --port 3000
+mise run docs:mintlify-install
+mise run docs:mintlify-validate
+mise run docs:mintlify-links
+mise run docs-preview --port 3000
 ```
 
 Open `http://localhost:3000` and examine both tabs, their navigation, and their links. Edit the MDX pages and `docs.json` together.
@@ -584,7 +582,7 @@ The callable generator writes `docs/public/reference/callables.openapi.json`. Th
 After changing source-bound knowledge, run from the repository root:
 
 ```shell
-./gradlew knowledgeImpact verifyKnowledgeBase verifyKnowledgeClaims
+mise run knowledge
 ```
 
 For an interrupted installation, rerun the installer: it resumes the recorded replacement journal or reports `RECOVERY_REQUIRED`.
@@ -608,7 +606,7 @@ The baseline must have a different qualified composition. The task does not asse
 Supply pinned interpreter inputs, the native target, and new evidence and receipt paths:
 
 ```shell
-mise exec -- ./gradlew installedProductTest \
+mise run gradle installedProductTest \
   -PkastAcceptanceCandidate="$CANDIDATE" -PkastAcceptanceBaseline="$BASELINE" \
   -PkastAcceptancePythonArchive="$PRIVATE_PYTHON_ARCHIVE" \
   -PkastAcceptanceDependency="$PRIVATE_DEPENDENCY" -PkastAcceptanceTarget="$TARGET" \

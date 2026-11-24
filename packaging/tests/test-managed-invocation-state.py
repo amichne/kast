@@ -31,7 +31,6 @@ class InvocationStateEvidenceTest(unittest.TestCase):
     def setUp(self) -> None:
         temporary = tempfile.TemporaryDirectory()
         self.addCleanup(temporary.cleanup)
-        # Unix socket paths are short on macOS; keep the fixture root near the filesystem root.
         self.root = Path(temporary.name).resolve()
         self.run_directory = self.root / "installation/state/run"
         self.run_directory.mkdir(parents=True, mode=0o700)
@@ -79,10 +78,9 @@ class InvocationStateEvidenceTest(unittest.TestCase):
     def test_a_live_coordinator_socket_and_empty_lock_are_admitted(self) -> None:
         listener = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
         self.addCleanup(listener.close)
-        try:
-            listener.bind(str(self.run_directory / "c.sock"))
-        except OSError as problem:
-            self.skipTest(f"socket path unavailable: {problem}")
+        # The macOS socket address limit applies to the name passed to bind.
+        with contextlib.chdir(self.run_directory):
+            listener.bind("c.sock")
         lock = self.run_directory / "c.sock.lock"
         _ = lock.write_bytes(b"")
         os.chmod(lock, 0o600)

@@ -44,10 +44,10 @@ jobs:
         with:
           ref: ${{ github.sha }}
           persist-credentials: false
-      # Ubuntu 24.04 supplies Python 3.12. Promotion resolves no tool or product dependencies.
+      - name: Install the task runner
+        uses: jdx/mise-action@5228313ee0372e111a38da051671ca30fc5a96db # v3
+        with:
+          install: false
+
       - name: Admit published inventory and promote identical archives
-        run: >-
-          python3 .github/scripts/release/publish_developer.py stable
-          --source-tag "$SOURCE_TAG"
-          --record-sha256 "$RECORD_SHA256"
-          --public-version "$PUBLIC_VERSION"
+        run: mise run release:stable

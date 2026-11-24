@@ -11,9 +11,7 @@ try:
 except ModuleNotFoundError as missing:
     raise SystemExit(
         f"{Path(__file__).name}: module {missing.name} is unavailable; run "
-        "mise exec -- uv run --locked --project packaging python "
-        "packaging/internal/verification/run-portable-tests.py "
-        f"packaging/tests/{Path(__file__).name}"
+        f"mise run suite packaging/tests/{Path(__file__).name}"
     ) from missing
 
 ROOT = Path(__file__).resolve().parents[2]

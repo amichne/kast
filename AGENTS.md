@@ -68,25 +68,27 @@ Go is only in `manager/`. A new top-level directory needs a declaration.
 
 ## Entry Points
 
-- Build and tests: `./gradlew build`.
-- Scoped edit loop: `mise exec -- ./gradlew :distribution:cli:scopedCheck --continue`. Select each module with its fully qualified task path.
-- Local CI: `mise run ci:pr` runs the pull-request checks with the exact commands CI uses. Every check workflow step is a `mise run` task; see `.github/scripts/ci/README.md#run-a-ci-check-locally`. A CI failure names its task, which is the local reproduction command.
-- Cheap local checks: `mise exec -- uv run --locked --script .github/scripts/ci/fast_checks.py`. This command accepts an uncommitted tree.
-- Scoped prose: add `verifyDocumentationGlossary verifyScopedProse -PkastProsePaths=docs/development.md`.
-- Complete source gate: `mise exec -- python3 .github/scripts/ci/source_validation.py`. This command needs a clean committed tree and uses stable version `0.0.0`.
-- Affected source gate: add `--affected --base <full-sha>` to that command. Unknown ownership keeps full source validation.
-- Consumer graph: run `./gradlew generateVerificationGraph` after dependency changes. Copy its report to `config/ci/verification-graph.json` and examine the diff.
+- Checks: `mise tasks` lists every supported task. CI, commit hooks, and local runs share them; see `.github/scripts/ci/README.md#run-a-ci-check-locally`. A CI failure names its task, which is the local reproduction command.
+- Scoped edit loop: `mise run module :distribution:cli`. Select each module with its fully qualified path.
+- Cheap local checks: `mise run fast`. This task accepts an uncommitted tree.
+- Local CI: `mise run ci:pr` runs the pull-request checks with the exact commands CI uses.
+- Scoped prose: `mise run prose docs/development.md`.
+- Affected source gate: `mise run affected`. It compares with `origin/main`; unknown ownership keeps full source validation.
+- Complete source gate: `mise run ci:source`. It needs a clean committed tree and uses stable version `0.0.0`.
+- Build and tests: `mise run build`.
+- Declare each workflow once in the task files included by `mise.toml`. Use its mise task name in guides, hooks, and CI.
+- Consumer graph: run `mise run gradle generateVerificationGraph` after dependency changes. Copy its report to `config/ci/verification-graph.json` and examine the diff.
 - The opt-in CI rollout compares frozen changes before affected selection becomes the default. Read `.github/scripts/ci/README.md` for its evidence limits.
 - Cross-platform CI handoff: `.github/scripts/ci/release_handoff.py` binds the assembled release to source identity and digest. Linux assembles it; the Mac product job exercises that exact Control product.
 - For agent evaluations, use the [Promptfoo suites](experiments/host-observation/promptfoo/README.md).
-- Candidate qualification: `mise exec -- python3 distribution/release/run_product_gate.py`. Source success grants no publication authority.
-- Release assembly: `./gradlew assembleRelease`.
+- Candidate qualification: `mise run product`. Source success grants no publication authority.
+- Release assembly: `mise run gradle assembleRelease`.
 - Product installation: use the [managed installer](docs/public/reference/installation.mdx). Desktop IDEA, user Python, and uv are not product prerequisites.
 - Contributor assembly and native acceptance use their own toolchains. Do not present source checks as native qualification or publication.
 - Control executable: `manager/cmd/kast/main.go`; its single JVM entry is `cli/src/main/kotlin/io/github/amichne/kast/cli/KastControlMain.kt`.
 - Management commands: `distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/KastManagementMain.kt`.
 - Public semantic entry: `cli/src/main/kotlin/io/github/amichne/kast/cli/publicshell/KastPublicCliMain.kt`.
-- Control composition: `mise exec -- ./gradlew :publicLauncherTest`. The root task runs the staged Control product against a local peer.
+- Control composition: `mise run launcher`. The root Gradle task runs the staged Control product against a local peer.
 - Private installer version entry: `cli/src/main/kotlin/io/github/amichne/kast/cli/bootstrap/KastCliMain.kt`.
 - Semantic host: `runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedEndpointService.kt`.
 - Codex/App Server main: `app-server/src/main/kotlin/io/github/amichne/kast/appserver/KastCodexMain.kt`.
@@ -197,7 +199,7 @@ OpenWiki keeps its native root and lifecycle. Do not move its store through a re
 - Keep `JsonElement` only for a contract-defined dynamic or opaque field. Document that boundary and validate the surrounding DTO. Deliberately malformed or incompatible JSON is allowed in negative tests that specifically prove its rejection.
 - Verify actual encoded output against an independent expected shape or authoritative schema. Cover each closed outcome variant, required defaults/discriminators, and rejection of unknown values. A round trip through the same serializer alone is not contract proof.
 - When changing an existing manual JSON boundary, migrate the affected shape and its callers in the same change. Do not extend manual construction or erase a typed failure to make a test pass.
-- Run `./gradlew verifyJsonContracts`; `check` and `productBuildGate` require it. Its [syntax guard and exact baseline](config/json-contracts/README.md) reject new, changed, duplicated, and stale manual JSON expressions. Do not expand legacy allowances to pass a check. This guard supplements the encoded-shape and schema tests above; it does not replace them.
+- Run `mise run json`; the Gradle `check` and `productBuildGate` require it. Its [syntax guard and exact baseline](config/json-contracts/README.md) reject new, changed, duplicated, and stale manual JSON expressions. Do not expand legacy allowances to pass a check. This guard supplements the encoded-shape and schema tests above; it does not replace them.
 
 ## Documentation and terminology
 
@@ -208,7 +210,7 @@ OpenWiki keeps its native root and lifecycle. Do not move its store through a re
 - Edit the JSON source. Regenerate its reader view and Vale terminology rules through [the documentation policy](docs/internal/documentation-structure.md#glossary-ownership).
 - Keep the README focused on reader value and one default installation path. Put options, lifecycle behavior, and runtime detail in reference documentation.
 - Use Vale `3.24.0` from `mise.toml` with `.vale.ini`. Rules and licenses reside in `config/vale/` and need no runtime package download.
-- Run `mise exec -- vale --no-global --config=.vale.ini --output=JSON` with each changed prose path. Keep the report.
+- Run `mise run vale` with each changed prose path. Keep the report.
 - Run the pinned Repository Knowledge assessment for changed prose. Keep unresolved findings with their rule, location, and reason.
 - Report `ASSESSED` separately from a clean report. Prose metrics and lexical rules do not prove source truth or reader comprehension.
 
@@ -216,7 +218,7 @@ OpenWiki keeps its native root and lifecycle. Do not move its store through a re
 
 - Use OpenWiki only when requested or when a concrete architecture or dependency uncertainty needs context; stop once grounded. Use `openwiki/quickstart.md` when retrieval tools are unavailable.
 - Treat OpenWiki pages as source-bound routing and explanation. Claims retain source versions; `code_sources` preserve exact declaration citations and impact. Source, schemas, generated contracts, tests and verified Gradle architecture remain stronger evidence.
-- After a change to cited source, run `./gradlew knowledgeImpact` and `./gradlew verifyKnowledgeBase verifyKnowledgeClaims`. Update authored explanations when behavior changes. Report review demand through the existing assessment. Use `bin/kast-knowledge-refresh` for native reconciliation. Ordinary source work must not rewrite unrelated Claim metadata. A publication candidate needs complete current assessment. Review age alone requests maintenance and does not establish falsehood or fresh proof.
+- After a change to cited source, run `mise run knowledge`. Update authored explanations when behavior changes. Report review demand through the existing assessment. Use `bin/kast-knowledge-refresh` for native reconciliation. Ordinary source work must not rewrite unrelated Claim metadata. A publication candidate needs complete current assessment. Review age alone requests maintenance and does not establish falsehood or fresh proof.
 
 <!-- OPENWIKI:START -->
 

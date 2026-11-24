@@ -31,6 +31,7 @@ PATHS = (
     "docs/internal/tooling/rendered",
     ".github/tools/mintlify",
     ".github/workflows/docs.yml",
+    "mise.toml",
     "config/ci/tasks/docs.toml",
 )
 
