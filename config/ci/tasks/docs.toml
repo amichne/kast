@@ -5,34 +5,42 @@
 # check in workflow order.
 
 ["docs:contracts"]
+extends = "fixed"
 description = "[network] Parser, glossary, knowledge, and reader contract suites"
 run = "python3 .github/scripts/ci/verify_documentation.py"
 
 ["docs:mintlify-install"]
+extends = "fixed"
 description = "[network] Install the locked Mintlify CLI with empty npm configuration"
 run = ".github/tools/mintlify/install.sh"
 
 ["docs:mintlify-runtime"]
+extends = "fixed"
 description = "Verify the Mintlify validator's network handling"
 run = "node --test .github/tools/mintlify/test-runtime.mjs"
 
 ["docs:mintlify-validate"]
+extends = "fixed"
 description = "[network] Validate the Mintlify build of docs/public"
 run = ".github/tools/mintlify/mint.sh validate"
 
 ["docs:mintlify-links"]
+extends = "fixed"
 description = "[network] Examine Mintlify links in docs/public"
 run = ".github/tools/mintlify/mint.sh broken-links"
 
 ["docs:reader-path"]
+extends = "fixed"
 description = "Select the reader journey from BASE_SHA and HEAD_SHA; with no base it selects run=true"
 run = "python3 docs/internal/tooling/rendered/reader_path.py"
 
 ["docs:reader-journey"]
+extends = "fixed"
 description = "[network] Click through Get started on desktop and mobile in the pinned Chrome"
 run = "docs/internal/tooling/rendered/reader-journey.sh"
 
 ["docs:prose"]
+extends = "fixed"
 description = "Assess prose and contract evidence with Vale 3.24.0 and reader Vale 3.25.1"
 run = '''
 vale="$(mise where vale@3.24.0)"
@@ -43,13 +51,14 @@ uv run --locked --project docs/internal/tooling python docs/internal/tooling/pro
 # the journey, so the aggregate runs the journey directly.
 
 ["docs:all"]
+extends = "fixed"
 description = "[network] Every documentation check, in workflow order"
 run = [
-  "mise run docs:contracts",
-  "mise run docs:mintlify-install",
-  "mise run docs:mintlify-runtime",
-  "mise run docs:mintlify-validate",
-  "mise run docs:mintlify-links",
-  "mise run docs:reader-journey",
-  "mise run docs:prose",
+  { task = "docs:contracts" },
+  { task = "docs:mintlify-install" },
+  { task = "docs:mintlify-runtime" },
+  { task = "docs:mintlify-validate" },
+  { task = "docs:mintlify-links" },
+  { task = "docs:reader-journey" },
+  { task = "docs:prose" },
 ]

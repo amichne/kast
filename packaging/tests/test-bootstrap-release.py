@@ -229,10 +229,10 @@ class BootstrapReleaseTest(unittest.TestCase):
         self.assertEqual(1, text.count("contents: write"))
         # GitHub's implicit shell has no pipefail, so the piped publisher needs an explicit one.
         self.assertIn(
-            "shell: bash\n        run: python3 .github/scripts/release/publish_bootstrap.py", text
+            "shell: bash\n        run: mise run bootstrap:publish", text
         )
-        build, publish = text.index("manager/check bootstrap"), text.index("publish_bootstrap.py")
-        self.assertLess(text.index("manager/check gate"), build)
+        build, publish = text.index("mise run bootstrap:build --output build/bootstrap"), text.index("mise run bootstrap:publish")
+        self.assertLess(text.index("mise run bootstrap:gate"), build)
         self.assertLess(build, publish)
 
     def test_the_published_names_are_the_built_names(self) -> None:

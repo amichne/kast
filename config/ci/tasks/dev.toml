@@ -1,0 +1,155 @@
+[fast]
+extends = "fixed"
+description = "Run cheap checks before Gradle on an uncommitted tree"
+run = "uv run --locked --script .github/scripts/ci/fast_checks.py"
+
+[module]
+description = "Run scoped checks for :module [:module ...] with optional Gradle arguments"
+run = '''
+#!/usr/bin/env python3
+import os
+import sys
+
+arguments = sys.argv[1:]
+if not any(arg.startswith(":") for arg in arguments):
+    sys.exit("Pass at least one fully qualified Gradle module, such as :cli")
+tasks = [arg + ":scopedCheck" if arg.startswith(":") else arg for arg in arguments]
+os.execv("./gradlew", ["./gradlew", "--continue", *tasks])
+'''
+
+[prose]
+description = "Check the glossary and run Vale for FILE [FILE ...]"
+run = '''
+#!/usr/bin/env python3
+import os
+import sys
+
+if len(sys.argv) == 1:
+    sys.exit("Pass at least one prose file")
+os.execv("./gradlew", ["./gradlew", "verifyDocumentationGlossary", "verifyScopedProse",
+                       "-PkastProsePaths=" + ",".join(sys.argv[1:])])
+'''
+
+[json]
+extends = "fixed"
+description = "Check JSON contract syntax"
+run = "./gradlew verifyJsonContracts"
+
+[knowledge]
+extends = "fixed"
+description = "Check knowledge impact, the knowledge base, and claims"
+run = "./gradlew knowledgeImpact verifyKnowledgeBase verifyKnowledgeClaims"
+
+[frontend]
+extends = "fixed"
+description = "Run the Go frontend gate with the generated catalog"
+run = "./gradlew :frontendTest"
+
+[launcher]
+extends = "fixed"
+description = "Exercise the staged Control product against a local peer"
+run = "./gradlew :publicLauncherTest"
+
+[packaging]
+description = "Run managed and composition packaging suites with optional pytest arguments"
+run = "uv run --locked --project packaging pytest packaging -q"
+
+[suite]
+description = "Run all offline packaging suites or the named packaging/tests/test-*.py files"
+run = "uv run --locked --project packaging python packaging/internal/verification/run-portable-tests.py"
+
+[types]
+extends = "fixed"
+description = "Run strict Pyright for CI scripts"
+run = "uv run --locked --project docs/internal/tooling pyright --project .github/scripts/ci/pyrightconfig.json"
+
+[affected]
+extends = "fixed"
+description = "[clean commit] Check source obligations for this branch against origin/main"
+run = '''
+base=$(git rev-parse --verify 'origin/main^{commit}')
+mise run ci:source --affected --event pull_request --base "$base"
+'''
+
+[build]
+description = "Run the Gradle build and its checks"
+run = "./gradlew build"
+
+[product]
+extends = "fixed"
+description = "[clean commit] [github] Qualify the product candidate"
+run = "python3 distribution/release/run_product_gate.py"
+
+[pre-push]
+extends = "fixed"
+description = "[clean commit] [github] Run the cheap checks followed by the full product gate"
+run = [{ task = "fast" }, { task = "product" }]
+
+[gradle]
+description = "Run the Gradle wrapper with the supplied tasks and options"
+run = "./gradlew"
+
+[vale]
+description = "Assess the named prose files with the pinned repository Vale rules"
+run = "vale --no-global --config=.vale.ini --output=JSON"
+
+[hooks]
+extends = "fixed"
+description = "Install the repository's pre-commit and pre-push hooks"
+run = "uvx pre-commit@4.7.0 install --hook-type pre-commit --hook-type pre-push"
+
+[bootstrap-generate]
+description = "Regenerate the public installer or check its contents"
+run = "uv run --locked --project packaging python packaging/internal/bootstrap/generate_bootstrap.py"
+
+[query-generate]
+description = "Regenerate public query projections or check their contents"
+run = "python3 packaging/internal/query/generate-public-query.py"
+
+[frontend-notices]
+extends = "fixed"
+description = "Regenerate the Go executable notices"
+run = "uv run --locked --script manager/check notices"
+
+[packaging-python]
+description = "Run a focused Python command in the locked packaging environment"
+run = "uv run --locked --project packaging python"
+
+[product-probe]
+description = "Exercise the local installed product in a disposable macOS environment"
+run = "uv run --locked --project packaging python packaging/internal/verification/local_product_probe.py"
+
+[local-product]
+description = "Manage an isolated installation from a contributor checkout"
+run = "uv run --locked --project packaging python packaging/internal/product/local_product_install.py"
+
+[harness-launchd]
+description = "Exercise the product harness with launchd"
+run = "python3 packaging/internal/verification/harness_launchd.py"
+
+[docs-preview]
+description = "Preview the documentation with the locked Mintlify CLI"
+run = ".github/tools/mintlify/mint.sh dev"
+
+[storage-inventory]
+description = "Report allocated space for repository build outputs"
+run = "python3 .github/scripts/ci/build_storage.py inventory"
+
+[workflow-lint]
+description = "Check GitHub Actions workflow syntax with actionlint"
+run = "actionlint"
+
+[diagram-render]
+extends = "fixed"
+description = "Render the public architecture diagrams"
+run = "npm run render --prefix docs/internal/tooling/diagrams"
+
+[diagram-check]
+extends = "fixed"
+description = "Check the public architecture diagrams"
+run = "npm run check --prefix docs/internal/tooling/diagrams"
+
+[value-journey]
+extends = "fixed"
+description = "Build the value explorer and its README preview"
+run = "npm run build --prefix docs/internal/tooling/value-journey"

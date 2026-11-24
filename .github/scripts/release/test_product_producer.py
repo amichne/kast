@@ -701,7 +701,7 @@ class ProductProducerTest(unittest.TestCase):
         self.assertIn("product_lifecycle_probe.py", task_run("ci:acceptance"))
         self.assertIn("kotlin, complete-product, two-platform-product]", jobs["required"])
         self.assertLess(
-            jobs["required"].index('test "$COMPLETE_PRODUCT_RESULT" = success'),
+            jobs["required"].index('mise run ci:require-result "$COMPLETE_PRODUCT_RESULT" success'),
             jobs["required"].index("run: mise run ci:outcome"),
         )
         self.assertIn("validation_outcome.py", task_run("ci:outcome"))

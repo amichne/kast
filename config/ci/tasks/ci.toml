@@ -12,6 +12,7 @@
 # A task that lacks its requirement fails with a typed reason; it never reports success.
 
 ["ci:decisions"]
+extends = "fixed"
 description = "CI decision, candidate, and release preflight suites"
 run = "uv run --locked --script .github/scripts/ci/fast_checks.py decisions"
 
@@ -20,10 +21,12 @@ description = "Select the checks that a change requires"
 run = "python3 .github/scripts/ci/validation_scope.py --affected"
 
 ["ci:portable"]
+extends = "fixed"
 description = "[container] Offline packaging suites in the disposable Linux container"
 run = "./packaging/internal/verification/run-portable-tests-container.sh"
 
 ["ci:frontend-vulnerabilities"]
+extends = "fixed"
 description = "[network] Scan the Go frontend against the Go advisory database"
 run = "uv run --locked --script manager/check vulnerabilities"
 
@@ -32,30 +35,37 @@ description = "Complete source obligations; add --affected --base <sha> --event 
 run = "python3 .github/scripts/ci/source_validation.py"
 
 ["ci:storage"]
+extends = "fixed"
 description = "Require free workspace and scratch space for release assembly"
 run = 'python3 .github/scripts/ci/build_storage.py check --minimum-bytes 8589934592 "${GITHUB_WORKSPACE:-$PWD}" "${RUNNER_TEMP:-${TMPDIR:-/tmp}}"'
 
 ["ci:assembly"]
+extends = "fixed"
 description = "[network] Assemble the release; local runs use version 0.0.0; run ci:storage first"
 run = 'uv run --locked --script .github/scripts/ci/release_handoff.py assemble --version "0.0.${GITHUB_RUN_NUMBER:-0}"'
 
 ["ci:mac-runner"]
+extends = "fixed"
 description = "[github] Select the macOS product runner"
 run = "python3 .github/scripts/ci/mac_runner.py"
 
 ["ci:mac-reset"]
+extends = "fixed"
 description = "[macOS] Exercise the macOS reset adapters"
 run = "uv run --locked --script .github/scripts/ci/macos_reset_checks.py"
 
 ["ci:mac-qualify"]
+extends = "fixed"
 description = "[macOS] [artifacts] Exercise the exact assembled Mac Control product"
 run = 'uv run --locked --script .github/scripts/ci/release_handoff.py qualify --version "0.0.${GITHUB_RUN_NUMBER:-0}"'
 
 ["ci:seal"]
+extends = "fixed"
 description = "[artifacts] Seal the complete immutable build record from the qualified product inputs"
 run = "python3 .github/scripts/release/product_producer.py seal --macos-only --directory build/product-inputs --output build/product-candidate"
 
 ["ci:seal-two-platform"]
+extends = "fixed"
 description = "[artifacts] Seal one build record for macOS ARM64 and Linux x86-64 from the qualified product inputs"
 run = "python3 .github/scripts/release/product_producer.py seal --directory build/product-inputs --output build/product-two-platform"
 
@@ -69,9 +79,10 @@ run = "python3 .github/scripts/ci/acceptance_inputs.py admit"
 
 ["ci:acceptance"]
 description = "[macOS] [artifacts] Exercise the installed CLI, MCP, and lifecycle against the baseline and candidate"
-run = 'mise exec -- uv run --locked --project packaging python packaging/internal/verification/product_lifecycle_probe.py --candidate build/product-candidate --baseline build/product-baseline --private-python-archive build/private-python.tar.gz --private-dependency build/defusedxml.whl --evidence build/installed-evidence'
+run = 'uv run --locked --project packaging python packaging/internal/verification/product_lifecycle_probe.py --candidate build/product-candidate --baseline build/product-baseline --private-python-archive build/private-python.tar.gz --private-dependency build/defusedxml.whl --evidence build/installed-evidence'
 
 ["ci:join"]
+extends = "fixed"
 description = "[artifacts] Join installed acceptance to the sealed record without rewriting it"
 run = "python3 .github/scripts/release/product_producer.py accept --directory build/product-sealed --receipt build/product-acceptance --output build/product-candidate"
 
@@ -80,6 +91,7 @@ description = "[github] Require the checks that scope selected; --source-proof o
 run = "python3 .github/scripts/ci/required_checks.py"
 
 ["ci:outcome"]
+extends = "fixed"
 description = "[github] Seal the successful validation outcome"
 run = "python3 .github/scripts/ci/validation_outcome.py --affected --record build/validation/validation.json"
 
@@ -91,9 +103,31 @@ run = "python3 .github/scripts/ci/rollout.py"
 # They run sequentially because source validation rejects a tree that changes during the run.
 
 ["ci:pr"]
+tags = ["local"]
+extends = "fixed"
 description = "Every pull-request check that runs without macOS, a container, or CI artifacts"
-run = ["mise run ci:decisions", "mise run docs:all", "mise run ci:source"]
+run = [{ task = "ci:decisions" }, { task = "docs:all" }, { task = "ci:source" }]
 
 ["ci:pr-full"]
+tags = ["local"]
+extends = "fixed"
 description = "[container] [macOS] ci:pr plus the portable container and the macOS reset adapters"
-run = ["mise run ci:pr", "mise run ci:portable", "mise run ci:mac-reset"]
+run = [{ task = "ci:pr" }, { task = "ci:portable" }, { task = "ci:mac-reset" }]
+
+["ci:report-switches"]
+extends = "fixed"
+description = "Report the effective CI switches in the GitHub step summary"
+run = '''
+echo "Semantic fixture switch: $KAST_SEMANTIC_FIXTURES" >> "$GITHUB_STEP_SUMMARY"
+echo "macOS check switch: $KAST_MACOS_CHECKS; effective product assembly: $KAST_NATIVE_COMPILATION" >> "$GITHUB_STEP_SUMMARY"
+'''
+
+["ci:require-result"]
+description = "Require the actual upstream result to match the expected result"
+run = '''
+#!/usr/bin/env python3
+import sys
+
+if len(sys.argv) != 3 or sys.argv[1] != sys.argv[2]:
+    sys.exit("Upstream result did not match the expected result")
+'''

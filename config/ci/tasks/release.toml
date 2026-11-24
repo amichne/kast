@@ -1,0 +1,110 @@
+["release:stable"]
+extends = "fixed"
+description = "Promote the retained preview archives to a public version"
+run = "python3 .github/scripts/release/publish_developer.py stable --source-tag \"$SOURCE_TAG\" --record-sha256 \"$RECORD_SHA256\" --public-version \"$PUBLIC_VERSION\""
+
+["release:candidate"]
+extends = "fixed"
+description = "Admit the retained candidate and its native qualification"
+run = "python3 .github/scripts/release/build_candidate.py promote-product --repository \"$GITHUB_REPOSITORY\" --revision \"$SOURCE_SHA\" --run-id \"$MAIN_RUN_ID\" --run-attempt \"$MAIN_RUN_ATTEMPT\" --bundle build/candidate --github-output \"$GITHUB_OUTPUT\""
+
+["release:preview"]
+extends = "fixed"
+description = "Publish the qualified preview product"
+run = "python3 .github/scripts/release/publish_developer.py product --directory build/candidate"
+
+["release:main"]
+extends = "fixed"
+description = "Admit the exact current main revision"
+run = '''
+#!/usr/bin/env bash
+set -euo pipefail
+git fetch --no-tags origin main
+[[ "$GITHUB_SHA" == "$(git rev-parse origin/main)" ]] || exit 1
+git checkout --detach "$GITHUB_SHA"
+'''
+
+["release:version"]
+extends = "fixed"
+description = "Resolve the selected service version"
+run = "python3 distribution/release/resolve_version.py --repository \"$GITHUB_REPOSITORY\" --component \"$RELEASE_COMPONENT\" --bump \"$RELEASE_BUMP\""
+
+["release:build-component"]
+extends = "fixed"
+description = "Check the selected service and assemble its release"
+run = '''
+#!/usr/bin/env bash
+set -euo pipefail
+common=(--no-daemon --max-workers=2 -Dorg.gradle.jvmargs=-Xmx5g "-PkastSourceRevision=$GITHUB_SHA")
+guards=(spotlessCheck verifyKastArchitecture verifyJsonContracts verifyKnowledgeBase)
+case "$RELEASE_COMPONENT" in
+  control)
+    ./gradlew "${common[@]}" "-PcontrolVersion=$RELEASE_VERSION" "${guards[@]}" \
+      :cli:check :app-server:check :distribution:cli:check :distribution:managed:check \
+      :protocol:contract:check :protocol:wire:check assembleControlRelease
+    ;;
+  host)
+    ./gradlew "${common[@]}" "-PhostedPluginVersion=$RELEASE_VERSION" "${guards[@]}" \
+      :runtime:hosted:check :protocol:contract:check :protocol:wire:check assembleHostRelease
+    ;;
+  *) exit 1 ;;
+esac
+python3 distribution/release/test_resolve_version.py
+uv run --locked --project config/python python distribution/release/test_component_release.py
+'''
+
+["release:admit-component"]
+extends = "fixed"
+description = "Admit the selected component archives"
+run = "uv run --locked --project config/python python distribution/release/component_release.py --component \"$RELEASE_COMPONENT\" --version \"$RELEASE_VERSION\" --source-revision \"$GITHUB_SHA\" --directory \"build/release/${RELEASE_COMPONENT}-v${RELEASE_VERSION}\""
+
+["release:publish-component"]
+extends = "fixed"
+description = "Publish the admitted component"
+run = "bash .github/scripts/release/publish-component.sh --component \"$RELEASE_COMPONENT\" --version \"$RELEASE_VERSION\" --commit \"$GITHUB_SHA\" --assets-directory \"build/release/${RELEASE_COMPONENT}-v${RELEASE_VERSION}\""
+
+["bootstrap:gate"]
+extends = "fixed"
+description = "Verify the Go frontend and its reproducible bootstrap"
+run = "python3 manager/check gate"
+
+["bootstrap:build"]
+description = "Build the bootstrap executables"
+run = "python3 manager/check bootstrap"
+
+["bootstrap:publish"]
+extends = "fixed"
+description = "Publish an immutable bootstrap pre-release"
+run = "python3 .github/scripts/release/publish_bootstrap.py --directory build/bootstrap"
+
+["wiki:readiness"]
+extends = "fixed"
+description = "Report native maintenance credential readiness"
+run = "uv run --locked --project docs/internal/tooling python docs/internal/tooling/knowledge_refresh.py --repo \"$GITHUB_WORKSPACE\" --state-dir \"$RUNNER_TEMP/kast-knowledge\" --host native --readiness"
+
+["wiki:refresh"]
+extends = "fixed"
+description = "Run isolated maintenance for the frozen source"
+run = "uv run --locked --project docs/internal/tooling python docs/internal/tooling/knowledge_refresh.py --repo \"$GITHUB_WORKSPACE\" --state-dir \"$RUNNER_TEMP/kast-knowledge\" --source-revision \"$GITHUB_SHA\" --host native --bootstrap --run"
+
+["wiki:result"]
+extends = "fixed"
+description = "Expose the bounded maintenance result to GitHub Actions"
+run = '''
+#!/usr/bin/env python3
+import json
+import os
+from pathlib import Path
+result = json.loads((Path(os.environ["RUNNER_TEMP"]) / "knowledge-refresh.json").read_text())
+with Path(os.environ["GITHUB_OUTPUT"]).open("a") as output:
+    for name in ("outcome", "worktree"):
+        value = result.get(name) or ""
+        if not isinstance(value, str) or "\n" in value or "\r" in value:
+            raise ValueError("Invalid maintenance result")
+        output.write(name + "=" + value + "\n")
+'''
+
+["release:report-docs"]
+extends = "fixed"
+description = "Record a documentation-only result in the GitHub step summary"
+run = "echo 'DOCS_VALIDATED — exact source validated; developer product pointer unchanged.' >> \"$GITHUB_STEP_SUMMARY\""

@@ -38,8 +38,10 @@ INPUT_PATHS = (
     "config/vale",
     ".github/scripts/ci/verify_documentation.py",
     ".github/workflows/docs.yml",
+    "mise.toml",
     "config/ci/tasks/docs.toml",
     ".github/workflows/openwiki-update.yml",
+    "config/ci/tasks/release.toml",
     "docs/reviews/navigation-density",
     PROSE_DISPOSITIONS,
 )

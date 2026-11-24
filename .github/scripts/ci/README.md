@@ -10,28 +10,27 @@ One pull request is validated at a time, on the pull request itself.
 
 ## Run a CI check locally
 
-Every check workflow step runs `mise run <task> [arguments]`; a developer or agent runs the same task.
-Tasks live in `config/ci/tasks/ci.toml`, `docs.toml`, and `composed.toml`, and `mise.toml` includes them.
-GitHub-supplied values, such as the run number or workspace, have local defaults inside each task.
-The check workflows are `ci.yml`, `docs.yml`, `composed-linux.yml`, and `gradle-cache.yml`.
+Run `mise tasks` to list workflows for developers, agents, hooks, and CI.
+Use `mise tasks info <task>` to inspect a task and `mise run <task> [arguments]` to run it.
+The [mise configuration](../../../mise.toml) pins the tools and includes the task definitions.
+The CI task descriptions identify host and artifact requirements. Publication tasks also need the release inputs and credentials of the corresponding job.
 
 | Command | Runs |
 | --- | --- |
+| `mise run fast` | Cheap checks before Gradle, on an uncommitted tree |
+| `mise run module :distribution:cli` | One module's quality guards and unit tests |
+| `mise run affected` | The source obligations of this branch's change against `origin/main` |
 | `mise run ci:pr` | Decisions, documentation, and complete source obligations, in that order |
 | `mise run ci:pr-full` | `ci:pr`, the portable container suites, and the macOS reset adapters |
-| `mise run ci:source --affected --base <full-sha> --event pull_request` | The affected source obligations for a change |
-| `mise tasks ls` | Every task, with the host requirements in its description |
 
-A description prefix names what a task needs beyond the pinned toolchain.
-`[macOS]` needs a macOS host, `[container]` a running container runtime, and `[network]` public downloads.
+Brackets in the task list name what a task needs beyond the pinned toolchain.
+`[macOS]` and `[Linux]` need that host, `[container]` a running container runtime, and `[network]` public downloads.
 `[github]` needs the GitHub API with an authenticated `gh`, and `[artifacts]` needs outputs of earlier CI jobs.
-A task that lacks its requirement fails with a reason; it never reports success.
+`[clean commit]` needs a clean committed tree.
+The task's own command enforces its requirement and fails with a reason.
 
 `workflow_contract.py` enforces this in the decisions suite.
-It rejects a check workflow step that is not a task invocation or a reviewed bootstrap step, and a step that names an unknown task.
-It also rejects a task nothing uses and a task file that `mise.toml` does not include.
-Every workflow file must be classified as a check or publication workflow.
-Publication workflows release or maintain artifacts and stay outside this contract.
+It checks task references in workflows, hooks, and guides. GitHub Actions owns job selection, artifact transfer, and result reporting.
 
 The installed acceptance baseline is the checked-in pin `config/ci/acceptance-baseline.json`.
 `acceptance_inputs.py` decodes it, so changing the baseline is a reviewed one-file change.
@@ -225,7 +224,7 @@ Skipped semantic fixtures provide no compiler behavior evidence for that run.
 Set `KAST_SEMANTIC_FIXTURES=true` to enable the suites and report consumers:
 
 ```sh
-KAST_SEMANTIC_FIXTURES=true mise exec -- ./gradlew productBuildGate
+KAST_SEMANTIC_FIXTURES=true mise run gradle productBuildGate
 ```
 
 Set the GitHub repository variable `KAST_SEMANTIC_FIXTURES` to `true` to enable them in CI.
@@ -312,20 +311,20 @@ The native stage rejects a binary whose deployment target differs from macOS 15.
 Run the focused checks from the repository root:
 
 ```sh
-uv run --locked --script .github/scripts/ci/fast_checks.py
-uv run --locked --project docs/internal/tooling pyright --project .github/scripts/ci/pyrightconfig.json
-python3 .github/scripts/ci/verify_documentation.py
-actionlint .github/workflows/ci.yml .github/workflows/docs.yml .github/workflows/developer-release.yml
+mise run fast
+mise run types
+mise run docs:contracts
+mise run workflow-lint .github/workflows/ci.yml .github/workflows/docs.yml .github/workflows/developer-release.yml
 ```
 
 `fast_checks.py` owns the cheap check sequence. Its default `local` mode runs CI
 decisions, candidate rules, release preflight suites, and portable packaging tests.
 It accepts an uncommitted tree and stops at the first failed stage.
 CI runs its `decisions` mode before scope selection; the separate portable job
-retains the Linux container boundary. Run `fast_checks.py pre-push` for manual
+retains the Linux container boundary. Run `mise run pre-push` for manual
 qualification. It starts the full product gate after the cheap checks pass.
 
-Use uv 0.12.9 or newer. The script locks its dependencies and selects Python 3.12.
+Mise provides uv 0.12.9. The script locks its dependencies and selects Python 3.12.
 Initial environment provisioning can use the network. Test execution uses private
 directories and excludes caller credentials, Git repository variables, user Git
 configuration, and pytest filters. The full product gate retains the caller's
@@ -542,7 +541,7 @@ The same prepared files enter assembly.
 To examine known generated outputs across linked worktrees, run:
 
 ```sh
-python3 .github/scripts/ci/build_storage.py inventory --repo . --minimum-bytes 1073741824
+mise run storage-inventory --repo . --minimum-bytes 1073741824
 ```
 
 The report gives each output's worktree, allocated size, and activity status.

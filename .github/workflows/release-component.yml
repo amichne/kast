@@ -41,22 +41,21 @@ jobs:
         with:
           fetch-depth: 0
           ref: ${{ github.sha }}
+      - name: Install the task runner
+        uses: jdx/mise-action@5228313ee0372e111a38da051671ca30fc5a96db # v3
+        with:
+          install_args: uv
+
       - name: Admit exact current main source
-        run: |
-          git fetch --no-tags origin main
-          [[ "$GITHUB_SHA" == "$(git rev-parse origin/main)" ]] || exit 1
-          git checkout --detach "$GITHUB_SHA"
+        run: mise run release:main
       - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           python-version-file: .python-version
-      - run: python3 -m pip install --disable-pip-version-check uv==0.12.9
 
       - uses: ./.github/actions/jq-oracle
       - name: Resolve selected service version
         id: release_version
-        run: >-
-          python3 distribution/release/resolve_version.py
-          --repository "$GITHUB_REPOSITORY" --component "$RELEASE_COMPONENT" --bump "$RELEASE_BUMP"
+        run: mise run release:version
       - uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
         with:
           distribution: temurin
@@ -77,30 +76,11 @@ jobs:
       - name: Check selected service and assemble its release
         env:
           RELEASE_VERSION: ${{ steps.release_version.outputs.version }}
-        run: |
-          common=(--no-daemon --max-workers=2 -Dorg.gradle.jvmargs=-Xmx5g "-PkastSourceRevision=$GITHUB_SHA")
-          guards=(spotlessCheck verifyKastArchitecture verifyJsonContracts verifyKnowledgeBase)
-          case "$RELEASE_COMPONENT" in
-            control)
-              ./gradlew "${common[@]}" "-PcontrolVersion=$RELEASE_VERSION" "${guards[@]}" \
-                :cli:check :app-server:check :distribution:cli:check :distribution:managed:check \
-                :protocol:contract:check :protocol:wire:check assembleControlRelease
-              ;;
-            host)
-              ./gradlew "${common[@]}" "-PhostedPluginVersion=$RELEASE_VERSION" "${guards[@]}" \
-                :runtime:hosted:check :protocol:contract:check :protocol:wire:check assembleHostRelease
-              ;;
-            *) exit 1 ;;
-          esac
-          python3 distribution/release/test_resolve_version.py
-          uv run --locked --project config/python python distribution/release/test_component_release.py
+        run: mise run release:build-component
       - name: Admit selected component release
         env:
           RELEASE_VERSION: ${{ steps.release_version.outputs.version }}
-        run: >-
-          uv run --locked --project config/python python distribution/release/component_release.py --component "$RELEASE_COMPONENT"
-          --version "$RELEASE_VERSION" --source-revision "$GITHUB_SHA"
-          --directory "build/release/${RELEASE_COMPONENT}-v${RELEASE_VERSION}"
+        run: mise run release:admit-component
       - name: Retain selected component candidate
         uses: actions/upload-artifact@v7.0.2
         with:
@@ -112,10 +92,7 @@ jobs:
       - name: Publish selected component
         env:
           RELEASE_VERSION: ${{ steps.release_version.outputs.version }}
-        run: >-
-          bash .github/scripts/release/publish-component.sh --component "$RELEASE_COMPONENT"
-          --version "$RELEASE_VERSION" --commit "$GITHUB_SHA"
-          --assets-directory "build/release/${RELEASE_COMPONENT}-v${RELEASE_VERSION}"
+        run: mise run release:publish-component
       - name: Retain build reports
         if: always()
         uses: actions/upload-artifact@v7.0.2

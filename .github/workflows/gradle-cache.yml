@@ -27,7 +27,7 @@ jobs:
       - name: Install the task runner
         uses: jdx/mise-action@5228313ee0372e111a38da051671ca30fc5a96db # v3
         with:
-          install: false
+          install_args: uv
 
       - uses: ./.github/actions/source-toolchain
 

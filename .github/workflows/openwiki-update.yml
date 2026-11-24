@@ -24,6 +24,11 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Install the task runner
+        uses: jdx/mise-action@5228313ee0372e111a38da051671ca30fc5a96db # v3
+        with:
+          install_args: uv
+
       - name: Set up Node.js
         uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
@@ -34,25 +39,15 @@ jobs:
         with:
           python-version-file: ".python-version"
 
-      - name: Install the pinned Python runner
-        run: python3 -m pip install --disable-pip-version-check uv==0.12.9
-
       - name: Report secret-free credential readiness
-        run: >-
-          uv run --locked --project docs/internal/tooling python docs/internal/tooling/knowledge_refresh.py
-          --repo "$GITHUB_WORKSPACE" --state-dir "$RUNNER_TEMP/kast-knowledge"
-          --host native --readiness
+        run: mise run wiki:readiness
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
 
       - name: Run isolated maintenance for the frozen source
         id: maintenance
         continue-on-error: true
-        run: >-
-          uv run --locked --project docs/internal/tooling python docs/internal/tooling/knowledge_refresh.py
-          --repo "$GITHUB_WORKSPACE" --state-dir "$RUNNER_TEMP/kast-knowledge"
-          --source-revision "$GITHUB_SHA" --host native --bootstrap --run
-          > "$RUNNER_TEMP/knowledge-refresh.json"
+        run: mise run wiki:refresh > "$RUNNER_TEMP/knowledge-refresh.json"
         env:
           OPENWIKI_PROVIDER: openai
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
@@ -65,19 +60,7 @@ jobs:
       - name: Read bounded maintenance result
         id: result
         if: ${{ !cancelled() && steps.maintenance.outcome != 'skipped' }}
-        run: |
-          python3 - "$RUNNER_TEMP/knowledge-refresh.json" "$GITHUB_OUTPUT" <<'PY'
-          import json
-          import sys
-          from pathlib import Path
-          result = json.loads(Path(sys.argv[1]).read_text())
-          with Path(sys.argv[2]).open("a") as output:
-              for name in ("outcome", "worktree"):
-                  value = result.get(name) or ""
-                  if not isinstance(value, str) or "\n" in value or "\r" in value:
-                      raise ValueError("Invalid maintenance result")
-                  output.write(name + "=" + value + "\n")
-          PY
+        run: mise run wiki:result
 
       - name: Keep reviewable native progress and outcome
         if: ${{ always() }}
@@ -111,4 +94,6 @@ jobs:
 
       - name: Propagate incomplete or failed maintenance
         if: ${{ steps.maintenance.outcome == 'failure' }}
-        run: exit 1
+        env:
+          MAINTENANCE_OUTCOME: ${{ steps.maintenance.outcome }}
+        run: mise run ci:require-result "$MAINTENANCE_OUTCOME" success

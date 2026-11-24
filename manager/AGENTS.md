@@ -45,7 +45,7 @@ Read the [tracer evidence](../docs/reviews/go-frontend-tracer.md) for the measur
 - `go.mod` owns the Go release through its `toolchain` line and the analyzers through its `tool` lines.
   The `mise.toml` Go entry only provisions a matching `go` command.
 - Keep the bootstrap executables a function of the module's bytes and the `toolchain` line. `install.sh` pins their digests.
-- After a dependency or toolchain change, run `manager/check notices`. The gate rejects `THIRD_PARTY_NOTICES.txt` when it differs from the packages in the executable.
+- After a dependency or toolchain change, run `mise run frontend-notices`. The gate rejects `THIRD_PARTY_NOTICES.txt` when it differs from the packages in the executable.
   That file covers only the Go executable. It does not cover the JVM libraries of a product.
 - Forward the argument vector, working directory, and environment unchanged. Never lower flags or model requests in Go.
 - Route only the public query commands to the coordinator. `hook` and `workspace` read process-local state, so they run on the JVM.
@@ -98,11 +98,11 @@ Read the [tracer evidence](../docs/reviews/go-frontend-tracer.md) for the measur
 
 ## Entry Points
 
-- Gate: `mise exec -- ./gradlew :frontendTest`. It runs `manager/check gate` with the generated catalog.
+- Gate: `mise run frontend`. It runs `manager/check gate` with the generated catalog.
   The gate covers module integrity and tidiness, `gofmt`, `go vet`, `staticcheck`, race tests, and cgo-free builds for every release target.
   It also builds the bootstrap executables from two directories and compares the bytes.
-- Bootstrap: `manager/check bootstrap --output <directory>` builds the executables. The [publication procedure](../docs/development.md#bootstrap-release) releases them.
-- Advisory scan: `mise exec -- uv run --locked --script manager/check vulnerabilities`. Its result depends on the live Go advisory database.
+- Bootstrap: `mise run bootstrap:build --output <directory>` builds the executables. The [publication procedure](../docs/development.md#bootstrap-release) releases them.
+- Advisory scan: `mise run ci:frontend-vulnerabilities`. Its result depends on the live Go advisory database.
 - Inner loop: `cd manager && go test -race ./...`. Set `KAST_FRONTEND_CATALOG` to the generated catalog for the status check.
-- Control payload: `mise exec -- ./gradlew :stageKastControlProduct` stages the binary, `lib`, and `share/kast/frontend.json`.
+- Control payload: `mise run gradle :stageKastControlProduct` stages the binary, `lib`, and `share/kast/frontend.json`.
 - Coordinator route tests: `PublicInvocationEndpointTest` in `app-server` and `CoordinatorPublicInvocationsTest` in `cli`.

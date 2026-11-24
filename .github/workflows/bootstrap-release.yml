@@ -30,6 +30,11 @@ jobs:
           ref: ${{ github.sha }}
           persist-credentials: false
 
+      - name: Install the task runner
+        uses: jdx/mise-action@5228313ee0372e111a38da051671ca30fc5a96db # v3
+        with:
+          install: false
+
       - name: Set up Python
         uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
@@ -42,12 +47,12 @@ jobs:
           cache: false
 
       - name: Verify the frontend and its reproducible bootstrap
-        run: python3 manager/check gate
+        run: mise run bootstrap:gate
 
       - name: Build the bootstrap executables
-        run: python3 manager/check bootstrap --output build/bootstrap
+        run: mise run bootstrap:build --output build/bootstrap
 
       - name: Publish one immutable pre-release
         # An explicit bash sets pipefail, so tee cannot hide a rejection.
         shell: bash
-        run: python3 .github/scripts/release/publish_bootstrap.py --directory build/bootstrap | tee -a "$GITHUB_STEP_SUMMARY"
+        run: mise run bootstrap:publish | tee -a "$GITHUB_STEP_SUMMARY"

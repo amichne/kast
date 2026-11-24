@@ -16,6 +16,8 @@ from pathlib import Path
 from unittest.mock import patch
 from urllib.parse import unquote
 
+import yaml
+
 import macos_reset_checks
 import workflow_contract
 import verification_plan
@@ -783,7 +785,7 @@ class SourceInventoryTest(unittest.TestCase):
         self.assertEqual(2, required.count("if: needs.scope.outputs.product == 'run'"))
         self.assertIn("COMPLETE_PRODUCT_RESULT: ${{ needs.complete-product.result }}", required)
         self.assertIn("TWO_PLATFORM_RESULT: ${{ needs.two-platform-product.result }}", required)
-        for gate in ('test "$COMPLETE_PRODUCT_RESULT" = success', 'test "$TWO_PLATFORM_RESULT" = success'):
+        for gate in ('mise run ci:require-result "$COMPLETE_PRODUCT_RESULT" success', 'mise run ci:require-result "$TWO_PLATFORM_RESULT" success'):
             self.assertLess(required.index(gate), required.index("run: mise run ci:outcome"))
         self.assertIn("validation_outcome.py", task_run("ci:outcome"))
         candidate = (workflows / "composed-linux.yml").read_text()
@@ -871,17 +873,18 @@ class SourceInventoryTest(unittest.TestCase):
             "MAIN_RUN_ATTEMPT: ${{ github.event.workflow_run.run_attempt || inputs.run_attempt }}",
             preview,
         )
-        self.assertIn("build_candidate.py promote-product", preview)
-        self.assertIn('--revision "$SOURCE_SHA"', preview)
-        self.assertIn('--run-id "$MAIN_RUN_ID" --run-attempt "$MAIN_RUN_ATTEMPT"', preview)
+        candidate_command = task_run("release:candidate")
+        self.assertIn("build_candidate.py promote-product", candidate_command)
+        self.assertIn('--revision "$SOURCE_SHA"', candidate_command)
+        self.assertIn('--run-id "$MAIN_RUN_ID" --run-attempt "$MAIN_RUN_ATTEMPT"', candidate_command)
         self.assertIn("if: steps.candidate.outputs.publication == 'PUBLISH'", preview)
         self.assertLess(
-            preview.index("build_candidate.py promote-product"),
-            preview.index("publish_developer.py product"),
+            preview.index("mise run release:candidate"),
+            preview.index("mise run release:preview"),
         )
         for producer in (mac, joined, candidate, required, preview):
             self.assertNotIn("continue-on-error:", producer)
-        for consumer in (joined, preview):
+        for consumer in (joined, preview, candidate_command, task_run("release:preview")):
             for build_command in ("./gradlew", "assembleRelease", "composed_release.py assemble"):
                 self.assertNotIn(build_command, consumer)
 
@@ -905,17 +908,17 @@ class SourceInventoryTest(unittest.TestCase):
             self.assertIn(binding, jobs)
         # An exact step/command allowlist excludes new compilation, repackaging,
         # reusable producers and dependency/tool resolution, not just known strings.
-        actions = re.findall(r"(?m)^\s+uses: (\S+)|^\s+- uses: (\S+)", jobs)
-        self.assertEqual(1, len(actions))
-        self.assertTrue((actions[0][0] or actions[0][1]).startswith("actions/checkout@"))
-        self.assertEqual(1, len(re.findall(r"(?m)^\s+(?:- )?run:", jobs)))
-        commands = re.findall(r"(?m)^        run: >-\n((?:          [^\n]+\n?)+)", jobs)
-        self.assertEqual(1, len(commands))
+        steps = yaml.safe_load(release)["jobs"]["publish"]["steps"]
+        self.assertEqual(3, len(steps))
+        self.assertTrue(steps[0]["uses"].startswith("actions/checkout@"))
+        self.assertTrue(steps[1]["uses"].startswith("jdx/mise-action@"))
+        self.assertEqual({"install": False}, steps[1]["with"])
+        self.assertEqual("mise run release:stable", steps[2]["run"])
         self.assertEqual(
             "python3 .github/scripts/release/publish_developer.py stable "
             '--source-tag "$SOURCE_TAG" --record-sha256 "$RECORD_SHA256" '
             '--public-version "$PUBLIC_VERSION"',
-            " ".join(commands[0].split()),
+            task_run("release:stable"),
         )
 
     def test_only_main_writes_caches_and_a_dispatched_seed_shares_the_source_key(self):
@@ -985,8 +988,8 @@ class SourceInventoryTest(unittest.TestCase):
         stable = (workflows / "release.yml").read_text()
         self.assertNotIn("vars.KAST_MACOS_CHECKS", stable)
         self.assertNotIn("vars.KAST_NATIVE_COMPILATION", stable)
-        self.assertIn("publish_developer.py stable", stable)
-        self.assertIn('--record-sha256 "$RECORD_SHA256"', stable)
+        self.assertIn("mise run release:stable", stable)
+        self.assertIn('--record-sha256 "$RECORD_SHA256"', task_run("release:stable"))
 
     def test_frozen_pr1130_diff_keeps_full_checks_after_canonical_dependencies_expand(self):
         # Exact changed-path inventory for a96e7a07...d02373e8 (PR #1130).

@@ -16,11 +16,6 @@ runs:
         cache: pip
         cache-dependency-path: config/python/uv.lock
 
-    # Python test dependencies come from the locked uv project in config/python.
-    - name: Install uv
-      shell: bash
-      run: python3 -m pip install --disable-pip-version-check uv==0.12.9
-
     - uses: ./.github/actions/jq-oracle
 
     - name: Set up the frontend Go toolchain

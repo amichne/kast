@@ -61,12 +61,12 @@ Defines Gradle conventions, effect ownership, architecture gates, generated cont
 - Root `settings.gradle.kts` includes this separate Gradle build.
 - Keep each project's mutable Gradle model inside its own convention. Share outputs through consumable configurations.
 - Resolve module inventories separately because distinct project paths can share Maven coordinates.
-- Run `./gradlew -p build-logic test --tests '*VerificationGraphTaskTest'` for the isolated graph tests.
+- Run `mise run gradle -p build-logic test --tests '*VerificationGraphTaskTest'` for the isolated graph tests.
 - The build-logic `check` task includes the separate JSON parser suite. A focused `test` invocation excludes that suite.
-- Run `./gradlew verifyJsonContracts` from the repository root for the JSON syntax gate.
-- Run `mise exec -- ./gradlew :distribution:cli:scopedCheck --continue` for one module's quality guards and unit tests. Keep product assembly in the full gate.
-- Run `./gradlew topologyImpact -PkastTopologyModules=:topology:contract` for declared downstream module impact.
-- Run `./gradlew generateVerificationGraph` for production, test, and fixture consumers. Keep the report in `config/ci/verification-graph.json` after review.
+- Run `mise run json` from the repository root for the JSON syntax gate.
+- Run `mise run module :distribution:cli` for one module's quality guards and unit tests. Keep product assembly in the full gate.
+- Run `mise run gradle topologyImpact -PkastTopologyModules=:topology:contract` for declared downstream module impact.
+- Run `mise run gradle generateVerificationGraph` for production, test, and fixture consumers. Keep the report in `config/ci/verification-graph.json` after review.
 - `verifyVerificationGraph` rejects a snapshot that differs from the current Gradle declarations.
 - Set `kastTopologyEnabled=false` to disable that report. Read [the command guide](../docs/topology-impact.md) for evidence limits.
 - `verifyKnowledgeBase` examines OpenWiki. It does not examine the scoped guide format.

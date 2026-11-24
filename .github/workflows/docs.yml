@@ -32,13 +32,10 @@ jobs:
         with:
           python-version-file: .python-version
 
-      - name: Install locked documentation runner
-        run: python3 -m pip install --disable-pip-version-check uv==0.12.9
-
       - name: Install declared tools and separate reader Vale
         uses: jdx/mise-action@5228313ee0372e111a38da051671ca30fc5a96db # v3
         with:
-          install_args: java node vale@3.24.0 vale@3.25.1
+          install_args: uv java node vale@3.24.0 vale@3.25.1
 
       # The knowledge tasks below run Gradle. Restored plugins and dependencies
       # keep a registry outage from failing an unchanged documentation contract.

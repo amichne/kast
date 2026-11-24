@@ -54,6 +54,11 @@ jobs:
           ref: ${{ github.sha }}
           persist-credentials: false
 
+      - name: Install the task runner
+        uses: jdx/mise-action@5228313ee0372e111a38da051671ca30fc5a96db # v3
+        with:
+          install: false
+
       - name: Set up Python
         uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
@@ -65,18 +70,12 @@ jobs:
           SOURCE_SHA: ${{ github.event.workflow_run.head_sha || inputs.source_revision }}
           MAIN_RUN_ID: ${{ github.event.workflow_run.id || inputs.run_id }}
           MAIN_RUN_ATTEMPT: ${{ github.event.workflow_run.run_attempt || inputs.run_attempt }}
-        run: >-
-          python3 .github/scripts/release/build_candidate.py promote-product
-          --repository "$GITHUB_REPOSITORY" --revision "$SOURCE_SHA"
-          --run-id "$MAIN_RUN_ID" --run-attempt "$MAIN_RUN_ATTEMPT" --bundle build/candidate
-          --github-output "$GITHUB_OUTPUT"
+        run: mise run release:candidate
 
       - name: Publish retained complete product and existing catalog
         if: steps.candidate.outputs.publication == 'PUBLISH'
-        run: >-
-          python3 .github/scripts/release/publish_developer.py product
-          --directory build/candidate
+        run: mise run release:preview
 
       - name: Record documentation validation without publication
         if: steps.candidate.outputs.publication == 'DOCS_VALIDATED'
-        run: echo 'DOCS_VALIDATED — exact source validated; developer product pointer unchanged.' >> "$GITHUB_STEP_SUMMARY"
+        run: mise run release:report-docs

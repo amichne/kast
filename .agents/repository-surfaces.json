@@ -4,6 +4,8 @@
     {"scope": "public", "path": "README.md", "kind": "file"},
     {"scope": "public", "path": "AGENTS.md", "kind": "file"},
     {"scope": "public", "path": "install.sh", "kind": "file"},
+    {"scope": "public", "path": "mise.toml", "kind": "file"},
+    {"scope": "public", "path": "config/ci/tasks", "kind": "tree"},
     {"scope": "public", "path": "docs/public", "kind": "tree"},
     {"scope": "public", "path": "bin/kast-knowledge-refresh", "kind": "file"},
     {"scope": "public", "path": "bin/kast-repo", "kind": "file"},

@@ -59,9 +59,9 @@ This directory owns the Mintlify site, contributor guides, and glossary rules. R
 ## Entry Points
 
 - From `docs/public`, run `mint validate` and `mint broken-links`.
-- Public diagrams use `docs/public/images/architecture/*.mmd` as source. Run `npm run render --prefix docs/internal/tooling/diagrams`. Then run `npm run check --prefix docs/internal/tooling/diagrams`.
+- Public diagrams use `docs/public/images/architecture/*.mmd` as source. Run `mise run diagram-render`. Then run `mise run diagram-check`.
 - Keep generated diagram snippets, SVG files, and `diagram-theme.css` with their source. Edit the shared renderer for SVG layout and colors. Edit `style.css` for figure layout.
-- The value explorer and README preview share `docs/internal/tooling/value-journey` as their source. Run `npm run build --prefix docs/internal/tooling/value-journey`. Commit both generated files.
+- The value explorer and README preview share `docs/internal/tooling/value-journey` as their source. Run `mise run value-journey`. Commit both generated files.
 - Keep Guides, Architecture, and Reference visible in navigation. Group pages by reader goal.
 - Public setup starts with the remote installer's `--channel preview` option. Use `kast upgrade --channel preview` for updates.
 - Use `kast install skill` to export the skill. Agents receive the skill and MCP server through dotagents. Do not restore retired harness installers.
@@ -70,8 +70,8 @@ This directory owns the Mintlify site, contributor guides, and glossary rules. R
 - Use `snippets/deeper-reading.mdx` for bottom links from core pages. `sidebar-toggle.js` owns the desktop toggle for Maple.
 - After a navigation edit, examine group controls, sidebar state, keyboard access, and the native mobile menu.
 - Use the pinned Vale command and checked-in rules from the root guide.
-- Run `./gradlew verifyDocumentationGlossary` to examine terms and generated files.
-- Run `python3 .github/scripts/ci/verify_documentation.py` for parser, glossary, example, and knowledge integrity obligations.
+- Run `mise run gradle verifyDocumentationGlossary` to examine terms and generated files.
+- Run `mise run docs:contracts` for parser, glossary, example, and knowledge integrity obligations.
 - `code_kb.py check-source-integrity` rejects malformed metadata and reports current declaration drift. Publication qualification needs current evidence.
 - Before an edit to a generated callable contract, read the nested public reference guide.
 

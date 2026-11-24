@@ -53,20 +53,15 @@ jobs:
       - name: Install the task runner
         uses: jdx/mise-action@5228313ee0372e111a38da051671ca30fc5a96db # v3
         with:
-          install: false
+          install_args: uv
 
       - name: Set up Python
         uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           python-version-file: ".python-version"
 
-      - name: Install uv
-        run: python3 -m pip install --disable-pip-version-check uv==0.12.9
-
       - name: Report CI switches
-        run: |
-          echo "Semantic fixture switch: $KAST_SEMANTIC_FIXTURES" >> "$GITHUB_STEP_SUMMARY"
-          echo "macOS check switch: $KAST_MACOS_CHECKS; effective product assembly: $KAST_NATIVE_COMPILATION" >> "$GITHUB_STEP_SUMMARY"
+        run: mise run ci:report-switches
 
       - name: Test CI decisions
         run: mise run ci:decisions
@@ -120,7 +115,7 @@ jobs:
       - name: Install the task runner
         uses: jdx/mise-action@5228313ee0372e111a38da051671ca30fc5a96db # v3
         with:
-          install: false
+          install_args: uv
 
       - uses: ./.github/actions/source-toolchain
 
@@ -185,7 +180,7 @@ jobs:
       - name: Install the task runner
         uses: jdx/mise-action@5228313ee0372e111a38da051671ca30fc5a96db # v3
         with:
-          install: false
+          install_args: uv
       - name: Check workspace and scratch free space
         run: mise run ci:storage
       - uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
@@ -195,7 +190,6 @@ jobs:
       - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           python-version-file: .python-version
-      - run: python3 -m pip install uv==0.12.9
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: "24.21.0"
@@ -267,7 +261,7 @@ jobs:
       - name: Install the task runner
         uses: jdx/mise-action@5228313ee0372e111a38da051671ca30fc5a96db # v3
         with:
-          install: false
+          install_args: uv
       - uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
         with:
           distribution: temurin
@@ -276,8 +270,6 @@ jobs:
         if: runner.environment != 'self-hosted'
         with:
           python-version-file: .python-version
-      - run: python3 -m pip install uv==0.12.9
-        if: runner.environment != 'self-hosted'
       - name: Set up local Python
         if: runner.environment == 'self-hosted'
         uses: ./.github/actions/local-python
@@ -580,13 +572,13 @@ jobs:
         if: needs.scope.outputs.product == 'run'
         env:
           COMPLETE_PRODUCT_RESULT: ${{ needs.complete-product.result }}
-        run: test "$COMPLETE_PRODUCT_RESULT" = success
+        run: mise run ci:require-result "$COMPLETE_PRODUCT_RESULT" success
 
       - name: Require Linux qualification for the selected product gate
         if: needs.scope.outputs.product == 'run'
         env:
           TWO_PLATFORM_RESULT: ${{ needs.two-platform-product.result }}
-        run: test "$TWO_PLATFORM_RESULT" = success
+        run: mise run ci:require-result "$TWO_PLATFORM_RESULT" success
 
       - name: Seal successful validation outcome
         env:
@@ -621,7 +613,7 @@ jobs:
       - name: Install the task runner
         uses: jdx/mise-action@5228313ee0372e111a38da051671ca30fc5a96db # v3
         with:
-          install: false
+          install_args: uv
 
       - name: Set up Java 25
         id: jdk25
@@ -636,9 +628,6 @@ jobs:
           python-version-file: ".python-version"
           cache: ${{ inputs.rollout != 'cold' && 'pip' || '' }}
           cache-dependency-path: config/python/uv.lock
-
-      - name: Install uv
-        run: python3 -m pip install --disable-pip-version-check uv==0.12.9
 
       - uses: ./.github/actions/jq-oracle
 
@@ -693,7 +682,11 @@ jobs:
     if: always() && github.event_name == 'workflow_dispatch' && inputs.rollout != 'none'
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: jdx/mise-action@5228313ee0372e111a38da051671ca30fc5a96db # v3
+        with:
+          install: false
       - name: Require every corpus result and portable checks
         env:
           ROLLOUT_SUCCESS: ${{ needs.scope.result == 'success' && needs.rollout.result == 'success' && needs.portable.result == 'success' }}
-        run: test "$ROLLOUT_SUCCESS" = true
+        run: mise run ci:require-result "$ROLLOUT_SUCCESS" true

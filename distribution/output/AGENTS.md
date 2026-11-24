@@ -31,7 +31,7 @@ Keep this module free of environment reads, process effects, and output streams.
 Keep format failures finite and preserve unsuccessful exit codes in each process adapter.
 Do not apply the CLI format switch to stored records or internal protocols.
 
-Run `mise exec -- ./gradlew :distribution:output:scopedCheck` for this module.
+Run `mise run module :distribution:output` for this module.
 The public CLI process tests prove switch admission and the emitted result format.
 The CLI's native projection tests also cover decoder metadata for JDK collection types.
 Keep these tests passing after JDK or `JToon` upgrades.
