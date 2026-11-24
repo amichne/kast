@@ -135,6 +135,7 @@ jobs:
 
       - name: Assemble matching Control, Host, and bootstrap
         if: inputs.release_target != 'macos-aarch64'
+        timeout-minutes: 30
         env:
           TARGET: ${{ matrix.target }}
         run: mise run composed:release --target "$TARGET"

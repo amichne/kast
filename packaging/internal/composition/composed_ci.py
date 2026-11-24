@@ -28,11 +28,14 @@ COORDINATOR_PROBE = "packaging/internal/verification/linux_coordinator_probe.py"
 DONOR_ORIGIN = "https://download.jetbrains.com/idea/"
 CONTROL = "/tmp/kc/components/control/share/kast/libexec/kast-management"
 LINUX_PYTHON = "/usr/bin/python3"
+# Gradle 9.8.2's parallel project configuration intermittently starves, and `--no-parallel` does
+# not select sequential configuration under isolated projects. One worker does, as in
+# release_handoff.GradleStage (#1344).
 GRADLE = (
     "./gradlew",
     "--no-daemon",
     "--no-parallel",
-    "--max-workers=2",
+    "--max-workers=1",
     "-Dorg.gradle.jvmargs=-Xmx3g",
 )
 PACKAGING_PYTHON = ("uv", "run", "--locked", "--project", "packaging", "python")
