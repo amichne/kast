@@ -95,6 +95,17 @@ tasks.processResources {
     expand(values)
 }
 
+// The packaged plugin names its commit and tree. The Host checks only that they look like Git identities, so a commit
+// that changes nothing else must not change a test's cache key.
+normalization {
+    runtimeClasspath {
+        properties("kast-hosted-query.properties") {
+            ignoreProperty("sourceRevision")
+            ignoreProperty("sourceTree")
+        }
+    }
+}
+
 dependencies {
     implementation(project(":kernel"))
     implementation(project(":distribution:contract"))
@@ -288,21 +299,23 @@ val nativeCoroutinesTestVersion = catalog.findVersion("ide-coroutines-test").get
 val nativeFixtureIdea = SharedNativeFixtureIdea.select(project, nativePlatformBuild)
 val nativeIdeaHome = nativeFixtureIdea.home
 val nativeIdeaLibraries =
-    nativeFixtureIdea.contents.asFileTree.matching {
-        include(
-            "lib/**/*.jar",
-            "plugins/java/lib/**/*.jar",
-            "plugins/platform-structuralSearch-plugin/lib/**/*.jar",
-            "plugins/Kotlin/lib/**/*.jar",
-            "plugins/toml/lib/**/*.jar",
-        )
-        exclude(
-            "plugins/Kotlin/lib/jps/**",
-            "plugins/Kotlin/lib/kotlinc/**",
-            "lib/intellij.libraries.kotlinx.serialization.*.jar",
-            "lib/intellij.libraries.ktor.utils.jar",
-        )
-    }
+    nativeFixtureIdea.jars(
+        includes =
+            listOf(
+                "lib/**/*.jar",
+                "plugins/java/lib/**/*.jar",
+                "plugins/platform-structuralSearch-plugin/lib/**/*.jar",
+                "plugins/Kotlin/lib/**/*.jar",
+                "plugins/toml/lib/**/*.jar",
+            ),
+        excludes =
+            listOf(
+                "plugins/Kotlin/lib/jps/**",
+                "plugins/Kotlin/lib/kotlinc/**",
+                "lib/intellij.libraries.kotlinx.serialization.*.jar",
+                "lib/intellij.libraries.ktor.utils.jar",
+            ),
+    )
 
 dependencies {
     add(nativeTest.implementationConfigurationName, nativeIdeaLibraries)

@@ -175,16 +175,17 @@ tasks.register<Sync>("extractNativeTestIdea") {
 val nativeFixtureIdea = SharedNativeFixtureIdea.select(project, ideaPlatformBuild)
 val nativeIdeaHome = nativeFixtureIdea.home
 val nativeIdeaLibraries =
-    nativeFixtureIdea.contents.asFileTree.matching {
-        include(
-            "lib/**/*.jar",
-            "plugins/java/lib/**/*.jar",
-            "plugins/platform-structuralSearch-plugin/lib/**/*.jar",
-            "plugins/Kotlin/lib/**/*.jar",
-            "plugins/toml/lib/**/*.jar",
-        )
-        exclude("plugins/Kotlin/lib/jps/**", "plugins/Kotlin/lib/kotlinc/**")
-    }
+    nativeFixtureIdea.jars(
+        includes =
+            listOf(
+                "lib/**/*.jar",
+                "plugins/java/lib/**/*.jar",
+                "plugins/platform-structuralSearch-plugin/lib/**/*.jar",
+                "plugins/Kotlin/lib/**/*.jar",
+                "plugins/toml/lib/**/*.jar",
+            ),
+        excludes = listOf("plugins/Kotlin/lib/jps/**", "plugins/Kotlin/lib/kotlinc/**"),
+    )
 
 dependencies {
     add(nativeTest.implementationConfigurationName, nativeIdeaLibraries)
@@ -209,9 +210,7 @@ val compileDeclaredEffectFixture =
         equivalentSources.from(
             File(repositoryRoot.asFile, "runtime/hosted/src/nativeTest/resources/semantic-effects/DependencyEffects.kt")
         )
-        compilerClasspath.from(
-            nativeFixtureIdea.contents.asFileTree.matching { include("plugins/Kotlin/kotlinc/lib/*.jar") }
-        )
+        compilerClasspath.from(nativeFixtureIdea.jars(listOf("plugins/Kotlin/kotlinc/lib/*.jar")))
         dependencies.from(nativeIdeaHome.map { it.file("plugins/Kotlin/kotlinc/lib/kotlin-stdlib.jar") })
         javaLauncher.set(javaToolchains.launcherFor(java.toolchain))
         archiveFile.set(layout.buildDirectory.file("native-test/dependencies/effects.jar"))

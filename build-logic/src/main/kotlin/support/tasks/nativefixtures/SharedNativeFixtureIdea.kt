@@ -11,8 +11,13 @@ import org.gradle.api.GradleException
 import org.gradle.api.Project
 import org.gradle.api.file.Directory
 import org.gradle.api.file.FileCollection
+import org.gradle.api.model.ObjectFactory
+import org.gradle.api.provider.ListProperty
 import org.gradle.api.provider.Property
 import org.gradle.api.provider.Provider
+import org.gradle.api.provider.ProviderFactory
+import org.gradle.api.provider.ValueSource
+import org.gradle.api.provider.ValueSourceParameters
 import org.gradle.api.tasks.Input
 import org.gradle.api.tasks.TaskAction
 import org.gradle.api.tasks.UntrackedTask
@@ -24,7 +29,58 @@ import org.gradle.api.tasks.UntrackedTask
 class NativeFixtureIdea internal constructor(
     val home: Provider<Directory>,
     val contents: FileCollection,
-)
+    private val providers: ProviderFactory,
+    private val objects: ObjectFactory,
+) {
+    /**
+     * The distribution's jars in path order. A directory listing's order belongs to its file system, so two machines
+     * would give one classpath two orders, and an ordered classpath is part of a task's cache key. The listing waits for
+     * [contents]; an IDE synchronization that precedes it sees no jars.
+     */
+    fun jars(includes: List<String>, excludes: List<String> = emptyList()): FileCollection {
+        val listing =
+            providers.of(SortedJars::class.java) {
+                parameters.home.set(home.map { it.asFile.absolutePath })
+                parameters.includes.set(includes)
+                parameters.excludes.set(excludes)
+            }
+        return objects.fileCollection().from(listing).builtBy(contents)
+    }
+}
+
+/** Lists the regular files that one Ant-style pattern includes and none excludes. */
+abstract class SortedJars : ValueSource<List<String>, SortedJars.Parameters> {
+    interface Parameters : ValueSourceParameters {
+        val home: Property<String>
+        val includes: ListProperty<String>
+        val excludes: ListProperty<String>
+    }
+
+    override fun obtain(): List<String> {
+        val home = Path.of(parameters.home.get())
+        if (!Files.isDirectory(home)) return emptyList()
+        val includes = parameters.includes.get().map(::antPattern)
+        val excludes = parameters.excludes.get().map(::antPattern)
+        return Files.walk(home)
+            .use { paths -> paths.filter(Files::isRegularFile).map { home.relativize(it).joinToString("/") }.toList() }
+            .filter { name -> includes.any { it.matches(name) } && excludes.none { it.matches(name) } }
+            .sorted()
+            .map { home.resolve(it).toString() }
+    }
+}
+
+/** Two stars match any number of directories, also none. One star stays within one name. */
+internal fun antPattern(pattern: String): Regex =
+    Regex(
+        Regex("""\*\*/|\*\*|\*|[^*]+""").findAll(pattern).joinToString("") {
+            when (it.value) {
+                "**/" -> "(?:.*/)?"
+                "**" -> ".*"
+                "*" -> "[^/]*"
+                else -> Regex.escape(it.value)
+            }
+        }
+    )
 
 /** The one owner of the native-test IDEA home: the extracted pinned distribution, or an admitted override. */
 object SharedNativeFixtureIdea {
@@ -49,7 +105,7 @@ object SharedNativeFixtureIdea {
         } else {
             contents.builtBy(DEFAULT_PRODUCER)
         }
-        NativeFixtureIdea(home, contents)
+        NativeFixtureIdea(home, contents, providers, objects)
     }
 }
 
