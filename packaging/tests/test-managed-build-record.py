@@ -245,6 +245,27 @@ class ProductRecordTest(unittest.TestCase):
                     release.Failure.ARTIFACT_INVALID, release.decode_product_record(invalid)
                 )
 
+    def test_no_selector_tracks_the_latest_stable_release(self) -> None:
+        latest = asdict(release.ReleaseMapping(1, "1.2.3", "d" * 64))
+        source = Source({release.STABLE_URL: json.dumps(latest).encode()})
+        self.assertNotIn("api.github.com", release.STABLE_URL)
+        for invalid in (b"{", b"{}", json.dumps(latest | {"publicVersion": "v1.2.3"}).encode()):
+            with self.subTest(invalid=invalid):
+                rejected = release.resolve_selection(
+                    "stable", None, None, Source({release.STABLE_URL: invalid})
+                )
+                assert isinstance(rejected, release.Rejected)
+                self.assertEqual(release.Failure.CATALOG_UNAVAILABLE, rejected.reason)
+        selected = release.resolve_selection(None, None, None, source)
+        self.assertEqual(
+            release.StableSelection("1.2.3", "v1.2.3", release.StablePolicy.TRACK), selected
+        )
+        self.assertEqual(selected, release.resolve_selection("stable", None, None, source))
+        self.assertEqual([release.STABLE_URL] * 2, source.calls)
+        unavailable = release.resolve_selection(None, None, None, Source({}))
+        assert isinstance(unavailable, release.Rejected)
+        self.assertEqual("stable", unavailable.requested)
+
     def test_preview_can_lag_main(self) -> None:
         record = product()
         entry = Entry("a" * 40, "developer-v0.0.123", record, "d" * 64)
@@ -253,8 +274,6 @@ class ProductRecordTest(unittest.TestCase):
         assert isinstance(preview, release.ProductSelection)
         self.assertEqual("a" * 40, preview.mainRevision)
         self.assertEqual([release.CATALOG_URL], source.calls)
-        self.assertEqual(preview, release.resolve_selection(None, None, None, source))
-        self.assertEqual([release.CATALOG_URL] * 2, source.calls)
         pinned = release.resolve_selection(None, None, "a" * 12, source)
         assert isinstance(pinned, release.ProductSelection)
         self.assertEqual("PinnedBuild", pinned.policy)
