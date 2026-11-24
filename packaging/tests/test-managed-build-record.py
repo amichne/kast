@@ -2563,6 +2563,82 @@ class ProductActivationTest(unittest.TestCase):
             all(url.startswith(f"{release.RELEASE_URL}/v1.2.3/") for url in self.source.calls)
         )
 
+    def test_an_unsupported_prior_is_named_after_the_new_product_is_verified(self) -> None:
+        selected = self.home / "selection.json"
+        _ = selected.write_bytes(encoded_fixture(self.selected))
+        root = self.home / ".local/share/kast"
+
+        def run(*arguments: str) -> tuple[int, str, str]:
+            stdout, stderr = io.StringIO(), io.StringIO()
+            with contextlib.redirect_stdout(stdout), contextlib.redirect_stderr(stderr):
+                code = install.main(["--resolved-selection", str(selected), *arguments], self.source)
+            return code, stdout.getvalue(), stderr.getvalue()
+
+        with (
+            patch.dict(os.environ, {"HOME": str(self.home)}),
+            patch.object(staging.platform, "system", return_value="Darwin"),
+            patch.object(staging.platform, "machine", return_value="arm64"),
+            patch.object(install.subprocess, "run", side_effect=AssertionError("no process")),
+        ):
+            self.assertEqual(0, run("--json")[0])
+            management = root / "management.json"
+            current = management.read_bytes()
+            # v0.52.0 records these harness fields.
+            older = json.loads(current) | {"registrations": [], "guidance": [], "providers": []}
+            manifest = root / "installation/installation.json"
+            retired = json.loads(manifest.read_bytes()) | {"schemaVersion": 2}
+            admitted = manifest.read_bytes()
+            for label, changed, raw, code in (
+                ("management", management, json.dumps(older).encode(), None),
+                ("manifest", manifest, json.dumps(retired).encode(), "MANIFEST_REJECTED"),
+                ("absent", root / "installation/share/kast/product-selection.json", None, "MANIFEST_REJECTED"),
+            ):
+                with self.subTest(prior=label):
+                    _ = management.write_bytes(current)
+                    _ = manifest.write_bytes(admitted)
+                    changed.unlink() if raw is None else changed.write_bytes(raw)
+                    self.source.calls.clear()
+                    status, stdout, _ = run("--json")
+                    self.assertEqual(3, status)
+                    self.assertEqual(
+                        {
+                            "stage": "PREPARATION",
+                            "reason": "PRIOR_INSTALLATION_UNSUPPORTED",
+                            "adapterCode": code,
+                            "state": None,
+                            "type": "REJECTED",
+                        },
+                        json.loads(stdout),
+                    )
+                    # Only a product that is ready to install may lead to a reset.
+                    self.assertTrue(
+                        set(self.values) <= {url.rsplit("/", 1)[-1] for url in self.source.calls}
+                    )
+                    self.assertFalse((root / "recovery/replacement").exists())
+                    status, stdout, stderr = run()
+                    self.assertEqual((3, ""), (status, stdout))
+                    self.assertIn("cannot be upgraded in place", stderr)
+                    self.assertEqual(0, run("--dry-run", "--json")[0])
+
+    def test_an_unavailable_product_never_names_an_unsupported_prior(self) -> None:
+        selected = self.home / "selection.json"
+        _ = selected.write_bytes(encoded_fixture(self.selected))
+        root = self.home / ".local/share/kast"
+        with (
+            patch.dict(os.environ, {"HOME": str(self.home)}),
+            patch.object(staging.platform, "system", return_value="Darwin"),
+            patch.object(staging.platform, "machine", return_value="arm64"),
+            patch.object(install.subprocess, "run", side_effect=AssertionError("no process")),
+            contextlib.redirect_stdout(io.StringIO()),
+        ):
+            arguments = ["--resolved-selection", str(selected), "--json"]
+            self.assertEqual(0, install.main(arguments, self.source))
+            _ = (root / "management.json").write_bytes(b"{}")
+            name = self.record.targets[1].runtime.name
+            self.source.values[f"{release.RELEASE_URL}/v1.2.3/{name}"] = b"wrong bytes"
+            self.assertEqual(1, install.main(arguments, self.source))
+        self.assertEqual(b"{}", (root / "management.json").read_bytes())
+
     def test_local_product_installs_globally_without_release_network(self) -> None:
         local = self.home / "local build ; literal"
         payload = local / "payload"

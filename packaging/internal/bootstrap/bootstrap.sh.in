@@ -8,11 +8,14 @@ arguments=()
 selection=0
 dry_run=0
 preview_head=1
+replace=0
+json=0
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --help|-h)
-      printf '%s\n' 'Usage: install.sh [--channel stable|preview | --version X.Y.Z | --commit SHA | --local-artifact DIRECTORY] [--dry-run] [--json]' \
+      printf '%s\n' 'Usage: install.sh [--channel stable|preview | --version X.Y.Z | --commit SHA | --local-artifact DIRECTORY] [--dry-run] [--replace-existing] [--json]' \
         'Installs one complete private-runtime product. Without a selector, installs the latest preview build.' \
+        'An installation that cannot be upgraded is removed after you confirm, or without asking with --replace-existing.' \
         'No Python, uv, or IDEA installation is required.' \
         'Local products contain build-record.json and payload/; private bootstrap inputs still download.'
       exit 0 ;;
@@ -29,7 +32,8 @@ while [[ $# -gt 0 ]]; do
       selection=1; arguments+=("$1" "$2"); shift 2 ;;
     --dry-run) dry_run=1; arguments+=("$1"); shift ;;
     --recover-only) preview_head=0; arguments+=("$1"); shift ;;
-    --json) arguments+=("$1"); shift ;;
+    --replace-existing) replace=1; shift ;;
+    --json) json=1; arguments+=("$1"); shift ;;
     *) fail "unsupported product installation option: $1" ;;
   esac
 done
@@ -92,6 +96,36 @@ shutil.copyfile(sys.argv[3], sys.argv[2] + "/defusedxml.whl")' \
   '@ENGINE_SHA@' "$temporary/engine" "$temporary/defusedxml.whl" <<'KAST_ENGINE'
 @ENGINE@
 KAST_ENGINE
-"$temporary/python/bin/python3.12" -I -B "$temporary/engine/bootstrap_entry.py" \
-  --private-python-archive "$temporary/python.tar.gz" --private-dependency "$temporary/defusedxml.whl" \
-  ${arguments[@]+"${arguments[@]}"}
+engine() {
+  status=0
+  outcome="$("$temporary/python/bin/python3.12" -I -B "$temporary/engine/bootstrap_entry.py" \
+    --private-python-archive "$temporary/python.tar.gz" --private-dependency "$temporary/defusedxml.whl" \
+    ${arguments[@]+"${arguments[@]}"})" || status=$?
+}
+engine
+# Status 3 is PRIOR_INSTALLATION_UNSUPPORTED: the new product is verified, nothing was changed, and only a reset
+# makes progress.
+if [[ "$status" == 3 ]]; then
+  consent=declined
+  if [[ "$replace" == 1 ]]; then consent=given
+  elif [[ "$json" == 0 ]] && (: <>/dev/tty) 2>/dev/null; then consent=ask; fi
+  if [[ "$consent" == declined ]]; then
+    printf '%s\n' 'kast: run this command again with --replace-existing to remove that installation and install this one.' >&2
+  else
+    command -v chmod >/dev/null 2>&1 || fail 'required system tool unavailable: chmod'
+    fetch "$bootstrap_url" "$temporary/kast"
+    verify "$temporary/kast" "$bootstrap_sha"
+    chmod 700 "$temporary/kast"
+    if [[ "$consent" == ask ]]; then
+      "$temporary/kast" reset >&2
+      printf 'Stop and delete this, then install the new version? [y/N] ' >/dev/tty
+      answer=''
+      read -r answer </dev/tty || true
+      case "$answer" in y|Y|yes) ;; *) fail 'nothing was changed' ;; esac
+    fi
+    "$temporary/kast" reset --yes >&2
+    engine
+  fi
+fi
+[[ -z "$outcome" ]] || printf '%s\n' "$outcome"
+exit "$status"

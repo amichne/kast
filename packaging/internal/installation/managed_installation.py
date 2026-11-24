@@ -438,6 +438,16 @@ def rename_file_no_replace(first: Path, second: Path) -> None:
         raise OSError(ctypes.get_errno(), "owned file quarantine failed")
 
 
+HOSTS = {("Darwin", "arm64"): "macos-aarch64", ("Linux", "x86_64"): "linux-x86_64"}
+
+# install.sh offers a reset on this status only: the new product is verified and nothing was changed.
+PRIOR_INSTALLATION_UNSUPPORTED_EXIT = 3
+PRIOR_INSTALLATION_UNSUPPORTED_MESSAGE = (
+    "kast: the installed Kast cannot be upgraded in place; "
+    "it must be removed before this version is installed."
+)
+
+
 def main(
     arguments: list[str],
     source: release.ReleaseSource | None = None,
@@ -462,7 +472,13 @@ def main(
     _ = parser.add_argument("--private-python-archive", type=Path, help=argparse.SUPPRESS)
     _ = parser.add_argument("--private-dependency", type=Path, help=argparse.SUPPRESS)
     args = parser.parse_args(arguments)
-    from managed_product_installation import ProductInstalled, ProductPlanned, activate, resume
+    from managed_product_installation import (
+        ProductInstalled,
+        ProductPlanned,
+        activate,
+        require_supported_prior,
+        resume,
+    )
     from private_interpreter import PrivateInterpreter
 
     state = interrupt if interrupt is not None else InterruptState()
@@ -485,10 +501,7 @@ def main(
             outcome = contract.Rejected(
                 contract.Stage.PREPARATION, contract.Failure.OWNERSHIP_UNPROVEN
             )
-        elif (platform.system(), platform.machine()) not in (
-            ("Darwin", "arm64"),
-            ("Linux", "x86_64"),
-        ):
+        elif (host := HOSTS.get((platform.system(), platform.machine()))) is None:
             outcome = contract.Rejected(
                 contract.Stage.PREPARATION, contract.Failure.PLATFORM_UNAVAILABLE
             )
@@ -525,7 +538,7 @@ def main(
                     selection.reason,
                     selection.stage,
                     selection.requested,
-                    selection.platform,
+                    host,
                     selection.selectable,
                     selection.transfer,
                 )
@@ -540,7 +553,7 @@ def main(
                             admitted.reason,
                             admitted.stage,
                             admitted.requested,
-                            admitted.platform,
+                            host,
                             admitted.selectable,
                             admitted.transfer,
                         )
@@ -559,13 +572,22 @@ def main(
                             args.private_dependency is None
                         ):
                             raise ValueError("private interpreter inputs must be paired")
+                        # Only a product that is ready to install may lead to a reset of the prior one.
+                        if not args.dry_run:
+                            require_supported_prior(root, home)
                         outcome = activate(root, home, admitted, args.dry_run, interpreter, runner)
     except (Exception, KeyboardInterrupt) as problem:
         if isinstance(problem, KeyboardInterrupt) and state.exit_code is None:
             state.exit_code = 130
         outcome = rejection(problem)
+    unsupported = (
+        isinstance(outcome, contract.Rejected)
+        and outcome.reason is contract.Failure.PRIOR_INSTALLATION_UNSUPPORTED
+    )
     if args.json:
         print(encoded(outcome).decode().rstrip())
+    elif unsupported:
+        print(PRIOR_INSTALLATION_UNSUPPORTED_MESSAGE, file=sys.stderr)
     else:
         print(outcome.type)
         if not isinstance(outcome, (ProductInstalled, ProductPlanned)):
@@ -577,6 +599,8 @@ def main(
         if state.exit_code is not None
         else 0
         if isinstance(outcome, (ProductInstalled, ProductPlanned))
+        else PRIOR_INSTALLATION_UNSUPPORTED_EXIT
+        if unsupported
         else 1
     )
 
