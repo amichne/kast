@@ -1,6 +1,6 @@
 """Publish the Go bootstrap executables that install.sh pins, as one immutable pre-release.
 
-The tag names the Git tree of `frontend/`, so one source has one release. A repeated run changes
+The tag names the Git tree of `manager/`, so one source has one release. A repeated run changes
 nothing when the release already holds the same bytes. Any other observation stops before another
 effect.
 """
@@ -98,8 +98,8 @@ def execute(command: Sequence[str]) -> Completed:
 
 def read(directory: Path, run: Run) -> Bootstrap:
     """Admit exactly the built files of a clean checkout."""
-    source = run(("git", "rev-parse", "HEAD", "HEAD:frontend"))
-    changes = run(("git", "status", "--porcelain", "--untracked-files=normal", "--", "frontend"))
+    source = run(("git", "rev-parse", "HEAD", "HEAD:manager"))
+    changes = run(("git", "status", "--porcelain", "--untracked-files=normal", "--", "manager"))
     identities = source.stdout.split()
     if (
         source.code != 0
@@ -108,7 +108,7 @@ def read(directory: Path, run: Run) -> Bootstrap:
         or len(identities) != 2
         or any(not REVISION.match(item) for item in identities)
     ):
-        raise Rejected(Failure.SOURCE_REJECTED, "frontend/ is not one clean committed tree")
+        raise Rejected(Failure.SOURCE_REJECTED, "manager/ is not one clean committed tree")
     revision, tree = identities
     if directory.is_symlink() or not directory.is_dir():
         raise Rejected(Failure.FILES_REJECTED, "not a directory")

@@ -15,7 +15,7 @@ from importlib.machinery import SourceFileLoader
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
-_LOADER = SourceFileLoader("frontend_check", str(ROOT / "frontend/check"))
+_LOADER = SourceFileLoader("frontend_check", str(ROOT / "manager/check"))
 _SPEC = importlib.util.spec_from_loader("frontend_check", _LOADER)
 assert _SPEC is not None
 check = importlib.util.module_from_spec(_SPEC)
@@ -137,9 +137,9 @@ Grant
                 _ = check.linked(json.dumps(value), "go1.2.3", Path("/go"))
 
     def test_the_checked_in_notices_name_the_required_modules(self) -> None:
-        notices = (ROOT / "frontend" / check.NOTICES).read_text()
+        notices = (ROOT / "manager" / check.NOTICES).read_text()
         self.assertTrue(notices.startswith(check.HEADER))
-        toolchain = check.toolchain(ROOT / "frontend")
+        toolchain = check.toolchain(ROOT / "manager")
         for component in ("charm.land/bubbletea/v2 ", "github.com/coder/websocket ", f"Go standard library {toolchain}\n"):
             self.assertIn(f"\n{component}", notices)
         # The analyzers are development tools. The executable does not contain them.

@@ -194,7 +194,7 @@ class BootstrapReleaseTest(unittest.TestCase):
         self.reject(
             Failure.SOURCE_REJECTED,
             SOURCE,
-            ("git status", Completed(0, " M frontend/go.mod\n", "")),
+            ("git status", Completed(0, " M manager/go.mod\n", "")),
         )
         self.reject(Failure.SOURCE_REJECTED, ("git rev-parse", Completed(0, "HEAD\n", "")), CLEAN)
 
@@ -231,12 +231,12 @@ class BootstrapReleaseTest(unittest.TestCase):
         self.assertIn(
             "shell: bash\n        run: python3 .github/scripts/release/publish_bootstrap.py", text
         )
-        build, publish = text.index("frontend/check bootstrap"), text.index("publish_bootstrap.py")
-        self.assertLess(text.index("frontend/check gate"), build)
+        build, publish = text.index("manager/check bootstrap"), text.index("publish_bootstrap.py")
+        self.assertLess(text.index("manager/check gate"), build)
         self.assertLess(build, publish)
 
     def test_the_published_names_are_the_built_names(self) -> None:
-        source = (ROOT / "frontend/check").read_text()
+        source = (ROOT / "manager/check").read_text()
         notices, *executables = publisher.NAMES
         for name in executables:
             self.assertIn(f'"{name.removeprefix("kast-bootstrap-")}": (', source)

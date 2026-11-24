@@ -38,14 +38,14 @@ jobs:
       - name: Set up the frontend Go toolchain
         uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
-          go-version-file: frontend/go.mod
+          go-version-file: manager/go.mod
           cache: false
 
       - name: Verify the frontend and its reproducible bootstrap
-        run: python3 frontend/check gate
+        run: python3 manager/check gate
 
       - name: Build the bootstrap executables
-        run: python3 frontend/check bootstrap --output build/bootstrap
+        run: python3 manager/check bootstrap --output build/bootstrap
 
       - name: Publish one immutable pre-release
         # An explicit bash sets pipefail, so tee cannot hide a rejection.

@@ -24,7 +24,7 @@ mise exec -- ./gradlew :app-server:check
 mise exec -- git push
 ```
 
-The Control executable is a Go binary. `frontend/go.mod` selects its Go release, and
+The Control executable is a Go binary. `manager/go.mod` selects its Go release, and
 `:buildControlExecutable` cross-compiles it for the `-PkastControlPlatform` target, so
 any host assembles any target's Control archive. The installed product runs its JVM
 entry on the Host's JetBrains Runtime, not on this build JDK.
@@ -471,7 +471,7 @@ Its release is separate from every product release and from the preview channel.
 Build the two executables from the module's bytes and its `toolchain` line:
 
 ```shell
-mise exec -- uv run --locked --script frontend/check bootstrap --output build/bootstrap
+mise exec -- uv run --locked --script manager/check bootstrap --output build/bootstrap
 ```
 
 The frontend gate builds them from two directories and compares the bytes.
@@ -479,7 +479,7 @@ The output also holds the third-party notices of those executables.
 After a Go dependency or toolchain change, regenerate the notices:
 
 ```shell
-mise exec -- uv run --locked --script frontend/check notices
+mise exec -- uv run --locked --script manager/check notices
 ```
 
 The gate rejects notices that differ from the packages in the executable.
@@ -493,7 +493,7 @@ gh workflow run bootstrap-release.yml --ref main
 ```
 
 The workflow runs the gate, builds the files, and creates the pre-release `bootstrap-<12 hex>`.
-The tag names the Git tree of `frontend/`, so a repeated run with the same files changes nothing.
+The tag names the Git tree of `manager/`, so a repeated run with the same files changes nothing.
 Other files, an incomplete draft, or a tag without a release stop the run.
 A bootstrap never becomes the latest release, because the stable channel reads that pointer.
 Pin the published digests in a separate pull request, after a local build produces the same digests.

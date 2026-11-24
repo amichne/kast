@@ -131,7 +131,7 @@ def provision(root: Path, with_idea: bool, with_fixture: bool, with_control: boo
         'source "$DEV_CLOUD_ROOT/gradle-runtime.sh"\n'
     )
     if with_control:
-        # The pinned release equals frontend/go.mod's toolchain line, so Go never downloads another.
+        # The pinned release equals manager/go.mod's toolchain line, so Go never downloads another.
         go = root / pins["artifacts"]["go"]["directory"]
         activation += f"export PATH={quote(str(go / 'bin'))}:\"$PATH\"\nexport GOTOOLCHAIN=local\n"
     (root / "activate.sh").write_text(activation)

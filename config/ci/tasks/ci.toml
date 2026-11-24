@@ -25,7 +25,7 @@ run = "./packaging/internal/verification/run-portable-tests-container.sh"
 
 ["ci:frontend-vulnerabilities"]
 description = "[network] Scan the Go frontend against the Go advisory database"
-run = "uv run --locked --script frontend/check vulnerabilities"
+run = "uv run --locked --script manager/check vulnerabilities"
 
 ["ci:source"]
 description = "Complete source obligations; add --affected --base <sha> --event <event> for the affected set"

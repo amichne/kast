@@ -77,7 +77,7 @@ def gate(catalog: Path | None) -> None:
             {"CGO_ENABLED": "0", "GOOS": goos, "GOARCH": goarch},
         )
     if (MODULE / NOTICES).read_text() != notices():
-        raise SystemExit(f"frontend-check: {NOTICES} is not current; run frontend/check notices")
+        raise SystemExit(f"frontend-check: {NOTICES} is not current; run manager/check notices")
     print("frontend-check: third-party notices passed", flush=True)
     reproducible()
 

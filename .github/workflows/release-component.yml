@@ -64,8 +64,8 @@ jobs:
       - name: Set up the frontend Go toolchain
         uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
-          go-version-file: frontend/go.mod
-          cache-dependency-path: frontend/go.sum
+          go-version-file: manager/go.mod
+          cache-dependency-path: manager/go.sum
       - uses: gradle/actions/setup-gradle@8da46b539cd8fe6ab27ca75128919a18d757604c # v6
         with:
           validate-wrappers: true

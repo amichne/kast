@@ -66,7 +66,7 @@ well as the main Gradle process.
 
 Bootstrap also checks the IDE build, bundled Kotlin plugin version, and JBR 25+.
 The Host distribution and native test distribution have separate exact pins.
-The optional `--with-control` flag adds Go 1.27.4, the release `frontend/go.mod` selects, for Control executable builds.
+The optional `--with-control` flag adds Go 1.27.4, the release `manager/go.mod` selects, for Control executable builds.
 Activation sets `GOTOOLCHAIN=local`, so Go never downloads another toolchain. The ordinary JDK supplies Gradle and the Control JVM bytecode.
 Kast remains `GPL-3.0-only`; changing its build toolchain does not relicense the project.
 The wrapper owns the Gradle distribution checksum. The generated activation file

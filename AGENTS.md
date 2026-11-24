@@ -55,7 +55,7 @@ This guide owns repository rules and routes source investigation.
 - [`runtime/`](runtime/AGENTS.md) - existing-IDE plugin composition, operation dispatch, and bounded diagnostics.
 - [`app-server/`](app-server/AGENTS.md) - persistent coordinator, host adapters, workspace lanes, and Codex protocol integration.
 - [`cli/`](cli/AGENTS.md) - the public semantic CLI, private JVM entry points, direct tools, installation workflows, and typed output projections.
-- [`frontend/`](frontend/AGENTS.md) - the tracer Go frontend for the persistent JVM coordinator, its staging, and acceptance.
+- [`manager/`](manager/AGENTS.md) - the Go module: the Control executable, its staging, and acceptance.
 - [`distribution/`](distribution/AGENTS.md) and [`packaging/`](packaging/AGENTS.md) - installation contracts, managed artifacts, release assembly, and acceptance harnesses.
 - [`agent-tools/`](agent-tools/AGENTS.md) - shared context, generated query references, MCP plugins, and marketplace source.
 - [`build-logic/`](build-logic/AGENTS.md) - Gradle conventions and architecture enforcement.
@@ -80,7 +80,7 @@ This guide owns repository rules and routes source investigation.
 - Release assembly: `./gradlew assembleRelease`.
 - Product installation: use the [managed installer](docs/public/reference/installation.mdx). Desktop IDEA, user Python, and uv are not product prerequisites.
 - Contributor assembly and native acceptance use their own toolchains. Do not present source checks as native qualification or publication.
-- Control executable: `frontend/cmd/kast/main.go`; its single JVM entry is `cli/src/main/kotlin/io/github/amichne/kast/cli/KastControlMain.kt`.
+- Control executable: `manager/cmd/kast/main.go`; its single JVM entry is `cli/src/main/kotlin/io/github/amichne/kast/cli/KastControlMain.kt`.
 - Management commands: `distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/KastManagementMain.kt`.
 - Public semantic entry: `cli/src/main/kotlin/io/github/amichne/kast/cli/publicshell/KastPublicCliMain.kt`.
 - Control composition: `mise exec -- ./gradlew :publicLauncherTest`. The root task runs the staged Control product against a local peer.
