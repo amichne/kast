@@ -283,7 +283,9 @@ The hosted Mac restores the exact assembled release and qualifies the macOS ARM6
 The sealed record identifies the Mac archives and their digests.
 Installed acceptance exercises the shipped Control, coordinator, and Host against those bytes.
 A missing or failed Mac receipt blocks the required check and preview publication.
-Linux product qualification is paused. Earlier two-platform records still need both receipts.
+Ubuntu also assembles and qualifies the Linux x86-64 product. A failure blocks the required check.
+The `two-platform-product` job seals one record for both targets and retains it for 30 days. No release reads that record.
+Installed acceptance still exercises only the Mac product. Earlier two-platform records still need both receipts.
 
 ### Rerun failed product jobs
 

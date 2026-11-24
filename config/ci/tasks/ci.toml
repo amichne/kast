@@ -55,6 +55,10 @@ run = 'uv run --locked --script .github/scripts/ci/release_handoff.py qualify --
 description = "[artifacts] Seal the complete immutable build record from the qualified product inputs"
 run = "python3 .github/scripts/release/product_producer.py seal --macos-only --directory build/product-inputs --output build/product-candidate"
 
+["ci:seal-two-platform"]
+description = "[artifacts] Seal one build record for macOS ARM64 and Linux x86-64 from the qualified product inputs"
+run = "python3 .github/scripts/release/product_producer.py seal --directory build/product-inputs --output build/product-two-platform"
+
 ["ci:acceptance-baseline"]
 description = "Read the checked-in acceptance baseline pin; --github-output exposes it to later steps"
 run = "python3 .github/scripts/ci/acceptance_inputs.py baseline"

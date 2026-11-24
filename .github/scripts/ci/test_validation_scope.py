@@ -550,12 +550,15 @@ class SourceInventoryTest(unittest.TestCase):
         self.assertIn("release_handoff.py assemble --version", task_run("ci:assembly"))
         # Mac qualification, sealing, and installed acceptance run beside source validation.
         # The joined candidate and the required aggregate keep the complete source proof.
-        for job in ("kotlin", "composed-macos"):
+        for job in ("kotlin", "composed-macos", "composed-linux", "two-platform-product"):
             body = re.split(r"\n  (?=\S)", workflow.split(f"\n  {job}:\n", 1)[1], maxsplit=1)[0]
             self.assertNotIn("needs.source-work", body)
             self.assertNotRegex(body, r"(?m)^    needs: \[[^\]]*source-work")
         required = re.split(r"\n  (?=\S)", workflow.split("\n  required:\n", 1)[1], maxsplit=1)[0]
-        self.assertIn("    needs: [scope, source, documentation, portable, kotlin, complete-product]\n", required)
+        self.assertIn(
+            "    needs: [scope, source, documentation, portable, kotlin, complete-product, two-platform-product]\n",
+            required,
+        )
         sealed = re.split(r"\n  (?=\S)", workflow.split("\n  sealed-product:\n", 1)[1], maxsplit=1)[0]
         self.assertIn("    needs: [scope, composed-macos]\n", sealed)
         joined = re.split(r"\n  (?=\S)", workflow.split("\n  complete-product:\n", 1)[1], maxsplit=1)[0]
@@ -566,7 +569,7 @@ class SourceInventoryTest(unittest.TestCase):
         native = next(line for line in workflow.splitlines() if line.startswith("  KAST_NATIVE_COMPILATION:"))
         self.assertNotIn("github.event_name", native)
         self.assertNotIn("github.ref", native)
-        for job in ("assembly", "kotlin", "composed-macos"):
+        for job in ("assembly", "kotlin", "composed-macos", "composed-linux"):
             body = workflow.split(f"\n  {job}:\n", 1)[1]
             body = re.split(r"\n  (?=\S)", body, maxsplit=1)[0]
             self.assertIn("needs.scope.outputs.product == 'run'", body)
@@ -676,7 +679,28 @@ class SourceInventoryTest(unittest.TestCase):
         jobs = dict(
             re.findall(r"(?ms)^  ([\w-]+):\n(.*?)(?=^  [\w-]+:\n|\Z)", ci.split("\njobs:\n", 1)[1])
         )
-        self.assertNotIn("composed-products", jobs)
+        linux, both = jobs["composed-linux"], jobs["two-platform-product"]
+        self.assertIn("needs: scope\n", linux)
+        self.assertIn("uses: ./.github/workflows/composed-linux.yml", linux)
+        self.assertIn("complete_product: true", linux)
+        self.assertIn("release_target: linux-x86_64", linux)
+        self.assertNotIn("assembled_artifact_id", linux)
+        # The two-platform record joins exact producers and is no release input.
+        self.assertIn("name: Seal both product targets without rebuilding\n", both)
+        self.assertIn("needs: [scope, composed-macos, composed-linux]", both)
+        self.assertNotIn("always()", both)
+        for target, producer in (("macos-aarch64", "composed-macos"), ("linux-x86_64", "composed-linux")):
+            self.assertIn(
+                f"name: kast-qualified-product-{target}-"
+                "${{ github.sha }}-${{ github.run_id }}-${{ needs." + producer + ".outputs.run_attempt }}",
+                both,
+            )
+            self.assertIn(f"path: build/product-inputs/{target}\n", both)
+        self.assertIn("run: mise run ci:seal-two-platform\n", both)
+        self.assertNotIn("--macos-only", task_run("ci:seal-two-platform"))
+        self.assertIn("name: ci-product-two-platform-${{ github.sha }}-${{ github.run_attempt }}", both)
+        for release_job in ("sealed-product", "installed-product", "complete-product"):
+            self.assertNotIn("two-platform", jobs[release_job])
         joined, required = jobs["sealed-product"], jobs["required"]
         mac = jobs["composed-macos"]
         self.assertIn("needs: [scope, assembly]", mac)
@@ -753,14 +777,14 @@ class SourceInventoryTest(unittest.TestCase):
         self.assertIn("value: ${{ jobs.candidate.outputs.run_attempt }}", reusable)
         self.assertIn("outputs:\n      run_attempt: ${{ github.run_attempt }}", reusable)
         self.assertIn(
-            "needs: [scope, source, documentation, portable, kotlin, complete-product]", required
+            "needs: [scope, source, documentation, portable, kotlin, complete-product, two-platform-product]",
+            required,
         )
-        self.assertIn("if: needs.scope.outputs.product == 'run'", required)
+        self.assertEqual(2, required.count("if: needs.scope.outputs.product == 'run'"))
         self.assertIn("COMPLETE_PRODUCT_RESULT: ${{ needs.complete-product.result }}", required)
-        self.assertLess(
-            required.index('test "$COMPLETE_PRODUCT_RESULT" = success'),
-            required.index("run: mise run ci:outcome"),
-        )
+        self.assertIn("TWO_PLATFORM_RESULT: ${{ needs.two-platform-product.result }}", required)
+        for gate in ('test "$COMPLETE_PRODUCT_RESULT" = success', 'test "$TWO_PLATFORM_RESULT" = success'):
+            self.assertLess(required.index(gate), required.index("run: mise run ci:outcome"))
         self.assertIn("validation_outcome.py", task_run("ci:outcome"))
         candidate = (workflows / "composed-linux.yml").read_text()
         reused = candidate.split("- name: Download the exact CI release\n", 1)[1]

@@ -61,6 +61,7 @@ BOOTSTRAP: dict[str, str] = {
         "reports the CI switches to the step summary"
     ),
     'test "$COMPLETE_PRODUCT_RESULT" = success': "gates on the complete-product job result",
+    'test "$TWO_PLATFORM_RESULT" = success': "gates on the two-platform-product job result",
     'test "$ROLLOUT_SUCCESS" = true': "gates on the frozen rollout results",
 }
 
