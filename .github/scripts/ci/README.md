@@ -281,6 +281,8 @@ Ubuntu assembles the shared release and runs source validation.
 The hosted Mac restores the exact assembled release and qualifies the macOS ARM64 runtime.
 The sealed record identifies the Mac archives and their digests.
 Installed acceptance exercises the shipped Control, coordinator, and Host against those bytes.
+Two jobs run its parts in parallel, each on its own runner: `installed-upgrade` upgrades a queried baseline, and `installed-fresh` covers every other case.
+The join admits both parts only on one product and one baseline, and writes the receipt that a release reads.
 A missing or failed Mac receipt blocks the required check and preview publication.
 Ubuntu also assembles and qualifies the Linux x86-64 product. A failure blocks the required check.
 The `two-platform-product` job seals one record for both targets and retains it for 30 days. No release reads that record.

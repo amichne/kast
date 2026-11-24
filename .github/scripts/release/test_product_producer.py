@@ -17,7 +17,7 @@ from typing import cast
 
 import product_candidate as candidate
 import product_producer as producer
-from test_product_candidate import Run, accepted_fixture, fixture, split_fixture
+from test_product_candidate import Run, accepted_fixture, fixture, parts_fixture, split_fixture
 
 product = producer.product
 
@@ -234,56 +234,89 @@ class ProductProducerTest(unittest.TestCase):
         for fault in (
             "none",
             "missing",
+            "extra",
+            "complete-receipt",
             "record",
             "attempt",
             "control",
             "target",
+            "part",
             "cases",
+            "every-case",
             "baseline",
-            "different-baselines",
+            "parts-on-different-baselines",
+            "targets-on-different-baselines",
         ):
             with self.subTest(fault=fault), tempfile.TemporaryDirectory() as temporary:
                 root = Path(temporary)
                 directory = root / "sealed"
                 record = fixture(directory)
                 original = (directory / "build-record.json").read_bytes()
-                accepted_fixture(directory, record)
-                receipts = root / "receipts"
-                receipts.mkdir()
-                for target in product.PRODUCT_TARGETS:
-                    name = candidate.acceptance.filename(target)
-                    _ = (directory / "payload" / name).rename(receipts / name)
-                path = receipts / "acceptance-linux-x86_64.json"
-                receipt = candidate.acceptance.decode(
-                    path.read_bytes(), record, hashlib.sha256(original).hexdigest(), "linux-x86_64"
+                parts = root / "parts"
+                parts.mkdir()
+                parts_fixture(directory, record, parts)
+                acceptance = candidate.acceptance
+                path = parts / "acceptance-linux-x86_64-fresh.part.json"
+                receipt = acceptance.decode_part(
+                    path.read_bytes(),
+                    record,
+                    hashlib.sha256(original).hexdigest(),
+                    "linux-x86_64",
+                    acceptance.Part.FRESH,
                 )
+                rebound = replace(receipt, baselineRecordSha256="3" * 64)
                 changed = {
-                    "none": receipt,
-                    "missing": receipt,
                     "record": replace(receipt, buildRecordSha256="9" * 64),
                     "attempt": replace(receipt, producer=replace(receipt.producer, runAttempt=2)),
                     "control": replace(receipt, controlSha256="9" * 64),
                     "target": replace(receipt, target="macos-aarch64"),
+                    "part": replace(receipt, part=acceptance.Part.UPGRADE),
                     "cases": replace(receipt, completedCases=receipt.completedCases[:-1]),
+                    "every-case": replace(receipt, completedCases=tuple(acceptance.Case)),
                     "baseline": replace(receipt, baselineRecordSha256=receipt.buildRecordSha256),
-                    "different-baselines": replace(receipt, baselineRecordSha256="3" * 64),
-                }[fault]
-                _ = path.write_bytes(candidate.acceptance.encode(changed))
+                    "parts-on-different-baselines": rebound,
+                    "targets-on-different-baselines": rebound,
+                }.get(fault, receipt)
+                _ = path.write_bytes(acceptance.encode(changed))
                 if fault == "missing":
                     path.unlink()
+                elif fault == "extra":
+                    _ = (parts / "acceptance-linux-x86_64.json").write_bytes(b"{}\n")
+                elif fault == "complete-receipt":
+                    accepted_fixture(directory, record)
+                    for target in product.PRODUCT_TARGETS:
+                        name = acceptance.filename(target)
+                        _ = (directory / "payload" / name).rename(root / name)
+                    _ = shutil.copyfile(root / "acceptance-linux-x86_64.json", path)
+                elif fault == "targets-on-different-baselines":
+                    other = parts / "acceptance-linux-x86_64-upgrade.part.json"
+                    upgrade = acceptance.decode_part(
+                        other.read_bytes(),
+                        record,
+                        hashlib.sha256(original).hexdigest(),
+                        "linux-x86_64",
+                        acceptance.Part.UPGRADE,
+                    )
+                    _ = other.write_bytes(
+                        acceptance.encode(replace(upgrade, baselineRecordSha256="3" * 64))
+                    )
                 output = root / "accepted"
                 if fault == "none":
-                    self.assertEqual(record, producer.accept(directory, receipts, output))
+                    self.assertEqual(record, producer.accept(directory, parts, output))
                     self.assertEqual(original, (output / "build-record.json").read_bytes())
                     self.assertEqual(record, candidate.read(output, accepted=True))
-                    for receipt_path in receipts.iterdir():
+                    # The joined receipt is the document that a complete run publishes.
+                    accepted_fixture(directory, record)
+                    for target in product.PRODUCT_TARGETS:
+                        name = acceptance.filename(target)
                         self.assertEqual(
-                            receipt_path.read_bytes(),
-                            (output / "payload" / receipt_path.name).read_bytes(),
+                            (directory / "payload" / name).read_bytes(),
+                            (output / "payload" / name).read_bytes(),
                         )
+                    self.assertFalse(any((output / "payload").glob("*.part.json")))
                 else:
                     with self.assertRaises(producer.Rejected):
-                        _ = producer.accept(directory, receipts, output)
+                        _ = producer.accept(directory, parts, output)
                     self.assertFalse(output.exists())
                 self.assertEqual(original, (directory / "build-record.json").read_bytes())
 
@@ -304,14 +337,12 @@ class ProductProducerTest(unittest.TestCase):
             self.assertEqual(5, record.schemaVersion)
             self.assertEqual(["macos-aarch64"], [item.target for item in record.targets])
             self.assertEqual(record, candidate.read(output))
-            receipts = root / "receipts"
-            receipts.mkdir()
+            parts = root / "parts"
+            parts.mkdir()
             with self.assertRaises(producer.Rejected):
-                producer.accept(output, receipts, root / "accepted")
-            accepted_fixture(output, record)
-            name = candidate.acceptance.filename("macos-aarch64")
-            (output / "payload" / name).rename(receipts / name)
-            self.assertEqual(record, producer.accept(output, receipts, root / "accepted"))
+                producer.accept(output, parts, root / "accepted")
+            parts_fixture(output, record, parts)
+            self.assertEqual(record, producer.accept(output, parts, root / "accepted"))
             self.assertEqual(record, candidate.read(root / "accepted", accepted=True))
 
     def test_split_targets_seal_without_assembling_or_substituting_base_qualification(self) -> None:
@@ -691,13 +722,23 @@ class ProductProducerTest(unittest.TestCase):
         )
         self.assertIn("name: ci-product-sealed-${{ github.sha }}-${{ github.run_attempt }}", join)
         accepted = jobs["complete-product"]
-        self.assertIn("needs: [source-work, sealed-product, installed-product]", accepted)
+        self.assertIn(
+            "needs: [source-work, sealed-product, installed-upgrade, installed-fresh]", accepted
+        )
         self.assertIn("run: mise run ci:join", accepted)
         self.assertIn("product_producer.py accept", task_run("ci:join"))
         self.assertIn("name: ci-product-candidate-", accepted)
         self.assertNotIn("ci-product-candidate-", join)
-        self.assertIn("needs: sealed-product", jobs["installed-product"])
-        self.assertIn("run: mise run ci:acceptance ", jobs["installed-product"])
+        # The workflow calls each declared part once, with the file name that the join reads.
+        installed = (workflows / "installed-acceptance.yml").read_text()
+        for part in candidate.acceptance.Part:
+            caller = jobs[f"installed-{part}"]
+            self.assertIn("needs: sealed-product", caller)
+            self.assertIn("uses: ./.github/workflows/installed-acceptance.yml", caller)
+            self.assertIn(f"part: {part}\n", caller)
+        name = candidate.acceptance.part_filename("macos-aarch64", candidate.acceptance.Part.FRESH)
+        self.assertIn("path: build/" + name.replace("-fresh.", "-${{ inputs.part }}."), installed)
+        self.assertIn("run: mise run ci:acceptance ", installed)
         self.assertIn("product_lifecycle_probe.py", task_run("ci:acceptance"))
         self.assertIn("kotlin, complete-product, two-platform-product]", jobs["required"])
         self.assertLess(

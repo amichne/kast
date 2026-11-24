@@ -309,6 +309,7 @@ val installedProductTest = tasks.register<Exec>("installedProductTest") {
     val pythonArchive = providers.gradleProperty("kastAcceptancePythonArchive")
     val dependency = providers.gradleProperty("kastAcceptanceDependency")
     val target = providers.gradleProperty("kastAcceptanceTarget")
+    val part = providers.gradleProperty("kastAcceptancePart")
     val evidence = providers.gradleProperty("kastAcceptanceEvidence")
     val receipt = providers.gradleProperty("kastAcceptanceReceipt")
     inputs.dir(candidate)
@@ -316,6 +317,7 @@ val installedProductTest = tasks.register<Exec>("installedProductTest") {
     inputs.file(pythonArchive)
     inputs.file(dependency)
     inputs.property("target", target)
+    inputs.property("part", part)
     inputs.property("evidence", evidence)
     inputs.property("receipt", receipt)
     inputs.files(fileTree("packaging") { include("composed_bundle.py", "managed_headless.py", "internal/*/*.py", "tests/*.py", "*.toml", "*.lock") })
@@ -327,7 +329,8 @@ val installedProductTest = tasks.register<Exec>("installedProductTest") {
         listOf(
             "--candidate", candidate.get(), "--baseline", baseline.get(),
             "--private-python-archive", pythonArchive.get(), "--private-dependency", dependency.get(),
-            "--target", target.get(), "--evidence", evidence.get(), "--receipt", receipt.get(),
+            "--target", target.get(), "--part", part.get(),
+            "--evidence", evidence.get(), "--receipt", receipt.get(),
         )
     })
 }

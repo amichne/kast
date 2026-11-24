@@ -919,6 +919,98 @@ class AcceptanceTest(unittest.TestCase):
                     acceptance.encode(changed), selected, "c" * 64, "linux-x86_64"
                 )
 
+    def test_parts_prove_each_case_once_and_join_only_on_one_product_and_baseline(self) -> None:
+        # The independent inventory: the upgrade run proves only the upgrade case.
+        self.assertEqual({"upgrade", "fresh"}, {part.value for part in acceptance.Part})
+        self.assertEqual(set(acceptance.Part), set(acceptance.PART_CASES))
+        self.assertEqual(set(acceptance.Part), set(probe.PARTS))
+        self.assertEqual((acceptance.Case.UPGRADE,), acceptance.PART_CASES[acceptance.Part.UPGRADE])
+        self.assertEqual(16, len(acceptance.PART_CASES[acceptance.Part.FRESH]))
+        selected = record()
+
+        def part(selection: acceptance.Part) -> acceptance.PartReceipt:
+            return acceptance.PartReceipt(
+                selection,
+                "c" * 64,
+                "a" * 40,
+                "linux-x86_64",
+                "8" * 64,
+                selected.producer,
+                "d" * 64,
+                selected.sourceRevision,
+                "1" * 64,
+                "2" * 64,
+                "3" * 64,
+                acceptance.PART_CASES[selection],
+            )
+
+        upgrade, fresh = part(acceptance.Part.UPGRADE), part(acceptance.Part.FRESH)
+        for item in (upgrade, fresh):
+            self.assertEqual(
+                item,
+                acceptance.decode_part(
+                    acceptance.encode(item), selected, "c" * 64, "linux-x86_64", item.part
+                ),
+            )
+            # A part is never a complete receipt.
+            with self.assertRaises(ValueError):
+                _ = acceptance.decode(acceptance.encode(item), selected, "c" * 64, "linux-x86_64")
+        joined = acceptance.join((fresh, upgrade))
+        self.assertEqual(
+            joined,
+            acceptance.decode(acceptance.encode(joined), selected, "c" * 64, "linux-x86_64"),
+        )
+        self.assertEqual(
+            {
+                "part": "upgrade",
+                "completedCases": ["DIFFERENT_BUILD_UPGRADE_QUERY"],
+                "schemaVersion": 1,
+                "qualificationStage": "INSTALLED_PRODUCT_NATIVE_PART",
+                "qualification": "PARTIAL",
+            },
+            {
+                key: value
+                for key, value in json.loads(acceptance.encode(upgrade)).items()
+                if key
+                in (
+                    "part",
+                    "completedCases",
+                    "schemaVersion",
+                    "qualificationStage",
+                    "qualification",
+                )
+            },
+        )
+        for rejected in (
+            (),
+            (upgrade,),
+            (upgrade, upgrade),
+            (upgrade, fresh, fresh),
+            (upgrade, replace(fresh, baselineRecordSha256="4" * 64)),
+            (upgrade, replace(fresh, buildRecordSha256="4" * 64)),
+            (upgrade, replace(fresh, target="macos-aarch64")),
+            (upgrade, replace(fresh, producer=replace(fresh.producer, runAttempt=3))),
+            (upgrade, replace(fresh, completedCases=fresh.completedCases[:-1])),
+            (upgrade, replace(fresh, completedCases=tuple(acceptance.Case))),
+        ):
+            with self.subTest(rejected=rejected), self.assertRaises(ValueError):
+                _ = acceptance.join(rejected)
+        for changed in (
+            replace(fresh, part=acceptance.Part.UPGRADE),
+            replace(fresh, schemaVersion=3),
+            replace(fresh, qualification="COMPLETE"),
+            replace(fresh, qualificationStage="INSTALLED_PRODUCT_NATIVE"),
+            replace(fresh, completedCases=tuple(acceptance.Case)),
+        ):
+            with self.subTest(changed=changed), self.assertRaises(ValueError):
+                _ = acceptance.decode_part(
+                    acceptance.encode(changed),
+                    selected,
+                    "c" * 64,
+                    "linux-x86_64",
+                    acceptance.Part.FRESH,
+                )
+
     def test_missing_baseline_and_same_build_repair_are_not_upgrade_evidence(self) -> None:
         selected = record()
         with tempfile.TemporaryDirectory() as temporary:

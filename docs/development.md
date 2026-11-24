@@ -603,13 +603,17 @@ Restricted-PATH fixtures prove only their exercised process contracts, not nativ
 
 `installedProductTest` consumes complete candidate and baseline directories, not a staged Control/Host pair.
 The baseline must have a different qualified composition. The task does not assemble replacement artifacts.
-Supply pinned interpreter inputs, the native target, and new evidence and receipt paths:
+One run exercises one part. The `upgrade` part upgrades a queried baseline and removes it.
+The `fresh` part covers every other acceptance case, then removes the product and installs it again.
+Each run writes a part receipt. Only the producer joins both parts into the complete receipt.
+Supply pinned interpreter inputs, the native target, the part, and new evidence and receipt paths:
 
 ```shell
 mise run gradle installedProductTest \
   -PkastAcceptanceCandidate="$CANDIDATE" -PkastAcceptanceBaseline="$BASELINE" \
   -PkastAcceptancePythonArchive="$PRIVATE_PYTHON_ARCHIVE" \
   -PkastAcceptanceDependency="$PRIVATE_DEPENDENCY" -PkastAcceptanceTarget="$TARGET" \
+  -PkastAcceptancePart="$PART" \
   -PkastAcceptanceEvidence="$EVIDENCE" -PkastAcceptanceReceipt="$RECEIPT"
 ```
 

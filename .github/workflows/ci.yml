@@ -403,79 +403,26 @@ jobs:
           compression-level: 0
           retention-days: 30
 
-  installed-product:
-    name: Installed product acceptance on ${{ matrix.target }}
+  # The parts together prove every acceptance case. Each has its own runner and HOME.
+  installed-upgrade:
+    name: Installed upgrade acceptance
     needs: sealed-product
-    runs-on: ${{ matrix.runner }}
-    timeout-minutes: 180
-    # One matrix target, so this output is unambiguous.
-    outputs:
-      run_attempt: ${{ github.run_attempt }}
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - target: macos-aarch64
-            runner: macos-15
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          ref: ${{ github.sha }}
-          persist-credentials: false
-      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
-        with:
-          python-version: '3.12'
-      - uses: jdx/mise-action@5228313ee0372e111a38da051671ca30fc5a96db # v3
-      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
-        with:
-          name: ci-product-sealed-${{ github.sha }}-${{ needs.sealed-product.outputs.run_attempt }}
-          path: build/product-candidate
-      - name: Read the checked-in acceptance baseline pin
-        id: baseline
-        run: mise run ci:acceptance-baseline --github-output "$GITHUB_OUTPUT"
-      - name: Download the accepted baseline candidate
-        id: accepted-baseline
-        continue-on-error: true
-        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
-        with:
-          name: ci-product-candidate-${{ steps.baseline.outputs.revision }}-${{ steps.baseline.outputs.run_attempt }}
-          run-id: ${{ steps.baseline.outputs.run_id }}
-          github-token: ${{ github.token }}
-          path: build/product-baseline
-      - name: Download the legacy sealed baseline
-        if: steps.accepted-baseline.outcome != 'success'
-        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
-        with:
-          name: ci-product-sealed-${{ steps.baseline.outputs.revision }}-${{ steps.baseline.outputs.run_attempt }}
-          run-id: ${{ steps.baseline.outputs.run_id }}
-          github-token: ${{ github.token }}
-          path: build/product-baseline
-      - name: Admit exact sealed baseline provenance and pinned interpreter inputs
-        env:
-          GH_TOKEN: ${{ github.token }}
-          TARGET: ${{ matrix.target }}
-        run: mise run ci:acceptance-inputs --target "$TARGET"
-      - name: Exercise installed CLI MCP and lifecycle against retained bytes
-        env:
-          TARGET: ${{ matrix.target }}
-        run: mise run ci:acceptance --target "$TARGET" --receipt "build/acceptance-${TARGET}.json"
-      - uses: actions/upload-artifact@v7.0.2
-        with:
-          name: kast-installed-product-${{ matrix.target }}-${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}
-          path: build/acceptance-${{ matrix.target }}.json
-          if-no-files-found: error
-          retention-days: 30
-      - uses: actions/upload-artifact@v7.0.2
-        if: always()
-        with:
-          name: kast-installed-evidence-${{ matrix.target }}-${{ github.run_id }}-${{ github.run_attempt }}
-          path: build/installed-evidence/
-          if-no-files-found: warn
-          retention-days: 14
+    uses: ./.github/workflows/installed-acceptance.yml
+    with:
+      part: upgrade
+      sealed_run_attempt: ${{ needs.sealed-product.outputs.run_attempt }}
+
+  installed-fresh:
+    name: Installed fresh acceptance
+    needs: sealed-product
+    uses: ./.github/workflows/installed-acceptance.yml
+    with:
+      part: fresh
+      sealed_run_attempt: ${{ needs.sealed-product.outputs.run_attempt }}
 
   complete-product:
     name: Join installed acceptance without rewriting the build record
-    needs: [source-work, sealed-product, installed-product]
+    needs: [source-work, sealed-product, installed-upgrade, installed-fresh]
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     steps:
@@ -493,7 +440,11 @@ jobs:
           path: build/product-sealed
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
         with:
-          name: kast-installed-product-macos-aarch64-${{ github.sha }}-${{ github.run_id }}-${{ needs.installed-product.outputs.run_attempt }}
+          name: kast-installed-upgrade-macos-aarch64-${{ github.sha }}-${{ github.run_id }}-${{ needs.installed-upgrade.outputs.run_attempt }}
+          path: build/product-acceptance
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
+        with:
+          name: kast-installed-fresh-macos-aarch64-${{ github.sha }}-${{ github.run_id }}-${{ needs.installed-fresh.outputs.run_attempt }}
           path: build/product-acceptance
       - name: Join installed acceptance to the sealed record
         run: mise run ci:join

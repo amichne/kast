@@ -336,31 +336,47 @@ def joinable(
     )
 
 
-def accept(directory: Path, receipts: Path, output: Path) -> product.ProductRecord:
-    """Join detached native receipts without changing a byte of the sealed record."""
+def joined_receipt(
+    parts: Path, record: product.ProductRecord, digest: str, target: str
+) -> candidate.acceptance.Receipt:
+    acceptance = candidate.acceptance
+    admitted: list[acceptance.PartReceipt] = []
+    for part in acceptance.Part:
+        path = regular(parts / acceptance.part_filename(target, part))
+        if path.stat().st_size > acceptance.MAXIMUM_RECEIPT_BYTES:
+            raise Rejected(Failure.INVALID_RECORD)
+        try:
+            admitted.append(acceptance.decode_part(path.read_bytes(), record, digest, target, part))
+        except ValueError as failure:
+            raise Rejected(Failure.GATE_NOT_COMPLETE) from failure
+    try:
+        return acceptance.join(tuple(admitted))
+    except ValueError as failure:
+        raise Rejected(Failure.GATE_NOT_COMPLETE) from failure
+
+
+def accept(directory: Path, parts: Path, output: Path) -> product.ProductRecord:
+    """Join detached native parts without changing a byte of the sealed record."""
+    acceptance = candidate.acceptance
     record = candidate.read(directory)
     if isinstance(record, Failure):
         raise Rejected(record)
-    if output.exists() or output.is_symlink() or receipts.is_symlink():
+    if output.exists() or output.is_symlink() or parts.is_symlink():
         raise Rejected(Failure.DESTINATION_NOT_EMPTY)
-    names = {candidate.acceptance.filename(item.target) for item in record.targets}
-    if {path.name for path in receipts.iterdir()} != names:
+    targets = [item.target for item in record.targets]
+    names = {
+        acceptance.part_filename(target, part) for target in targets for part in acceptance.Part
+    }
+    if {path.name for path in parts.iterdir()} != names:
         raise Rejected(Failure.GATE_NOT_COMPLETE)
     digest = product.file_digest(directory / "build-record.json")
-    for item in record.targets:
-        target = item.target
-        path = regular(receipts / candidate.acceptance.filename(target))
-        if path.stat().st_size > candidate.acceptance.MAXIMUM_RECEIPT_BYTES:
-            raise Rejected(Failure.INVALID_RECORD)
-        try:
-            _ = candidate.acceptance.decode(path.read_bytes(), record, digest, target)
-        except ValueError as failure:
-            raise Rejected(Failure.GATE_NOT_COMPLETE) from failure
+    receipts = {target: joined_receipt(parts, record, digest, target) for target in targets}
     with tempfile.TemporaryDirectory(prefix="kast-product-accept-", dir=output.parent) as temporary:
         staged = Path(temporary) / "candidate"
         _ = shutil.copytree(directory, staged)
-        for name in names:
-            _ = shutil.copyfile(receipts / name, staged / "payload" / name)
+        for target, receipt in receipts.items():
+            path = staged / "payload" / acceptance.filename(target)
+            _ = path.write_bytes(acceptance.encode(receipt))
         if candidate.read(staged, accepted=True) != record:
             raise Rejected(Failure.PAYLOAD_MISMATCH)
         staged.rename(output)
