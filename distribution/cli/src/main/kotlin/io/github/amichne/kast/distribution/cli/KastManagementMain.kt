@@ -114,6 +114,9 @@ internal class ManagementRoot : ManagementNode("kast") {
 
     override fun help(context: Context) = "Query Kotlin and manage agent integrations."
 
+    // The Go Control serves these commands before this parser starts.
+    override fun helpEpilog(context: Context) = "Run kast agent install <claude|codex> to connect a coding agent."
+
     override fun selection() = if (currentContext.invokedSubcommand == null) ManagementCommand.Status(false) else null
 }
 
@@ -177,11 +180,11 @@ private class InstallCommand : ManagementNode("install") {
     private val json by option("--json", help = "Print one terminal provisioning result.").flag()
 
     override fun help(context: Context) =
-        "Export the Kast agent skill. Agents receive the skill and MCP server through dotagents."
+        "Export the Kast agent skill. To connect Claude Code or Codex, use kast agent install."
 
     override fun selection(): ManagementCommand =
         if (target == "skill") ManagementCommand.InstallSkill(output, json)
-        else throw CliktError("Select skill; configure agents with dotagents")
+        else throw CliktError("Select skill; to connect Claude Code or Codex, use kast agent install")
 }
 
 private class UninstallCommand : ManagementNode("uninstall") {

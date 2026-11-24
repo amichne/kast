@@ -22,6 +22,7 @@ import (
 
 	"github.com/coder/websocket"
 
+	"github.com/amichne/kast/frontend/internal/agent"
 	"github.com/amichne/kast/frontend/internal/install"
 	"github.com/amichne/kast/frontend/internal/reset"
 )
@@ -551,6 +552,57 @@ func TestASignalEndsAReset(t *testing.T) {
 		signals <- signal
 		process := resetProcess(t, func(string, []string, io.Writer) error { <-released; return nil }, io.Discard, "reset")
 		process.Signals = signals
+		if status := statusWithin(t, 5*time.Second, func() int { return Run(process) }); status != want {
+			t.Errorf("%v: status %d, want %d", signal, status, want)
+		}
+	}
+}
+
+func TestAnAgentCommandRunsHereAndMapsItsFailuresToPublishedStatuses(t *testing.T) {
+	f := newFixture(t)
+	for want, failure := range map[int]error{
+		0: nil,
+		2: &agent.Rejection{Failure: agent.UsageRejected, Detail: "usage", Next: "try this"},
+		4: &agent.Rejection{Failure: agent.MarketplaceForeign, Detail: "another kast", Next: "try this"},
+	} {
+		for expected, executable := range map[string]string{
+			f.root: filepath.Join(f.root, payloadPath),
+			// A removal needs no installation, so its absence reaches the agent command.
+			"": filepath.Join(t.TempDir(), "absent", "kast"),
+		} {
+			var stderr bytes.Buffer
+			calls := 0
+			process := resetProcess(t, nil, &stderr, "agent", "remove", "codex")
+			process.Executable = executable
+			process.Agent = func(_ context.Context, installation string, arguments []string, _ io.Writer) error {
+				calls++
+				if installation != expected || !slices.Equal(arguments, []string{"remove", "codex"}) {
+					t.Errorf("agent command on %q with %v", installation, arguments)
+				}
+				return failure
+			}
+			if expected != "" {
+				touchFrontend(t, f)
+			}
+			status := Run(process)
+			if status != want || calls != 1 ||
+				(failure != nil && !strings.Contains(stderr.String(), failure.Error()+"\ntry this")) {
+				t.Errorf("status %d after %d calls, want %d: %s", status, calls, want, stderr.String())
+			}
+		}
+	}
+}
+
+func TestASignalEndsAnAgentCommand(t *testing.T) {
+	for signal, want := range map[os.Signal]int{syscall.SIGINT: 130, syscall.SIGTERM: 143} {
+		signals := make(chan os.Signal, 1)
+		signals <- signal
+		process := resetProcess(t, nil, io.Discard, "agent", "install", "claude")
+		process.Signals = signals
+		process.Agent = func(ctx context.Context, _ string, _ []string, _ io.Writer) error {
+			<-ctx.Done()
+			return ctx.Err()
+		}
 		if status := statusWithin(t, 5*time.Second, func() int { return Run(process) }); status != want {
 			t.Errorf("%v: status %d, want %d", signal, status, want)
 		}

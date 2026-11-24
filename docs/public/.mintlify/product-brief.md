@@ -18,14 +18,14 @@ An existing installation uses `kast upgrade --channel preview`.
 
 The content revision was checked against `2e3feb6b3afd50b0ee90b52b092684ac83e3a879` and the user's revised content draft.
 `install.sh` owns the public bootstrap and developer-channel selection.
-The management CLI owns upgrades and skill export. dotagents owns agent configuration.
+The management CLI owns upgrades and skill export. Each agent owns its configuration and installs the Kast plugin.
 `docs/public/start.mdx` owns the complete first-use procedure.
 Keep commands and qualifications aligned with those source owners.
 
 ## Jobs to be done
 
 1. Select a qualified development build.
-2. Export the Kast skill and declare it with the Kast MCP server in `agents.toml`.
+2. Install the Kast plugin in the agent.
 3. Continue ordinary development with compiler-grounded evidence available to the agent.
 
 ## Navigation and ownership
@@ -36,7 +36,7 @@ The setup page owns installation and agent connection.
 Keep special prompts and a first-query exercise out of the default path.
 Optional fixtures belong in evidence checks; technical request syntax belongs in reference.
 The installation reference owns build policies and activation outcomes.
-The integration reference owns skill export and the dotagents recipe.
+The integration reference owns the plugin commands and skill export.
 The CLI reference owns common command examples.
 Keep existing routes and anchors. Edit generated contracts through their generator.
 
@@ -46,7 +46,7 @@ The product standard is never silently wrong: establish the fact with evidence o
 State this standard confidently without claiming current universal perfection or guaranteeing the agent's entire answer.
 Keep the current semantic model, completion policy, and consequential evidence limits beside their definitions.
 
-The Kast skill teaches the native CLI. One `agents.toml` entry adds the Kast MCP server.
+The Kast skill teaches the native CLI. The plugin also holds the session hook and the Kast MCP server.
 Kast writes no agent configuration.
 The persistent Host in IntelliJ IDEA supplies compiler analysis for CLI and MCP.
 Keep installed files, loaded Host identity, agent resources, and workspace readiness distinct.

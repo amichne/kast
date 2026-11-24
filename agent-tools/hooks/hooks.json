@@ -5,7 +5,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "PATH=\"${HOME}/.local/bin:${PATH}\" kast --internal-entrypoint=query hook session-start --host codex",
+            "command": "PATH=\"${HOME}/.local/bin:${PATH}\" kast --internal-entrypoint=query hook session-start --host agent",
             "timeout": 90,
             "statusMessage": "Read passive Kast session context"
           }

@@ -41,7 +41,7 @@ class LifecycleIngressTest {
     }
 
     @Test
-    fun `uninstall takes no harness because agent configuration belongs to dotagents`() {
+    fun `uninstall takes no harness because agent configuration belongs to the agent`() {
         val harnessUninstalls = listOf("codex", "skill", "pi").map { listOf("uninstall", it) }
         for (arguments in harnessUninstalls) {
             assertTrue((parseManagementCommand(arguments) as ManagementParsing.Print).error)

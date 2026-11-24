@@ -136,7 +136,7 @@ class AgentOnboardingTest(unittest.TestCase):
                 "class HookAccepted:\n"
                 "    pass\n"
                 "assert sys.argv[1:4] == ['--internal-entrypoint=query', 'hook', 'session-start']\n"
-                "assert sys.argv[4:] == ['--host', 'codex']\n"
+                "assert sys.argv[4:] == ['--host', 'agent']\n"
                 "assert json.load(sys.stdin)['cwd']\n"
                 "print(json.dumps(asdict(HookAccepted())))\n"
             )
@@ -208,11 +208,11 @@ class AgentOnboardingTest(unittest.TestCase):
         ast.parse(source, feature_version=(3, 9))
         self.assertNotIn("pydantic", source)
 
-    def test_codex_uses_one_shared_preparation_command(self):
+    def test_agents_use_one_shared_session_command(self):
         hooks = json.loads((PLUGIN / "hooks/hooks.json").read_text())["hooks"]["SessionStart"]
         self.assertEqual(1, len(hooks))
         self.assertEqual(1, len(hooks[0]["hooks"]))
-        self.assertTrue(hooks[0]["hooks"][0]["command"].endswith("kast --internal-entrypoint=query hook session-start --host codex"))
+        self.assertTrue(hooks[0]["hooks"][0]["command"].endswith("kast --internal-entrypoint=query hook session-start --host agent"))
         self.assertLessEqual(hooks[0]["hooks"][0]["timeout"], 90)
 
 

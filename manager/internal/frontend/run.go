@@ -13,6 +13,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/amichne/kast/frontend/internal/agent"
 	"github.com/amichne/kast/frontend/internal/install"
 	"github.com/amichne/kast/frontend/internal/reset"
 )
@@ -34,6 +35,8 @@ type Process struct {
 	Reset func(home string, arguments []string, out io.Writer) error
 	// Install performs `kast install` with options on one home.
 	Install func(ctx context.Context, home, platform string, arguments []string, out, log io.Writer) error
+	// Agent performs `kast agent` on one installation, which is empty when none was found.
+	Agent func(ctx context.Context, installation string, arguments []string, out io.Writer) error
 }
 
 // Run executes one invocation and returns the process status. The coordinator serves public queries, a reset runs here,
@@ -47,6 +50,10 @@ func Run(process Process) int {
 			return runReset(process, environment["HOME"], parsed.arguments[1:])
 		case installs(parsed.arguments):
 			return runInstall(process, environment["HOME"], parsed.arguments[1:])
+		case parsed.arguments[0] == "agent":
+			// A removal needs no installation, so its absence is the agent command's to judge.
+			installation, _ := locateInstallation(process.Executable, environment)
+			return runAgent(process, installation, parsed.arguments[1:])
 		}
 	}
 	installation, err := locateInstallation(process.Executable, environment)
@@ -153,6 +160,42 @@ func runInstall(process Process, home string, arguments []string) int {
 		case <-time.After(installGrace):
 		}
 		diagnose(process.Stderr, "install: interrupted. Run the same command again to continue.")
+		if signal == syscall.SIGTERM {
+			return terminatedStatus
+		}
+		return interruptedStatus
+	}
+}
+
+// runAgent performs an agent command beside the signal wait. A signal ends the running agent command; every step
+// repeats safely.
+func runAgent(process Process, installation string, arguments []string) int {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	finished := make(chan error, 1)
+	go func() { finished <- process.Agent(ctx, installation, arguments, process.Stdout) }()
+	select {
+	case err := <-finished:
+		var rejection *agent.Rejection
+		switch {
+		case err == nil:
+			return 0
+		case !errors.As(err, &rejection):
+			diagnose(process.Stderr, "agent: "+err.Error())
+			return runtimeStatus
+		}
+		diagnose(process.Stderr, "agent: "+rejection.Error()+"\n"+rejection.Next)
+		if rejection.Failure == agent.UsageRejected {
+			return inputStatus
+		}
+		return runtimeStatus
+	case signal := <-process.Signals:
+		cancel()
+		select {
+		case <-finished:
+		case <-time.After(installGrace):
+		}
+		diagnose(process.Stderr, "agent: interrupted. Run the same command again to continue.")
 		if signal == syscall.SIGTERM {
 			return terminatedStatus
 		}

@@ -1,5 +1,6 @@
 import java.nio.file.Files
 import java.nio.file.Path
+import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
@@ -12,6 +13,29 @@ import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
 import support.tasks.GenerateAgentToolsTask
+
+@Serializable private data class ExpectedOwner(val name: String)
+
+@Serializable
+private data class ExpectedClaudePlugin(
+    val name: String,
+    val version: String,
+    val description: String,
+    val author: ExpectedOwner,
+    val homepage: String,
+    val repository: String,
+    val license: String,
+)
+
+@Serializable private data class ExpectedClaudeEntry(val name: String, val source: String, val description: String)
+
+@Serializable
+private data class ExpectedClaudeMarketplace(
+    val name: String,
+    val description: String,
+    val owner: ExpectedOwner,
+    val plugins: List<ExpectedClaudeEntry>,
+)
 
 class GenerateAgentToolsTaskTest {
     @TempDir lateinit var directory: Path
@@ -67,6 +91,51 @@ class GenerateAgentToolsTaskTest {
             mcp.getValue("mcpServers").jsonObject.getValue("kast").jsonObject.getValue("args").jsonArray.map {
                 it.jsonPrimitive.content
             })
+    }
+
+    @Test
+    fun `both compositions present one identity to Claude Code and Codex`() {
+        val task = task()
+        task.generate()
+        val output = task.outputDirectory.get().asFile.toPath()
+        val source = Json.parseToJsonElement(
+            Files.readString(task.sourceDirectory.get().asFile.toPath().resolve(".codex-plugin/plugin.json")),
+        ).jsonObject
+        val description = source.getValue("description").jsonPrimitive.content
+        for (composition in listOf(output, output.resolve("compositions/mcp"))) {
+            val plugin = composition.resolve("plugins/kast")
+            // Claude Code discovers the skill, the hook and .mcp.json; a manifest path would replace a default.
+            // An unknown key rejects, so these decodes pin the exact shapes.
+            assertEquals(
+                ExpectedClaudePlugin(
+                    "kast", "1.2.3", description, ExpectedOwner("Amichne"), "https://kast.michne.com/",
+                    "https://github.com/amichne/kast", "GPL-3.0-only",
+                ),
+                Json.decodeFromString<ExpectedClaudePlugin>(
+                    Files.readString(plugin.resolve(".claude-plugin/plugin.json")),
+                ),
+            )
+            assertEquals(
+                ExpectedClaudeMarketplace(
+                    "kast", description, ExpectedOwner("Amichne"),
+                    listOf(ExpectedClaudeEntry("kast", "./plugins/kast", description)),
+                ),
+                Json.decodeFromString<ExpectedClaudeMarketplace>(
+                    Files.readString(composition.resolve(".claude-plugin/marketplace.json")),
+                ),
+            )
+            val codex = Json.parseToJsonElement(Files.readString(plugin.resolve(".codex-plugin/plugin.json"))).jsonObject
+            for (shared in listOf("name", "version", "description", "license")) {
+                assertEquals(
+                    codex.getValue(shared),
+                    Json.parseToJsonElement(Files.readString(plugin.resolve(".claude-plugin/plugin.json")))
+                        .jsonObject.getValue(shared),
+                )
+            }
+        }
+        // Only the MCP composition carries the server that both agents would start.
+        assertTrue(Files.notExists(output.resolve("plugins/kast/.mcp.json")))
+        assertTrue(Files.isRegularFile(output.resolve("compositions/mcp/plugins/kast/.mcp.json")))
     }
 
     @Test

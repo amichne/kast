@@ -1,59 +1,51 @@
 ---
 title: "Connect your agent"
 sidebarTitle: "Agent setup"
-description: "Give your agent the Kast skill and the Kast MCP server through one dotagents configuration."
+description: "Install the Kast plugin in Claude Code or Codex, or export the Kast skill for another agent."
 icon: "plug"
 hideFooterPagination: true
 ---
 
-Kast writes no agent configuration. Declare the Kast skill and MCP server in your repository's `agents.toml`. [dotagents](https://github.com/getsentry/dotagents) then writes the configuration for each agent you list.
+The Kast installation includes one plugin for Claude Code and Codex. It holds the Kast skill, a session hook, and the Kast MCP server.
+`kast agent` runs your agent's own plugin commands. Kast writes no agent configuration.
 
 ## Before you start
 
-- [Install Kast](/start). Your agent must find the `kast` command on its `PATH`.
-- Install Node.js. It runs `npx @sentry/dotagents`.
+[Install Kast](/start). Your agent must find the `kast` command on its `PATH` or in `~/.local/bin`.
 
-## 1. Export the Kast skill
+<span id="1-export-the-kast-skill" />
+<span id="2-declare-kast-in-agents-toml" />
 
-From your repository root, run:
+## 1. Install the plugin
 
-```shell
-kast install skill
-```
+<Tabs>
+  <Tab title="Claude Code">
+    ```shell
+    kast agent install claude
+    ```
 
-Kast writes the skill to `.agents/skills/kast`. dotagents uses this directory in place, so keep it in Git.
+    The skill appears as `kast:kast`.
+  </Tab>
+  <Tab title="Codex">
+    ```shell
+    kast agent install codex
+    ```
 
-## 2. Declare Kast in agents.toml
+    Codex skips a new hook until you trust it. Run `/hooks` in a session, then review the Kast session hook.
+  </Tab>
+</Tabs>
 
-Create `agents.toml` in your repository root, or add these entries to your existing file:
+The plugin applies to all your projects. Outside a Gradle project, the session hook adds nothing to the session.
 
-```toml agents.toml
-version = 1
-agents = ["claude", "codex"]
+Add `--without-mcp` to install only the skill and hook. Run the command again without it to add the MCP server.
 
-[[skills]]
-name = "kast"
-source = "path:.agents/skills/kast"
+Another marketplace named `kast` stops the command with `MARKETPLACE_FOREIGN`, and nothing changes. The output names the command that removes it.
 
-[[mcp]]
-name = "kast"
-command = "kast"
-args = ["--internal-entrypoint=mcp"]
-```
+<span id="3-apply-the-configuration" />
 
-Set `agents` to the agents that you use. The dotagents documentation lists the supported names.
+## 2. Start a new session
 
-The `[[mcp]]` entry runs the installed `kast` command as a stdio MCP server in the agent's working directory.
-If your agent cannot find `kast`, set `command` to the absolute path that the installer printed.
-
-## 3. Apply the configuration
-
-```shell
-npx @sentry/dotagents --project install
-```
-
-dotagents links the skill and writes the MCP configuration for each listed agent.
-Start a new agent session in the repository to load them.
+Start a new agent session in your project to load the plugin.
 
 ## Work with your agent
 
@@ -61,34 +53,66 @@ Describe your task as usual. The skill tells your agent when a Kast query gives 
 The agent can read the installed CLI contract with `kast describe`.
 
 The first explicit semantic request grants trust to the exact workspace root and prepares its Host. This applies to the CLI and to MCP.
-Use Kast only in a workspace whose build code you trust. MCP registration and `tools/list` do not grant trust or start a Host.
+Use Kast only in a workspace whose build code you trust. Plugin installation, the session hook, and `tools/list` do not grant trust or start a Host.
 Each result applies to its stated worktree, source state, and scope.
 
 The [MCP contract](/reference/mcp-catalog) describes the server's tools and replies. The [CLI reference](/reference/cli) describes the command forms.
 
-## Refresh the skill after an upgrade
+<span id="refresh-the-skill-after-an-upgrade" />
 
-An upgrade can change the bundled skill. `kast install skill` never overwrites an existing skill:
+## Refresh after an upgrade
+
+An upgrade can change the plugin.
+
+- Claude Code reads the plugin from the installation. Start a new session.
+- Codex keeps a copy. Run `kast agent install codex` again, then start a new session. `kast upgrade` does not do this.
+
+A changed hook needs a new review in Codex.
+
+## Remove the plugin
+
+<Tabs>
+  <Tab title="Claude Code">
+    ```shell
+    kast agent remove claude
+    ```
+  </Tab>
+  <Tab title="Codex">
+    ```shell
+    kast agent remove codex
+    ```
+  </Tab>
+</Tabs>
+
+`kast uninstall` does not change agent configuration. Remove the plugin first.
+
+## Connect another agent
+
+For an agent without a Kast plugin, export the skill and register the MCP server.
+
+From your repository root, export the skill:
+
+```shell
+kast install skill
+```
+
+Kast writes the skill to `.agents/skills/kast`. Many agents read that directory. Keep it in Git to share it with your team.
+Use `--output` to select another parent directory, and `--json` to print one structured result.
+
+Register this stdio MCP server as your agent's documentation describes:
+
+```shell
+kast --internal-entrypoint=mcp
+```
+
+If your agent cannot find `kast`, use the absolute path that the installer printed.
+
+`kast install skill` never overwrites an existing skill:
 
 - An identical skill returns `ALREADY_INSTALLED` and writes nothing.
 - A different or incomplete skill returns `SKILL_EXISTS` and leaves the directory unchanged.
 
-To refresh the skill, run these steps from your repository root:
-
-1. Remove the old export with `rm -rf .agents/skills/kast`.
-2. Export the skill again with `kast install skill`.
-3. Apply the configuration with `npx @sentry/dotagents --project install`.
-4. Start a new agent session.
-
-## Export to another directory
-
-`--output` selects the parent directory of the skill:
-
-```shell
-kast install skill --output ./guidance
-```
-
-This command writes the skill to `./guidance/kast`. Set the skill `source` in `agents.toml` to the same path.
-Add `--json` to print one structured result.
+To refresh an exported skill after an upgrade, remove it with `rm -rf .agents/skills/kast` and export it again.
+Do not combine an exported skill with the plugin. Your agent would list the Kast skill twice.
 
 Recovery: [Help](/troubleshooting).

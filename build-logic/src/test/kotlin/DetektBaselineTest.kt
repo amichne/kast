@@ -19,8 +19,8 @@ class DetektBaselineTest {
                 """
                 plugins { id 'dev.detekt' }
                 repositories {
-                    mavenCentral()
                     maven { url = uri('https://maven-central.storage-download.googleapis.com/maven2/') }
+                    mavenCentral()
                 }
                 detekt {
                     toolVersion = '2.0.0-alpha.6'
@@ -58,7 +58,10 @@ class DetektBaselineTest {
                     id 'org.jetbrains.kotlin.jvm'
                     id 'kast.kotlin-quality'
                 }
-                repositories { mavenCentral() }
+                repositories {
+                    maven { url = uri('https://maven-central.storage-download.googleapis.com/maven2/') }
+                    mavenCentral()
+                }
                 """
                     .trimIndent()
             )

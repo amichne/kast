@@ -132,6 +132,25 @@ class VerifyControlDistributionTaskTest {
     }
 
     @Test
+    fun `each composition needs the manifests of both agents`(@TempDir directory: Path) {
+        val task = guidanceFixture(directory)
+        val root = task.controlDirectory.get().asFile.toPath().resolve("share/kast/agent-tools")
+        for (composition in listOf("", "compositions/mcp/")) {
+            for (name in listOf(
+                ".claude-plugin/marketplace.json", "plugins/kast/.claude-plugin/plugin.json",
+                ".agents/plugins/marketplace.json", "plugins/kast/.codex-plugin/plugin.json",
+            )) {
+                val manifest = root.resolve(composition + name)
+                Files.delete(manifest)
+                assertEquals("control product is missing required entries",
+                    assertThrows(IllegalStateException::class.java, task::verify).message)
+                Files.write(manifest, byteArrayOf())
+            }
+        }
+        task.verify()
+    }
+
+    @Test
     fun `a product needs its own license and the executable's third-party notices`(@TempDir directory: Path) {
         val task = guidanceFixture(directory)
         val licenses = task.controlDirectory.get().asFile.toPath().resolve("share/kast/licenses")
@@ -182,6 +201,7 @@ class VerifyControlDistributionTaskTest {
         ) + listOf("", "compositions/mcp/").flatMap { composition ->
             val prefix = "share/kast/agent-tools/$composition"
             listOf(".agents/plugins/marketplace.json", "plugins/kast/.codex-plugin/plugin.json",
+                ".claude-plugin/marketplace.json", "plugins/kast/.claude-plugin/plugin.json",
                 "plugins/kast/skills/kast/SKILL.md", "plugins/kast/skills/kast/public-cli.md",
                 "plugins/kast/hooks/hooks.json",
                 "plugins/kast/references/onboarding.md", "plugins/kast/references/query-examples.json").map { prefix + it }
