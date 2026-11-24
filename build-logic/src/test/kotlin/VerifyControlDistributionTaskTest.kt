@@ -132,6 +132,19 @@ class VerifyControlDistributionTaskTest {
     }
 
     @Test
+    fun `a product needs its own license and the executable's third-party notices`(@TempDir directory: Path) {
+        val task = guidanceFixture(directory)
+        val licenses = task.controlDirectory.get().asFile.toPath().resolve("share/kast/licenses")
+        for (name in listOf("LICENSE", "frontend/THIRD_PARTY_NOTICES.txt")) {
+            Files.delete(licenses.resolve(name))
+            assertEquals("control product is missing required entries",
+                assertThrows(IllegalStateException::class.java, task::verify).message)
+            Files.write(licenses.resolve(name), byteArrayOf())
+        }
+        task.verify()
+    }
+
+    @Test
     fun `default MCP transport and private environments reject`(@TempDir directory: Path) {
         val task = guidanceFixture(directory)
         val root = task.controlDirectory.get().asFile.toPath()
@@ -165,6 +178,7 @@ class VerifyControlDistributionTaskTest {
             "share/kast/operation-registry.json", "share/kast/provider-catalog.json",
             "share/kast/configuration-schema.json", "share/kast/wire-schema.json", "share/kast/ide-host.json",
             "share/kast/licenses/LICENSE", "share/kast/frontend.json", "lib/kast-cli.jar",
+            "share/kast/licenses/frontend/THIRD_PARTY_NOTICES.txt",
         ) + listOf("", "compositions/mcp/").flatMap { composition ->
             val prefix = "share/kast/agent-tools/$composition"
             listOf(".agents/plugins/marketplace.json", "plugins/kast/.codex-plugin/plugin.json",

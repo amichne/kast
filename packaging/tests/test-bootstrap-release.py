@@ -21,7 +21,11 @@ ROOT = Path(__file__).resolve().parents[2]
 REVISION = "a" * 40
 TREE = "b" * 40
 TAG = "bootstrap-" + "b" * 12
-CONTENT = {"kast-bootstrap-linux-x86_64": b"linux", "kast-bootstrap-macos-aarch64": b"macos"}
+CONTENT = {
+    "kast-bootstrap-THIRD_PARTY_NOTICES.txt": b"terms",
+    "kast-bootstrap-linux-x86_64": b"linux",
+    "kast-bootstrap-macos-aarch64": b"macos",
+}
 SOURCE = ("git rev-parse", Completed(0, f"{REVISION}\n{TREE}\n", ""))
 CLEAN = ("git status", Completed(0, "", ""))
 ABSENT = ("gh release view", Completed(1, "", "release not found\n"))
@@ -117,7 +121,7 @@ class BootstrapReleaseTest(unittest.TestCase):
         self.assertEqual([], self.script.writes())
 
     def test_other_published_facts_stop_before_a_write(self) -> None:
-        good, other = (
+        terms, good, other = (
             {
                 "name": name,
                 "digest": "sha256:" + hashlib.sha256(raw).hexdigest(),
@@ -128,9 +132,10 @@ class BootstrapReleaseTest(unittest.TestCase):
         )
         wrong = {**good, "digest": "sha256:" + "0" * 64}
         for label, release in {
-            "missing file": view(draft=False, assets=[good]),
-            "other digest": view(draft=False, assets=[wrong, other]),
-            "repeated file": view(draft=False, assets=[good, other, other]),
+            "missing file": view(draft=False, assets=[terms, good]),
+            "missing notices": view(draft=False, assets=[good, other]),
+            "other digest": view(draft=False, assets=[terms, wrong, other]),
+            "repeated file": view(draft=False, assets=[terms, good, other, other]),
             "stable release": view(draft=False, prerelease=False),
         }.items():
             with self.subTest(label):
@@ -232,8 +237,11 @@ class BootstrapReleaseTest(unittest.TestCase):
 
     def test_the_published_names_are_the_built_names(self) -> None:
         source = (ROOT / "frontend/check").read_text()
-        for name in publisher.NAMES:
+        notices, *executables = publisher.NAMES
+        for name in executables:
             self.assertIn(f'"{name.removeprefix("kast-bootstrap-")}": (', source)
+        self.assertIn(f'NOTICES = "{notices.removeprefix("kast-bootstrap-")}"\n', source)
+        self.assertIn('output / f"kast-bootstrap-{NOTICES}"', source)
 
 
 if __name__ == "__main__":

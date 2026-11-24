@@ -12,13 +12,15 @@ reads a live advisory database, so it is a separate command rather than part of 
 from __future__ import annotations
 
 import argparse
+import json
 import os
 import re
 import shutil
 import subprocess
 import sys
 import tempfile
-from collections.abc import Mapping, Sequence
+from collections.abc import Iterable, Mapping, Sequence
+from dataclasses import dataclass
 from pathlib import Path
 
 MODULE = Path(__file__).resolve().parent
@@ -26,6 +28,13 @@ MODULE = Path(__file__).resolve().parent
 RELEASE_TARGETS = (("darwin", "arm64"), ("darwin", "amd64"), ("linux", "arm64"), ("linux", "amd64"))
 # The product platforms that install.sh can start on, by published name.
 BOOTSTRAP_TARGETS = {"macos-aarch64": ("darwin", "arm64"), "linux-x86_64": ("linux", "amd64")}
+NOTICES = "THIRD_PARTY_NOTICES.txt"
+HEADER = """Third-party notices for the Kast executable
+
+The Kast executable is a Go program that contains the components below, with their license terms.
+This file covers only that executable. Other files of a Kast product have their own terms.
+"""
+LICENSE_FILE = re.compile(r"(licen[cs]e|copying|notice|patents)([.-](?!go$).*)?", re.IGNORECASE)
 
 
 def run(
@@ -67,14 +76,101 @@ def gate(catalog: Path | None) -> None:
             ("go", "build", "-trimpath", "-o", os.devnull, "./cmd/kast"),
             {"CGO_ENABLED": "0", "GOOS": goos, "GOARCH": goarch},
         )
+    if (MODULE / NOTICES).read_text() != notices():
+        raise SystemExit(f"frontend-check: {NOTICES} is not current; run frontend/check notices")
+    print("frontend-check: third-party notices passed", flush=True)
     reproducible()
 
 
-def bootstrap(module: Path, output: Path) -> None:
-    """Build the bootstrap executables. Only the module's bytes and its toolchain line decide the result."""
-    toolchain = re.search(r"^toolchain (go\S+)$", (module / "go.mod").read_text(), re.MULTILINE)
-    if toolchain is None:
+def toolchain(module: Path) -> str:
+    found = re.search(r"^toolchain (go\S+)$", (module / "go.mod").read_text(), re.MULTILINE)
+    if found is None:
         raise SystemExit("frontend-check: go.mod names no toolchain")
+    return found[1]
+
+
+def pinned(module: Path, goos: str, goarch: str) -> dict[str, str]:
+    """The environment in which only the module's bytes and its toolchain line decide a result."""
+    return {
+        "CGO_ENABLED": "0", "GOOS": goos, "GOARCH": goarch, "GOAMD64": "v1", "GOARM64": "v8.0",
+        "GOTOOLCHAIN": toolchain(module), "GOFLAGS": "", "GOEXPERIMENT": "", "GOWORK": "off", "GOENV": "off",
+    }  # fmt: skip
+
+
+@dataclass(frozen=True)
+class Package:
+    """One package in the executable, its component, and the directory that holds the component's terms."""
+
+    component: str
+    directory: Path
+    root: Path
+
+
+def linked(listed: str, go: str, goroot: Path) -> list[Package]:
+    """Decode `go list -json`. Every package is the module's own, the toolchain's, or an exact module version's."""
+    packages: list[Package] = []
+    decoder, position = json.JSONDecoder(), 0
+    listed = listed.strip()
+    while position < len(listed):
+        value, position = decoder.raw_decode(listed, position)
+        position += len(listed[position:]) - len(listed[position:].lstrip())
+        module = value.get("Module") or {}
+        if module.get("Main"):
+            continue
+        if value.get("Standard"):
+            packages.append(Package(f"Go standard library {go}", Path(value["Dir"]), goroot))
+        elif "Replace" not in module and module.get("Version"):
+            component = f"{module['Path']} {module['Version']}"
+            packages.append(Package(component, Path(value["Dir"]), Path(module["Dir"])))
+        else:
+            raise SystemExit(f"frontend-check: {value['ImportPath']} has no exact module version")
+    return packages
+
+
+def license_files(package: Package) -> list[Path]:
+    """The terms in the package's directory and in each directory up to its component's root."""
+    if not package.directory.is_relative_to(package.root):
+        raise SystemExit(f"frontend-check: {package.directory} is outside {package.component}")
+    found: list[Path] = []
+    directory = package.directory
+    while True:
+        found += (path for path in directory.iterdir() if LICENSE_FILE.fullmatch(path.name) and not path.is_dir())
+        if directory == package.root:
+            return found
+        directory = directory.parent
+
+
+def render(packages: Iterable[Package]) -> str:
+    """Each component's terms once. The order of the packages does not change the result."""
+    terms: dict[tuple[str, str], Path] = {}
+    for package in packages:
+        files = license_files(package)
+        if not files:
+            raise SystemExit(f"frontend-check: {package.component} has no license file")
+        for path in files:
+            if path.is_symlink() or not path.is_file():
+                raise SystemExit(f"frontend-check: {path} is not a regular file")
+            terms[package.component, path.relative_to(package.root).as_posix()] = path
+    sections = [HEADER]
+    for (component, name), path in sorted(terms.items()):
+        text = "\n".join(line.rstrip() for line in path.read_text(encoding="utf-8").strip("\r\n").splitlines())
+        sections.append(f"{'=' * 80}\n{component}\n{name}\n{'-' * 80}\n\n{text.rstrip()}\n")
+    return "\n".join(sections)
+
+
+def notices() -> str:
+    """The terms of every package that a release target's executable contains."""
+    packages: list[Package] = []
+    for goos, goarch in RELEASE_TARGETS:
+        environment = pinned(MODULE, goos, goarch)
+        goroot = Path(run("notices toolchain", ("go", "env", "GOROOT"), environment).strip())
+        listed = run(f"notices {goos}/{goarch}", ("go", "list", "-deps", "-json", "./cmd/kast"), environment)
+        packages += linked(listed, environment["GOTOOLCHAIN"], goroot)
+    return render(packages)
+
+
+def bootstrap(module: Path, output: Path) -> None:
+    """Build the bootstrap executables beside the notices that their distribution needs."""
     if output.exists():
         raise SystemExit(f"frontend-check: {output} already exists")
     output.mkdir(parents=True)
@@ -83,12 +179,10 @@ def bootstrap(module: Path, output: Path) -> None:
             f"bootstrap {target}",
             ("go", "build", "-trimpath", "-buildvcs=false", "-ldflags=-s -w -buildid=", "-o",
              str(output / f"kast-bootstrap-{target}"), "./cmd/kast"),
-            {
-                "CGO_ENABLED": "0", "GOOS": goos, "GOARCH": goarch, "GOAMD64": "v1", "GOARM64": "v8.0",
-                "GOTOOLCHAIN": toolchain[1], "GOFLAGS": "", "GOEXPERIMENT": "", "GOWORK": "off", "GOENV": "off",
-            },
+            pinned(module, goos, goarch),
             module,
         )  # fmt: skip
+    shutil.copyfile(module / NOTICES, output / f"kast-bootstrap-{NOTICES}")
 
 
 def reproducible() -> None:
@@ -112,11 +206,14 @@ def main(arguments: Sequence[str] | None = None) -> int:
     verify = commands.add_parser("gate", help="deterministic checks for every change")
     verify.add_argument("--catalog", type=Path, help="generated frontend.json; required for the status-table test")
     commands.add_parser("vulnerabilities", help="scan reachable code against the live Go advisory database")
+    commands.add_parser("notices", help=f"write {NOTICES} from the modules that the executable contains")
     build = commands.add_parser("bootstrap", help="build the executables that install.sh pins")
     build.add_argument("--output", type=Path, required=True, help="directory to create")
     args = parser.parse_args(arguments)
     if args.command == "bootstrap":
         bootstrap(MODULE, args.output.absolute())
+    elif args.command == "notices":
+        (MODULE / NOTICES).write_text(notices(), encoding="utf-8")
     elif args.command == "gate":
         catalog = args.catalog
         if catalog is not None and (not catalog.is_absolute() or not catalog.is_file()):

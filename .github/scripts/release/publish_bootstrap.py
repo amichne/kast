@@ -21,7 +21,11 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[3]
 REPOSITORY = "amichne/kast"
-NAMES = ("kast-bootstrap-linux-x86_64", "kast-bootstrap-macos-aarch64")
+NAMES = (
+    "kast-bootstrap-THIRD_PARTY_NOTICES.txt",
+    "kast-bootstrap-linux-x86_64",
+    "kast-bootstrap-macos-aarch64",
+)
 REVISION = re.compile(r"[0-9a-f]{40}\Z")
 STABLE_TAG = re.compile(r"v[0-9]+\.[0-9]+\.[0-9]+\Z")
 MAXIMUM_BYTES = 64 << 20

@@ -198,6 +198,7 @@ val stageKastControlProduct = tasks.register<Sync>("stageKastControlProduct") {
         into("share/kast/agent-tools")
     }
     from(buildControlExecutable) { into("share/kast/libexec") }
+    from("frontend/THIRD_PARTY_NOTICES.txt") { into("share/kast/licenses/frontend") }
     from(controlLibraryFiles) { into("lib") }
     from(frontendCatalogFiles) { into("share/kast") }
     from(installerSupportDirectory) { into("share/kast") }

@@ -475,6 +475,16 @@ mise exec -- uv run --locked --script frontend/check bootstrap --output build/bo
 ```
 
 The frontend gate builds them from two directories and compares the bytes.
+The output also holds the third-party notices of those executables.
+After a Go dependency or toolchain change, regenerate the notices:
+
+```shell
+mise exec -- uv run --locked --script frontend/check notices
+```
+
+The gate rejects notices that differ from the packages in the executable.
+The Control product carries them in `share/kast/licenses/frontend`.
+They do not cover the JVM libraries of a product.
 
 Publication is a manual dispatch from `main`:
 
