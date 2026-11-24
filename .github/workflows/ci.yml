@@ -207,8 +207,8 @@ jobs:
       - name: Set up the frontend Go toolchain
         uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
-          go-version-file: frontend/go.mod
-          cache-dependency-path: frontend/go.sum
+          go-version-file: manager/go.mod
+          cache-dependency-path: manager/go.sum
       - name: Assemble the release
         env:
           GH_TOKEN: ${{ github.token }}
@@ -645,8 +645,8 @@ jobs:
       - name: Set up the frontend Go toolchain
         uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
-          go-version-file: frontend/go.mod
-          cache-dependency-path: frontend/go.sum
+          go-version-file: manager/go.mod
+          cache-dependency-path: manager/go.sum
 
       - name: Set up documentation parser runtime
         uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0

@@ -1,23 +1,23 @@
 ---
 type: Module Guide
-title: "Kast frontend"
+title: "Kast manager"
 description: "Owns the Go Control executable: public queries through the persistent coordinator, reset, and every other entry on the JVM."
-resource: "repo://frontend"
-tags: [kast, frontend, coordinator]
+resource: "repo://manager"
+tags: [kast, manager, frontend, coordinator]
 timestamp: "2026-11-23T00:00:00Z"
 source_revision: 402240fd87e8cf55254ddec55f6f02a809e4101c
 code_sources:
-  - path: frontend/cmd/kast/main.go
-  - path: frontend/internal/frontend/catalog.go
-  - path: frontend/internal/frontend/control.go
-  - path: frontend/internal/frontend/invocation.go
-  - path: frontend/internal/frontend/run.go
-  - path: frontend/internal/reset/backup.go
-  - path: frontend/internal/reset/paths.go
-  - path: frontend/internal/reset/reset.go
-  - path: frontend/go.mod
-  - path: frontend/check
-  - path: frontend/acceptance
+  - path: manager/cmd/kast/main.go
+  - path: manager/internal/frontend/catalog.go
+  - path: manager/internal/frontend/control.go
+  - path: manager/internal/frontend/invocation.go
+  - path: manager/internal/frontend/run.go
+  - path: manager/internal/reset/backup.go
+  - path: manager/internal/reset/paths.go
+  - path: manager/internal/reset/reset.go
+  - path: manager/go.mod
+  - path: manager/check
+  - path: manager/acceptance
   - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/PublicInvocationProtocol.kt
   - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/runtime/PublicInvocationOperations.kt
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/KastControlMain.kt
@@ -25,10 +25,12 @@ code_sources:
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/publicshell/PublicFrontendCatalog.kt
 ---
 
-# Frontend
+# Manager
 
 ## Purpose
 
+This directory is the repository's only Go module. Its module path and the `internal/frontend` package keep the earlier name,
+because a module path change alters the bootstrap bytes that `install.sh` pins.
 The Go binary is the installed Control executable at `share/kast/libexec/kast-management`, and the public `kast` command is its copy.
 It serves the public query commands through the persistent coordinator and owns bootstrap, transport, signals, output delivery, and process status for them.
 It also owns `kast reset`, which returns a damaged installation to "nothing installed" without a record, a runtime, or a JVM.
@@ -43,7 +45,7 @@ Read the [tracer evidence](../docs/reviews/go-frontend-tracer.md) for the measur
 - `go.mod` owns the Go release through its `toolchain` line and the analyzers through its `tool` lines.
   The `mise.toml` Go entry only provisions a matching `go` command.
 - Keep the bootstrap executables a function of the module's bytes and the `toolchain` line. `install.sh` pins their digests.
-- After a dependency or toolchain change, run `frontend/check notices`. The gate rejects `THIRD_PARTY_NOTICES.txt` when it differs from the packages in the executable.
+- After a dependency or toolchain change, run `manager/check notices`. The gate rejects `THIRD_PARTY_NOTICES.txt` when it differs from the packages in the executable.
   That file covers only the Go executable. It does not cover the JVM libraries of a product.
 - Forward the argument vector, working directory, and environment unchanged. Never lower flags or model requests in Go.
 - Route only the public query commands to the coordinator. `hook` and `workspace` read process-local state, so they run on the JVM.
@@ -96,11 +98,11 @@ Read the [tracer evidence](../docs/reviews/go-frontend-tracer.md) for the measur
 
 ## Entry Points
 
-- Gate: `mise exec -- ./gradlew :frontendTest`. It runs `frontend/check gate` with the generated catalog.
+- Gate: `mise exec -- ./gradlew :frontendTest`. It runs `manager/check gate` with the generated catalog.
   The gate covers module integrity and tidiness, `gofmt`, `go vet`, `staticcheck`, race tests, and cgo-free builds for every release target.
   It also builds the bootstrap executables from two directories and compares the bytes.
-- Bootstrap: `frontend/check bootstrap --output <directory>` builds the executables. The [publication procedure](../docs/development.md#bootstrap-release) releases them.
-- Advisory scan: `mise exec -- uv run --locked --script frontend/check vulnerabilities`. Its result depends on the live Go advisory database.
-- Inner loop: `cd frontend && go test -race ./...`. Set `KAST_FRONTEND_CATALOG` to the generated catalog for the status check.
+- Bootstrap: `manager/check bootstrap --output <directory>` builds the executables. The [publication procedure](../docs/development.md#bootstrap-release) releases them.
+- Advisory scan: `mise exec -- uv run --locked --script manager/check vulnerabilities`. Its result depends on the live Go advisory database.
+- Inner loop: `cd manager && go test -race ./...`. Set `KAST_FRONTEND_CATALOG` to the generated catalog for the status check.
 - Control payload: `mise exec -- ./gradlew :stageKastControlProduct` stages the binary, `lib`, and `share/kast/frontend.json`.
 - Coordinator route tests: `PublicInvocationEndpointTest` in `app-server` and `CoordinatorPublicInvocationsTest` in `cli`.

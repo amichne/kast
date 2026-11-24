@@ -153,10 +153,10 @@ val buildControlExecutable = tasks.register<Exec>("buildControlExecutable") {
         "linux-aarch64" -> "linux" to "arm64"
         else -> "linux" to "amd64"
     }
-    inputs.files(fileTree("frontend") { include("**/*.go", "go.mod", "go.sum") })
+    inputs.files(fileTree("manager") { include("**/*.go", "go.mod", "go.sum") })
     inputs.property("target", "$goos/$goarch")
     outputs.file(controlExecutableFile)
-    workingDir("frontend")
+    workingDir("manager")
     executable("go")
     args("build", "-trimpath", "-buildvcs=false", "-ldflags=-s -w", "-o", controlExecutableFile.get().asFile.absolutePath, "./cmd/kast")
     environment(mapOf("CGO_ENABLED" to "0", "GOOS" to goos, "GOARCH" to goarch))
@@ -198,7 +198,7 @@ val stageKastControlProduct = tasks.register<Sync>("stageKastControlProduct") {
         into("share/kast/agent-tools")
     }
     from(buildControlExecutable) { into("share/kast/libexec") }
-    from("frontend/THIRD_PARTY_NOTICES.txt") { into("share/kast/licenses/frontend") }
+    from("manager/THIRD_PARTY_NOTICES.txt") { into("share/kast/licenses/frontend") }
     from(controlLibraryFiles) { into("lib") }
     from(frontendCatalogFiles) { into("share/kast") }
     from(installerSupportDirectory) { into("share/kast") }
@@ -354,11 +354,11 @@ tasks.withType<VerificationReportTask>().configureEach {
 val frontendTest = tasks.register<VerificationReportTask>("frontendTest") {
     group = "verification"
     description = "Verifies the Go frontend module, formatting, analysis, race tests, and cgo-free release targets."
-    sourceFiles.from(fileTree("frontend") { exclude("**/__pycache__/**") })
+    sourceFiles.from(fileTree("manager") { exclude("**/__pycache__/**") })
     runtimeFiles.from(frontendCatalogFiles)
     executableFile.set(validationExecutable("uv"))
     arguments.set(frontendCatalogFiles.flatMap { it.elements }.map {
-        listOf("run", "--locked", "--script", "frontend/check", "gate", "--catalog", it.single().asFile.absolutePath)
+        listOf("run", "--locked", "--script", "manager/check", "gate", "--catalog", it.single().asFile.absolutePath)
     })
 }
 tasks.named("check") { dependsOn(frontendTest) }
