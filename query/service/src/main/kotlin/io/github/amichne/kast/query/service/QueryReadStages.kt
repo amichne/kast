@@ -22,6 +22,7 @@ import io.github.amichne.kast.source.contract.SourceTextProjection
 import io.github.amichne.kast.symbol.contract.ExactSymbolRequest
 import io.github.amichne.kast.symbol.contract.SymbolDescription
 import io.github.amichne.kast.symbol.contract.SymbolDescriptionResult
+import io.github.amichne.kast.symbol.contract.SymbolDiscoveryBatch
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryOutcome
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryProgress
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryRemainder
@@ -31,7 +32,6 @@ import io.github.amichne.kast.symbol.contract.SymbolDiscoverySelection
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryTarget
 import io.github.amichne.kast.symbol.contract.SymbolExactOperations
 import io.github.amichne.kast.symbol.contract.SymbolGeneratedSourcePolicy
-import io.github.amichne.kast.symbol.contract.SymbolLibraryPolicy
 import io.github.amichne.kast.symbol.contract.SymbolResolutionRequest
 import io.github.amichne.kast.symbol.contract.SymbolResolutionResult
 import io.github.amichne.kast.symbol.contract.SymbolSearchScope
@@ -80,17 +80,7 @@ internal class QueryReadStages(
             )
         }
         if (outcome is SymbolDiscoveryOutcome.Qualified) state.discoveryLimited(outcome.qualifications.values)
-        val selections =
-            batch.candidates.indices.mapNotNull { ordinal ->
-                when (val selected = SymbolDiscoverySelection.select(batch, ordinal)) {
-                    is Refinement.Refined -> selected.value
-                    is Refinement.Rejected -> {
-                        state.contractViolation = true
-                        null
-                    }
-                }
-            }
-        return DiscoveryExecution.Discovered(selections)
+        return DiscoveryExecution.Discovered(batch.selections(state))
     }
 
     suspend fun discover(
@@ -111,7 +101,7 @@ internal class QueryReadStages(
                             SymbolSearchScope.Workspace(
                                 SymbolSourceKindPolicy.PRODUCTION_AND_TEST,
                                 SymbolGeneratedSourcePolicy.EXCLUDE,
-                                SymbolLibraryPolicy.EXCLUDE,
+                                syntax.scope.libraryPolicy(),
                             ),
                         ),
                     target =
@@ -143,12 +133,7 @@ internal class QueryReadStages(
             val batch = outcome.batch()
             state.consume(batch.examinedWorkUnits.value)
             observeDiscoveryLimitations(outcome, state)
-            batch.candidates.indices.forEach { ordinal ->
-                when (val selected = SymbolDiscoverySelection.select(batch, ordinal)) {
-                    is Refinement.Refined -> selections += selected.value
-                    is Refinement.Rejected -> state.contractViolation = true
-                }
-            }
+            selections += batch.selections(state).filter(syntax.scope::admits)
             progress =
                 DiscoveryExecution.Discovered(
                     selections.toList(),
@@ -158,6 +143,17 @@ internal class QueryReadStages(
         }
         return progress
     }
+
+    private fun SymbolDiscoveryBatch.selections(state: QueryExecutionState): List<SymbolDiscoverySelection> =
+        candidates.indices.mapNotNull { ordinal ->
+            when (val selected = SymbolDiscoverySelection.select(this, ordinal)) {
+                is Refinement.Refined -> selected.value
+                is Refinement.Rejected -> {
+                    state.contractViolation = true
+                    null
+                }
+            }
+        }
 
     suspend fun discoverText(syntax: QueryTextDiscoverySyntax, state: QueryExecutionState): DiscoveryExecution =
         textDiscovery.discover(syntax, state)

@@ -34,6 +34,9 @@ private fun QueryRunRequest.Run.hasCanonicalRequestSyntax(): Boolean {
         when (val source = from) {
             is QueryFromDocument.Impact -> true
             is QueryFromDocument.Location -> source.file.value.isCanonicalQueryFile()
+            is QueryFromDocument.Library ->
+                source.name.value.length <= MAX_QUERY_NAME_LENGTH &&
+                    QUERY_PACKAGE_NAME.matches(source.packageName.value)
             is QueryFromDocument.Symbols ->
                 source.match !is QueryMatchDocument.TextWord && source.discovery.isCanonical()
             is QueryFromDocument.TextWord ->

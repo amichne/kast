@@ -101,7 +101,7 @@ private fun completionExplanation(cause: QueryCompletionCauseDocument, stop: Que
         QueryCompletionCauseDocument.OmittedEvidence ->
             "The query omitted evidence that the complete verdict needs. Inspect the omission reasons."
         is QueryCompletionCauseDocument.CallbackGraphUnproven ->
-            "The callback graph has an unresolved proof obligation. Inspect graphFailure before you change resource limits."
+            "The callback graph has an unresolved proof obligation, so calls inside stored lambdas have no proven caller. Inspect graphFailure before you change resource limits. A seedQuery, if present, finds every source use of the same symbols without naming a caller."
         is QueryCompletionCauseDocument.InvestigationUnproven ->
             "The value investigation has an unresolved proof obligation. Inspect investigationFailure before you change resource limits."
         is QueryCompletionCauseDocument.RetentionUnavailable -> "The query did not retain its output."
@@ -194,7 +194,7 @@ internal fun QueryRunRejection.CompletionUnproven.toCompletionCli() =
                             retained.question.output.toCompletionPublicOutput(),
                         )
                     ),
-                    completionSeedQuery(retained),
+                    completionSeedQuery(retained) ?: completionSourceUseQuery(cause, retained.question),
                     retained.originalEvidenceSummary,
                 )
             is QueryCompletionEvidenceDocument.Unavailable ->
@@ -239,7 +239,8 @@ internal enum class QueryCompletionPublicSeedSourceKind {
 
 @Serializable
 internal data class QueryCompletionPublicSeedSource(
-    @ProtocolCollectionConstraint(minimumItems = 1, maximumItems = 1) val symbolRefs: List<ProtocolText>,
+    @ProtocolCollectionConstraint(minimumItems = 1, maximumItems = MAX_PROTOCOL_ITEMS)
+    val symbolRefs: List<ProtocolText>,
     @EncodeDefault(EncodeDefault.Mode.ALWAYS)
     val type: QueryCompletionPublicSeedSourceKind = QueryCompletionPublicSeedSourceKind.SYMBOL_REFS,
 )
@@ -248,6 +249,9 @@ internal data class QueryCompletionPublicSeedSource(
 internal data class QueryCompletionPublicSeedRequest(
     val source: QueryCompletionPublicSeedSource,
     val terminalStep: QueryCompletionPublicSeedTerminal,
+    @EncodeDefault(EncodeDefault.Mode.NEVER)
+    @ProtocolCollectionConstraint(minimumItems = 1, maximumItems = 1)
+    val steps: List<QueryCompletionPublicSourceUseStep>? = null,
     @EncodeDefault(EncodeDefault.Mode.ALWAYS)
     val type: QueryCompletionPublicSeedAction = QueryCompletionPublicSeedAction.RUN,
 )

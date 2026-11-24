@@ -42,6 +42,12 @@ The actual caller is the code that later invokes the interface method.
 An explicit `CALLERS` query can reject with `CALLBACK_GRAPH_UNPROVEN` when Kast cannot prove who invokes the stored lambda.
 Do not report the enclosing function as a caller from that evidence.
 
+The rejection keeps the proven callers as retained evidence.
+For an exact `CALLERS` query over the workspace, `.document.rejection.detail.evidence.seedQuery` holds a second request.
+Save that object and pass it with `kast query --request FILE`.
+It finds every source use of the same symbols, with the declaration that contains each use.
+It is a separate question. It does not name who runs a stored lambda.
+
 ## Compose retained results
 
 `--retain` publishes the complete investigation as an immutable result on the current read basis.
@@ -111,7 +117,7 @@ Never repeat an identical failed call. Change an input or a prerequisite first.
 | `IMPORT_FAILED` | Gradle import failed | Report it. Do not repeat preparation until the build changes. |
 | `UNLINKED_BUILD` | The Host does not own the Gradle link | This can follow a failed first import. Report the earlier cause. |
 | `reacquire_authority` | The `next_action` for a reference that this Host does not accept | Select the declaration again and use the new ref. |
-| `CALLBACK_GRAPH_UNPROVEN` | Kast cannot prove who runs a stored lambda | Do not name the enclosing function as the caller. |
+| `CALLBACK_GRAPH_UNPROVEN` | Kast cannot prove who runs a stored lambda | Do not name the enclosing function as the caller. Run `seedQuery` for its source uses. |
 
 If Kast cannot answer, use ordinary source reads and state the limitation.
 A client timeout or cancellation leaves Host settlement uncertain. Keep the failure and its recovery facts.

@@ -75,6 +75,12 @@ internal sealed interface CalleeProviderItem {
     data class CallbackSupplies(val call: KtCallElement, override val owner: ContainingDeclaration) : CalleeProviderItem
 
     data class Reference(val reference: KtReference, override val owner: ContainingDeclaration) : CalleeProviderItem
+
+    data class Convention(
+        val reference: KtReference,
+        val role: ConventionCallRole,
+        override val owner: ContainingDeclaration,
+    ) : CalleeProviderItem
 }
 
 internal enum class ProviderTermination {
@@ -132,6 +138,8 @@ private fun lexicalDeclarationSite(element: PsiElement): ContainingDeclaration? 
         is org.jetbrains.kotlin.psi.KtPropertyAccessor -> ContainingDeclaration.Deferred(element)
         is org.jetbrains.kotlin.psi.KtProperty -> if (!element.isLocal) ContainingDeclaration.Found(element) else null
         is org.jetbrains.kotlin.psi.KtParameter -> null
+        // A destructured local names a value; its component call executes in the enclosing callable.
+        is org.jetbrains.kotlin.psi.KtDestructuringDeclarationEntry -> null
         is org.jetbrains.kotlin.psi.KtNamedFunction -> element.callableDeclaration()
         // Object literals run their constructor and initializer path in the enclosing callable.
         // Named members are found first and retain their own lexical ownership.

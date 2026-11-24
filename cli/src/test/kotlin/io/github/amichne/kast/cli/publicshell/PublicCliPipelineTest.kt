@@ -87,8 +87,35 @@ class PublicCliPipelineTest {
     }
 
     @Test
+    fun `library flag lowers to an exact package and name without a source scope`() {
+        val lowered =
+            arguments(
+                query(
+                    "query",
+                    "--library",
+                    "kotlin.collections",
+                    "--name",
+                    "listOfNotNull",
+                    "--relation",
+                    "references",
+                )
+            )
+        val source = lowered.getValue("request").jsonObject.getValue("source").jsonObject
+        assertEquals(setOf("type", "declarationName", "packageName"), source.keys)
+        assertEquals("SEARCH_LIBRARY", source.getValue("type").jsonPrimitive.content)
+        assertEquals("kotlin.collections", source.getValue("packageName").jsonPrimitive.content)
+        assertTrue(admission(lowered) is Refinement.Refined)
+    }
+
+    @Test
     fun `pipeline flags reject ambiguous sources and invalid values`() {
         listOf(
+                listOf("query", "--library", "kotlin"),
+                listOf("query", "--library", "kotlin", "--name", "to", "--in", "."),
+                listOf("query", "--library", "kotlin", "--name", "to", "--source-set", "main"),
+                listOf("query", "--library", "kotlin", "--name", "to", "--kind", "function"),
+                listOf("query", "--library", "kotlin", "--name", "to", "--name-match", "fuzzy"),
+                listOf("query", "--library", "kotlin", "--all"),
                 listOf("query", "--all", "--name", "A"),
                 listOf("query", "--from", RESULT_REFERENCE, "--ref", "R"),
                 listOf("query", "--from", RESULT_REFERENCE, "--in", "."),

@@ -52,6 +52,9 @@ sealed interface QueryScope {
         val directory: SymbolDiscoveryDirectoryConstraint?,
         val packageName: SymbolDiscoveryPackageConstraint?,
     ) : QueryScope
+
+    /** Compiled declarations of imported dependencies. Source ownership constraints have no meaning here. */
+    data class Library(val packageName: SymbolDiscoveryPackageConstraint) : QueryScope
 }
 
 data class QueryDiscoverySyntax(

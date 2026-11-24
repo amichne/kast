@@ -41,7 +41,7 @@ internal fun publicCliHelp(commands: List<PublicCliCommandId>): String =
                     "use with --output symbols.\n" +
                     "Bound presentation with --max-results and --max-returned-bytes; preserve qualifications.\n" +
                     "Sources: --name, --ref, --file/--offset, --all (with --kind, --in, --source-set), " +
-                    "or --from RESULT for a retained result.\n" +
+                    "--library PACKAGE with --name, or --from RESULT for a retained result.\n" +
                     "Pipeline stages apply in argv order: --relation, --visibility LIST, and set stages " +
                     "--intersect, --union, --minus, --with (semi join), --without (anti join), each naming a " +
                     "retained RESULT from --retain. --minus and --without prove absence only from " +

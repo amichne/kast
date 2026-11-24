@@ -43,6 +43,42 @@ class PublicToolTextContractTest {
     }
 
     @Test
+    fun `library source keeps one exact name and package`() {
+        val input =
+            PublicToolQuerySymbols(
+                PublicToolRunAction(
+                    PublicToolLibrarySource(text("takeIf"), text("kotlin")),
+                    terminalStep = PublicToolEmit(),
+                )
+            )
+        val raw = Json.encodeToJsonElement(PublicToolQuerySymbols.serializer(), input)
+        val admitted = PublicToolContract.admit(PublicToolIdentity.QUERY_SYMBOLS, raw) as Refinement.Refined
+        val source =
+            ((admitted.value.canonical as PublicToolCanonical.Query).request as QueryRunRequest.Run).from
+                as QueryFromDocument.Library
+        assertEquals("takeIf", source.name.value)
+        assertEquals("kotlin", source.packageName.value)
+    }
+
+    @Test
+    fun `library source rejects qualified names and malformed packages`() {
+        for ((name, owner) in listOf("kotlin.takeIf" to "kotlin", "takeIf" to "kotlin.", "takeIf" to "a/b")) {
+            val input =
+                PublicToolQuerySymbols(
+                    PublicToolRunAction(
+                        PublicToolLibrarySource(text(name), text(owner)),
+                        terminalStep = PublicToolEmit(),
+                    )
+                )
+            val raw = Json.encodeToJsonElement(PublicToolQuerySymbols.serializer(), input)
+            assertTrue(
+                PublicToolContract.admit(PublicToolIdentity.QUERY_SYMBOLS, raw) is Refinement.Rejected,
+                "$owner $name",
+            )
+        }
+    }
+
+    @Test
     fun `indexed word admission rejects phrases literals regex and unknown fields`() {
         val examples = PublicToolContract.examples(PublicToolIdentity.QUERY_SYMBOLS).invalidExamples
         listOf(

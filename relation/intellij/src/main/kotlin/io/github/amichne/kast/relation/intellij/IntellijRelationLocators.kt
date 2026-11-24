@@ -23,6 +23,8 @@ import io.github.amichne.kast.workspace.intellij.read.call
 import org.jetbrains.kotlin.idea.references.KtReference
 import org.jetbrains.kotlin.psi.KtCallElement
 
+private const val CALLEE_REFERENCE = "callee-reference"
+
 /** Detached native sites and exact offset restoration; every live value belongs to the current read attempt. */
 internal class IntellijRelationLocators(
     private val project: Project,
@@ -70,13 +72,8 @@ internal class IntellijRelationLocators(
 
     fun callee(candidate: CalleeProviderItem): Refinement<RelationProviderLocator.Callee, RelationLimitation> =
         when (candidate) {
-            is CalleeProviderItem.Reference ->
-                site(
-                        candidate.reference.element,
-                        candidate.reference.rangeInElement,
-                        "callee-reference:${candidate.reference.javaClass.name}",
-                    )
-                    .map { site -> RelationProviderLocator.Callee.Reference(site.file, site.range, site.descriptor) }
+            is CalleeProviderItem.Reference -> calleeSite(candidate.reference, CALLEE_REFERENCE)
+            is CalleeProviderItem.Convention -> calleeSite(candidate.reference, candidate.role.discriminator)
             is CalleeProviderItem.CallbackSupplies ->
                 site(candidate.call, candidate.call.relativeWholeRange(), "callback-supplies").flatMap { site ->
                     candidate.call.detachedClass().map { elementClass ->
@@ -149,8 +146,8 @@ internal class IntellijRelationLocators(
     private fun restoreCalleeReference(
         locator: RelationProviderLocator.Callee.Reference
     ): Refinement<CalleeProviderItem, RelationLimitation> =
-        when (val restored = restoreReferenceSite(locator, "callee-reference")) {
-            is Refinement.Rejected -> restored
+        when (val restored = restoreReferenceSite(locator, CALLEE_REFERENCE)) {
+            is Refinement.Rejected -> restoreConvention(locator)
             is Refinement.Refined ->
                 when (val reference = restored.value as? KtReference) {
                     null -> unavailable()
@@ -159,6 +156,25 @@ internal class IntellijRelationLocators(
                             CalleeProviderItem.Reference(reference, reference.element.nearestDeclaration())
                         )
                 }
+        }
+
+    /** The descriptor retains its role, so one site restores exactly one convention target. */
+    private fun restoreConvention(
+        locator: RelationProviderLocator.Callee.Reference
+    ): Refinement<CalleeProviderItem, RelationLimitation> {
+        for (role in ConventionCallRole.entries) {
+            val restored = restoreReferenceSite(locator, role.discriminator)
+            val reference = (restored as? Refinement.Refined)?.value as? KtReference ?: continue
+            return Refinement.Refined(
+                CalleeProviderItem.Convention(reference, role, reference.element.nearestDeclaration())
+            )
+        }
+        return unavailable()
+    }
+
+    private fun calleeSite(reference: KtReference, discriminator: String) =
+        site(reference.element, reference.rangeInElement, "$discriminator:${reference.javaClass.name}").map { site ->
+            RelationProviderLocator.Callee.Reference(site.file, site.range, site.descriptor)
         }
 
     private fun restoreCallbackSupplies(

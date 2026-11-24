@@ -46,6 +46,13 @@ internal data class PublicToolLocationSource(
 ) : PublicToolSource
 
 @Serializable
+@SerialName("SEARCH_LIBRARY")
+internal data class PublicToolLibrarySource(
+    val declarationName: ProtocolText,
+    val packageName: ProtocolText,
+) : PublicToolSource
+
+@Serializable
 @SerialName("SEARCH_TEXT")
 internal data class PublicToolTextSource(
     val word: ProtocolText,

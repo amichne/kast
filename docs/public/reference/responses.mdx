@@ -78,6 +78,8 @@ A historical checkpoint records producer progress. It grants no right to run new
 
 If supplied, `seedQuery` starts a new investigation from proved preview identities. It does not cover rows left out or scope left unfinished.
 
+When an exact, one-hop `CALLERS` query over the workspace stops on `CALLBACK_GRAPH_UNPROVEN`, `seedQuery` asks for the source uses of the same symbols. Its answer includes calls inside stored lambdas. It names no caller and does not complete the original question.
+
 If retention fails, the result reports the storage cause without a result reference. `RETENTION_UNAVAILABLE` can still report a complete scan.
 
 <a id="read-rows-and-evidence-pages" />

@@ -96,7 +96,16 @@ internal class IntellijK2RelationSearch(
                 incompleteItem(limitation, element, range)
             }
 
-        fun references(plan: IntellijRelationPlan.References): IntellijRelationTermination =
+        fun references(plan: IntellijRelationPlan.References): IntellijRelationTermination {
+            if (
+                request.meaning != RelationMeaning.TypeUses &&
+                    projection.conventionSearchCoverage(project, subject) == ConventionSearchCoverage.INCOMPLETE
+            )
+                limitations += RelationLimitation.PROVIDER_INCOMPLETE
+            return readReferences(plan)
+        }
+
+        private fun readReferences(plan: IntellijRelationPlan.References): IntellijRelationTermination =
             IntellijRetainedRelationRead(
                     project = project,
                     scope = if (request.meaning == RelationMeaning.Callers) callbackEvidence.sources else scope,
@@ -281,6 +290,7 @@ internal class IntellijK2RelationSearch(
             when (candidate) {
                 is CalleeProviderItem.CallbackSupplies -> callableEmitter.retainCallbackSupplies(candidate)
                 is CalleeProviderItem.Unresolved -> incompleteCallee(candidate, RelationLimitation.UNRESOLVED_TARGET)
+                is CalleeProviderItem.Convention -> conventions.process(candidate)
                 is CalleeProviderItem.Reference ->
                     if (candidate.reference.element.parent is org.jetbrains.kotlin.psi.KtCallableReferenceExpression)
                         processNamedReference(candidate)
@@ -312,6 +322,21 @@ internal class IntellijK2RelationSearch(
                 }
             }
 
+        private fun processConventionTarget(candidate: CalleeProviderItem.Convention, target: PsiNamedElement) =
+            when (val owner = projection.callOwner(candidate.owner)) {
+                is Refinement.Refined -> processCalleeTarget(owner.value, target, candidate.reference)
+                is Refinement.Rejected -> retainExcludedCallee(candidate.reference, target, owner.failure)
+            }
+
+        private fun retainExcludedCallee(
+            reference: KtReference,
+            target: PsiNamedElement,
+            failure: CallOwnershipFailure,
+        ): Boolean =
+            admitCalleeTarget(target, reference) {
+                callbackEmitter.retain(reference, target, failure.callbackPolicy())
+            }
+
         private fun processNamedReference(candidate: CalleeProviderItem.Reference): Boolean =
             when (val resolved = projection.resolve(candidate.reference)) {
                 is IntellijK2ResolvedDeclaration.Found ->
@@ -328,6 +353,16 @@ internal class IntellijK2RelationSearch(
                 is IntellijK2ResolvedDeclaration.Unsupported -> callableEmitter.retainNamedReference(candidate)
             }
 
+        private val conventions =
+            IntellijConventionCallees(
+                request,
+                projection,
+                collector,
+                observation,
+                ::incompleteCallee,
+                ::processConventionTarget,
+            )
+
         private val callableEmitter =
             IntellijCallableObservationEmitter(
                 request,
@@ -341,44 +376,29 @@ internal class IntellijK2RelationSearch(
                 resultProjection,
             )
 
-        private fun retainUnownedCallee(candidate: CalleeProviderItem, failure: CallOwnershipFailure): Boolean {
-            val policy =
-                when (failure) {
-                    is CallOwnershipFailure.ExcludedCallback -> NativeCallbackPolicy.Excluded(failure)
-                    is CallOwnershipFailure.Incomplete -> NativeCallbackPolicy.Unavailable(failure)
+        private fun retainUnownedCallee(
+            candidate: CalleeProviderItem.Reference,
+            failure: CallOwnershipFailure,
+        ): Boolean =
+            when (val target = projection.resolve(candidate.reference)) {
+                IntellijK2ResolvedDeclaration.InvokeReceiver -> collector.dismissProviderItem()
+                is IntellijK2ResolvedDeclaration.Found -> {
+                    observation.count(IntellijReadCounter.RELATION_K2_CONFIRMED_TARGETS)
+                    retainExcludedCallee(candidate.reference, target.declaration, failure)
                 }
-            val limitation =
-                when (failure) {
-                    is CallOwnershipFailure.ExcludedCallback -> RelationLimitation.UNRESOLVED_TARGET
-                    is CallOwnershipFailure.Incomplete -> failure.limitation
+                is IntellijK2ResolvedDeclaration.ParameterInvocation ->
+                    callableEmitter.retainParameterInvocation(candidate, target)
+                is IntellijK2ResolvedDeclaration.FunctionInvocation ->
+                    callableEmitter.retainFunctionInvocation(candidate, target)
+                is IntellijK2ResolvedDeclaration.SourceLess ->
+                    callableEmitter.retainSourceLessCallable(candidate, target.callable)
+                is IntellijK2ResolvedDeclaration.Unsupported ->
+                    incompleteCallee(candidate, RelationLimitation.UNSUPPORTED_ITEM)
+                IntellijK2ResolvedDeclaration.Unresolved -> {
+                    observation.count(IntellijReadCounter.RELATION_K2_UNAVAILABLE_TARGETS)
+                    incompleteCallee(candidate, RelationLimitation.UNRESOLVED_TARGET)
                 }
-            return when (candidate) {
-                is CalleeProviderItem.CallbackSupplies -> incompleteCallee(candidate, limitation)
-                is CalleeProviderItem.Unresolved -> incompleteCallee(candidate, limitation)
-                is CalleeProviderItem.Reference ->
-                    when (val target = projection.resolve(candidate.reference)) {
-                        IntellijK2ResolvedDeclaration.InvokeReceiver -> collector.dismissProviderItem()
-                        is IntellijK2ResolvedDeclaration.Found -> {
-                            observation.count(IntellijReadCounter.RELATION_K2_CONFIRMED_TARGETS)
-                            admitCalleeTarget(target.declaration, candidate.reference) {
-                                callbackEmitter.retain(candidate.reference, target.declaration, policy)
-                            }
-                        }
-                        is IntellijK2ResolvedDeclaration.ParameterInvocation ->
-                            callableEmitter.retainParameterInvocation(candidate, target)
-                        is IntellijK2ResolvedDeclaration.FunctionInvocation ->
-                            callableEmitter.retainFunctionInvocation(candidate, target)
-                        is IntellijK2ResolvedDeclaration.SourceLess ->
-                            callableEmitter.retainSourceLessCallable(candidate, target.callable)
-                        is IntellijK2ResolvedDeclaration.Unsupported ->
-                            incompleteCallee(candidate, RelationLimitation.UNSUPPORTED_ITEM)
-                        IntellijK2ResolvedDeclaration.Unresolved -> {
-                            observation.count(IntellijReadCounter.RELATION_K2_UNAVAILABLE_TARGETS)
-                            incompleteCallee(candidate, RelationLimitation.UNRESOLVED_TARGET)
-                        }
-                    }
             }
-        }
 
         private fun processCalleeTarget(
             owner: ContainingDeclaration.Found,
@@ -486,6 +506,8 @@ internal class IntellijK2RelationSearch(
             when (candidate) {
                 is CalleeProviderItem.Reference ->
                     incompleteItem(limitation, candidate.reference.element, candidate.reference.rangeInElement)
+                is CalleeProviderItem.Convention ->
+                    incompleteItem(limitation, candidate.reference.element, candidate.reference.rangeInElement)
                 is CalleeProviderItem.CallbackSupplies ->
                     incompleteItem(
                         limitation,
@@ -554,21 +576,4 @@ internal class IntellijK2RelationSearch(
                 else -> IntellijRelationTermination.Terminal
             }
     }
-}
-
-private fun producerInvocationRange(
-    reference: PsiReference,
-    target: PsiNamedElement,
-): io.github.amichne.kast.symbol.contract.ExactDeclarationTextRange? {
-    if (target !is org.jetbrains.kotlin.psi.KtNamedFunction && target !is org.jetbrains.kotlin.psi.KtConstructor<*>)
-        return null
-    val element = reference.element
-    val call =
-        com.intellij.psi.util.PsiTreeUtil.getParentOfType(
-            element,
-            org.jetbrains.kotlin.psi.KtCallExpression::class.java,
-            false,
-        ) ?: return null
-    if (element !== call && call.calleeExpression?.textRange?.contains(element.textRange) != true) return null
-    return sourceValueRange(call.valueInvocationExpression())
 }
