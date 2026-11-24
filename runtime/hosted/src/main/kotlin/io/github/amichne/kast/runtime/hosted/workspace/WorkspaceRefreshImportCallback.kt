@@ -2,6 +2,8 @@ package io.github.amichne.kast.runtime.hosted.workspace
 
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.diagnostic.Logger
+import com.intellij.openapi.externalSystem.model.DataNode
+import com.intellij.openapi.externalSystem.model.ProjectKeys
 import com.intellij.openapi.externalSystem.model.task.ExternalSystemTaskId
 import com.intellij.openapi.externalSystem.model.task.ExternalSystemTaskNotificationListener
 import com.intellij.openapi.externalSystem.model.task.ExternalSystemTaskType
@@ -15,6 +17,15 @@ import io.github.amichne.kast.workspace.contract.CanonicalWorkspaceRoot
 import java.util.concurrent.CompletableFuture
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
+
+/**
+ * A build that stops during configuration still reaches the success callback, with a project node and no module. Every
+ * imported Gradle build has at least its root module.
+ */
+internal fun importedModelResult(structure: DataNode<*>?): WorkspaceRefreshEffectResult =
+    if (structure == null || structure.children.none { it.key == ProjectKeys.MODULE })
+        WorkspaceRefreshEffectResult.FAILED
+    else WorkspaceRefreshEffectResult.SUCCEEDED
 
 /** The import callback omits cancellation; the task listener supplies that terminal signal after native work ends. */
 internal class WorkspaceRefreshImportCallback(
@@ -68,10 +79,12 @@ internal class WorkspaceRefreshImportCallback(
                     project.isDisposed -> WorkspaceRefreshEffectResult.DISPOSED
                     failure != null -> WorkspaceRefreshEffectResult.FAILED
                     // This is the same model source that ExternalSystemUtil reads before its success callback.
-                    ProjectDataManager.getInstance()
-                        .getExternalProjectData(project, IntellijWorkspaceRefreshPort.GRADLE, root.value)
-                        ?.externalProjectStructure == null -> WorkspaceRefreshEffectResult.FAILED
-                    else -> WorkspaceRefreshEffectResult.SUCCEEDED
+                    else ->
+                        importedModelResult(
+                            ProjectDataManager.getInstance()
+                                .getExternalProjectData(project, IntellijWorkspaceRefreshPort.GRADLE, root.value)
+                                ?.externalProjectStructure
+                        )
                 }
             )
         }
