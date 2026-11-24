@@ -43,6 +43,9 @@ This guide owns repository rules and routes source investigation.
 
 ## Subdirectories
 
+Each top-level directory declares one toolchain in `.github/scripts/ci/directory_toolchains.py`, and a check enforces it.
+Go is only in `manager/`. A new top-level directory needs a declaration.
+
 - [`openwiki/`](openwiki/quickstart.md) - source-bound architecture, flows, contracts and glossary; use search/read for a concrete question or quickstart when retrieval is unavailable.
 - [`kernel/`](kernel/AGENTS.md) - shared outcomes, evidence, validation, budgets, identity, and refinement types.
 - [`protocol/`](protocol/AGENTS.md) - canonical operations, registry definitions, and wire projections.
