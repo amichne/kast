@@ -3,6 +3,7 @@
   "typeCheckingMode": "strict",
   "include": [
     "required_checks.py",
+    "directory_toolchains.py",
     "fast_checks.py",
     "test_push_policy.py",
     "gradle_graph.py",
