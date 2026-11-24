@@ -73,7 +73,10 @@ Missing history, invalid revisions and unknown events also keep every check.
 The source plan accepts main/test Kotlin sources outside the native executable and installation owners.
 The product plan covers those release-sensitive owners.
 `NATIVE_INPUT_MODULES` lists the native executable owners by hand; no CI step compares it with the native compilation graph.
-With Mac checks enabled, both pull requests and main pushes qualify the Mac product for source changes.
+A pull request run omits the product gate, so `PRODUCT` becomes `SOURCE` and `FULL` becomes `SOURCE_FULL`.
+With Mac checks enabled, merge queue runs and main pushes qualify the Mac product for source changes.
+A pull request run reports `Pull request checks`. Only a queue run or a main run reports `CI required checks`, which `main` requires.
+To run the product gate on a branch before the queue, start the CI workflow on it by hand.
 A source-inventory test checks that each listed root remains included in `settings.gradle.kts`.
 New modules, fixtures and unknown roots keep full validation until their scope is reviewed.
 
@@ -165,8 +168,9 @@ Cancel an obsolete run and start a new run after changing the setting.
 Workflow changes take effect after the updated workflow is merged.
 These switches control GitHub Actions job selection. They do not disable local Gradle checks.
 
-Mac product checks run on pull requests, merge groups, main pushes, and manual main runs.
-Pull requests and merge groups use hosted Mac runners.
+Mac product checks run in the merge queue, on main pushes, and in manual runs.
+Merge queue runs use hosted Mac runners.
+A superseded run releases its Mac product jobs.
 The existing `KAST_NATIVE_COMPILATION` variable remains a second switch.
 Set it to `false` to omit native compilation and its dependent product jobs:
 
@@ -201,7 +205,7 @@ Selection follows the affected-owner plan:
 - A plan adds `check` and `scopedCheck` for each affected owner, so an owner's suite runs when that owner or one of its dependencies changes.
 - An unaffected owner's suite does not run on that pull request.
 - Unknown ownership, a stale graph, or missing history selects the complete gate, which runs all three suites.
-- Main pushes and every other product change run the complete gate.
+- Merge queue runs and main pushes of a product change run the complete gate.
 
 The `KAST_SEMANTIC_FIXTURES` switch does not cover these suites.
 They run the semantic case classes too, but only the semantic accountant establishes the exact case population.
