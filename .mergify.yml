@@ -1,8 +1,12 @@
 # Merge queue for main. A pull request enters the queue when it carries the `queue` label or
-# after an `@mergifyio queue` comment. The label rule needs Mergify Workflow Automation. Mergify brings it up to date with main, waits for
-# the required CI aggregate on that exact result, and squash-merges it. One pull request is
-# validated at a time, so the check runs in place on the pull request itself and the single
-# macOS acceptance runner is never asked to qualify parallel candidates.
+# after an `@mergifyio queue` comment. The label rule needs Mergify Workflow Automation. A pull
+# request needs `Source feedback` to enter. Because the conditions differ, Mergify checks it on a
+# draft pull request under `mergify/merge-queue/`, which holds the exact result for main. That run
+# must report `CI required checks` before Mergify squash-merges the original. One pull request is
+# validated at a time, so the macOS runners never qualify parallel candidates for the queue.
+#
+# The GitHub ruleset requires `CI required checks` on main. Mergify applies it as a merge condition
+# on the draft, so the Mergify app must be an exempt bypass actor of that ruleset.
 
 merge_queue:
   mode: serial
@@ -11,12 +15,13 @@ merge_queue:
 queue_rules:
   - name: default
     merge_method: squash
-    update_method: rebase
     batch_size: 1
+    branch_protection_injection_mode: merge
+    queue_branch_prefix: mergify/merge-queue/
     queue_conditions:
       - base = main
       - -draft
-      - check-success = CI required checks
+      - check-success = Source feedback
     merge_conditions:
       - base = main
       - -draft
