@@ -131,18 +131,10 @@ def read(directory: Path, *, accepted: bool = False) -> product.ProductRecord | 
         return candidate.Failure.INVALID_RECORD
 
 
-# The first baseline with a Linux target (main run 45413284178). Acceptance needs a two-platform
-# baseline, so no accepted one can exist before it. The owner approved exactly this record on
-# 2026-11-24; the next baseline pin removes the exception.
-UNACCEPTED_SEED_SHA256 = "b0ac9635a634c7b461a91571353753425f1c08e4cd472f6bb6902384b9756f01"
-
-
 def read_baseline(directory: Path) -> product.ProductRecord | candidate.Failure:
     """Legacy native proof remains valid; assembly alone cannot qualify a baseline."""
     record = read(directory)
     if isinstance(record, candidate.Failure):
-        return record
-    if product.file_digest(directory / "build-record.json") == UNACCEPTED_SEED_SHA256:
         return record
     for target in record.targets:
         receipt = product.document(

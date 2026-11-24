@@ -14,7 +14,6 @@ import unittest
 from dataclasses import asdict, dataclass, field, replace
 from pathlib import Path
 from typing import cast
-from unittest.mock import patch
 
 import product_candidate as candidate
 import product_producer as producer
@@ -348,30 +347,16 @@ class ProductProducerTest(unittest.TestCase):
             self.assertEqual(record, producer.accept(output, parts, root / "accepted"))
             self.assertEqual(record, candidate.read(root / "accepted", accepted=True))
 
-    def test_only_the_approved_seed_record_is_a_baseline_without_acceptance(self) -> None:
-        # The owner approved this one record of main run 45413284178.
-        self.assertEqual(
-            "b0ac9635a634c7b461a91571353753425f1c08e4cd472f6bb6902384b9756f01",
-            candidate.UNACCEPTED_SEED_SHA256,
-        )
+    def test_a_sealed_record_without_acceptance_is_no_baseline(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
             inputs, _ = captured(root, split=True)
             sealed = root / "sealed"
             owner = product.ProductProducer(123, 1, producer.CI_WORKFLOW)
-            record = producer.seal(inputs, sealed, "a" * 40, "b" * 40, "0.0.123", owner)
+            _ = producer.seal(inputs, sealed, "a" * 40, "b" * 40, "0.0.123", owner)
             self.assertEqual(
                 candidate.candidate.Failure.GATE_NOT_COMPLETE, candidate.read_baseline(sealed)
             )
-            digest = product.file_digest(sealed / "build-record.json")
-            with patch.object(candidate, "UNACCEPTED_SEED_SHA256", digest):
-                self.assertEqual(record, candidate.read_baseline(sealed))
-                # The exception covers acceptance only. The payload stays bound to the record.
-                asset = record.assets()[0]
-                (sealed / "payload" / asset.name).write_bytes(b"replaced")
-                self.assertEqual(
-                    candidate.candidate.Failure.PAYLOAD_MISMATCH, candidate.read_baseline(sealed)
-                )
 
     def test_split_targets_seal_without_assembling_or_substituting_base_qualification(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:

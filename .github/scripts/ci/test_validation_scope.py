@@ -846,10 +846,9 @@ class SourceInventoryTest(unittest.TestCase):
         # The baseline is a checked-in pin, read into step outputs before any download.
         self.assertIn("run: mise run ci:acceptance-baseline", installed)
         self.assertNotIn("KAST_ACCEPTANCE_BASELINE", installed)
-        # One explicit artifact. The seed run also has a Mac-only candidate, which is no baseline
-        # for Linux, so no fallback may choose between them.
+        # One explicit accepted artifact: no fallback may choose another one.
         baseline = installed.index(
-            "name: ci-product-two-platform-${{ steps.baseline.outputs.revision }}"
+            "name: ci-product-candidate-${{ steps.baseline.outputs.revision }}"
         )
         self.assertEqual(1, installed.count("run-id: ${{ steps.baseline.outputs.run_id }}"))
         self.assertNotIn("continue-on-error", installed)
