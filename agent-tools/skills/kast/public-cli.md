@@ -119,7 +119,7 @@ Set `KAST_DEBUG=1` to send preparation stages to stderr.
 
 ## Optional MCP tools
 
-The project's `agents.toml` can register the Kast MCP server.
+The Kast plugin can register the Kast MCP server.
 The CLI and MCP share the managed workspace Host and semantic contracts.
 The server lists `query_symbols`, `check_diagnostics`, `add_declaration`, `replace_body`, and `health_check`.
 Read each tool's input schema from `tools/list` before the first call.

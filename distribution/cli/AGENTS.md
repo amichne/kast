@@ -61,7 +61,7 @@ A single-use lease rejects repeated destructive effects. Keep `reinstall` retire
 Report kept storage when retirement or cleanup rejects. OS refusal is a finite failure.
 The exterior lock stays stable across directory deletion and later reset tries.
 
-Kast writes no agent harness configuration. Agents receive the skill and the MCP server through dotagents.
+Kast writes no agent harness configuration. Agents install the plugin in `share/kast/agent-tools` with their own commands.
 `kast install skill [--output <directory>]` exports the canonical skill. It is the only `install` target.
 Identical content returns without writes. Changed, extra, or linked entries reject without overwriting bytes.
 

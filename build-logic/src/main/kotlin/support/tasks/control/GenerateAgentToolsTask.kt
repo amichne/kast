@@ -1,5 +1,6 @@
 package support.tasks
 
+import java.io.File
 import java.nio.file.Files
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -107,7 +108,25 @@ abstract class GenerateAgentToolsTask : DefaultTask() {
                     entry.copy(source = entry.source.copy(path = "./plugins/kast")),
                 )),
             ) + "\n")
+            writeClaudePlugin(composition, plugin, manifest.copy(version = version))
         }
+    }
+
+    /** One authored Codex manifest owns the identity that both agents present. */
+    private fun writeClaudePlugin(composition: File, plugin: File, manifest: AgentPluginManifest) {
+        val directories = listOf(plugin, composition).map { it.resolve(".claude-plugin").apply { mkdirs() } }
+        directories[0].resolve("plugin.json").writeText(
+            agentToolsJson.encodeToString(ClaudePluginManifest.serializer(), ClaudePluginManifest(
+                manifest.name, manifest.version, manifest.description, manifest.author, manifest.homepage,
+                manifest.repository, manifest.license,
+            )) + "\n",
+        )
+        directories[1].resolve("marketplace.json").writeText(
+            agentToolsJson.encodeToString(ClaudeMarketplace.serializer(), ClaudeMarketplace(
+                manifest.name, manifest.description, manifest.author,
+                listOf(ClaudeMarketplaceEntry(manifest.name, "./plugins/kast", manifest.description)),
+            )) + "\n",
+        )
     }
 }
 
@@ -127,6 +146,29 @@ internal data class AgentPluginManifest(
     val skills: String,
     @SerialName("interface") val display: AgentPluginDisplay,
 )
+
+/** Claude Code finds `skills/`, `hooks/hooks.json` and `.mcp.json` at their default paths, so this names none of them. */
+@Serializable
+internal data class ClaudePluginManifest(
+    val name: String,
+    val version: String,
+    val description: String,
+    val author: AgentAuthor,
+    val homepage: String,
+    val repository: String,
+    val license: String,
+)
+
+@Serializable
+internal data class ClaudeMarketplace(
+    val name: String,
+    val description: String,
+    val owner: AgentAuthor,
+    val plugins: List<ClaudeMarketplaceEntry>,
+)
+
+@Serializable
+internal data class ClaudeMarketplaceEntry(val name: String, val source: String, val description: String)
 
 @Serializable
 internal data class AgentPluginDisplay(

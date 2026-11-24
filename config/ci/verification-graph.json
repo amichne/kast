@@ -286,7 +286,7 @@
         },
         {
             "path": "build-logic/src/main/kotlin/support/tasks/control/GenerateAgentToolsTask.kt",
-            "sha256": "a2c0d8be9d2192be22082638e0d6f30e37abef187b80531f72603ae0e427fc75"
+            "sha256": "72207984247ecddec5b2ea289dce0f0a4386a9923af9087c2a64a6f7dd8078d5"
         },
         {
             "path": "build-logic/src/main/kotlin/support/tasks/control/GenerateComponentReleaseTask.kt",
@@ -338,7 +338,7 @@
         },
         {
             "path": "build-logic/src/main/kotlin/support/tasks/verification/VerifyDistributionTasks.kt",
-            "sha256": "7e2b5ba167891d39672ce130d0b5d35f123311825587ba8d46b3514280707924"
+            "sha256": "d3b3cbfc8d5a5597ec31cfc1f3120bd668a3608e6ffd240c7cdf632c09f94228"
         },
         {
             "path": "build.gradle.kts",

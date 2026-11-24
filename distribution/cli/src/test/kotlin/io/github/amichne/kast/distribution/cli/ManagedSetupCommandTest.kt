@@ -27,7 +27,7 @@ class ManagedSetupCommandTest {
                 listOf("upgrade", "--version", "1.2.3", "--commit", "abcdef123456"),
                 listOf("install", "skill", "--force"),
                 listOf("install", "skill", "--mcp"),
-                // Agents receive the skill and MCP server through dotagents, not a Kast harness install.
+                // An agent installs the Kast plugin with its own commands, not through a Kast harness install.
                 listOf("install", "codex"),
                 listOf("install", "copilot"),
                 listOf("install", "pi"),

@@ -208,6 +208,7 @@ abstract class VerifyControlDistributionTask : DefaultTask() {
 private fun guidanceDistributionEntries(): List<String> {
     val shared = listOf(
         ".agents/plugins/marketplace.json", "plugins/kast/.codex-plugin/plugin.json",
+        ".claude-plugin/marketplace.json", "plugins/kast/.claude-plugin/plugin.json",
         "plugins/kast/skills/kast/SKILL.md", "plugins/kast/skills/kast/public-cli.md",
         "plugins/kast/hooks/hooks.json",
         "plugins/kast/references/onboarding.md", "plugins/kast/references/query-examples.json",

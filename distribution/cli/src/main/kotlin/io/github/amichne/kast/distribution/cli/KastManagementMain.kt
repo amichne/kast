@@ -177,11 +177,11 @@ private class InstallCommand : ManagementNode("install") {
     private val json by option("--json", help = "Print one terminal provisioning result.").flag()
 
     override fun help(context: Context) =
-        "Export the Kast agent skill. Agents receive the skill and MCP server through dotagents."
+        "Export the Kast agent skill. Claude Code and Codex install the Kast plugin with their own commands."
 
     override fun selection(): ManagementCommand =
         if (target == "skill") ManagementCommand.InstallSkill(output, json)
-        else throw CliktError("Select skill; configure agents with dotagents")
+        else throw CliktError("Select skill; Claude Code and Codex install the Kast plugin with their own commands")
 }
 
 private class UninstallCommand : ManagementNode("uninstall") {

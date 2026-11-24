@@ -21,10 +21,10 @@ internal enum class HookFailure {
     PREPARATION_TIMED_OUT,
 }
 
+/** Claude Code and Codex read one session-start envelope, so neither needs its own host. */
 internal enum class HookHost {
     CLI,
-    CODEX,
-    COPILOT,
+    AGENT,
 }
 
 internal data class HookArguments(val workspace: Path, val wait: HookWait, val host: HookHost)
@@ -111,8 +111,7 @@ private fun readHookWait(raw: String?, waitCommand: Boolean): Refinement<HookWai
 private fun readHookHost(raw: String?): Refinement<HookHost, HookFailure> =
     when (raw) {
         null -> Refinement.Refined(HookHost.CLI)
-        "codex" -> Refinement.Refined(HookHost.CODEX)
-        "copilot" -> Refinement.Refined(HookHost.COPILOT)
+        "agent" -> Refinement.Refined(HookHost.AGENT)
         else -> Refinement.Rejected(HookFailure.INVALID_COMMAND)
     }
 
