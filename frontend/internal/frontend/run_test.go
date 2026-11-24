@@ -7,6 +7,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"net"
 	"net/http"
@@ -607,6 +608,41 @@ func TestASignalCancelsAnInstallation(t *testing.T) {
 			t.Errorf("%v: status %d, want %d", signal, status, want)
 		}
 		<-cancelled
+	}
+}
+
+func TestAnInterruptedInstallationRestoresItsTerminalBeforeTheMessage(t *testing.T) {
+	signals := make(chan os.Signal, 1)
+	signals <- syscall.SIGINT
+	var stderr bytes.Buffer
+	process := resetProcess(t, nil, &stderr, "install", "--download-only")
+	process.Signals = signals
+	process.Install = func(ctx context.Context, _, _ string, _ []string, _, log io.Writer) error {
+		<-ctx.Done()
+		time.Sleep(50 * time.Millisecond)
+		fmt.Fprint(log, "restored\n")
+		return &install.Rejection{Failure: install.Interrupted, Detail: "a file", Next: "again"}
+	}
+	if status := statusWithin(t, installGrace/2, func() int { return Run(process) }); status != 130 {
+		t.Errorf("status %d", status)
+	}
+	if want := "restored\nkast: install: interrupted. Run the same command again to continue.\n"; stderr.String() != want {
+		t.Errorf("got %q, want %q", stderr.String(), want)
+	}
+}
+
+func TestAnInstallationThatDoesNotEndCannotBlockASignal(t *testing.T) {
+	signals, release := make(chan os.Signal, 1), make(chan struct{})
+	defer close(release)
+	signals <- syscall.SIGTERM
+	process := resetProcess(t, nil, io.Discard, "install", "--download-only")
+	process.Signals = signals
+	process.Install = func(context.Context, string, string, []string, io.Writer, io.Writer) error {
+		<-release
+		return nil
+	}
+	if status := statusWithin(t, 2*installGrace, func() int { return Run(process) }); status != 143 {
+		t.Errorf("status %d", status)
 	}
 }
 

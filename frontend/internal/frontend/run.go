@@ -11,6 +11,7 @@ import (
 	"strings"
 	"sync"
 	"syscall"
+	"time"
 
 	"github.com/amichne/kast/frontend/internal/install"
 	"github.com/amichne/kast/frontend/internal/reset"
@@ -119,6 +120,9 @@ func installs(arguments []string) bool {
 		slices.ContainsFunc(arguments[1:], install.Mode)
 }
 
+// installGrace bounds the wait for a cancelled installation, which restores the terminal before it returns.
+const installGrace = 3 * time.Second
+
 // runInstall performs an installation beside the signal wait. A signal cancels its transfers, which keep their bytes.
 func runInstall(process Process, home string, arguments []string) int {
 	ctx, cancel := context.WithCancel(context.Background())
@@ -143,7 +147,12 @@ func runInstall(process Process, home string, arguments []string) int {
 		}
 		return runtimeStatus
 	case signal := <-process.Signals:
-		diagnose(process.Stderr, "install: interrupted.Run the same command again to continue.")
+		cancel()
+		select {
+		case <-finished:
+		case <-time.After(installGrace):
+		}
+		diagnose(process.Stderr, "install: interrupted. Run the same command again to continue.")
 		if signal == syscall.SIGTERM {
 			return terminatedStatus
 		}
