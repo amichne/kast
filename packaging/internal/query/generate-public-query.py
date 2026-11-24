@@ -389,7 +389,8 @@ def render_tools(authority: dict) -> dict[Path, str]:
     impact_body = []
     trace_body = []
     source_body = []
-    discovery_objects = {'DirectoryScope', 'PackageScope', 'LocationSource', 'SearchSource', 'TextSource', 'AllSource'}
+    discovery_objects = {'DirectoryScope', 'PackageScope', 'LocationSource', 'SearchSource', 'TextSource', 'AllSource',
+                         'LibrarySource'}
     for key, spec in objects.items():
         object_body = source_body if key == 'ReadSourceAction' or key.startswith('SourceText') else trace_body if key in {'Trace', 'Emit'} else impact_body if key.startswith('Impact') else discovery_body if key in discovery_objects else body
         inherited = parents.get(key, [])

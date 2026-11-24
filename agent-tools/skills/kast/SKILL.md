@@ -239,6 +239,20 @@ Write `owners.json` with the ref of `A`:
 The first `total` counts use sites. The second counts the declarations that own them.
 A plain `references` query emits one symbol row for each use, so its `total` counts uses.
 
+**Where does the workspace use a library declaration:**
+
+```sh
+kast query --library kotlin.collections --name listOfNotNull --fields name,signature,location --jq "$verdict"
+kast query --ref "$ref" --relation references --output occurrences --jq "$uses"
+```
+
+`--library` takes the exact declaring package. Each overload and each imported library version has its own row.
+Select every row that the question covers. One row proves nothing about another overload or version.
+Destinations are workspace source. Operators and data class properties of a library stay qualified.
+A search that meets a Java library declaration rejects, and so does `callees`.
+A package that no dependency declares returns a complete, empty result. Confirm the package first.
+A library ref expires when the read basis moves. Select it again.
+
 **Several hops of one relation:** adapt the installed `WALK` example:
 
 ```sh
@@ -282,8 +296,8 @@ If Kast cannot answer, use ordinary source reads and state the limitation.
 - To count use sites, use `references`. `callers` omits calls in stored lambdas, such as most coroutine builder bodies.
 - Operators, loops, destructuring, and delegates call functions without call syntax. `callers` and `callees` include them.
   Incoming reads of operator `next`, `hasNext`, `getValue`, `setValue`, or `set` stay qualified. Report "at least these".
-- Selection finds workspace source only. A library name, such as `listOfNotNull`, returns a complete, empty result.
-  That result says nothing about its uses. Use text search for library uses, and report "at least these".
+- `--name` alone finds workspace source only. A library name, such as `listOfNotNull`, then returns a complete, empty result.
+  That result says nothing about its uses. Add `--library PACKAGE` to select the library declaration.
 - Static resolution excludes reflection, dependency injection, and runtime dispatch that the compiler cannot see.
 
 See the guide for [operation choices](public-cli.md#choose-the-operation-first), [request documents](public-cli.md#request-documents), [optional MCP tools](public-cli.md#optional-mcp-tools), and [fresh sessions](public-cli.md#fresh-sessions).

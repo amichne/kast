@@ -8,10 +8,14 @@ import io.github.amichne.kast.symbol.contract.SymbolCompilerPort
 import io.github.amichne.kast.symbol.contract.SymbolCompilerRejection
 import io.github.amichne.kast.symbol.contract.SymbolDescriptionCompilation
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryConstraints
+import io.github.amichne.kast.symbol.contract.SymbolDiscoveryMatch
+import io.github.amichne.kast.symbol.contract.SymbolDiscoveryRequest
+import io.github.amichne.kast.symbol.contract.SymbolDiscoveryTarget
 import io.github.amichne.kast.symbol.contract.SymbolExactCompilerPort
 import io.github.amichne.kast.symbol.contract.SymbolExactCompilerRejection
 import io.github.amichne.kast.symbol.contract.SymbolGeneratedSourcePolicy
 import io.github.amichne.kast.symbol.contract.SymbolLibraryPolicy
+import io.github.amichne.kast.symbol.contract.SymbolNameDiscoveryKind
 import io.github.amichne.kast.symbol.contract.SymbolResolutionCompilation
 import io.github.amichne.kast.symbol.contract.SymbolResolutionRequest
 import io.github.amichne.kast.symbol.contract.SymbolSearchScope
@@ -40,7 +44,7 @@ private constructor(
             val compiledModel = WorkspaceSearchScopeModelCompilation.Compiled(model)
             return ProjectBoundIntellijSymbolPorts(
                 SymbolCompilerPort { request ->
-                    if (request.scope.scope.unsupportedByBoundHost()) {
+                    if (request.unsupportedByBoundHost()) {
                         SymbolCompilation.Rejected(SymbolCompilerRejection.SCOPE_REJECTED)
                     } else if (request.scope.lease != authority || project.isDisposed) {
                         SymbolCompilation.Rejected(SymbolCompilerRejection.WORKSPACE_INDEX_UNAVAILABLE)
@@ -86,12 +90,12 @@ private constructor(
                         )
 
                     override suspend fun resolve(request: SymbolResolutionRequest): SymbolResolutionCompilation =
-                        if (request.selection.scope.unsupportedByBoundHost()) {
+                        if (request.selection.scope.unsupportedByBoundHost(request.selection.constraints)) {
                             SymbolResolutionCompilation.Rejected(SymbolExactCompilerRejection.SCOPE_REJECTED)
                         } else exact(request.selection.constraints).resolve(project, authority, request, compiledModel)
 
                     override suspend fun describe(request: ExactSymbolRequest): SymbolDescriptionCompilation =
-                        if (request.selector.scope.unsupportedByBoundHost()) {
+                        if (request.selector.scope.unsupportedByBoundHost(request.selector.constraints)) {
                             SymbolDescriptionCompilation.Rejected(SymbolExactCompilerRejection.SCOPE_REJECTED)
                         } else exact(request.selector.constraints).describe(project, authority, request, compiledModel)
                 },
@@ -100,6 +104,16 @@ private constructor(
     }
 }
 
-private fun SymbolSearchScope.unsupportedByBoundHost(): Boolean =
-    generatedSources == SymbolGeneratedSourcePolicy.INCLUDE ||
-        this is SymbolSearchScope.Workspace && libraries == SymbolLibraryPolicy.INCLUDE
+/** Dependency names are unbounded, so a library search needs one exact name in one package family. */
+private fun SymbolDiscoveryRequest.unsupportedByBoundHost(): Boolean {
+    if (scope.scope.unsupportedByBoundHost(constraints)) return true
+    if (!scope.scope.includesLibraries()) return false
+    val name = target as? SymbolDiscoveryTarget.Name ?: return true
+    return name.match != SymbolDiscoveryMatch.EXACT_NAME || name.kind == SymbolNameDiscoveryKind.FILE
+}
+
+private fun SymbolSearchScope.unsupportedByBoundHost(constraints: SymbolDiscoveryConstraints): Boolean =
+    generatedSources == SymbolGeneratedSourcePolicy.INCLUDE || includesLibraries() && constraints.packageName == null
+
+private fun SymbolSearchScope.includesLibraries(): Boolean =
+    this is SymbolSearchScope.Workspace && libraries == SymbolLibraryPolicy.INCLUDE

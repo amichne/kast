@@ -109,6 +109,14 @@ sealed interface QueryFromDocument {
         val declarationKinds: BoundedProtocolList<QueryDeclarationKindDocument>,
     ) : QueryFromDocument
 
+    /**
+     * Compiled declarations with one exact name in one dependency package. Request decoding enforces both grammars; the
+     * repeated question schema states only the shape.
+     */
+    @Serializable
+    @SerialName("library")
+    data class Library(val name: ProtocolText, @SerialName("package") val packageName: ProtocolText) : QueryFromDocument
+
     /** The nearest named declaration containing a UTF-16 offset in a workspace-relative file. */
     @Serializable
     @SerialName("location")

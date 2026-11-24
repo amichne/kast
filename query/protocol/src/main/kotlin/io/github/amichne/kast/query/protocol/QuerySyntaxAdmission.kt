@@ -105,9 +105,8 @@ private fun QueryFromDocument.admitSource(
                     QueryReferenceSourceAdmission.Admitted(QuerySourceSyntax.Location(admitted.value))
                 is Refinement.Rejected -> QueryReferenceSourceAdmission.RequestRejected
             }
-        is QueryFromDocument.Symbols ->
-            discovery.syntax()?.let { QueryReferenceSourceAdmission.Admitted(QuerySourceSyntax.Symbols(it)) }
-                ?: QueryReferenceSourceAdmission.RequestRejected
+        is QueryFromDocument.Symbols -> discovery.syntax().admitted()
+        is QueryFromDocument.Library -> syntax().admitted()
         is QueryFromDocument.TextWord ->
             syntax()?.let { QueryReferenceSourceAdmission.Admitted(QuerySourceSyntax.Text(it)) }
                 ?: QueryReferenceSourceAdmission.RequestRejected
@@ -246,6 +245,10 @@ private fun QueryDiscoveryDocument.syntax(): QueryDiscoverySyntax? {
         }
     return QueryDiscoverySyntax(queryMatch, admittedScope, admittedKinds)
 }
+
+private fun QueryDiscoverySyntax?.admitted(): QueryReferenceSourceAdmission =
+    if (this == null) QueryReferenceSourceAdmission.RequestRejected
+    else QueryReferenceSourceAdmission.Admitted(QuerySourceSyntax.Symbols(this))
 
 private fun QueryFromDocument.TextWord.syntax(): QueryTextDiscoverySyntax? {
     val admittedWord = SymbolDiscoveryWord.parse(word.value).refinedOrNull() ?: return null

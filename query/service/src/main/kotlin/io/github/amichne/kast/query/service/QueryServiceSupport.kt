@@ -32,9 +32,13 @@ import io.github.amichne.kast.source.contract.VisibilitySelection
 import io.github.amichne.kast.symbol.contract.CompilerSymbolKind
 import io.github.amichne.kast.symbol.contract.SymbolDescription
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryBatch
+import io.github.amichne.kast.symbol.contract.SymbolDiscoveryCandidateLocation
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryConstraints
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryDeclarationKinds
+import io.github.amichne.kast.symbol.contract.SymbolDiscoveryFileIdentity
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryOutcome
+import io.github.amichne.kast.symbol.contract.SymbolDiscoverySelection
+import io.github.amichne.kast.symbol.contract.SymbolLibraryPolicy
 import io.github.amichne.kast.symbol.contract.SymbolNameDiscoveryKind
 import io.github.amichne.kast.symbol.contract.SymbolSelector
 import java.nio.charset.StandardCharsets
@@ -75,8 +79,32 @@ private fun constraints(scope: QueryScope, kinds: QueryDeclarationKinds): Symbol
                 packageName = scope.packageName,
                 declarationKinds = admittedKinds,
             )
+        is QueryScope.Library ->
+            SymbolDiscoveryConstraints(
+                directory = null,
+                packageName = scope.packageName,
+                declarationKinds = admittedKinds,
+            )
     }
 }
+
+internal fun QueryScope.libraryPolicy(): SymbolLibraryPolicy =
+    when (this) {
+        QueryScope.Unrestricted,
+        is QueryScope.Restricted -> SymbolLibraryPolicy.EXCLUDE
+        is QueryScope.Library -> SymbolLibraryPolicy.INCLUDE
+    }
+
+/** The native library scope also contains source. A library question selects only compiled declarations. */
+internal fun QueryScope.admits(selection: SymbolDiscoverySelection): Boolean =
+    when (this) {
+        QueryScope.Unrestricted,
+        is QueryScope.Restricted -> true
+        is QueryScope.Library -> {
+            val declaration = selection.candidate.location as? SymbolDiscoveryCandidateLocation.Declaration
+            declaration?.file is SymbolDiscoveryFileIdentity.External
+        }
+    }
 
 internal fun visibilityRequest(
     symbol: SymbolSelector,

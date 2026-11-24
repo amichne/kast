@@ -146,6 +146,31 @@
         }
       }
     },
+    "libraryFunctionUses": {
+      "summary": "Find workspace uses of every overload of one dependency function; select one overload first to separate them.",
+      "value": {
+        "request": {
+          "type": "RUN",
+          "source": {
+            "type": "SEARCH_LIBRARY",
+            "declarationName": "listOfNotNull",
+            "packageName": "kotlin.collections"
+          },
+          "steps": [
+            {
+              "type": "EXPAND_RELATION",
+              "relation": "REFERENCES"
+            }
+          ],
+          "terminalStep": {
+            "type": "EMIT",
+            "output": {
+              "type": "OCCURRENCES"
+            }
+          }
+        }
+      }
+    },
     "containingDeclaration": {
       "summary": "Find the named declaration containing a known UTF-16 offset; adapt the illustrative relative file and offset.",
       "value": {

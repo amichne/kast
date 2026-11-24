@@ -24,6 +24,8 @@ import org.jetbrains.kotlin.psi.KtClass
 import org.jetbrains.kotlin.psi.KtNamedFunction
 import org.jetbrains.kotlin.psi.KtParameter
 import org.jetbrains.kotlin.psi.KtPrimaryConstructor
+import org.jetbrains.kotlin.psi.KtProperty
+import org.jetbrains.kotlin.psi.psiUtil.containingClassOrObject
 
 /** Whether exhausting native reference search can prove that no convention use of one subject remains. */
 internal enum class ConventionSearchCoverage {
@@ -47,9 +49,13 @@ internal fun IntellijK2RelationProjection.conventionSearchCoverage(
             is PsiMethod -> subject.name in UNSEARCHABLE_CONVENTIONS
             is KtNamedFunction ->
                 isConventionSubject(subject) &&
-                    (subject.name in UNSEARCHABLE_CONVENTIONS || hasBrokenTypeLink(project, functionReceiver(subject)))
+                    (subject.isBinaryDeclaration() ||
+                        subject.name in UNSEARCHABLE_CONVENTIONS ||
+                        hasBrokenTypeLink(project, functionReceiver(subject)))
             // A data class property is also the target of its generated component function.
             is KtParameter -> subject.isDataComponent() && hasBrokenTypeLink(project, dataReceiver(subject))
+            // Decompiled source lists that property in the class body, and native search misses its destructuring.
+            is KtProperty -> subject.isBinaryDeclaration() && subject.isDataProperty()
             else -> false
         }
     return if (incomplete) ConventionSearchCoverage.INCOMPLETE else ConventionSearchCoverage.EXHAUSTIVE
@@ -81,6 +87,11 @@ private fun IntellijK2RelationProjection.isConventionSubject(function: KtNamedFu
 private fun KtParameter.isDataComponent(): Boolean =
     hasValOrVar() &&
         ((ownerFunction as? KtPrimaryConstructor)?.getContainingClassOrObject() as? KtClass)?.isData() == true
+
+private fun KtProperty.isDataProperty(): Boolean {
+    val owner = containingClassOrObject as? KtClass ?: return false
+    return owner.isData() && owner.primaryConstructorParameters.any { it.name == name }
+}
 
 private fun IntellijK2RelationProjection.functionReceiver(function: KtNamedFunction): ConventionReceiver =
     observation.observedAnalyze(function) {

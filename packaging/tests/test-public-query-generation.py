@@ -183,7 +183,8 @@ class PublicQueryGenerationTest(unittest.TestCase):
         generated = generator.render_tools(self.authority)
         parameters = json.loads(generated[generator.RESOURCES / "query_symbols.parameters.json"])
         # Contract 17 adds required terminal variants and their output applicability to contract 16.
-        self.assertLessEqual(len(json.dumps(parameters, separators=(",", ":"))), 52_000)
+        # The library source adds one closed definition of two exact strings.
+        self.assertLessEqual(len(json.dumps(parameters, separators=(",", ":"))), 52_700)
         definitions = parameters["$defs"]
         self.assertIn('Query minimum: 4096 UTF-8 bytes.',
                       definitions['ExecutionBudget']['properties']['maxReturnedBytes']['description'])
@@ -222,6 +223,10 @@ class PublicQueryGenerationTest(unittest.TestCase):
             flow = definitions["ImpactFlow"]
             self.assertEqual(["KOTLIN_FORWARD_V1", "KOTLIN_JAVA_FORWARD_V2"], flow["enum"])
             flow["enum"].remove("KOTLIN_JAVA_FORWARD_V2")
+            # Library discovery adds one source branch and leaves every earlier branch unchanged.
+            self.assertIn("LibrarySource", definitions)
+            del definitions["LibrarySource"]
+            definitions["Source"]["anyOf"].remove({"$ref": "#/$defs/LibrarySource"})
             # Issued producer candidates add a strict, epoch-bound invocation range to IMPACT input.
             candidate = {"$ref": "#/$defs/ImpactReferenceText"}
             expected_candidate = {"anyOf": [candidate, {"type": "null"}]}
@@ -304,6 +309,15 @@ class PublicQueryGenerationTest(unittest.TestCase):
         references = [branch.get("$ref") for branch in self.authority["$defs"]["Source"]["anyOf"]]
         self.assertIn("#/$defs/TextSource", references)
 
+    def test_library_discovery_admits_only_an_exact_name_and_package(self):
+        source = self.authority["$defs"]["LibrarySource"]
+        self.assertEqual(["SEARCH_LIBRARY"], source["properties"]["type"]["enum"])
+        self.assertEqual(["type", "declarationName", "packageName"], source["required"])
+        self.assertFalse(source["additionalProperties"])
+        self.assertEqual({"type", "declarationName", "packageName"}, set(source["properties"]))
+        references = [branch.get("$ref") for branch in self.authority["$defs"]["Source"]["anyOf"]]
+        self.assertIn("#/$defs/LibrarySource", references)
+
     def test_generated_description_lines_bound_escaped_literal_width(self):
         description = '"\\' * 100
         self.authority["tools"][0]["description"] = description
@@ -320,7 +334,9 @@ class PublicQueryGenerationTest(unittest.TestCase):
         generated = generator.render_tools(self.authority)
         discovery = generated[ROOT / "app-server/src/main/kotlin/io/github/amichne/kast/appserver/query/PublicToolDiscoveryDocuments.kt"]
         ingress = generated[ROOT / "app-server/src/main/kotlin/io/github/amichne/kast/appserver/query/PublicToolDocuments.kt"]
-        for name in ("DirectoryScope", "PackageScope", "LocationSource", "SearchSource", "TextSource", "AllSource"):
+        for name in (
+            "DirectoryScope", "PackageScope", "LocationSource", "SearchSource", "TextSource", "AllSource", "LibrarySource",
+        ):
             declaration = f"internal data class PublicTool{name}("
             self.assertEqual(1, discovery.count(declaration))
             self.assertNotIn(declaration, ingress)

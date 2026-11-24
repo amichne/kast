@@ -21,6 +21,7 @@ Advanced example addresses:
 - [`scopedExactDeclaration`](query-topics/advanced/scopedExactDeclaration.md)
 - [`publicFunctionInventory`](query-topics/advanced/publicFunctionInventory.md)
 - [`fuzzyDeclarationDiscovery`](query-topics/advanced/fuzzyDeclarationDiscovery.md)
+- [`libraryFunctionUses`](query-topics/advanced/libraryFunctionUses.md)
 - [`directCallers`](query-topics/advanced/directCallers.md)
 - [`directCallees`](query-topics/advanced/directCallees.md)
 - [`implementations`](query-topics/advanced/implementations.md)

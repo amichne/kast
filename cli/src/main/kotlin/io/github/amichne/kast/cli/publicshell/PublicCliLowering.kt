@@ -248,6 +248,8 @@ private fun parseSource(arguments: LexicalArguments): Refinement<CliSource, Publ
         listOf(name != null, refs.isNotEmpty(), file != null || offset != null, all, retained != null).count { it } != 1
     )
         return Refinement.Rejected(PublicCliArgumentFailure.INVALID_SOURCE)
+    val library = arguments[PublicCliFlag.LIBRARY]
+    if (library != null) return parseLibrarySource(arguments, name, library)
     if (name != null) return parseSearchSource(arguments, name)
     if (all) return parseAllSource(arguments)
     if (
@@ -259,6 +261,21 @@ private fun parseSource(arguments: LexicalArguments): Refinement<CliSource, Publ
     else if (refs.isNotEmpty()) Refinement.Refined(CliSource.References(refs))
     else if (file != null && offset != null) Refinement.Refined(CliSource.Location(file, offset.toLong()))
     else Refinement.Rejected(PublicCliArgumentFailure.INVALID_SOURCE)
+}
+
+/** A library search needs an exact name, and it rejects source scopes instead of ignoring them. */
+private fun parseLibrarySource(
+    arguments: LexicalArguments,
+    name: String?,
+    library: String,
+): Refinement<CliSource, PublicCliArgumentFailure> {
+    if (
+        name == null ||
+            setOf(PublicCliFlag.DIRECTORY, PublicCliFlag.SOURCE_SET, PublicCliFlag.KIND, PublicCliFlag.NAME_MATCH)
+                .any(arguments::has)
+    )
+        return Refinement.Rejected(PublicCliArgumentFailure.IRRELEVANT_OPTION)
+    return Refinement.Refined(CliSource.Library(name, library))
 }
 
 private fun parseSearchSource(

@@ -6,6 +6,7 @@ import com.intellij.psi.PsiManager
 import com.intellij.psi.search.FilenameIndex
 import com.intellij.util.indexing.IdFilter
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryMatch
+import io.github.amichne.kast.symbol.contract.SymbolDiscoveryQualification
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryRequest
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryTarget
 import io.github.amichne.kast.symbol.contract.SymbolLibraryPolicy
@@ -166,6 +167,8 @@ internal fun IntellijNativeDiscoveryQuery.discoverExactIndexedDeclarations(
         request = request,
         contributor = IntellijReadContributor.EXACT_INDEX,
         process = { observe, qualify, accept ->
+            if (hasUnselectableJavaDeclaration(project, scope, request))
+                qualify(SymbolDiscoveryQualification.UNSUPPORTED_ITEM)
             collectIndexedNamedDeclarations(
                 project,
                 scope,

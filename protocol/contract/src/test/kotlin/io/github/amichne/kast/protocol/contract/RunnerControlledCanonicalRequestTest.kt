@@ -50,7 +50,21 @@ class RunnerControlledCanonicalRequestTest {
             60001L,
             (timed.requestedExecutionBudget() as RequestedExecutionBudget.RunnerControlled).timeout?.value,
         )
+        val library = QueryFromDocument.Library(text("takeIf"), text("kotlin.collections"))
+        val libraryEncoded = Json.encodeToString(QueryRunRequest.serializer(), run.copy(from = library))
+        assertEquals(run.copy(from = library), Json.decodeFromString(QueryRunRequest.serializer(), libraryEncoded))
+        // The question schema states only the shape, so decoding must enforce the package grammar.
+        for (malformed in listOf("kotlin.", "a/b", ".kotlin", "kotlin..io")) assertThrows(
+            SerializationException::class.java
+        ) {
+            Json.decodeFromString(
+                QueryRunRequest.serializer(),
+                libraryEncoded.replace("\"kotlin.collections\"", "\"$malformed\""),
+            )
+        }
     }
+
+    private fun text(raw: String) = ProtocolText.parse(raw).requestFixture()
 }
 
 private fun <Value> Refinement<Value, *>.requestFixture(): Value =

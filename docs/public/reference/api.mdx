@@ -58,6 +58,7 @@ The runner drains internal semantic pages under one grant. If proof is missing, 
 | Source | Purpose |
 | --- | --- |
 | `SEARCH_DECLARATIONS` | Find a simple declaration name. Match exact case by default. Ask for fuzzy matching explicitly. |
+| `SEARCH_LIBRARY` | Find compiled Kotlin declarations of one dependency package by exact name. Each overload and library version has a row. |
 | `SEARCH_TEXT` | Find one case-sensitive ASCII identifier word. Return the exact containing declarations and match context. |
 | `ALL_DECLARATIONS` | List supported Kotlin declarations, including nested ones. Order them by file path and source offset. |
 | `AT_LOCATION` | Nearest containing named declaration at a workspace-relative `file` and UTF-16 `offset`. |
@@ -71,6 +72,8 @@ Those seed limits do not restrict the destinations of later relationship reads. 
 
 <Accordion title="Source-specific admission rules">
 `SEARCH_DECLARATIONS` uses exact case-sensitive names by default. Explicit fuzzy matching changes which names it selects. It does not prove a unique identity.
+
+`SEARCH_LIBRARY` rows can start `REFERENCES`, `CALLERS`, `TYPE_USES`, `IMPLEMENTATIONS`, `INHERITORS`, and `OVERRIDES`. Their destinations are workspace source. `CALLEES` rejects because a compiled body has no source. A library operator or data class property stays unproven. A library reference is valid only on its own read basis.
 
 `SEARCH_TEXT` accepts one ASCII identifier word. It starts with a letter or underscore. Kast rejects phrases, substrings, qualified literals, and regular expressions.
 

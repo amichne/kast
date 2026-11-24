@@ -17,6 +17,7 @@ internal enum class QueryCallbackCompletion(val interpretation: QueryResultInter
                 is QueryFromDocument.Impact -> return INVOCATION_GRAPH
                 is QueryFromDocument.Symbols,
                 is QueryFromDocument.TextWord,
+                is QueryFromDocument.Library,
                 is QueryFromDocument.Location,
                 is QueryFromDocument.References -> Unit
             }

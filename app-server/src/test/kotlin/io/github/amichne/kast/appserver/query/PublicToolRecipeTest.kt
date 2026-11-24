@@ -62,7 +62,7 @@ class PublicToolRecipeTest {
     @Test
     fun `authored recipe inventory passes production schema and typed admission`() {
         assertEquals(4, tools.size)
-        assertEquals(33, PublicToolIdentity.entries.sumOf { examples(it).size })
+        assertEquals(34, PublicToolIdentity.entries.sumOf { examples(it).size })
         assertEquals(29, PublicToolIdentity.entries.sumOf { examples(it, "invalidExamples").size })
         PublicToolIdentity.entries.forEach { identity ->
             examples(identity).forEach { (name, example) ->

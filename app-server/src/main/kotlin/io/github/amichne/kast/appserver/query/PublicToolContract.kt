@@ -39,6 +39,7 @@ enum class PublicToolParameter(val path: String) {
     LOCATION_FILE("source.file"),
     DIRECTORY("scope.relativeDirectoryPath"),
     PACKAGE("scope.packageName"),
+    SOURCE_PACKAGE("source.packageName"),
     DIAGNOSTIC_PATH("relativePath"),
     TERMINAL_STEP("terminalStep"),
     EXECUTION_MODE("executionMode"),

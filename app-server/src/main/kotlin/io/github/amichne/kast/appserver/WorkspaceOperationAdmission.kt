@@ -41,5 +41,6 @@ private fun QueryFromDocument.workspaceAdmission(): WorkspaceOperationAdmission 
         is QueryFromDocument.Impact -> WorkspaceOperationAdmission.EXISTING_AUTHORITY
         is QueryFromDocument.Symbols,
         is QueryFromDocument.TextWord,
+        is QueryFromDocument.Library,
         is QueryFromDocument.Location -> WorkspaceOperationAdmission.PREPARE
     }

@@ -197,6 +197,7 @@ private fun PublicToolSource.lower(): Refinement<QueryFromDocument, PublicToolIn
                 PublicToolParameter.SOURCE_DECLARATION_NAME,
             )
         is PublicToolTextSource -> lowerTextSource()
+        is PublicToolLibrarySource -> lowerLibrarySource()
         is PublicToolAllSource ->
             when (val scope = (scope ?: PublicToolDefaults.scope).lowerDiscoveryScope()) {
                 is Refinement.Rejected -> scope
@@ -242,7 +243,7 @@ private fun PublicToolRetainedInput.lowerResult(): QueryFromDocument.Result =
 
 /** The spelling remains unchanged; no qualification stripping, wildcard expansion or fuzzy retry. */
 @JvmInline
-private value class DeclarationName private constructor(val text: ProtocolText) {
+internal value class DeclarationName private constructor(val text: ProtocolText) {
     companion object {
         fun admit(
             text: ProtocolText,

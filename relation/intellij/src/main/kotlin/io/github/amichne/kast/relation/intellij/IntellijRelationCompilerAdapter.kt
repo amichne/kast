@@ -190,7 +190,10 @@ internal class IntellijRelationCompilerQuery(
             when (
                 val lookup =
                     observation.call(IntellijReadCall.RELATION_SUBJECT_RESTORE) {
-                        projection.subject(scopes.subject, request.subject)
+                        when (val found = projection.subject(scopes.subject, request.subject)) {
+                            is IntellijRelationSubjectLookup.Found -> found.admitBinary(request.meaning)
+                            is IntellijRelationSubjectLookup.Rejected -> found
+                        }
                     }
             ) {
                 is IntellijRelationSubjectLookup.Found -> lookup

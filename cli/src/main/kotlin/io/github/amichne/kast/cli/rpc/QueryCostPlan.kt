@@ -119,6 +119,7 @@ private fun QueryFromDocument.costAdvice(): List<QueryCostAdvice> = buildList {
             }
         }
         is QueryFromDocument.TextWord -> discoveryAdvice(source.scope, source.declarationKinds.values.size)
+        is QueryFromDocument.Library,
         is QueryFromDocument.Impact,
         is QueryFromDocument.Location,
         is QueryFromDocument.References,
@@ -144,6 +145,7 @@ private fun QueryStepDocument.costAdvice(source: QueryFromDocument): List<QueryC
             when (source) {
                 is QueryFromDocument.Symbols,
                 is QueryFromDocument.TextWord -> add(QueryCostAdvice.LATE_FILTER_DOES_NOT_NARROW_DISCOVERY)
+                is QueryFromDocument.Library,
                 is QueryFromDocument.Impact,
                 is QueryFromDocument.Location,
                 is QueryFromDocument.References,
