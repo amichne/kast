@@ -17,7 +17,7 @@ const (
 	catalogURL    = "https://raw.githubusercontent.com/" + repository + "/developer-latest/builds.json"
 	stableURL     = "https://api.github.com/repos/" + repository + "/releases/latest"
 	releases      = "https://github.com/" + repository + "/releases/download"
-	recordSchema  = 5
+	recordSchema  = 3
 	maximumRecord = 64 << 10
 	maximumAsset  = int64(2) << 30
 	maximumBuilds = 5
@@ -31,8 +31,11 @@ var (
 	buildForm    = regexp.MustCompile(`^0\.0\.[1-9][0-9]{0,8}$`)
 )
 
-// platformNames are the targets a published product can have.
-var platformNames = map[string]string{"macos-aarch64": "macOS ARM64"}
+// platformNames are the targets of every published product, and targets is the order its record lists them in.
+var (
+	platformNames = map[string]string{"linux-x86_64": "Linux x86-64", "macos-aarch64": "macOS ARM64"}
+	targets       = []string{"linux-x86_64", "macos-aarch64"}
+)
 
 type channel string
 
@@ -308,14 +311,22 @@ func admit(raw []byte, found reference, platform string) (*release, error) {
 		return nil, invalid("revision")
 	case !buildForm.MatchString(record.Version) || (found.channel == preview && found.public != record.Version):
 		return nil, invalid("version")
-	case len(record.Targets) != 1:
+	case len(record.Targets) != len(targets):
 		return nil, invalid("targets")
-	case record.Targets[0].Target != platform:
-		return nil, reject(PlatformUnsupported, "%s is not published for %s", found.tag, platform)
 	}
-	parts, check := record.Targets[0].admit(record.Version)
-	if check != "" {
-		return nil, invalid(check)
+	// One invalid target makes the record invalid for every platform.
+	var parts []part
+	for index, target := range record.Targets {
+		if target.Target != targets[index] {
+			return nil, invalid("targets")
+		}
+		files, check := target.admit(record.Version)
+		if check != "" {
+			return nil, invalid(check)
+		}
+		if target.Target == platform {
+			parts = files
+		}
 	}
 	return &release{tag: found.tag, version: found.public, revision: record.SourceRevision, target: platform,
 		channel: found.channel, parts: parts}, nil

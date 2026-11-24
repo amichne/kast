@@ -249,16 +249,13 @@ def seal(
     tree: str,
     version: str,
     producer: product.ProductProducer,
-    *,
-    macos_only: bool = False,
 ) -> product.ProductRecord:
     if output.exists() or output.is_symlink() or inputs.is_symlink():
         raise Rejected(Failure.DESTINATION_NOT_EMPTY)
-    required_targets = ("macos-aarch64",) if macos_only else product.PRODUCT_TARGETS
-    if {path.name for path in inputs.iterdir()} != set(required_targets):
+    if {path.name for path in inputs.iterdir()} != set(product.PRODUCT_TARGETS):
         raise Rejected(Failure.GATE_NOT_COMPLETE)
     targets: list[product.ProductTarget] = []
-    for target in required_targets:
+    for target in product.PRODUCT_TARGETS:
         source = inputs / target
         if source.is_symlink() or not source.is_dir():
             raise Rejected(Failure.INVALID_RECORD)
@@ -294,9 +291,7 @@ def seal(
     ):
         raise Rejected(Failure.SOURCE_TREE_MISMATCH)
     complete = product.ProductRecord(
-        product.MACOS_PRODUCT_SCHEMA
-        if macos_only
-        else (3 if any(item.runtimeBase for item in targets) else 2),
+        3 if any(item.runtimeBase for item in targets) else 2,
         product.REPOSITORY,
         revision,
         tree,
@@ -393,7 +388,6 @@ def main() -> int:
     _ = parser.add_argument("--java-release", type=Path)
     _ = parser.add_argument("--control", type=Path)
     _ = parser.add_argument("--target")
-    _ = parser.add_argument("--macos-only", action="store_true")
     args = parser.parse_args()
     try:
         revision = os.environ["GITHUB_SHA"]
@@ -456,7 +450,6 @@ def main() -> int:
                 tree,
                 version,
                 product.ProductProducer(run, attempt, CI_WORKFLOW),
-                macos_only=args.macos_only,
             )
         return 0
     except Rejected as rejection:

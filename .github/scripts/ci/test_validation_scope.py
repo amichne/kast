@@ -624,20 +624,22 @@ class SourceInventoryTest(unittest.TestCase):
         self.assertIn("release_handoff.py assemble --version", task_run("ci:assembly"))
         # Mac qualification, sealing, and installed acceptance run beside source validation.
         # The joined candidate and the required aggregate keep the complete source proof.
-        for job in ("kotlin", "composed-macos", "composed-linux", "two-platform-product"):
+        for job in ("kotlin", "composed-macos", "composed-linux", "sealed-product"):
             body = re.split(r"\n  (?=\S)", workflow.split(f"\n  {job}:\n", 1)[1], maxsplit=1)[0]
             self.assertNotIn("needs.source-work", body)
             self.assertNotRegex(body, r"(?m)^    needs: \[[^\]]*source-work")
         required = re.split(r"\n  (?=\S)", workflow.split("\n  required:\n", 1)[1], maxsplit=1)[0]
         self.assertIn(
-            "    needs: [scope, source, documentation, portable, kotlin, complete-product, two-platform-product]\n",
+            "    needs: [scope, source, documentation, portable, kotlin, complete-product]\n",
             required,
         )
         sealed = re.split(r"\n  (?=\S)", workflow.split("\n  sealed-product:\n", 1)[1], maxsplit=1)[0]
-        self.assertIn("    needs: [scope, composed-macos]\n", sealed)
+        self.assertIn("    needs: [scope, composed-macos, composed-linux]\n", sealed)
         joined = re.split(r"\n  (?=\S)", workflow.split("\n  complete-product:\n", 1)[1], maxsplit=1)[0]
         self.assertIn(
-            "    needs: [source-work, sealed-product, installed-upgrade, installed-fresh]\n", joined
+            "    needs: [source-work, sealed-product, installed-macos-upgrade, installed-macos-fresh, "
+            "installed-linux-upgrade, installed-linux-fresh]\n",
+            joined,
         )
 
     def test_queue_and_main_use_the_same_mac_gate(self):
@@ -759,13 +761,13 @@ class SourceInventoryTest(unittest.TestCase):
         jobs = dict(
             re.findall(r"(?ms)^  ([\w-]+):\n(.*?)(?=^  [\w-]+:\n|\Z)", ci.split("\njobs:\n", 1)[1])
         )
-        linux, both = jobs["composed-linux"], jobs["two-platform-product"]
+        linux, both = jobs["composed-linux"], jobs["sealed-product"]
         self.assertIn("needs: scope\n", linux)
         self.assertIn("uses: ./.github/workflows/composed-linux.yml", linux)
         self.assertIn("complete_product: true", linux)
         self.assertIn("release_target: linux-x86_64", linux)
         self.assertNotIn("assembled_artifact_id", linux)
-        # The two-platform record joins exact producers and is no release input.
+        # The sealed record joins the exact producers of both targets.
         self.assertIn("name: Seal both product targets without rebuilding\n", both)
         self.assertIn("needs: [scope, composed-macos, composed-linux]", both)
         self.assertNotIn("always()", both)
@@ -776,13 +778,7 @@ class SourceInventoryTest(unittest.TestCase):
                 both,
             )
             self.assertIn(f"path: build/product-inputs/{target}\n", both)
-        self.assertIn("run: mise run ci:seal-two-platform\n", both)
-        self.assertNotIn("--macos-only", task_run("ci:seal-two-platform"))
-        self.assertIn("name: ci-product-two-platform-${{ github.sha }}-${{ github.run_attempt }}", both)
         acceptance = (workflows / "installed-acceptance.yml").read_text()
-        for release_job in ("sealed-product", "installed-upgrade", "installed-fresh", "complete-product"):
-            self.assertNotIn("two-platform", jobs[release_job])
-        self.assertNotIn("two-platform", acceptance)
         joined, required = jobs["sealed-product"], jobs["required"]
         mac = jobs["composed-macos"]
         self.assertIn("needs: [scope, assembly]", mac)
@@ -793,28 +789,17 @@ class SourceInventoryTest(unittest.TestCase):
         self.assertIn("uses: ./.github/workflows/composed-linux.yml", mac)
         self.assertIn("complete_product: true", mac)
         self.assertIn("release_target: macos-aarch64", mac)
-        self.assertIn("needs: [scope, composed-macos]", joined)
-        self.assertNotIn("always()", joined)
         self.assertNotIn("run-id:", joined)
         # A rerun of failed jobs copies successful producers with their outputs, so every
         # product handoff names its producer's attempt, never the consumer's.
-        self.assertIn(
-            "name: kast-qualified-product-macos-aarch64-"
-            "${{ github.sha }}-${{ github.run_id }}-${{ needs.composed-macos.outputs.run_attempt }}",
-            joined,
-        )
         for producer in (jobs["sealed-product"], acceptance):
             self.assertIn("outputs:\n      run_attempt: ${{ github.run_attempt }}", producer)
         self.assertIn("value: ${{ jobs.acceptance.outputs.run_attempt }}", acceptance)
         self.assertIn("name: ci-product-sealed-${{ github.sha }}-${{ github.run_attempt }}", joined)
-        self.assertIn("path: build/product-inputs/macos-aarch64", joined)
-        self.assertIn("run: mise run ci:seal", joined)
+        self.assertIn("run: mise run ci:seal\n", joined)
         self.assertIn("product_producer.py seal", task_run("ci:seal"))
         self.assertNotIn("name: ci-product-candidate-", joined)
         accepted = jobs["complete-product"]
-        self.assertIn(
-            "needs: [source-work, sealed-product, installed-upgrade, installed-fresh]", accepted
-        )
         self.assertNotIn("always()", accepted)
         self.assertIn("run: mise run ci:join", accepted)
         self.assertIn("product_producer.py accept", task_run("ci:join"))
@@ -822,54 +807,54 @@ class SourceInventoryTest(unittest.TestCase):
             "name: ci-product-sealed-${{ github.sha }}-${{ needs.sealed-product.outputs.run_attempt }}",
             accepted,
         )
-        # Each part runs once, and the join names each part's own producing attempt.
-        for part in ("upgrade", "fresh"):
-            caller = jobs[f"installed-{part}"]
-            self.assertIn("needs: sealed-product\n", caller)
-            self.assertIn("uses: ./.github/workflows/installed-acceptance.yml\n", caller)
-            self.assertIn(f"      part: {part}\n", caller)
-            self.assertIn(
-                "sealed_run_attempt: ${{ needs.sealed-product.outputs.run_attempt }}\n", caller
-            )
-            self.assertIn(
-                f"name: kast-installed-{part}-macos-aarch64-"
-                "${{ github.sha }}-${{ github.run_id }}-"
-                "${{ needs.installed-" + part + ".outputs.run_attempt }}",
-                accepted,
-            )
-        self.assertEqual(2, ci.count("uses: ./.github/workflows/installed-acceptance.yml"))
+        # Each part runs once per target, and the join names each one's own producing attempt.
+        for target in ("macos-aarch64", "linux-x86_64"):
+            for part in ("upgrade", "fresh"):
+                job = f"installed-{target.split('-')[0]}-{part}"
+                caller = jobs[job]
+                self.assertIn("needs: sealed-product\n", caller)
+                self.assertIn("uses: ./.github/workflows/installed-acceptance.yml\n", caller)
+                self.assertIn(f"      target: {target}\n      part: {part}\n", caller)
+                self.assertIn(
+                    "sealed_run_attempt: ${{ needs.sealed-product.outputs.run_attempt }}\n", caller
+                )
+                self.assertIn(
+                    f"name: kast-installed-{part}-{target}-"
+                    "${{ github.sha }}-${{ github.run_id }}-"
+                    "${{ needs." + job + ".outputs.run_attempt }}",
+                    accepted,
+                )
+        self.assertEqual(4, ci.count("uses: ./.github/workflows/installed-acceptance.yml"))
         self.assertIn(
-            "name: kast-installed-${{ inputs.part }}-macos-aarch64-"
+            "name: kast-installed-${{ inputs.part }}-${{ inputs.target }}-"
             "${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}",
             acceptance,
         )
         self.assertIn(
-            "path: build/acceptance-macos-aarch64-${{ inputs.part }}.part.json", acceptance
+            "path: build/acceptance-${{ inputs.target }}-${{ inputs.part }}.part.json", acceptance
         )
         installed = acceptance
         self.assertIn(
             "name: ci-product-sealed-${{ github.sha }}-${{ inputs.sealed_run_attempt }}", installed
         )
-        self.assertNotIn("linux-x86_64", installed + joined + accepted)
-        self.assertIn("runs-on: macos-15", installed)
+        self.assertIn(
+            "runs-on: ${{ inputs.target == 'macos-aarch64' && 'macos-15' || 'ubuntu-24.04' }}", installed
+        )
         self.assertIn("run: mise run ci:acceptance ", installed)
         self.assertIn('--part "$PART" ', installed)
         self.assertIn("product_lifecycle_probe.py", task_run("ci:acceptance"))
         # The baseline is a checked-in pin, read into step outputs before any download.
         self.assertIn("run: mise run ci:acceptance-baseline", installed)
         self.assertNotIn("KAST_ACCEPTANCE_BASELINE", installed)
-        # Schema-2 baselines carry acceptance only in the joined candidate; the sealed
-        # artifact is a fallback for legacy baselines, and admission still decides.
-        accepted_baseline = installed.index(
-            "name: ci-product-candidate-${{ steps.baseline.outputs.revision }}"
+        # One explicit artifact. The seed run also has a Mac-only candidate, which is no baseline
+        # for Linux, so no fallback may choose between them.
+        baseline = installed.index(
+            "name: ci-product-two-platform-${{ steps.baseline.outputs.revision }}"
         )
-        legacy_baseline = installed.index(
-            "name: ci-product-sealed-${{ steps.baseline.outputs.revision }}"
-        )
-        self.assertLess(accepted_baseline, legacy_baseline)
-        self.assertIn("if: steps.accepted-baseline.outcome != 'success'", installed)
-        self.assertLess(installed.index("run: mise run ci:acceptance-baseline"), accepted_baseline)
-        self.assertLess(legacy_baseline, installed.index("run: mise run ci:acceptance-inputs"))
+        self.assertEqual(1, installed.count("run-id: ${{ steps.baseline.outputs.run_id }}"))
+        self.assertNotIn("continue-on-error", installed)
+        self.assertLess(installed.index("run: mise run ci:acceptance-baseline"), baseline)
+        self.assertLess(baseline, installed.index("run: mise run ci:acceptance-inputs"))
         self.assertIn("acceptance_inputs.py admit", task_run("ci:acceptance-inputs"))
         # The candidate carries its sealed record's attempt, so admission derives its name.
         self.assertIn(
@@ -880,14 +865,13 @@ class SourceInventoryTest(unittest.TestCase):
         self.assertIn("value: ${{ jobs.candidate.outputs.run_attempt }}", reusable)
         self.assertIn("outputs:\n      run_attempt: ${{ github.run_attempt }}", reusable)
         self.assertIn(
-            "needs: [scope, source, documentation, portable, kotlin, complete-product, two-platform-product]",
+            "needs: [scope, source, documentation, portable, kotlin, complete-product]",
             required,
         )
-        self.assertEqual(2, required.count("if: needs.scope.outputs.product == 'run'"))
+        self.assertEqual(1, required.count("if: needs.scope.outputs.product == 'run'"))
         self.assertIn("COMPLETE_PRODUCT_RESULT: ${{ needs.complete-product.result }}", required)
-        self.assertIn("TWO_PLATFORM_RESULT: ${{ needs.two-platform-product.result }}", required)
-        for gate in ('mise run ci:require-result "$COMPLETE_PRODUCT_RESULT" success', 'mise run ci:require-result "$TWO_PLATFORM_RESULT" success'):
-            self.assertLess(required.index(gate), required.index("run: mise run ci:outcome"))
+        gate = 'mise run ci:require-result "$COMPLETE_PRODUCT_RESULT" success'
+        self.assertLess(required.index(gate), required.index("run: mise run ci:outcome"))
         self.assertIn("validation_outcome.py", task_run("ci:outcome"))
         candidate = (workflows / "composed-linux.yml").read_text()
         reused = candidate.split("- name: Download the exact CI release\n", 1)[1]

@@ -14,6 +14,7 @@ import unittest
 from dataclasses import asdict, dataclass, field, replace
 from pathlib import Path
 from typing import cast
+from unittest.mock import patch
 
 import product_candidate as candidate
 import product_producer as producer
@@ -320,30 +321,57 @@ class ProductProducerTest(unittest.TestCase):
                     self.assertFalse(output.exists())
                 self.assertEqual(original, (directory / "build-record.json").read_bytes())
 
-    def test_macos_only_candidate_needs_the_mac_receipt_and_retains_legacy_target_rules(
-        self,
-    ) -> None:
+    def test_a_product_needs_both_targets_and_the_parts_of_both(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
             inputs, _ = captured(root, split=True)
-            (inputs / "linux-x86_64").rename(root / "excluded-linux")
             output = root / "sealed"
             owner = product.ProductProducer(123, 1, producer.CI_WORKFLOW)
-            with self.assertRaises(producer.Rejected):
-                producer.seal(inputs, output, "a" * 40, "b" * 40, "0.0.123", owner)
-            record = producer.seal(
-                inputs, output, "a" * 40, "b" * 40, "0.0.123", owner, macos_only=True
+            for target in product.PRODUCT_TARGETS:
+                (inputs / target).rename(root / "excluded")
+                with self.assertRaises(producer.Rejected):
+                    producer.seal(inputs, output, "a" * 40, "b" * 40, "0.0.123", owner)
+                (root / "excluded").rename(inputs / target)
+            record = producer.seal(inputs, output, "a" * 40, "b" * 40, "0.0.123", owner)
+            self.assertEqual(3, record.schemaVersion)
+            self.assertEqual(
+                list(product.PRODUCT_TARGETS), [item.target for item in record.targets]
             )
-            self.assertEqual(5, record.schemaVersion)
-            self.assertEqual(["macos-aarch64"], [item.target for item in record.targets])
-            self.assertEqual(record, candidate.read(output))
             parts = root / "parts"
             parts.mkdir()
-            with self.assertRaises(producer.Rejected):
-                producer.accept(output, parts, root / "accepted")
             parts_fixture(output, record, parts)
+            for name in sorted(path.name for path in parts.iterdir()):
+                (parts / name).rename(root / name)
+                with self.subTest(missing=name), self.assertRaises(producer.Rejected):
+                    producer.accept(output, parts, root / "accepted")
+                (root / name).rename(parts / name)
             self.assertEqual(record, producer.accept(output, parts, root / "accepted"))
             self.assertEqual(record, candidate.read(root / "accepted", accepted=True))
+
+    def test_only_the_approved_seed_record_is_a_baseline_without_acceptance(self) -> None:
+        # The owner approved this one record of main run 45413284178.
+        self.assertEqual(
+            "b0ac9635a634c7b461a91571353753425f1c08e4cd472f6bb6902384b9756f01",
+            candidate.UNACCEPTED_SEED_SHA256,
+        )
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            inputs, _ = captured(root, split=True)
+            sealed = root / "sealed"
+            owner = product.ProductProducer(123, 1, producer.CI_WORKFLOW)
+            record = producer.seal(inputs, sealed, "a" * 40, "b" * 40, "0.0.123", owner)
+            self.assertEqual(
+                candidate.candidate.Failure.GATE_NOT_COMPLETE, candidate.read_baseline(sealed)
+            )
+            digest = product.file_digest(sealed / "build-record.json")
+            with patch.object(candidate, "UNACCEPTED_SEED_SHA256", digest):
+                self.assertEqual(record, candidate.read_baseline(sealed))
+                # The exception covers acceptance only. The payload stays bound to the record.
+                asset = record.assets()[0]
+                (sealed / "payload" / asset.name).write_bytes(b"replaced")
+                self.assertEqual(
+                    candidate.candidate.Failure.PAYLOAD_MISMATCH, candidate.read_baseline(sealed)
+                )
 
     def test_split_targets_seal_without_assembling_or_substituting_base_qualification(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
@@ -714,33 +742,52 @@ class ProductProducerTest(unittest.TestCase):
         self.assertIn("complete_product: true", mac)
         self.assertIn("release_target: macos-aarch64", mac)
         join = jobs["sealed-product"]
-        self.assertIn("needs: [scope, composed-macos]", join)
-        self.assertIn(
-            "name: kast-qualified-product-macos-aarch64-${{ github.sha }}-${{ github.run_id }}-"
-            "${{ needs.composed-macos.outputs.run_attempt }}",
-            join,
-        )
+        self.assertIn("needs: [scope, composed-macos, composed-linux]", join)
+        # admit_baseline looks for this job name in the run that sealed a two-platform record.
+        self.assertIn("name: Seal both product targets without rebuilding\n", join)
+        for target, qualifier in (
+            ("macos-aarch64", "composed-macos"),
+            ("linux-x86_64", "composed-linux"),
+        ):
+            self.assertIn(
+                f"name: kast-qualified-product-{target}-"
+                "${{ github.sha }}-${{ github.run_id }}-"
+                "${{ needs." + qualifier + ".outputs.run_attempt }}",
+                join,
+            )
         self.assertIn("name: ci-product-sealed-${{ github.sha }}-${{ github.run_attempt }}", join)
         accepted = jobs["complete-product"]
-        self.assertIn(
-            "needs: [source-work, sealed-product, installed-upgrade, installed-fresh]", accepted
-        )
+        self.assertIn("needs: [source-work, sealed-product, ", accepted)
         self.assertIn("run: mise run ci:join", accepted)
         self.assertIn("product_producer.py accept", task_run("ci:join"))
         self.assertIn("name: ci-product-candidate-", accepted)
         self.assertNotIn("ci-product-candidate-", join)
         # The workflow calls each declared part once, with the file name that the join reads.
         installed = (workflows / "installed-acceptance.yml").read_text()
-        for part in candidate.acceptance.Part:
-            caller = jobs[f"installed-{part}"]
-            self.assertIn("needs: sealed-product", caller)
-            self.assertIn("uses: ./.github/workflows/installed-acceptance.yml", caller)
-            self.assertIn(f"part: {part}\n", caller)
+        for target in product.PRODUCT_TARGETS:
+            for part in candidate.acceptance.Part:
+                job = f"installed-{target.split('-')[0]}-{part}"
+                caller = jobs[job]
+                self.assertIn("needs: sealed-product", caller)
+                self.assertIn("uses: ./.github/workflows/installed-acceptance.yml", caller)
+                self.assertIn(f"target: {target}\n      part: {part}\n", caller)
+                needs = accepted.split("needs: [", 1)[1].split("]", 1)[0].split(", ")
+                self.assertIn(job, needs)
+                self.assertIn(
+                    f"name: kast-installed-{part}-{target}-"
+                    "${{ github.sha }}-${{ github.run_id }}-"
+                    "${{ needs." + job + ".outputs.run_attempt }}",
+                    accepted,
+                )
         name = candidate.acceptance.part_filename("macos-aarch64", candidate.acceptance.Part.FRESH)
-        self.assertIn("path: build/" + name.replace("-fresh.", "-${{ inputs.part }}."), installed)
+        self.assertIn(
+            "path: build/"
+            + name.replace("-macos-aarch64-fresh.", "-${{ inputs.target }}-${{ inputs.part }}."),
+            installed,
+        )
         self.assertIn("run: mise run ci:acceptance ", installed)
         self.assertIn("product_lifecycle_probe.py", task_run("ci:acceptance"))
-        self.assertIn("kotlin, complete-product, two-platform-product]", jobs["required"])
+        self.assertIn("kotlin, complete-product]", jobs["required"])
         self.assertLess(
             jobs["required"].index('mise run ci:require-result "$COMPLETE_PRODUCT_RESULT" success'),
             jobs["required"].index("run: mise run ci:outcome"),
