@@ -172,3 +172,29 @@ Do not replace JBR or rewrite distribution metadata to pass admission.
 Changes inside one cloud task do not update the saved environment. An environment
 owner must set its install command to the bootstrap above, test the setup, and
 republish it. Selecting or modifying a task container is not publication.
+
+## Codex Cloud developer installation
+
+Use the following from the Kast checkout on Linux x86-64. The setup requires
+Git, curl, mise, jq, and sha256sum.
+
+```sh
+bash packaging/cloud/setup-codex-developer.sh
+source packaging/cloud/activate-codex-developer.sh
+kast --version
+kast status --json
+```
+
+Setup pins [developer-v0.0.4483](https://github.com/amichne/kast/releases/tag/developer-v0.0.4483),
+downloads or reuses the published Linux files, verifies their SHA-256 digests,
+and installs with the release's local-artifact installer. Setup revalidates an
+existing installation on repeat runs. The default state directory is
+`/workspace/.cloud/kast-dev`. Set `KAST_CLOUD_ROOT` to an absolute writable
+directory to use an isolated installation. Set `MISE_BIN` to an absolute
+mise executable path if needed. The `MISE_*_DIR` variables can override the
+original cloud image's retained tool directories.
+
+Version and status verify installation. A semantic query also needs a
+systemd user manager and an owned `/run/user/<uid>` directory with mode 0700.
+The Codex Cloud container used for this setup lacks that session. See
+[issue #1392](https://github.com/amichne/kast/issues/1392) for the reproduction.
