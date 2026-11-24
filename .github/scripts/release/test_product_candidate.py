@@ -186,6 +186,30 @@ def accepted_fixture(directory: Path, record: product.ProductRecord) -> None:
         )
 
 
+def parts_fixture(directory: Path, record: product.ProductRecord, parts: Path) -> None:
+    """Scripted parts exercise the join only, never native qualification."""
+    acceptance = candidate.acceptance
+    for target in record.targets:
+        for part in acceptance.Part:
+            receipt = acceptance.PartReceipt(
+                part,
+                product.file_digest(directory / "build-record.json"),
+                record.sourceRevision,
+                target.target,
+                target.qualification.controlSha256,
+                record.producer,
+                "e" * 64,
+                "f" * 40,
+                "1" * 64,
+                "2" * 64,
+                "3" * 64,
+                acceptance.PART_CASES[part],
+            )
+            _ = (parts / acceptance.part_filename(target.target, part)).write_bytes(
+                acceptance.encode(receipt)
+            )
+
+
 def split_fixture(directory: Path) -> product.ProductRecord:
     original = fixture(directory)
     payload = directory / "payload"

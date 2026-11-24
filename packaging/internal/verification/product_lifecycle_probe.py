@@ -3,7 +3,8 @@
 The baseline is an explicit complete qualified composition, never latest/main
 or a same-composition repair. Legacy native receipts qualify old baselines;
 assembly-only baselines require detached installed acceptance. Publication is not required.
-No receipt is emitted unless every real lifecycle case completes.
+One run exercises one part, so the parts can run in parallel. A part emits no receipt
+unless each of its real lifecycle cases completes. The producer joins both parts.
 """
 
 from __future__ import annotations
@@ -981,6 +982,151 @@ def require_baseline(directory: Path, record: product.ProductRecord) -> product.
     return baseline
 
 
+@dataclass(frozen=True)
+class Subject:
+    """The admitted product under test and the disposable places that one part may change."""
+
+    directory: Path
+    record: product.ProductRecord
+    facts: product.ProductTarget
+    baseline_directory: Path
+    baseline: product.ProductRecord
+    prior: product.ProductTarget
+    root: Path
+    home: Path
+    evidence: Path
+    roots: tuple[Path, Path]
+    sentinels: tuple[Path, ...]
+
+    def install(self, probe: Probe) -> None:
+        probe.install(self.directory, self.record)
+        if product.file_digest(probe.control) != self.facts.qualification.controlSha256:
+            raise ValueError("installed Control differs from qualified bytes")
+
+    def require_sentinels(self) -> None:
+        if any(path.read_bytes() != b"foreign sentinel\n" for path in self.sentinels):
+            raise ValueError("uninstall changed foreign sentinel")
+
+
+def upgrade_part(probe: Probe, subject: Subject) -> None:
+    """Upgrade a queried baseline product, then remove it."""
+    root, roots = subject.root, subject.roots
+    probe.install(subject.baseline_directory, subject.baseline)
+    baseline_host = probe.query("baseline", roots[0])
+    baseline_identity = probe.observe_host(
+        "baseline-host", roots[0], baseline_host, subject.prior.runtime.sha256
+    )
+    subject.install(probe)
+    upgraded_host = probe.query("upgrade", roots[0])
+    upgraded_identity = probe.observe_host(
+        "upgraded-host", roots[0], upgraded_host, subject.facts.runtime.sha256
+    )
+    if upgraded_host == baseline_host or upgraded_identity.lifetime == baseline_identity.lifetime:
+        raise ValueError("upgrade retained the baseline compiler workspace lifetime")
+    if (root / "installation/share/kast/build-record.json").read_bytes() != (
+        subject.directory / "build-record.json"
+    ).read_bytes():
+        raise ValueError("activation changed original build record")
+    probe.completed.add(acceptance.Case.UPGRADE)
+    _ = retain_host_logs(subject.home, subject.evidence)
+    _ = probe.run("upgrade-uninstall", roots[0], ("uninstall",))
+    if root.exists() or (root.parent / "kast-workspaces").exists():
+        raise ValueError("uninstall after upgrade left managed state")
+    subject.require_sentinels()
+
+
+def fresh_part(probe: Probe, subject: Subject) -> None:
+    """Install into an empty HOME, exercise every other case, then remove and reinstall."""
+    root, roots, facts = subject.root, subject.roots, subject.facts
+    subject.install(probe)
+    containers = root.parent / "kast-workspaces/containers"
+    if containers.exists():
+        raise ValueError("installation created semantic workspace state")
+    for case, arguments in (
+        ("help", ("--help",)),
+        ("status", ("status", "--json")),
+        ("describe", ("describe", "--help")),
+        ("plan", ("query", "plan", "--name", "invokeCallback", "--json")),
+    ):
+        _ = probe.run(f"passive-{case}", roots[0], arguments)
+        if containers.exists():
+            raise ValueError(f"passive {case} created semantic workspace state")
+    probe.completed.add(acceptance.Case.PASSIVE)
+    current_host = probe.parallel_first_queries(roots[0])
+    probe.warm_coordinator_reuse(roots[0], current_host)
+    probe.completed.update((acceptance.Case.FRESH, acceptance.Case.CLI, acceptance.Case.PARALLEL))
+    observed_host = probe.compiler_cases(roots[0], current_host, facts.runtime.sha256)
+    probe.mcp(roots[0], current_host)
+    probe.completed.add(acceptance.Case.MCP)
+    _ = probe.run("stop", roots[0], ("stop", "--all", "--json"))
+    probe.stopped_endpoints(observed_host)
+    probe.completed.add(acceptance.Case.CLEANUP)
+    restarted = complete(
+        probe.read_after_restart(RestartRead.DECLARATION, roots[0]),
+        "invokeCallback",
+        roots[0] / INVOCATION_FILE,
+    )
+    if restarted == current_host:
+        raise ValueError("stop did not replace the compiler workspace lifetime")
+    restarted_host = probe.observe_host("restarted-host", roots[0], restarted, facts.runtime.sha256)
+    if (
+        restarted_host.lifetime == observed_host.lifetime
+        or restarted_host.started <= observed_host.started
+    ):
+        raise ValueError("stop did not replace the native Host process incarnation")
+    _ = probe.require_callers(
+        probe.read_after_restart(RestartRead.CALLERS, roots[0]),
+        roots[0],
+        CALLERS | {"freshExternalCaller"},
+        restarted,
+    )
+    probe.completed.add(acceptance.Case.RESTART)
+    with ThreadPoolExecutor(max_workers=2) as executor:
+        second = executor.submit(probe.query, "second-root", roots[1])
+        first = executor.submit(probe.query, "first-root-again", roots[0])
+        second_host, first_host = second.result(), first.result()
+    if first_host == second_host or first_host != restarted:
+        raise ValueError("workspace roots did not retain separate compiler lifetimes")
+    second_identity = probe.observe_host("second-host", roots[1], second_host, facts.runtime.sha256)
+    _ = probe.run("stop-second-root", roots[1], ("stop", "--workspace", str(roots[1]), "--json"))
+    probe.stopped_endpoints(second_identity)
+    if probe.query("first-root-after-scoped-stop", roots[0]) != first_host:
+        raise ValueError("scoped stop changed the other workspace's compiler lifetime")
+    probe.completed.add(acceptance.Case.ROOTS)
+    source = roots[0] / "invocation/src/main/kotlin/AcceptanceEdited.kt"
+    _ = source.write_text("fun acceptanceEditedDeclaration() = 42\n")
+    if probe.query("edited", roots[0], "acceptanceEditedDeclaration") != restarted:
+        raise ValueError("new-file edit replaced the compiler workspace lifetime")
+    probe.completed.add(acceptance.Case.EDIT)
+    _ = retain_host_logs(subject.home, subject.evidence)
+    _ = probe.run("uninstall", roots[0], ("uninstall",))
+    require_uninstalled(root)
+    # A removed product can be installed again in the same HOME.
+    subject.install(probe)
+    if containers.exists():
+        raise ValueError("reinstallation created semantic workspace state")
+    _ = probe.run("reinstall-uninstall", roots[0], ("uninstall",))
+    require_uninstalled(root)
+    probe.completed.add(acceptance.Case.UNINSTALL)
+    subject.require_sentinels()
+    probe.completed.add(acceptance.Case.SENTINELS)
+
+
+def require_uninstalled(root: Path) -> None:
+    if (
+        root.exists()
+        or (root.parent / "kast-runtime-bases").exists()
+        or (root.parent / "kast-workspaces").exists()
+    ):
+        raise ValueError("uninstall left managed state")
+
+
+PARTS: dict[acceptance.Part, Callable[[Probe, Subject], None]] = {
+    acceptance.Part.UPGRADE: upgrade_part,
+    acceptance.Part.FRESH: fresh_part,
+}
+
+
 def execute(
     directory: Path,
     baseline_directory: Path,
@@ -988,7 +1134,8 @@ def execute(
     dependency: Path,
     evidence: Path,
     target: str,
-) -> acceptance.Receipt:
+    part: acceptance.Part,
+) -> acceptance.PartReceipt:
     native = {("Darwin", "arm64"): "macos-aarch64", ("Linux", "x86_64"): "linux-x86_64"}.get(
         (platform.system(), platform.machine())
     )
@@ -1048,116 +1195,23 @@ def execute(
         os.environ.clear()
         os.environ.update(env)
         probe = Probe(root, home, evidence, python, dependency, env)
+        facts = next(item for item in record.targets if item.target == target)
+        prior = next(item for item in baseline.targets if item.target == target)
+        subject = Subject(
+            directory,
+            record,
+            facts,
+            baseline_directory,
+            baseline,
+            prior,
+            root,
+            home,
+            evidence,
+            roots,
+            sentinels,
+        )
         try:
-            probe.install(baseline_directory, baseline)
-            baseline_host = probe.query("baseline", roots[0])
-            prior = next(item for item in baseline.targets if item.target == target)
-            baseline_identity = probe.observe_host(
-                "baseline-host", roots[0], baseline_host, prior.runtime.sha256
-            )
-            probe.install(directory, record)
-            facts = next(item for item in record.targets if item.target == target)
-            if product.file_digest(probe.control) != facts.qualification.controlSha256:
-                raise ValueError("installed Control differs from qualified bytes")
-            upgraded_host = probe.query("upgrade", roots[0])
-            upgraded_identity = probe.observe_host(
-                "upgraded-host", roots[0], upgraded_host, facts.runtime.sha256
-            )
-            if (
-                upgraded_host == baseline_host
-                or upgraded_identity.lifetime == baseline_identity.lifetime
-            ):
-                raise ValueError("upgrade retained the baseline compiler workspace lifetime")
-            if (root / "installation/share/kast/build-record.json").read_bytes() != (
-                directory / "build-record.json"
-            ).read_bytes():
-                raise ValueError("activation changed original build record")
-            probe.completed.add(acceptance.Case.UPGRADE)
-            _ = probe.run("upgrade-uninstall", roots[0], ("uninstall",))
-            if root.exists() or (root.parent / "kast-workspaces").exists():
-                raise ValueError("fresh-install prerequisite retained managed state")
-            probe.install(directory, record)
-            if product.file_digest(probe.control) != facts.qualification.controlSha256:
-                raise ValueError("fresh installed Control differs from qualified bytes")
-            containers = root.parent / "kast-workspaces/containers"
-            if containers.exists():
-                raise ValueError("installation created semantic workspace state")
-            for case, arguments in (
-                ("help", ("--help",)),
-                ("status", ("status", "--json")),
-                ("describe", ("describe", "--help")),
-                ("plan", ("query", "plan", "--name", "invokeCallback", "--json")),
-            ):
-                _ = probe.run(f"passive-{case}", roots[0], arguments)
-                if containers.exists():
-                    raise ValueError(f"passive {case} created semantic workspace state")
-            probe.completed.add(acceptance.Case.PASSIVE)
-            current_host = probe.parallel_first_queries(roots[0])
-            probe.warm_coordinator_reuse(roots[0], current_host)
-            probe.completed.update(
-                (acceptance.Case.FRESH, acceptance.Case.CLI, acceptance.Case.PARALLEL)
-            )
-            observed_host = probe.compiler_cases(roots[0], current_host, facts.runtime.sha256)
-            probe.mcp(roots[0], current_host)
-            probe.completed.add(acceptance.Case.MCP)
-            _ = probe.run("stop", roots[0], ("stop", "--all", "--json"))
-            probe.stopped_endpoints(observed_host)
-            probe.completed.add(acceptance.Case.CLEANUP)
-            restarted = complete(
-                probe.read_after_restart(RestartRead.DECLARATION, roots[0]),
-                "invokeCallback",
-                roots[0] / INVOCATION_FILE,
-            )
-            if restarted == current_host:
-                raise ValueError("stop did not replace the compiler workspace lifetime")
-            restarted_host = probe.observe_host(
-                "restarted-host", roots[0], restarted, facts.runtime.sha256
-            )
-            if (
-                restarted_host.lifetime == observed_host.lifetime
-                or restarted_host.started <= observed_host.started
-            ):
-                raise ValueError("stop did not replace the native Host process incarnation")
-            _ = probe.require_callers(
-                probe.read_after_restart(RestartRead.CALLERS, roots[0]),
-                roots[0],
-                CALLERS | {"freshExternalCaller"},
-                restarted,
-            )
-            probe.completed.add(acceptance.Case.RESTART)
-            with ThreadPoolExecutor(max_workers=2) as executor:
-                second = executor.submit(probe.query, "second-root", roots[1])
-                first = executor.submit(probe.query, "first-root-again", roots[0])
-                second_host, first_host = second.result(), first.result()
-            if first_host == second_host or first_host != restarted:
-                raise ValueError("workspace roots did not retain separate compiler lifetimes")
-            second_identity = probe.observe_host(
-                "second-host", roots[1], second_host, facts.runtime.sha256
-            )
-            _ = probe.run(
-                "stop-second-root", roots[1], ("stop", "--workspace", str(roots[1]), "--json")
-            )
-            probe.stopped_endpoints(second_identity)
-            if probe.query("first-root-after-scoped-stop", roots[0]) != first_host:
-                raise ValueError("scoped stop changed the other workspace's compiler lifetime")
-            probe.completed.add(acceptance.Case.ROOTS)
-            source = roots[0] / "invocation/src/main/kotlin/AcceptanceEdited.kt"
-            _ = source.write_text("fun acceptanceEditedDeclaration() = 42\n")
-            if probe.query("edited", roots[0], "acceptanceEditedDeclaration") != restarted:
-                raise ValueError("new-file edit replaced the compiler workspace lifetime")
-            probe.completed.add(acceptance.Case.EDIT)
-            _ = retain_host_logs(home, evidence)
-            _ = probe.run("uninstall", roots[0], ("uninstall",))
-            if (
-                root.exists()
-                or (root.parent / "kast-runtime-bases").exists()
-                or (root.parent / "kast-workspaces").exists()
-            ):
-                raise ValueError("uninstall left managed state")
-            probe.completed.add(acceptance.Case.UNINSTALL)
-            if any(path.read_bytes() != b"foreign sentinel\n" for path in sentinels):
-                raise ValueError("uninstall changed foreign sentinel")
-            probe.completed.add(acceptance.Case.SENTINELS)
+            PARTS[part](probe, subject)
         finally:
             if probe.control.exists():
                 with contextlib.suppress(OSError, ValueError, subprocess.SubprocessError):
@@ -1168,11 +1222,11 @@ def execute(
                 _ = write_stage_timings(evidence, probe.timings)
             os.environ.clear()
             os.environ.update(before)
-        if probe.completed != set(acceptance.Case):
+        if probe.completed != set(acceptance.PART_CASES[part]):
             raise ValueError("native cases incomplete")
         shutil.rmtree(work)
-        prior = next(item for item in baseline.targets if item.target == target)
-        return acceptance.Receipt(
+        return acceptance.PartReceipt(
+            part,
             product.file_digest(directory / "build-record.json"),
             record.sourceRevision,
             target,
@@ -1183,7 +1237,7 @@ def execute(
             prior.bundle.sha256,
             prior.runtime.sha256,
             prior.qualification.controlSha256,
-            tuple(acceptance.Case),
+            acceptance.PART_CASES[part],
         )
 
 
@@ -1194,6 +1248,9 @@ def main() -> int:
     _ = parser.add_argument("--private-python-archive", type=Path, required=True)
     _ = parser.add_argument("--private-dependency", type=Path, required=True)
     _ = parser.add_argument("--target", choices=product.PRODUCT_TARGETS, required=True)
+    _ = parser.add_argument(
+        "--part", choices=tuple(acceptance.Part), type=acceptance.Part, required=True
+    )
     _ = parser.add_argument("--evidence", type=Path, required=True)
     _ = parser.add_argument("--receipt", type=Path, required=True)
     args = parser.parse_args()
@@ -1207,6 +1264,7 @@ def main() -> int:
             args.private_dependency.resolve(),
             args.evidence.resolve(),
             args.target,
+            args.part,
         )
         with args.receipt.open("xb") as output:
             _ = output.write(acceptance.encode(receipt))

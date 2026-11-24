@@ -564,7 +564,9 @@ class SourceInventoryTest(unittest.TestCase):
         sealed = re.split(r"\n  (?=\S)", workflow.split("\n  sealed-product:\n", 1)[1], maxsplit=1)[0]
         self.assertIn("    needs: [scope, composed-macos]\n", sealed)
         joined = re.split(r"\n  (?=\S)", workflow.split("\n  complete-product:\n", 1)[1], maxsplit=1)[0]
-        self.assertIn("    needs: [source-work, sealed-product, installed-product]\n", joined)
+        self.assertIn(
+            "    needs: [source-work, sealed-product, installed-upgrade, installed-fresh]\n", joined
+        )
 
     def test_product_pr_and_main_use_the_same_mac_gate(self):
         workflow = (Path(__file__).resolve().parents[2] / "workflows/ci.yml").read_text()
@@ -601,7 +603,11 @@ class SourceInventoryTest(unittest.TestCase):
                     self.assertIn("vars.KAST_MACOS_CHECKS == 'true'", condition[1])
                 guarded.add((path.name, job))
         self.assertEqual(
-            {("ci.yml", "kotlin"), ("release-component.yml", "release")},
+            {
+                ("ci.yml", "kotlin"),
+                ("installed-acceptance.yml", "acceptance"),
+                ("release-component.yml", "release"),
+            },
             guarded,
         )
         ci = (workflows / "ci.yml").read_text()
@@ -701,8 +707,10 @@ class SourceInventoryTest(unittest.TestCase):
         self.assertIn("run: mise run ci:seal-two-platform\n", both)
         self.assertNotIn("--macos-only", task_run("ci:seal-two-platform"))
         self.assertIn("name: ci-product-two-platform-${{ github.sha }}-${{ github.run_attempt }}", both)
-        for release_job in ("sealed-product", "installed-product", "complete-product"):
+        acceptance = (workflows / "installed-acceptance.yml").read_text()
+        for release_job in ("sealed-product", "installed-upgrade", "installed-fresh", "complete-product"):
             self.assertNotIn("two-platform", jobs[release_job])
+        self.assertNotIn("two-platform", acceptance)
         joined, required = jobs["sealed-product"], jobs["required"]
         mac = jobs["composed-macos"]
         self.assertIn("needs: [scope, assembly]", mac)
@@ -723,36 +731,57 @@ class SourceInventoryTest(unittest.TestCase):
             "${{ github.sha }}-${{ github.run_id }}-${{ needs.composed-macos.outputs.run_attempt }}",
             joined,
         )
-        for producer in ("sealed-product", "installed-product"):
-            self.assertIn("outputs:\n      run_attempt: ${{ github.run_attempt }}", jobs[producer])
+        for producer in (jobs["sealed-product"], acceptance):
+            self.assertIn("outputs:\n      run_attempt: ${{ github.run_attempt }}", producer)
+        self.assertIn("value: ${{ jobs.acceptance.outputs.run_attempt }}", acceptance)
         self.assertIn("name: ci-product-sealed-${{ github.sha }}-${{ github.run_attempt }}", joined)
         self.assertIn("path: build/product-inputs/macos-aarch64", joined)
         self.assertIn("run: mise run ci:seal", joined)
         self.assertIn("product_producer.py seal", task_run("ci:seal"))
         self.assertNotIn("name: ci-product-candidate-", joined)
         accepted = jobs["complete-product"]
-        self.assertIn("needs: [source-work, sealed-product, installed-product]", accepted)
+        self.assertIn(
+            "needs: [source-work, sealed-product, installed-upgrade, installed-fresh]", accepted
+        )
         self.assertNotIn("always()", accepted)
         self.assertIn("run: mise run ci:join", accepted)
         self.assertIn("product_producer.py accept", task_run("ci:join"))
         self.assertIn(
-            "name: kast-installed-product-macos-aarch64-"
-            "${{ github.sha }}-${{ github.run_id }}-${{ needs.installed-product.outputs.run_attempt }}",
-            accepted,
-        )
-        self.assertIn(
             "name: ci-product-sealed-${{ github.sha }}-${{ needs.sealed-product.outputs.run_attempt }}",
             accepted,
         )
-        installed = jobs["installed-product"]
+        # Each part runs once, and the join names each part's own producing attempt.
+        for part in ("upgrade", "fresh"):
+            caller = jobs[f"installed-{part}"]
+            self.assertIn("needs: sealed-product\n", caller)
+            self.assertIn("uses: ./.github/workflows/installed-acceptance.yml\n", caller)
+            self.assertIn(f"      part: {part}\n", caller)
+            self.assertIn(
+                "sealed_run_attempt: ${{ needs.sealed-product.outputs.run_attempt }}\n", caller
+            )
+            self.assertIn(
+                f"name: kast-installed-{part}-macos-aarch64-"
+                "${{ github.sha }}-${{ github.run_id }}-"
+                "${{ needs.installed-" + part + ".outputs.run_attempt }}",
+                accepted,
+            )
+        self.assertEqual(2, ci.count("uses: ./.github/workflows/installed-acceptance.yml"))
         self.assertIn(
-            "name: ci-product-sealed-${{ github.sha }}-${{ needs.sealed-product.outputs.run_attempt }}",
-            installed,
+            "name: kast-installed-${{ inputs.part }}-macos-aarch64-"
+            "${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}",
+            acceptance,
         )
-        self.assertIn("needs: sealed-product", installed)
+        self.assertIn(
+            "path: build/acceptance-macos-aarch64-${{ inputs.part }}.part.json", acceptance
+        )
+        installed = acceptance
+        self.assertIn(
+            "name: ci-product-sealed-${{ github.sha }}-${{ inputs.sealed_run_attempt }}", installed
+        )
         self.assertNotIn("linux-x86_64", installed + joined + accepted)
-        self.assertIn("runner: macos-15", installed)
+        self.assertIn("runs-on: macos-15", installed)
         self.assertIn("run: mise run ci:acceptance ", installed)
+        self.assertIn('--part "$PART" ', installed)
         self.assertIn("product_lifecycle_probe.py", task_run("ci:acceptance"))
         # The baseline is a checked-in pin, read into step outputs before any download.
         self.assertIn("run: mise run ci:acceptance-baseline", installed)
