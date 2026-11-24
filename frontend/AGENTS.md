@@ -42,7 +42,7 @@ Read the [tracer evidence](../docs/reviews/go-frontend-tracer.md) for the measur
 - Keep the frontend free of `cgo`. Build it with `CGO_ENABLED=0`, outside Gradle and the Kotlin module graph.
 - `go.mod` owns the Go release through its `toolchain` line and the analyzers through its `tool` lines.
   The `mise.toml` Go entry only provisions a matching `go` command.
-- Keep the bootstrap executables a function of the module's bytes and the `toolchain` line. `install.sh` will pin their digests.
+- Keep the bootstrap executables a function of the module's bytes and the `toolchain` line. `install.sh` pins their digests.
 - Forward the argument vector, working directory, and environment unchanged. Never lower flags or model requests in Go.
 - Route only the public query commands to the coordinator. `hook` and `workspace` read process-local state, so they run on the JVM.
 - Run the JVM by `exec`, so lifecycle owners observe one `java` process with the catalog's explicit class path and main class.
@@ -63,6 +63,10 @@ Read the [tracer evidence](../docs/reviews/go-frontend-tracer.md) for the measur
 - Accept only the current build record schema. Reject an older release before any file request.
 - Write only `~/.local/share/.kast-downloads`. A reset deletes that directory. A dry run writes nothing.
 - Never run an installation test against the network. Inject the transport in `install_test.go`, which rejects unexpected requests.
+- Draw the download view only on a terminal, on stderr. Keep stdout, pipes, `TERM=dumb` and `--json` free of control sequences.
+- Keep the view without input and without signal handling. With input, Bubble Tea asks the terminal questions whose answers reach the shell.
+- The view reads progress snapshots. A slow or lost terminal never delays or stops a transfer.
+- After a signal, wait `installGrace` for the installation, so the view restores the cursor before the process ends.
 - Read stdin only after `input_required`, and never beyond its stated bound.
   The coordinator cancels an invocation whose requested input misses `PublicInvocationProtocol.inputLimit` with `INPUT_EXPIRED`.
 - Bound the connection handshake by the catalog's `handshakeMilliseconds`. Expiry precedes the request, so it is unreachable.
@@ -83,6 +87,8 @@ Read the [tracer evidence](../docs/reviews/go-frontend-tracer.md) for the measur
 - [release.go](internal/install/release.go) - build selection, strict record decoding, and the files a build needs.
 - [fetch.go](internal/install/fetch.go) - HTTPS transfers, resumption, digest admission, and the download directory.
 - [install.go](internal/install/install.go) - the installation modes, their output, and the native adapter.
+- [progress.go](internal/install/progress.go) - each file's stage and bytes, and the snapshots a view reads.
+- [view.go](internal/install/view.go) - the Bubble Tea download view and its frames.
 - [check](check) - the deterministic gate and the separate advisory scan.
 - [acceptance](acceptance) - case matrix, comparison, latency, first callers, and cancellation evidence.
 

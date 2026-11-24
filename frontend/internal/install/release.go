@@ -61,16 +61,42 @@ type Asset struct {
 	Bytes  int64  `json:"bytes"`
 }
 
+// role is what a file is in a build, as a reader sees it.
+type role string
+
+const (
+	product              role = "Kast"
+	analysisRuntime      role = "Analysis runtime"
+	qualificationReceipt role = "Qualification"
+	runtimeBase          role = "IntelliJ base"
+)
+
+// part is one file of a build.
+type part struct {
+	Asset
+	role role
+}
+
 // release is one admitted build for one target. Its record matched the digest that selected it.
 type release struct {
 	tag, version, revision, target string
 	channel                        channel
-	assets                         []Asset
+	parts                          []part
 }
 
 func (r *release) bytes() (total int64) {
-	for _, asset := range r.assets {
-		total += asset.Bytes
+	for _, part := range r.parts {
+		total += part.Bytes
+	}
+	return total
+}
+
+// missing is the size of the files that were not reused.
+func (r *release) missing(reused map[string]bool) (total int64) {
+	for _, part := range r.parts {
+		if !reused[part.Name] {
+			total += part.Bytes
+		}
 	}
 	return total
 }
@@ -287,16 +313,16 @@ func admit(raw []byte, found reference, platform string) (*release, error) {
 	case record.Targets[0].Target != platform:
 		return nil, reject(PlatformUnsupported, "%s is not published for %s", found.tag, platform)
 	}
-	assets, check := record.Targets[0].admit(record.Version)
+	parts, check := record.Targets[0].admit(record.Version)
 	if check != "" {
 		return nil, invalid(check)
 	}
 	return &release{tag: found.tag, version: found.public, revision: record.SourceRevision, target: platform,
-		channel: found.channel, assets: assets}, nil
+		channel: found.channel, parts: parts}, nil
 }
 
 // admit returns the target's files, or the name of the check that failed.
-func (t *targetDocument) admit(version string) ([]Asset, string) {
+func (t *targetDocument) admit(version string) ([]part, string) {
 	evidence, composition := t.Qualification, t.Qualification.Composition
 	for _, value := range []string{t.Inputs.JavaRelease, t.Inputs.DependencyLocks, t.Inputs.CompositionRecipe,
 		t.Inputs.Donor, evidence.Control, composition.NativeRuntime, composition.NativeBundle} {
@@ -323,5 +349,6 @@ func (t *targetDocument) admit(version string) ([]Asset, string) {
 		composition.Runtime != t.Runtime.SHA256 {
 		return nil, "qualification"
 	}
-	return []Asset{t.Bundle, t.Runtime, evidence.Receipt, t.RuntimeBase}, ""
+	return []part{{t.Bundle, product}, {t.Runtime, analysisRuntime}, {evidence.Receipt, qualificationReceipt},
+		{t.RuntimeBase, runtimeBase}}, ""
 }

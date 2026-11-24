@@ -2,74 +2,134 @@ package install
 
 import (
 	"fmt"
-	"io"
-	"strings"
+	"slices"
+	"sync"
 	"time"
 )
 
+// stage is what a download does with one file now.
+type stage int
+
 const (
-	redrawInterval = 100 * time.Millisecond
-	barWidth       = 24
+	waiting stage = iota
+	checking
+	receiving
+	verifying
+	complete
 )
 
-// progress shows one download total: a redrawn line on a terminal, one line at each end otherwise.
+// fileProgress is one file's stage and bytes. Held bytes were here before this command; they are progress, not speed.
+type fileProgress struct {
+	role              role
+	stage             stage
+	total, held, done int64
+}
+
+// snapshot is one consistent observation of a download.
+type snapshot struct {
+	files []fileProgress
+	// elapsed is the time since the first transfer could start.
+	elapsed time.Duration
+	begun   bool
+	ended   bool
+}
+
+func (s snapshot) total() (bytes int64) {
+	for _, file := range s.files {
+		bytes += file.total
+	}
+	return bytes
+}
+
+func (s snapshot) done() (bytes int64) {
+	for _, file := range s.files {
+		bytes += file.done
+	}
+	return bytes
+}
+
+func (s snapshot) received() (bytes int64) {
+	for _, file := range s.files {
+		bytes += file.done - file.held
+	}
+	return bytes
+}
+
+// progress is what one download has done. Its transfers write it, and a view reads snapshots of it, so a slow terminal
+// never delays a transfer.
 type progress struct {
-	log      io.Writer
-	terminal bool
-	silent   bool
-	now      func() time.Time
+	now func() time.Time
 
-	total, done, reused int64
-	began, drawn        time.Time
+	mutex   sync.Mutex
+	current snapshot
+	began   time.Time
 }
 
-func (p *progress) start(total, reused int64) {
-	p.total, p.done, p.reused, p.began = total, reused, reused, p.now()
-	if p.silent {
-		return
+func newProgress(parts []part, now func() time.Time) *progress {
+	p := &progress{now: now}
+	for _, part := range parts {
+		p.current.files = append(p.current.files, fileProgress{role: part.role, total: part.Bytes})
 	}
-	if !p.terminal {
-		fmt.Fprintf(p.log, "Downloading %s\n", megabytes(total-reused))
-		return
-	}
-	p.draw()
+	return p
 }
 
-func (p *progress) add(count int64) {
-	p.done += count
-	if p.terminal && !p.silent && p.now().Sub(p.drawn) >= redrawInterval {
-		p.draw()
-	}
+func (p *progress) begin() {
+	p.mutex.Lock()
+	defer p.mutex.Unlock()
+	p.current.begun, p.began = true, p.now()
 }
 
-func (p *progress) finish() {
-	switch {
-	case p.silent:
-	case p.terminal:
-		p.draw()
-		fmt.Fprintln(p.log)
-	default:
-		fmt.Fprintf(p.log, "Downloaded %s of %s\n", megabytes(p.done), megabytes(p.total))
-	}
+func (p *progress) end() {
+	p.mutex.Lock()
+	defer p.mutex.Unlock()
+	p.current.ended = true
 }
 
-func (p *progress) draw() {
-	p.drawn = p.now()
-	filled := 0
-	if p.total > 0 {
-		filled = int(min(p.done, p.total) * barWidth / p.total)
+func (p *progress) snapshot() snapshot {
+	p.mutex.Lock()
+	defer p.mutex.Unlock()
+	taken := p.current
+	taken.files = slices.Clone(taken.files)
+	if taken.begun {
+		taken.elapsed = p.now().Sub(p.began)
 	}
-	speed := ""
-	if elapsed := p.drawn.Sub(p.began).Seconds(); elapsed > 0 {
-		speed = fmt.Sprintf("   %.0f MB/s", float64(max(p.done-p.reused, 0))/elapsed/1e6)
-	}
-	fmt.Fprintf(p.log, "\r\x1b[K  Downloading  %s%s  %.0f / %s%s", strings.Repeat("█", filled),
-		strings.Repeat("░", barWidth-filled), float64(p.done)/1e6, megabytes(p.total), speed)
+	return taken
 }
 
+// meter writes one file's progress.
+type meter struct {
+	progress *progress
+	index    int
+}
+
+func (p *progress) file(index int) meter { return meter{p, index} }
+
+func (m meter) change(change func(*fileProgress)) {
+	m.progress.mutex.Lock()
+	defer m.progress.mutex.Unlock()
+	change(&m.progress.current.files[m.index])
+}
+
+func (m meter) enter(next stage) { m.change(func(f *fileProgress) { f.stage = next }) }
+
+// hold counts bytes that were here before this command.
+func (m meter) hold(count int64) {
+	m.change(func(f *fileProgress) { f.held, f.done = f.held+count, f.done+count })
+}
+
+func (m meter) add(count int64) { m.change(func(f *fileProgress) { f.done += count }) }
+
+// restart drops every byte of the file.
+func (m meter) restart() { m.change(func(f *fileProgress) { f.held, f.done = 0, 0 }) }
+
+// megabytes rounds a size for a reader. A nonempty size is never shown as zero.
 func megabytes(count int64) string {
-	if count < 10_000_000 {
+	switch {
+	case count < 100_000:
+		return fmt.Sprintf("%d KB", (count+999)/1000)
+	case count < 10_000_000:
 		return fmt.Sprintf("%.1f MB", float64(count)/1e6)
+	default:
+		return fmt.Sprintf("%.0f MB", float64(count)/1e6)
 	}
-	return fmt.Sprintf("%.0f MB", float64(count)/1e6)
 }

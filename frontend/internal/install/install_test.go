@@ -102,6 +102,9 @@ type fixture struct {
 	log    bytes.Buffer
 	assets map[string][]byte
 	record map[string]any
+	// terminal gives the view a terminal that writer replaces when it is set.
+	terminal bool
+	writer   io.Writer
 }
 
 func digest(raw []byte) string {
@@ -186,10 +189,17 @@ func (f *fixture) run(arguments ...string) error {
 func (f *fixture) runContext(ctx context.Context, arguments ...string) error {
 	f.out.Reset()
 	f.log.Reset()
+	return f.install().Run(ctx, arguments)
+}
+
+func (f *fixture) install() *Install {
 	install := &Install{Home: f.home, Platform: "macos-aarch64", Transport: f.site, Stall: time.Minute,
 		Pause: func(wait time.Duration) { f.pauses = append(f.pauses, wait) }, Now: func() time.Time { return time.Unix(0, 0) },
-		Out: &f.out, Log: &f.log}
-	return install.Run(ctx, arguments)
+		Terminal: f.terminal, Environment: []string{"TERM=xterm-256color"}, Out: &f.out, Log: &f.log}
+	if f.writer != nil {
+		install.Log = f.writer
+	}
+	return install
 }
 
 func (f *fixture) requireFailure(want Failure, err error) *Rejection {
@@ -742,23 +752,15 @@ func TestPlainProgressHasNoControlCharacters(t *testing.T) {
 	}
 }
 
-func TestTerminalProgressRedrawsOneLineAndEndsWithANewline(t *testing.T) {
-	var log bytes.Buffer
-	clock := time.Unix(0, 0)
-	meter := &progress{log: &log, terminal: true, now: func() time.Time { return clock }}
-	meter.start(200_000_000, 50_000_000)
-	for range 3 {
-		clock = clock.Add(time.Second)
-		meter.add(50_000_000)
+func TestPlainProgressReportsOnlyReceivedFiles(t *testing.T) {
+	f := newFixture(t)
+	if err := f.run("--download-only"); err != nil {
+		t.Fatal(err)
 	}
-	meter.finish()
-	text := log.String()
-	for _, want := range []string{"\r", "50 / 200 MB", "200 / 200 MB", "50 MB/s"} {
-		if !strings.Contains(text, want) {
-			t.Errorf("missing %q in %q", want, text)
-		}
+	if err := f.run("--download-only"); err != nil {
+		t.Fatal(err)
 	}
-	if strings.Count(text, "\n") != 1 || !strings.HasSuffix(text, "\n") {
-		t.Errorf("lines %q", text)
+	if f.log.Len() != 0 || !strings.Contains(f.out.String(), "already here") {
+		t.Errorf("progress %q, output %q", f.log.String(), f.out.String())
 	}
 }

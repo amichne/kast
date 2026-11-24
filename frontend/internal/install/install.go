@@ -27,9 +27,10 @@ type Install struct {
 	Stall time.Duration
 	Pause func(time.Duration)
 	Now   func() time.Time
-	// Terminal permits a redrawn progress line on Log.
-	Terminal bool
-	Out, Log io.Writer
+	// Terminal permits a redrawn view on Log, whose abilities Environment names.
+	Terminal    bool
+	Environment []string
+	Out, Log    io.Writer
 }
 
 // Native performs one invocation against the published releases.
@@ -44,7 +45,8 @@ func Native(ctx context.Context, home, platform string, arguments []string, out,
 			ForceAttemptHTTP2:     true,
 			DisableCompression:    true,
 		},
-		Stall: time.Minute, Pause: time.Sleep, Now: time.Now, Terminal: terminal(log), Out: out, Log: log,
+		Stall: time.Minute, Pause: time.Sleep, Now: time.Now, Terminal: terminal(log), Environment: os.Environ(),
+		Out: out, Log: log,
 	}
 	return install.Run(ctx, arguments)
 }
@@ -147,7 +149,7 @@ func (i *Install) perform(ctx context.Context, parsed options) error {
 		return i.encode(report("PLANNED", found, map[string]bool{}))
 	}
 	fmt.Fprintf(i.Out, "  Download     %s in %d files\n  Nothing was downloaded or installed.\n", megabytes(found.bytes()),
-		len(found.assets))
+		len(found.parts))
 	return nil
 }
 
@@ -158,37 +160,77 @@ func (i *Install) acquire(ctx context.Context, found *release, quiet bool) error
 		return err
 	}
 	defer store.close()
-	reused, present := map[string]bool{}, int64(0)
-	for _, asset := range found.assets {
-		if complete(store.path(asset), asset) {
-			reused[asset.Name], present = true, present+asset.Bytes
-		}
+	p := newProgress(found.parts, i.Now)
+	var plain io.Writer = io.Discard
+	finish := p.end
+	switch {
+	case quiet:
+	case i.Terminal:
+		finish = i.watch(ctx, p)
+	default:
+		plain = i.Log
 	}
-	meter := &progress{log: i.Log, terminal: i.Terminal, silent: quiet, now: i.Now}
-	if present < found.bytes() {
-		meter.start(found.bytes(), present)
-		for _, asset := range found.assets {
-			if err == nil && !reused[asset.Name] {
-				err = i.download(ctx, store, found.tag, asset, meter)
-			}
-		}
-		meter.finish()
-		if err != nil {
-			return err
-		}
+	reused, err := i.fill(ctx, store, found, p, plain)
+	finish()
+	if err != nil {
+		return err
 	}
-	if err := store.prune(found.assets); err != nil {
+	if err := store.prune(found.parts); err != nil {
 		return err
 	}
 	if quiet {
 		return i.encode(report("DOWNLOADED", found, reused))
 	}
-	fmt.Fprintf(i.Out, "  Verified     %d files, %s", len(found.assets), megabytes(found.bytes()))
-	if present > 0 {
-		fmt.Fprintf(i.Out, " (%s already here)", megabytes(present))
+	fmt.Fprintf(i.Out, "  Verified     %d files, %s", len(found.parts), megabytes(found.bytes()))
+	if held := found.bytes() - found.missing(reused); held > 0 {
+		fmt.Fprintf(i.Out, " (%s already here)", megabytes(held))
 	}
 	fmt.Fprintf(i.Out, "\n  Saved in     %s\n  Nothing was installed.\n", store.directory)
 	return nil
+}
+
+// watch shows the progress on the terminal. The returned function ends it and waits until the terminal is restored.
+func (i *Install) watch(ctx context.Context, p *progress) (finish func()) {
+	ended := make(chan struct{})
+	go func() {
+		defer close(ended)
+		// A lost terminal ends the view, not the download.
+		_ = show(ctx, p, i.Log, i.Environment)
+	}()
+	return func() {
+		p.end()
+		<-ended
+	}
+}
+
+// fill reuses each file the store holds and downloads the others. Plain receives one line at each end of the transfers.
+func (i *Install) fill(ctx context.Context, s *store, found *release, p *progress, plain io.Writer) (reused map[string]bool,
+	err error) {
+	reused = map[string]bool{}
+	for index, part := range found.parts {
+		file := p.file(index)
+		file.enter(checking)
+		if !holds(s.path(part.Asset), part.Asset) {
+			file.enter(waiting)
+			continue
+		}
+		reused[part.Name] = true
+		file.hold(part.Bytes)
+		file.enter(complete)
+	}
+	missing := found.missing(reused)
+	if missing == 0 {
+		return reused, nil
+	}
+	fmt.Fprintf(plain, "Downloading %s\n", megabytes(missing))
+	p.begin()
+	for index, part := range found.parts {
+		if err == nil && !reused[part.Name] {
+			err = i.download(ctx, s, found.tag, part.Asset, p.file(index))
+		}
+	}
+	fmt.Fprintf(plain, "Downloaded %s of %s\n", megabytes(p.snapshot().done()), megabytes(found.bytes()))
+	return reused, err
 }
 
 type fileDocument struct {
@@ -216,8 +258,8 @@ type rejectionDocument struct {
 func report(kind string, found *release, reused map[string]bool) reportDocument {
 	document := reportDocument{Type: kind, Release: found.tag, Version: found.version, Channel: found.channel,
 		Revision: found.revision, Target: found.target}
-	for _, asset := range found.assets {
-		document.Files = append(document.Files, fileDocument{asset, reused[asset.Name]})
+	for _, part := range found.parts {
+		document.Files = append(document.Files, fileDocument{part.Asset, reused[part.Name]})
 	}
 	return document
 }

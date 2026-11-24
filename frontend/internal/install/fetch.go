@@ -186,10 +186,10 @@ func (s *store) path(asset Asset) string {
 }
 
 // prune removes other downloads this package wrote.
-func (s *store) prune(assets []Asset) error {
+func (s *store) prune(parts []part) error {
 	keep := map[string]bool{}
-	for _, asset := range assets {
-		keep[filepath.Base(s.path(asset))] = true
+	for _, part := range parts {
+		keep[filepath.Base(s.path(part.Asset))] = true
 	}
 	entries, err := os.ReadDir(s.directory)
 	for _, entry := range entries {
@@ -203,8 +203,8 @@ func (s *store) prune(assets []Asset) error {
 	return nil
 }
 
-// complete reports whether the directory already holds the asset's exact bytes.
-func complete(path string, asset Asset) bool {
+// holds reports whether the directory already holds the asset's exact bytes.
+func holds(path string, asset Asset) bool {
 	info, err := os.Lstat(path)
 	if err != nil || !info.Mode().IsRegular() || info.Size() != asset.Bytes {
 		return false
@@ -229,7 +229,8 @@ func matches(file *os.File, asset Asset) error {
 }
 
 // download leaves the asset's verified bytes in the store. An interruption keeps the part for the next command.
-func (i *Install) download(ctx context.Context, s *store, tag string, asset Asset, meter *progress) error {
+func (i *Install) download(ctx context.Context, s *store, tag string, asset Asset, meter meter) error {
+	meter.enter(receiving)
 	part := s.path(asset) + partSuffix
 	file, err := os.OpenFile(part, os.O_CREATE|os.O_RDWR|syscall.O_NOFOLLOW, 0o600)
 	if err != nil {
@@ -247,7 +248,7 @@ func (i *Install) download(ctx context.Context, s *store, tag string, asset Asse
 		}
 		offset = 0
 	}
-	meter.add(offset)
+	meter.hold(offset)
 	if offset < asset.Bytes {
 		url := releases + "/" + tag + "/" + asset.Name
 		err = i.retry(ctx, asset.Name, func(ctx context.Context) (bool, error) {
@@ -257,6 +258,7 @@ func (i *Install) download(ctx context.Context, s *store, tag string, asset Asse
 		})
 	}
 	if err == nil {
+		meter.enter(verifying)
 		if _, err = file.Seek(0, io.SeekStart); err == nil {
 			err = matches(file, asset)
 		}
@@ -274,12 +276,13 @@ func (i *Install) download(ctx context.Context, s *store, tag string, asset Asse
 	if err := os.Rename(part, s.path(asset)); err != nil {
 		return reject(StorageRejected, "%v", err)
 	}
+	meter.enter(complete)
 	return nil
 }
 
 // transfer appends one response to the part. A response that does not continue exactly at offset restarts the file.
 func (i *Install) transfer(ctx context.Context, url string, file *os.File, asset Asset, offset *int64,
-	meter *progress) error {
+	meter meter) error {
 	response, err := i.open(ctx, url, *offset)
 	if err != nil {
 		return err
@@ -288,7 +291,7 @@ func (i *Install) transfer(ctx context.Context, url string, file *os.File, asset
 	expected := fmt.Sprintf("bytes %d-%d/%d", *offset, asset.Bytes-1, asset.Bytes)
 	if *offset > 0 && (response.StatusCode != http.StatusPartialContent ||
 		response.Header.Get("Content-Range") != expected) {
-		meter.add(-*offset)
+		meter.restart()
 		*offset = 0
 		if err := file.Truncate(0); err != nil {
 			return reject(StorageRejected, "%v", err)
