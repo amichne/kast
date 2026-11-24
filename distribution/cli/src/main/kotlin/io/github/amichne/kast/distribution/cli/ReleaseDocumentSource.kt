@@ -7,20 +7,17 @@ import java.net.SocketTimeoutException
 import java.net.URI
 import java.nio.charset.CharacterCodingException
 import javax.net.ssl.SSLException
-import kotlinx.serialization.SerialName
-import kotlinx.serialization.Serializable
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.encodeToString
-import kotlinx.serialization.json.Json
 
 private const val BUILD_CATALOG_URL = "https://raw.githubusercontent.com/amichne/kast/developer-latest/builds.json"
-private const val STABLE_RELEASE_URL = "https://api.github.com/repos/amichne/kast/releases/latest"
+// The latest stable release's own mapping. GitHub's API limits unauthenticated reads per address.
+private const val STABLE_RELEASE_URL = "https://github.com/amichne/kast/releases/latest/download/release-mapping.json"
 private const val RELEASE_READ_TIMEOUT_MILLIS = 15_000
 private const val RELEASE_DOCUMENT_BYTES = 65_536
 private const val RELEASE_REDIRECT_LIMIT = 4
 private const val HTTP_TEMPORARY_REDIRECT = 307
 private const val HTTP_PERMANENT_REDIRECT = 308
-private val releaseJson = Json { ignoreUnknownKeys = true }
 
 internal sealed interface ReleaseDocumentRead {
     data class Read(val text: String) : ReleaseDocumentRead
@@ -134,13 +131,6 @@ private fun readReleaseBody(connection: HttpURLConnection): ReleaseDocumentRead 
     }
 }
 
-@Serializable
-private data class StableReleaseDocument(
-    @SerialName("tag_name") val tag: String,
-    val draft: Boolean,
-    val prerelease: Boolean,
-)
-
 internal fun latestStable(read: (String) -> ReleaseDocumentRead): SelectionAdmission<StableVersion> {
     val raw =
         when (val result = read(STABLE_RELEASE_URL)) {
@@ -149,10 +139,9 @@ internal fun latestStable(read: (String) -> ReleaseDocumentRead): SelectionAdmis
                 return SelectionAdmission.Rejected(BuildSelectionFailure.CATALOG_UNAVAILABLE)
         }
     return try {
-        val release = releaseJson.decodeFromString<StableReleaseDocument>(raw)
-        if (release.draft || release.prerelease || !release.tag.startsWith("v"))
-            SelectionAdmission.Rejected(BuildSelectionFailure.ARTIFACT_INVALID)
-        else StableVersion.parse(release.tag.removePrefix("v"))
+        val mapping = managementJson.decodeFromString<PublicReleaseMapping>(raw)
+        if (mapping.schemaVersion != 1) SelectionAdmission.Rejected(BuildSelectionFailure.ARTIFACT_INVALID)
+        else StableVersion.parse(mapping.publicVersion)
     } catch (_: SerializationException) {
         SelectionAdmission.Rejected(BuildSelectionFailure.ARTIFACT_INVALID)
     }

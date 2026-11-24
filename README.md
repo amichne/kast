@@ -14,14 +14,13 @@ You need:
 - A coding agent, such as Claude Code or Codex.
 
 Kast supplies its runtime. You do not need desktop IDEA, Python, or uv.
-This branch documents the managed-runtime contract; native acceptance and publication are not yet complete.
 
 Setup takes three steps.
 
 1. Install Kast from any directory.
 
    ```shell
-   /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/amichne/kast/main/install.sh)" -- --channel preview
+   /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/amichne/kast/main/install.sh)"
    ```
 
    The installer selects one complete build. Step 2 connects your agent.

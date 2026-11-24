@@ -14,7 +14,7 @@ import (
 	"time"
 )
 
-const usage = "Usage: kast install (--dry-run | --download-only) [--channel preview|stable | --version X.Y.Z | --commit SHA] " +
+const usage = "Usage: kast install (--dry-run | --download-only) [--channel stable|preview | --version X.Y.Z | --commit SHA] " +
 	"[--json]"
 
 // Install is one invocation. Every effect outside the home's download directory goes through an injected adapter.
@@ -88,7 +88,7 @@ func (i *Install) Run(ctx context.Context, arguments []string) error {
 }
 
 func parse(arguments []string) (options, error) {
-	parsed := options{selected: channelHead{preview}}
+	parsed := options{selected: channelHead{stable}}
 	modes, selectors := 0, 0
 	for index := 0; index < len(arguments); index++ {
 		switch argument := arguments[index]; argument {

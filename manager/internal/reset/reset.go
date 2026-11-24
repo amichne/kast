@@ -14,7 +14,7 @@ import (
 )
 
 // InstallCommand is the documented installation command.
-const InstallCommand = `/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/amichne/kast/main/install.sh)" -- --channel preview`
+const InstallCommand = `/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/amichne/kast/main/install.sh)"`
 
 const usage = "Usage: kast reset [--yes]\n\n" +
 	"Prints what Kast would stop and delete for this user. With --yes, stops and deletes it.\n" +

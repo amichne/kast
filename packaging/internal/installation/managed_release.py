@@ -37,7 +37,8 @@ MAXIMUM_RECORD_BYTES = 65_536
 PLATFORM = "macos-aarch64"
 REPOSITORY = "amichne/kast"
 CATALOG_URL = f"https://raw.githubusercontent.com/{REPOSITORY}/developer-latest/builds.json"
-STABLE_URL = f"https://api.github.com/repos/{REPOSITORY}/releases/latest"
+# The latest stable release's own mapping. GitHub's API limits unauthenticated reads per address.
+STABLE_URL = f"https://github.com/{REPOSITORY}/releases/latest/download/release-mapping.json"
 RELEASE_URL = f"https://github.com/{REPOSITORY}/releases/download"
 VERSION = re.compile(r"(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)\Z")
 SHA = re.compile(r"[0-9a-f]{40}\Z")
@@ -1075,7 +1076,7 @@ def decode_selection(raw: bytes) -> Selection | ProductSelection | Rejected:
 def resolve_selection(
     channel: str | None, version: str | None, commit: str | None, source: ReleaseSource
 ) -> Selection | ProductSelection | Rejected:
-    requested = commit or version or channel or "preview"
+    requested = commit or version or channel or "stable"
     if sum(value is not None for value in (channel, version, commit)) > 1:
         return Rejected(Failure.SELECTORS_CONFLICT, Stage.SELECTION, requested)
     if version is not None:
@@ -1090,26 +1091,20 @@ def resolve_selection(
         return Rejected(Failure.SELECTOR_INVALID, Stage.SELECTION, requested)
     if channel not in (None, "stable", "preview"):
         return Rejected(Failure.SELECTOR_INVALID, Stage.SELECTION, requested)
-    if channel == "stable":
+    if commit is None and channel != "preview":
         raw = source.read(STABLE_URL, MAXIMUM_RECORD_BYTES)
         if isinstance(raw, TRANSFER_REJECTIONS):
             return Rejected(
                 Failure.CATALOG_UNAVAILABLE, Stage.SELECTION, requested, transfer=transfer(raw)
             )
         try:
-            stable = document(raw)
+            latest = parse_release_mapping(document(raw))
         except (ValueError, UnicodeError, RecursionError):
+            latest = Failure.ARTIFACT_INVALID
+        if isinstance(latest, Failure):
             return Rejected(Failure.CATALOG_UNAVAILABLE, Stage.SELECTION, requested)
-        if mapping(stable) and stable.get("draft") is False and stable.get("prerelease") is False:
-            tag = stable.get("tag_name")
-            if (
-                isinstance(tag, str)
-                and tag.startswith("v")
-                and len(tag) <= 65
-                and VERSION.fullmatch(tag[1:])
-            ):
-                return StableSelection(tag[1:], tag, StablePolicy.TRACK)
-        return Rejected(Failure.CATALOG_UNAVAILABLE, Stage.SELECTION, requested)
+        public = latest.publicVersion
+        return StableSelection(public, f"v{public}", StablePolicy.TRACK)
     raw = source.read(CATALOG_URL, MAXIMUM_RECORD_BYTES)
     if isinstance(raw, TRANSFER_REJECTIONS):
         return Rejected(

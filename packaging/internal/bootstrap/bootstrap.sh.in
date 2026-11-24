@@ -7,14 +7,14 @@ fail() { printf 'kast: %s\n' "$*" >&2; exit 1; }
 arguments=()
 selection=0
 dry_run=0
-preview_head=1
+channel_head=1
 replace=0
 json=0
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --help|-h)
       printf '%s\n' 'Usage: install.sh [--channel stable|preview | --version X.Y.Z | --commit SHA | --local-artifact DIRECTORY] [--dry-run] [--replace-existing] [--json]' \
-        'Installs one complete private-runtime product. Without a selector, installs the latest preview build.' \
+        'Installs one complete private-runtime product. Without a selector, installs the latest stable build.' \
         'An installation that cannot be upgraded is removed after you confirm, or without asking with --replace-existing.' \
         'No Python, uv, or IDEA installation is required.' \
         'Local products contain build-record.json and payload/; private bootstrap inputs still download.'
@@ -28,10 +28,10 @@ while [[ $# -gt 0 ]]; do
         --local-artifact:*) [[ -d "$2" && ! -L "$2" ]] || fail 'local artifact directory required' ;;
         *) fail 'unsupported channel' ;;
       esac
-      [[ "$1:$2" == --channel:preview ]] || preview_head=0
+      [[ "$1" == --channel ]] || channel_head=0
       selection=1; arguments+=("$1" "$2"); shift 2 ;;
     --dry-run) dry_run=1; arguments+=("$1"); shift ;;
-    --recover-only) preview_head=0; arguments+=("$1"); shift ;;
+    --recover-only) channel_head=0; arguments+=("$1"); shift ;;
     --replace-existing) replace=1; shift ;;
     --json) json=1; arguments+=("$1"); shift ;;
     *) fail "unsupported product installation option: $1" ;;
@@ -69,9 +69,10 @@ verify() {
   actual="$("${hasher[@]}" "$1")"
   [[ "${actual%% *}" == "$2" ]] || fail 'bootstrap artifact digest mismatch'
 }
-# The pinned bootstrap plans the preview head from its published records. It reads one record schema, so every other
-# selection keeps the engine that also admits older records.
-if [[ "$dry_run:$preview_head" == 1:1 ]]; then
+# The pinned bootstrap plans a channel's head from its published records. It reads one record schema, so every other
+# selection keeps the engine that also admits older records. Its own default channel can differ from this one.
+if [[ "$dry_run:$channel_head" == 1:1 ]]; then
+  [[ "$selection" == 1 ]] || arguments+=(--channel stable)
   command -v chmod >/dev/null 2>&1 || fail 'required system tool unavailable: chmod'
   fetch "$bootstrap_url" "$temporary/kast"
   verify "$temporary/kast" "$bootstrap_sha"

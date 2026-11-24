@@ -415,6 +415,27 @@ class PublishedProductBuildSelectionTest {
     }
 
     @Test
+    fun `stable channel reads the latest release mapping and not the rate limited API`() {
+        val mapping = managementJson.encodeToString(PublicReleaseMapping(1, "1.2.3", "9".repeat(64)))
+        val reads = mutableListOf<String>()
+        val stable = latestStable { url ->
+            reads += url
+            ReleaseDocumentRead.Read(mapping)
+        }
+        assertEquals("1.2.3", (stable as SelectionAdmission.Admitted).value.value)
+        assertEquals(
+            listOf("https://github.com/amichne/kast/releases/latest/download/release-mapping.json"),
+            reads,
+        )
+        for (invalid in listOf("{", managementJson.encodeToString(PublicReleaseMapping(2, "1.2.3", "9".repeat(64))))) {
+            assertEquals(
+                SelectionAdmission.Rejected(BuildSelectionFailure.ARTIFACT_INVALID),
+                latestStable { ReleaseDocumentRead.Read(invalid) },
+            )
+        }
+    }
+
+    @Test
     fun `exact public version retains embedded build version and never reads latest`() {
         val record = productEntry().record
         val raw = managementJson.encodeToString(record)
