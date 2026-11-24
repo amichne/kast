@@ -82,11 +82,12 @@ internal sealed interface HookPreparationFailure {
 }
 
 @Serializable
-private data class CodexHookContext(val additionalContext: String, val hookEventName: String = "SessionStart")
+private data class AgentHookContext(val additionalContext: String, val hookEventName: String = "SessionStart")
 
-@Serializable private data class CodexHookOutput(val hookSpecificOutput: CodexHookContext)
+@Serializable private data class AgentHookOutput(val hookSpecificOutput: AgentHookContext)
 
-@Serializable private data class ContextHookOutput(val additionalContext: String)
+/** An empty reply adds nothing to an agent's session. */
+@Serializable private class AgentHookSilence
 
 @Serializable private data class HookProgress(val wait: String, val state: String = "preparing")
 
@@ -140,7 +141,7 @@ private val hookHelpCommands =
         listOf("workspace", "wait", "--help"),
     )
 private const val HOOK_HELP =
-    "kast hook session-start [--workspace ABSOLUTE_PATH] [--wait none|indefinite|TIMEOUT_MS] [--host codex|copilot]\n" +
+    "kast hook session-start [--workspace ABSOLUTE_PATH] [--wait none|indefinite|TIMEOUT_MS] [--host agent]\n" +
         "kast workspace wait [--workspace ABSOLUTE_PATH] [--wait indefinite|TIMEOUT_MS]\n" +
         "A positive timeout is in milliseconds. Indefinite waiting has no preparation deadline.\n" +
         "Omitted --wait uses KAST_WORKSPACE_PREPARATION_WAIT and saved configuration (default 1020000 ms).\n" +
@@ -154,7 +155,13 @@ private fun hookRootRejected(
     waitCommand: Boolean,
 ): PublicPreparedOutput =
     if (failure == CanonicalRootFailure.ROOT_MARKER_NOT_FOUND && !waitCommand)
-        hookContext(host, "Kast workspace preparation skipped: this directory has no Gradle settings owner.")
+        when (host) {
+            // A user-wide agent hook runs in every directory, and most are not Gradle projects.
+            HookHost.AGENT ->
+                PublicPreparedOutput(hookJson.encodeToString(AgentHookSilence()), PublicShellExit.COMPLETE)
+            HookHost.CLI ->
+                hookContext(host, "Kast workspace preparation skipped: this directory has no Gradle settings owner.")
+        }
     else
         hookRejected(
             HookFailure.INVALID_WORKSPACE,
@@ -209,8 +216,7 @@ private fun hookContext(host: HookHost, context: String, reply: HookAccepted? = 
         when (host) {
             HookHost.CLI ->
                 if (reply == null) hookJson.encodeToString(HookSkipped(context)) else hookJson.encodeToString(reply)
-            HookHost.CODEX -> hookJson.encodeToString(CodexHookOutput(CodexHookContext(context)))
-            HookHost.COPILOT -> hookJson.encodeToString(ContextHookOutput(context))
+            HookHost.AGENT -> hookJson.encodeToString(AgentHookOutput(AgentHookContext(context)))
         },
         PublicShellExit.COMPLETE,
     )

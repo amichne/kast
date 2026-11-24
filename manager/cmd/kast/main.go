@@ -1,5 +1,6 @@
-// Command kast is the Kast Control executable: public queries go to the persistent coordinator, a reset and an
-// installation run in this process, and every other entry replaces this process with the installation's JVM.
+// Command kast is the Kast Control executable: public queries go to the persistent coordinator, a reset, an
+// installation and an agent connection run in this process, and every other entry replaces this process with the
+// installation's JVM.
 package main
 
 import (
@@ -7,6 +8,7 @@ import (
 	"os/signal"
 	"syscall"
 
+	"github.com/amichne/kast/frontend/internal/agent"
 	"github.com/amichne/kast/frontend/internal/frontend"
 	"github.com/amichne/kast/frontend/internal/install"
 	"github.com/amichne/kast/frontend/internal/reset"
@@ -36,5 +38,6 @@ func main() {
 		Exec:        syscall.Exec,
 		Reset:       reset.Native,
 		Install:     install.Native,
+		Agent:       agent.Native,
 	}))
 }

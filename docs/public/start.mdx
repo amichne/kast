@@ -4,7 +4,7 @@ sidebarTitle: "Set up"
 description: "Install Kast, connect your coding agent, and run your first query in a Kotlin Gradle project."
 keywords:
   - "CLI"
-  - "dotagents"
+  - "plugin"
   - "MCP"
   - "IntelliJ IDEA"
 icon: "terminal"
@@ -22,7 +22,7 @@ You need:
 
 - An Apple silicon Mac for the current preview.
 - A Kotlin Gradle project.
-- A coding agent that [dotagents](https://github.com/getsentry/dotagents) supports, and Node.js to run it.
+- A coding agent, such as Claude Code or Codex.
 
 Kast supplies its private runtime. You do not need desktop IDEA, Python, or uv.
 
@@ -65,8 +65,8 @@ Kast supplies its private runtime. You do not need desktop IDEA, Python, or uv.
     <span id="2-restart-your-tools" />
     <span id="3-connect-your-agent" />
 
-    Your agent gets the Kast skill and the Kast MCP server from your repository's `agents.toml`.
-    Follow [Connect your agent](/reference/integrations): export the skill with `kast install skill`, declare it with the MCP server in `agents.toml`, and run dotagents.
+    The installation includes one plugin for Claude Code and Codex. It holds the Kast skill, session hook, and MCP server.
+    Run `kast agent install claude` or `kast agent install codex`. See [Connect your agent](/reference/integrations) for other agents.
 
     Then start a new agent session in your project. Agent setup does not prepare projects or grant trust.
   </Step>

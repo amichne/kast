@@ -76,7 +76,7 @@ The product plan covers those release-sensitive owners.
 A pull request run omits the product gate, so `PRODUCT` becomes `SOURCE` and `FULL` becomes `SOURCE_FULL`.
 With Mac checks enabled, merge queue runs and main pushes qualify the Mac product for source changes.
 A pull request run reports `Pull request checks`. Only a queue run or a main run reports `CI required checks`, which `main` requires.
-To run the product gate on a branch before the queue, start the CI workflow on it by hand.
+The product gate cannot run on a branch before the queue: sealing rejects a manual run outside `main`.
 A source-inventory test checks that each listed root remains included in `settings.gradle.kts`.
 New modules, fixtures and unknown roots keep full validation until their scope is reviewed.
 

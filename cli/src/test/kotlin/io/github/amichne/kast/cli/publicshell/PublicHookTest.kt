@@ -165,9 +165,27 @@ class PublicHookTest {
     }
 
     @Test
-    fun `both model hooks remain passive regardless of legacy wait selection`() {
+    fun `an agent hook adds nothing outside a Gradle project and unknown hosts reject`() {
+        val event = Json.encodeToString(TestHookEvent(directory.toString(), "1"))
+        val silent =
+            preparePublicHook(listOf("hook", "session-start", "--host", "agent"), input(event)) { _, _ ->
+                error("Non-project preparation")
+            }
+        assertEquals(PublicShellExit.COMPLETE, silent.exit)
+        assertEquals(emptySet<String>(), Json.parseToJsonElement(silent.text).jsonObject.keys)
+        for (host in listOf("codex", "copilot", "claude", "Agent", "")) {
+            val rejected =
+                preparePublicHook(listOf("hook", "session-start", "--host", host), input(event)) { _, _ ->
+                    error("Unknown host effect")
+                }
+            assertEquals(PublicShellExit.INPUT, rejected.exit, host)
+        }
+    }
+
+    @Test
+    fun `an agent hook remains passive regardless of legacy wait selection`() {
         Files.writeString(directory.resolve("settings.gradle.kts"), "")
-        for ((host, waitSetting) in listOf("codex" to "none", "copilot" to "indefinite", "codex" to "1250")) {
+        for (waitSetting in listOf("none", "indefinite", "1250")) {
             val output =
                 preparePublicHook(
                     listOf(
@@ -178,14 +196,17 @@ class PublicHookTest {
                         "--wait",
                         waitSetting,
                         "--host",
-                        host,
+                        "agent",
                     ),
                     input(),
                 ) { _, _ ->
                     error("Model hook must not start a Host")
                 }
             val document = Json.parseToJsonElement(output.text).jsonObject
-            val context = if (host == "codex") document.getValue("hookSpecificOutput").jsonObject else document
+            assertEquals(setOf("hookSpecificOutput"), document.keys)
+            val context = document.getValue("hookSpecificOutput").jsonObject
+            assertEquals(setOf("additionalContext", "hookEventName"), context.keys)
+            assertEquals("SessionStart", context.getValue("hookEventName").jsonPrimitive.content)
             val text = context.getValue("additionalContext").jsonPrimitive.content
             org.junit.jupiter.api.Assertions.assertTrue(text.contains("first semantic query"))
             assertEquals(PublicShellExit.COMPLETE, output.exit)

@@ -1,7 +1,8 @@
 # Kast agent guidance
 
 This directory owns the canonical Kast skill for the native `kast` command.
-Kast writes no agent configuration. Agents receive the skill and the Kast MCP server through [dotagents](https://github.com/getsentry/dotagents).
+The build projects it into one plugin for Claude Code and Codex, with the session hook and an optional MCP server.
+Kast writes no agent configuration. Each agent installs the plugin with its own commands.
 
 ## Export the skill
 
@@ -19,22 +20,26 @@ Each exported skill records the Control version in `metadata.version`.
 
 ## Connect an agent
 
-Declare the exported skill and the MCP server in the repository's `agents.toml`:
+An installation holds two marketplaces, each with the plugin `kast@kast`:
 
-```toml
-[[skills]]
-name = "kast"
-source = "path:.agents/skills/kast"
+| Directory | Plugin content |
+| --- | --- |
+| `share/kast/agent-tools` | Skill and session hook |
+| `share/kast/agent-tools/compositions/mcp` | Skill, session hook, and MCP server |
 
-[[mcp]]
-name = "kast"
-command = "kast"
-args = ["--internal-entrypoint=mcp"]
+`.codex-plugin/plugin.json` is the one authored identity. The generator derives the Claude Code manifest and marketplace from it.
+
+```sh
+kast agent install claude
+kast agent install codex --without-mcp
+kast agent remove codex
 ```
 
-Run `npx @sentry/dotagents --project install`, then start a fresh agent session.
+These commands run each agent's own plugin commands. Without `--without-mcp`, the second directory is the source.
+
+Start a fresh agent session. A completed plugin installation does not establish content in an existing agent session.
+Codex runs the session hook only after the user trusts it.
 The [agent setup guide](../docs/public/reference/integrations.mdx) gives the complete procedure.
-A completed dotagents installation does not establish content in an existing agent session.
 
 ## Workspace preparation
 
