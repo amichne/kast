@@ -339,6 +339,33 @@ def admit_prior(root: Path) -> journal.NoPrevious | journal.PhysicalPrevious:
     )
 
 
+def require_supported_prior(root: Path, home: Path) -> None:
+    """Name a prior that only a reset replaces; activation admits its records again under its lock."""
+    active = root / "installation"
+    management = root / "management.json"
+    if not os.path.lexists(active) and not os.path.lexists(management):
+        return
+    code: str | None = None
+    try:
+        _ = install.LIFECYCLE.Installation.admit(str(active))
+        _ = read_management(
+            install.read_record(management), root, home / ".local/bin/kast", active
+        )
+        return
+    except install.LIFECYCLE.Rejected as problem:
+        rejected = install.rejection(problem)
+        if rejected.reason is not contract.Failure.OWNERSHIP_UNPROVEN:
+            raise
+        code = rejected.adapterCode
+    except (FileNotFoundError, ValueError):
+        pass
+    raise install.StageRejected(
+        contract.Rejected(
+            contract.Stage.PREPARATION, contract.Failure.PRIOR_INSTALLATION_UNSUPPORTED, code
+        )
+    )
+
+
 def workspace_overlays(configuration: Path) -> Iterator[tuple[Path, bytes | None]]:
     """Admit only Kast's canonical per-root directory and its bounded literal environment file."""
     workspaces = configuration / "workspaces"

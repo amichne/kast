@@ -5,6 +5,7 @@ import hashlib
 import io
 import json
 import os
+import pty
 import shlex
 import shutil
 import subprocess
@@ -33,6 +34,27 @@ except ModuleNotFoundError as missing:
 def script(path: Path, source: str) -> None:
     _ = path.write_text(source)
     path.chmod(0o755)
+
+
+def on_terminal(command: list[str], environment: dict[str, str], answer: str) -> tuple[int, str]:
+    """Run one command with its own controlling terminal and one typed answer."""
+    child, terminal = pty.fork()
+    if child == 0:
+        os.execve(command[0], command, environment)
+    shown = b""
+    with os.fdopen(terminal, "r+b", buffering=0) as stream:
+        _ = stream.write(answer.encode())
+        while True:
+            try:
+                chunk = stream.read(4096)
+            except OSError:
+                # Linux reports a closed terminal as EIO; macOS reports end of file.
+                break
+            if not chunk:
+                break
+            shown += chunk
+    _, status = os.waitpid(child, 0)
+    return os.waitstatus_to_exitcode(status), shown.decode(errors="replace")
 
 
 class BootstrapTest(unittest.TestCase):
@@ -419,6 +441,99 @@ class BootstrapTest(unittest.TestCase):
                 self.assertEqual((1, ""), (result.returncode, result.stdout))
                 self.assertIn("bootstrap artifact digest mismatch", result.stderr)
                 self.assertEqual([pin.url], transfers)
+
+    def test_only_a_confirmed_reset_replaces_an_unsupported_prior(self) -> None:
+        plan, erase = "kast reset", "kast reset --yes"
+        declined = ["engine"]
+        cases: tuple[tuple[tuple[str, ...], str | None, int, list[str]], ...] = (
+            # No terminal answers for the user.
+            ((), None, 3, declined),
+            (("--json",), None, 3, declined),
+            (("--replace-existing",), None, 0, ["engine", erase, "engine"]),
+            (("--replace-existing", "--json"), None, 0, ["engine", erase, "engine"]),
+            # A terminal shows the plan before it asks.
+            ((), "y\n", 0, ["engine", plan, erase, "engine"]),
+            ((), "n\n", 1, ["engine", plan]),
+            ((), "\n", 1, ["engine", plan]),
+            # Structured output never asks.
+            (("--json",), "y\n", 3, declined),
+        )
+        for arguments, answer, expected, effects in cases:
+            with (
+                self.subTest(arguments=arguments, answer=answer),
+                tempfile.TemporaryDirectory() as temporary,
+            ):
+                root = Path(temporary).resolve()
+                home, log = root / "home", root / "effects"
+                home.mkdir()
+                tools = root / "tools"
+                tools.mkdir()
+                # Scripted process boundaries: the engine's statuses and the reset's effect.
+                engine, executable = root / "engine", root / "bootstrap"
+                script(
+                    engine,
+                    '#!/bin/sh\n[ "$3" = -c ] && exit 0\n'
+                    f"echo engine >> {shlex.quote(str(log))}\n"
+                    f"if [ -e {shlex.quote(str(root / 'erased'))} ]; then echo INSTALLED; exit 0; fi\n"
+                    "echo UNSUPPORTED; exit 3\n",
+                )
+                script(
+                    executable,
+                    f'#!/bin/sh\necho "kast $*" >> {shlex.quote(str(log))}\n'
+                    f'[ "$2" != --yes ] || : > {shlex.quote(str(root / "erased"))}\necho plan\n',
+                )
+                archive = root / "python.tar.gz"
+                with tarfile.open(archive, "w:gz") as output:
+                    output.add(engine, "python/bin/python3.12")
+                wheel = root / "wheel"
+                _ = wheel.write_bytes(b"wheel")
+                python = tuple(replace(pin, sha256=private.digest(archive)) for pin in private.PINS)
+                bootstraps = tuple(
+                    replace(pin, sha256=private.digest(executable))
+                    for pin in published.BOOTSTRAP_PINS
+                )
+                with (
+                    patch.object(generator, "PINS", python),
+                    patch.object(generator, "BOOTSTRAP_PINS", bootstraps),
+                    patch.object(generator, "DEPENDENCY_SHA256", private.digest(wheel)),
+                ):
+                    installer = root / "install.sh"
+                    _ = installer.write_bytes(generator.render())
+                script(
+                    tools / "curl",
+                    '#!/bin/sh\nwhile [ "$#" -gt 1 ]; do\n'
+                    'if [ "$1" = --output ]; then destination=$2; fi\nshift\ndone\n'
+                    'case "$1" in\n'
+                    f'{"|".join(pin.url for pin in python)}) source={shlex.quote(str(archive))} ;;\n'
+                    f'{"|".join(pin.url for pin in bootstraps)}) source={shlex.quote(str(executable))} ;;\n'
+                    f"{private.DEPENDENCY_URL}) source={shlex.quote(str(wheel))} ;;\n"
+                    '*) exit 92 ;;\nesac\n/bin/cat "$source" > "$destination"\n',
+                )
+                environment = {
+                    "HOME": str(home),
+                    "PATH": f"{tools}:{os.defpath}:/usr/bin:/bin",
+                    "TMPDIR": str(root),
+                }
+                command = ["/bin/bash", str(installer), *arguments]
+                if answer is None:
+                    result = subprocess.run(
+                        command,
+                        env=environment,
+                        capture_output=True,
+                        text=True,
+                        timeout=30,
+                        # A new session has no controlling terminal.
+                        start_new_session=True,
+                    )
+                    status, shown = result.returncode, result.stdout
+                    self.assertEqual("INSTALLED\n" if expected == 0 else "UNSUPPORTED\n", shown)
+                    self.assertEqual(expected != 0, "--replace-existing" in result.stderr)
+                else:
+                    status, shown = on_terminal(command, environment, answer)
+                    self.assertEqual("[y/N]" in shown, plan in effects)
+                self.assertEqual(expected, status, shown)
+                self.assertEqual(effects, log.read_text().splitlines())
+                self.assertFalse(list(root.glob("kast-bootstrap.*")))
 
     def test_bootstrap_pins_name_one_published_release_per_target(self) -> None:
         self.assertRegex(published.TAG, r"\Abootstrap-[0-9a-f]{12}\Z")
