@@ -35,7 +35,8 @@ description = "Check the selected service and assemble its release"
 run = '''
 #!/usr/bin/env bash
 set -euo pipefail
-common=(--no-daemon --max-workers=2 -Dorg.gradle.jvmargs=-Xmx5g "-PkastSourceRevision=$GITHUB_SHA")
+# Like the source gate, diagnostics select sequential configuration: parallel configuration can stall.
+common=(--no-daemon --max-workers=2 -Dorg.gradle.isolated-projects.diagnostics=true -Dorg.gradle.jvmargs=-Xmx5g "-PkastSourceRevision=$GITHUB_SHA")
 guards=(spotlessCheck verifyKastArchitecture verifyJsonContracts verifyKnowledgeBase)
 case "$RELEASE_COMPONENT" in
   control)
