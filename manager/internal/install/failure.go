@@ -22,7 +22,7 @@ const (
 // next is the one action each failure offers the reader.
 var next = map[Failure]string{
 	UsageRejected:       "Run `kast install --dry-run` to see the latest preview build.",
-	PlatformUnsupported: "Use a Mac with Apple silicon.",
+	PlatformUnsupported: "Use a Mac with Apple silicon, or Linux on x86-64.",
 	SourceUnavailable:   "Check the network connection, then run the same command again. Completed bytes are kept.",
 	BuildNotFound:       "Run `kast versions` to list the builds you can select.",
 	CommitAmbiguous:     "Pass the full 40-character revision.",

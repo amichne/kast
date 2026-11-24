@@ -1,9 +1,13 @@
 name: Installed product acceptance
 
-# One call exercises one part of installed acceptance. The caller runs the parts in parallel.
+# One call exercises one part of installed acceptance on one target. The caller runs them in parallel.
 on:
   workflow_call:
     inputs:
+      target:
+        description: The product target, macos-aarch64 or linux-x86_64
+        required: true
+        type: string
       part:
         description: The installed acceptance part, upgrade or fresh
         required: true
@@ -24,16 +28,16 @@ permissions:
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
   PART: ${{ inputs.part }}
-  TARGET: macos-aarch64
+  TARGET: ${{ inputs.target }}
 
 jobs:
   acceptance:
-    name: Exercise the ${{ inputs.part }} part on macos-aarch64
+    name: Exercise the ${{ inputs.part }} part on ${{ inputs.target }}
     if: vars.KAST_MACOS_CHECKS == 'true'
-    runs-on: macos-15
+    runs-on: ${{ inputs.target == 'macos-aarch64' && 'macos-15' || 'ubuntu-24.04' }}
     timeout-minutes: 90
-    # A caller selects one part, so this output is unambiguous. A rerun of failed jobs
-    # copies this job with its outputs when the part already succeeded.
+    # A caller selects one part and target, so this output is unambiguous. A rerun of failed
+    # jobs copies this job with its outputs when the part already succeeded.
     outputs:
       run_attempt: ${{ github.run_attempt }}
     steps:
@@ -52,20 +56,12 @@ jobs:
       - name: Read the checked-in acceptance baseline pin
         id: baseline
         run: mise run ci:acceptance-baseline --github-output "$GITHUB_OUTPUT"
-      - name: Download the accepted baseline candidate
-        id: accepted-baseline
-        continue-on-error: true
+      # The seed run's accepted candidate holds only the Mac target. Its two-platform record is the
+      # baseline, and the next baseline pin downloads an accepted candidate instead.
+      - name: Download the pinned baseline
         uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
         with:
-          name: ci-product-candidate-${{ steps.baseline.outputs.revision }}-${{ steps.baseline.outputs.run_attempt }}
-          run-id: ${{ steps.baseline.outputs.run_id }}
-          github-token: ${{ github.token }}
-          path: build/product-baseline
-      - name: Download the legacy sealed baseline
-        if: steps.accepted-baseline.outcome != 'success'
-        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
-        with:
-          name: ci-product-sealed-${{ steps.baseline.outputs.revision }}-${{ steps.baseline.outputs.run_attempt }}
+          name: ci-product-two-platform-${{ steps.baseline.outputs.revision }}-${{ steps.baseline.outputs.run_attempt }}
           run-id: ${{ steps.baseline.outputs.run_id }}
           github-token: ${{ github.token }}
           path: build/product-baseline
@@ -77,14 +73,14 @@ jobs:
         run: mise run ci:acceptance --target "$TARGET" --part "$PART" --receipt "build/acceptance-${TARGET}-${PART}.part.json"
       - uses: actions/upload-artifact@v7.0.2
         with:
-          name: kast-installed-${{ inputs.part }}-macos-aarch64-${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}
-          path: build/acceptance-macos-aarch64-${{ inputs.part }}.part.json
+          name: kast-installed-${{ inputs.part }}-${{ inputs.target }}-${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: build/acceptance-${{ inputs.target }}-${{ inputs.part }}.part.json
           if-no-files-found: error
           retention-days: 30
       - uses: actions/upload-artifact@v7.0.2
         if: always()
         with:
-          name: kast-installed-evidence-${{ inputs.part }}-macos-aarch64-${{ github.run_id }}-${{ github.run_attempt }}
+          name: kast-installed-evidence-${{ inputs.part }}-${{ inputs.target }}-${{ github.run_id }}-${{ github.run_attempt }}
           path: build/installed-evidence/
           if-no-files-found: warn
           retention-days: 14

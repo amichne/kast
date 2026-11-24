@@ -12,6 +12,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"syscall"
 	"testing"
@@ -118,44 +119,53 @@ func newFixture(t *testing.T) *fixture {
 		t.Fatal(err)
 	}
 	f := &fixture{site: &site{t: t, pages: map[string][]byte{}, faults: map[string][]fault{}}, home: home}
-	base := bytes.Repeat([]byte("base"), 4096)
-	bundle, runtime := bytes.Repeat([]byte("bundle"), 512), bytes.Repeat([]byte("runtime"), 256)
-	receipt := []byte("receipt")
-	f.assets = map[string][]byte{
-		"kast-composed-setup-v" + version + "-macos-aarch64.tar.gz": bundle,
-		"kast-runtime-v" + version + "-macos-aarch64.zip":           runtime,
-		"qualification-macos-aarch64.json":                          receipt,
-		"kast-runtime-base-macos-aarch64-" + digest(base) + ".zip":  base,
-	}
+	// The Linux files have other bytes, and no page: a Mac that requested one would fail the test.
+	linux, _ := targetDocumentFor("linux-x86_64", "linux ")
+	macos, assets := targetDocumentFor("macos-aarch64", "")
+	f.assets = assets
 	for name, raw := range f.assets {
 		f.pages[releases+"/"+tag+"/"+name] = raw
 	}
+	f.record = map[string]any{
+		"schemaVersion": 3, "repository": repository, "sourceRevision": revision, "sourceTree": revision,
+		"version": version, "producer": map[string]any{"runId": 1, "runAttempt": 1, "workflow": ".github/workflows/ci.yml"},
+		"targets": []any{linux, macos},
+	}
+	f.publish()
+	return f
+}
+
+// targetDocumentFor is one target of a build record, with the files that it names.
+func targetDocumentFor(target, mark string) (map[string]any, map[string][]byte) {
+	base := bytes.Repeat([]byte(mark+"base"), 4096)
+	bundle, runtime := bytes.Repeat([]byte(mark+"bundle"), 512), bytes.Repeat([]byte(mark+"runtime"), 256)
+	receipt := []byte(mark + "receipt")
 	asset := func(name string, raw []byte) map[string]any {
 		return map[string]any{"name": name, "sha256": digest(raw), "bytes": len(raw)}
 	}
 	other := digest([]byte("other"))
-	f.record = map[string]any{
-		"schemaVersion": 5, "repository": repository, "sourceRevision": revision, "sourceTree": revision,
-		"version": version, "producer": map[string]any{"runId": 1, "runAttempt": 1, "workflow": ".github/workflows/ci.yml"},
-		"targets": []any{map[string]any{
-			"target": "macos-aarch64",
-			"inputs": map[string]any{"javaReleaseSha256": other, "dependencyLocksSha256": other,
-				"compositionRecipeSha256": other, "donorSha256": other},
-			"bundle":  asset("kast-composed-setup-v"+version+"-macos-aarch64.tar.gz", bundle),
-			"runtime": asset("kast-runtime-v"+version+"-macos-aarch64.zip", runtime),
-			"qualification": map[string]any{
-				"receipt":      asset("qualification-macos-aarch64.json", receipt),
-				"producer":     map[string]any{"runId": 1, "runAttempt": 1, "workflow": ".github/workflows/composed-linux.yml"},
-				"bundleSha256": digest(bundle), "runtimeSha256": digest(runtime), "controlSha256": other,
-				"kind": "NATIVE", "outcome": "COMPLETE",
-				"composition": map[string]any{"baseSha256": digest(base), "nativeRuntimeSha256": other,
-					"nativeBundleSha256": other, "runtimeSha256": digest(runtime)},
-			},
-			"runtimeBase": asset("kast-runtime-base-macos-aarch64-"+digest(base)+".zip", base),
-		}},
+	document := map[string]any{
+		"target": target,
+		"inputs": map[string]any{"javaReleaseSha256": other, "dependencyLocksSha256": other,
+			"compositionRecipeSha256": other, "donorSha256": other},
+		"bundle":  asset("kast-composed-setup-v"+version+"-"+target+".tar.gz", bundle),
+		"runtime": asset("kast-runtime-v"+version+"-"+target+".zip", runtime),
+		"qualification": map[string]any{
+			"receipt":      asset("qualification-"+target+".json", receipt),
+			"producer":     map[string]any{"runId": 1, "runAttempt": 1, "workflow": ".github/workflows/composed-linux.yml"},
+			"bundleSha256": digest(bundle), "runtimeSha256": digest(runtime), "controlSha256": other,
+			"kind": "NATIVE", "outcome": "COMPLETE",
+			"composition": map[string]any{"baseSha256": digest(base), "nativeRuntimeSha256": other,
+				"nativeBundleSha256": other, "runtimeSha256": digest(runtime)},
+		},
+		"runtimeBase": asset("kast-runtime-base-"+target+"-"+digest(base)+".zip", base),
 	}
-	f.publish()
-	return f
+	return document, map[string][]byte{
+		"kast-composed-setup-v" + version + "-" + target + ".tar.gz": bundle,
+		"kast-runtime-v" + version + "-" + target + ".zip":           runtime,
+		"qualification-" + target + ".json":                          receipt,
+		"kast-runtime-base-" + target + "-" + digest(base) + ".zip":  base,
+	}
 }
 
 // publish encodes the record and the catalog that names its digest.
@@ -180,7 +190,8 @@ func (f *fixture) encode(value any) []byte {
 	return raw
 }
 
-func (f *fixture) target() map[string]any { return f.record["targets"].([]any)[0].(map[string]any) }
+// target is this fixture's Mac target, the second one that a record lists.
+func (f *fixture) target() map[string]any { return f.record["targets"].([]any)[1].(map[string]any) }
 
 func (f *fixture) run(arguments ...string) error {
 	return f.runContext(context.Background(), arguments...)
@@ -378,11 +389,45 @@ func TestACatalogRevisionMustBeTheRecordsRevision(t *testing.T) {
 	f.requireFailure(RecordInvalid, f.run("--dry-run"))
 }
 
-func TestARecordForAnotherPlatformIsUnsupported(t *testing.T) {
+func TestEachPlatformSelectsItsOwnTargetOfOneRecord(t *testing.T) {
 	f := newFixture(t)
-	f.target()["target"] = "linux-x86_64"
-	f.publish()
-	f.requireFailure(PlatformUnsupported, f.run("--dry-run"))
+	raw := f.pages[releases+"/"+tag+"/build-record.json"]
+	for platform := range platformNames {
+		found, err := admit(raw, reference{tag: tag, public: version, revision: revision, channel: preview}, platform)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if found.target != platform || len(found.parts) != 4 {
+			t.Errorf("%s selected %s with %d files", platform, found.target, len(found.parts))
+		}
+		for _, file := range found.parts {
+			if !strings.Contains(file.Name, platform) {
+				t.Errorf("%s selected %s", platform, file.Name)
+			}
+		}
+	}
+}
+
+func TestARecordNeedsBothTargetsInOrderAndNeitherMayBeInvalid(t *testing.T) {
+	linux := func(f *fixture) map[string]any { return f.record["targets"].([]any)[0].(map[string]any) }
+	for name, change := range map[string]func(*fixture){
+		"one target": func(f *fixture) { f.record["targets"] = f.record["targets"].([]any)[1:] },
+		"reversed":   func(f *fixture) { slices.Reverse(f.record["targets"].([]any)) },
+		"repeated":   func(f *fixture) { f.record["targets"].([]any)[0] = f.target() },
+		"unknown":    func(f *fixture) { linux(f)["target"] = "linux-aarch64" },
+		"a third target": func(f *fixture) {
+			f.record["targets"] = append(f.record["targets"].([]any), f.target())
+		},
+		// The Mac does not use this target, and still rejects the record.
+		"invalid other target": func(f *fixture) { linux(f)["qualification"].(map[string]any)["outcome"] = "PARTIAL" },
+	} {
+		t.Run(name, func(t *testing.T) {
+			f := newFixture(t)
+			change(f)
+			f.publish()
+			f.requireFailure(RecordInvalid, f.run("--dry-run"))
+		})
+	}
 }
 
 func TestAPersistentFailureStopsAfterBoundedAttemptsAndKeepsThePart(t *testing.T) {
@@ -587,12 +632,14 @@ func TestStableAndVersionFollowTheReleaseMapping(t *testing.T) {
 }
 
 func TestAnOlderReleaseIsRejectedBeforeItsFilesAreRequested(t *testing.T) {
-	f := newFixture(t)
-	f.record["schemaVersion"] = 3
-	f.publish()
-	f.requireFailure(ReleaseUnsupported, f.run("--download-only"))
-	if len(f.calls) != 2 {
-		t.Errorf("calls %q", f.calls)
+	for _, schema := range []int{2, 4, 5} {
+		f := newFixture(t)
+		f.record["schemaVersion"] = schema
+		f.publish()
+		f.requireFailure(ReleaseUnsupported, f.run("--download-only"))
+		if len(f.calls) != 2 {
+			t.Errorf("schema %d: calls %q", schema, f.calls)
+		}
 	}
 }
 
