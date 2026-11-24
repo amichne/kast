@@ -1,10 +1,11 @@
 // A repository that answers 429 or 5xx ends resolution, and Gradle never asks the next one. So Maven
-// Central comes last, behind its mirror. The portal stays first here, because it generates its own
-// plugin markers and the recorded checksums are those.
+// Central comes last, behind its mirror. The portal serves its own plugin markers, and the recorded
+// checksums are those, but it redirects other artifacts to Central. So it leads only for markers.
 pluginManagement {
     repositories {
-        gradlePluginPortal()
+        gradlePluginPortal { content { includeModuleByRegex(".*", ".*\\.gradle\\.plugin") } }
         maven("https://maven-central.storage-download.googleapis.com/maven2/")
+        gradlePluginPortal()
         mavenCentral()
     }
 }

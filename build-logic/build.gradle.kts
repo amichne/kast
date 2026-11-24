@@ -20,9 +20,11 @@ java {
     }
 }
 
+// The root settings explain this order.
 repositories {
-    gradlePluginPortal()
+    gradlePluginPortal { content { includeModuleByRegex(".*", ".*\\.gradle\\.plugin") } }
     maven("https://maven-central.storage-download.googleapis.com/maven2/")
+    gradlePluginPortal()
     mavenCentral()
 }
 

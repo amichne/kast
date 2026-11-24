@@ -7,16 +7,31 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[3]
 MIRROR = "https://maven-central.storage-download.googleapis.com/maven2/"
 PORTAL = "gradlePluginPortal()"
-BLOCK = re.compile(r"repositories \{(.*?)\}", re.S)
-DECLARATION = re.compile(r'mavenCentral\(\)|gradlePluginPortal\(\)|maven\("([^"]+)"\)')
+# The portal redirects an artifact that it does not host to Maven Central, so it leads only for markers.
+MARKERS = r'gradlePluginPortal { content { includeModuleByRegex(".*", ".*\\.gradle\\.plugin") } }'
+DECLARATION = re.compile(
+    r'mavenCentral\(\)|gradlePluginPortal\(\)|gradlePluginPortal \{.*\}|maven\("([^"]+)"\)'
+)
 # The build's own repositories. Fixtures and experiments declare what a user's project would.
-# The portal leads a block whose recorded plugin-marker checksums are the portal's own.
+# The portal's markers lead a block whose recorded marker checksums are the portal's own.
 OWNERS = {
-    "settings.gradle.kts": ([PORTAL, MIRROR], [MIRROR]),
+    "settings.gradle.kts": ([MARKERS, MIRROR, PORTAL], [MIRROR]),
     "build-logic/settings.gradle.kts": ([MIRROR, PORTAL], [MIRROR, PORTAL]),
-    "build-logic/build.gradle.kts": ([PORTAL, MIRROR],),
+    "build-logic/build.gradle.kts": ([MARKERS, MIRROR, PORTAL],),
     "buildSrc/build.gradle.kts": ([MIRROR],),
 }
+
+
+def repository_blocks(text: str) -> list[str]:
+    """The body of each `repositories { }`, whose declarations can hold nested braces."""
+    blocks: list[str] = []
+    for match in re.finditer(r"\brepositories \{", text):
+        depth, end = 1, match.end()
+        while depth:
+            depth += {"{": 1, "}": -1}.get(text[end], 0)
+            end += 1
+        blocks.append(text[match.end() : end - 1])
+    return blocks
 
 
 class GradleRepositoriesTest(unittest.TestCase):
@@ -24,7 +39,7 @@ class GradleRepositoriesTest(unittest.TestCase):
         for name, leading in OWNERS.items():
             blocks = [
                 [match[1] or match[0] for match in DECLARATION.finditer(block)]
-                for block in BLOCK.findall((ROOT / name).read_text())
+                for block in repository_blocks((ROOT / name).read_text())
             ]
             with self.subTest(file=name):
                 self.assertEqual(len(leading), len(blocks))
