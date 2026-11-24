@@ -30,11 +30,10 @@ Setup takes three steps.
 2. Connect your agent. The installation includes one plugin for Claude Code and Codex, with the Kast skill, session hook, and MCP server:
 
    ```shell
-   KAST_PLUGIN="$HOME/.local/share/kast/installation/share/kast/agent-tools/compositions/mcp"
-   claude plugin marketplace add "$KAST_PLUGIN" && claude plugin install kast@kast
+   kast agent install claude
    ```
 
-   [Connect your agent](https://kast.michne.com/reference/integrations/) gives the Codex commands and the steps for other agents.
+   For Codex, use `kast agent install codex`. [Connect your agent](https://kast.michne.com/reference/integrations/) gives the steps for other agents.
    Start a new agent session in your project. Agent setup does not start the runtime or grant trust.
 
 3. Query from a project root whose build code you trust. The first explicit semantic request grants trust to that exact root and starts its private Host. Replace `DECLARATION_NAME` with a class or function in your project.

@@ -61,7 +61,7 @@ A single-use lease rejects repeated destructive effects. Keep `reinstall` retire
 Report kept storage when retirement or cleanup rejects. OS refusal is a finite failure.
 The exterior lock stays stable across directory deletion and later reset tries.
 
-Kast writes no agent harness configuration. Agents install the plugin in `share/kast/agent-tools` with their own commands.
+Kast writes no agent harness configuration. The Go Control owns `kast agent`, which runs an agent's own commands on the plugin in `share/kast/agent-tools`.
 `kast install skill [--output <directory>]` exports the canonical skill. It is the only `install` target.
 Identical content returns without writes. Changed, extra, or linked entries reject without overwriting bytes.
 
