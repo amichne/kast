@@ -1063,6 +1063,21 @@ class SourceInventoryTest(unittest.TestCase):
             tuple(value for option, value in zip(command, command[1:]) if option == "--tests"),
         )
 
+    def test_every_ci_gradle_command_with_two_workers_configures_sequentially(self):
+        # Gradle's parallel project configuration can stall. One worker or the isolated-projects
+        # diagnostics select sequential configuration; `--no-parallel` does not.
+        sequential = "-Dorg.gradle.isolated-projects.diagnostics=true"
+        commands = {
+            name: " ".join(task["run"] if isinstance(task["run"], list) else [task["run"]])
+            for name, task in workflow_contract.tasks().items()
+            if "--max-workers" in str(task.get("run", ""))
+        }
+        self.assertEqual({"release:build-component"}, set(commands))
+        for name, command in commands.items():
+            with self.subTest(task=name):
+                self.assertIn(sequential, command)
+        self.assertIn("--max-workers=1", composed_ci().GRADLE)
+
     def test_mac_disable_preserves_linux_checks_and_blocks_new_preview_products(self):
         workflows = Path(__file__).resolve().parents[2] / "workflows"
         workflow = (workflows / "ci.yml").read_text()

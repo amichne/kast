@@ -20,10 +20,12 @@ java {
     }
 }
 
+// The root settings explain this order.
 repositories {
+    gradlePluginPortal { content { includeModuleByRegex(".*", ".*\\.gradle\\.plugin") } }
+    maven("https://maven-central.storage-download.googleapis.com/maven2/")
     gradlePluginPortal()
     mavenCentral()
-    maven("https://maven-central.storage-download.googleapis.com/maven2/")
 }
 
 private val catalog = extensions.getByType<VersionCatalogsExtension>().named("libs")

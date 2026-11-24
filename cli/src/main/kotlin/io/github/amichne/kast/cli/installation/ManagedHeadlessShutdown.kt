@@ -194,7 +194,8 @@ private fun awaitManagedProcessExit(process: ManagedIdeProcess): Boolean {
     }
 }
 
-private const val HOST_EXIT_SECONDS = 10L
+// A settled Host still saves its project and closes its indexes. A slow machine needed 12.2 seconds.
+private const val HOST_EXIT_SECONDS = 60L
 private const val SETTLEMENT_POLL_MILLIS = 50L
 
 private fun settleManagedHeadlessHost(
