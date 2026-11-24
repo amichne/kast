@@ -39,9 +39,15 @@ def sealed_inputs(args: argparse.Namespace, repo: Path, work: Path) -> product.L
     tree = subprocess.check_output(
         ["git", "rev-parse", "HEAD^{tree}"], cwd=repo, text=True, timeout=10
     ).strip()
+    # Sealing writes beside its inputs, so each probe seals its own links to the shared release.
+    release = work / "release"
+    release.mkdir()
+    for source in args.directory.iterdir():
+        if source.is_file() and not source.is_symlink():
+            os.link(source, release / source.name)
     target = seal_target(
         repo,
-        args.directory,
+        release,
         args.receipt,
         args.java_release,
         args.revision,
@@ -65,7 +71,7 @@ def sealed_inputs(args: argparse.Namespace, repo: Path, work: Path) -> product.L
     payload = inputs / "payload"
     payload.mkdir(parents=True)
     for asset in record.assets():
-        source = args.directory / asset.name
+        source = release / asset.name
         if asset == target.qualification.receipt:
             source = args.receipt
         os.link(source, payload / asset.name)

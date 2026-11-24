@@ -191,7 +191,12 @@ def test_coordinator_is_linux_only_and_scopes_the_runtime_directory_to_systemctl
         Failure.LINUX_ONLY
     )
     plan = planned(ci.coordinator_plan(Target.LINUX_X86_64, "runner", 1001, java, RELEASE))
-    linger, start, probe = plan.commands
+    linger, start, probe, stop, detached = plan.commands
+    # The same probe repeats without a user manager, with its own evidence.
+    assert stop == Command(
+        ("sudo", "systemctl", "stop", "user@1001.service", "user-runtime-dir@1001.service")
+    )
+    assert detached == Command((*probe.argv[:-1], probe.argv[-1] + "-detached"))
     assert linger == Command(("sudo", "loginctl", "enable-linger", "runner"))
     assert start == Command(
         ("systemctl", "--user", "start", "default.target"),

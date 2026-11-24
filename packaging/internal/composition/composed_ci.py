@@ -289,8 +289,9 @@ def coordinator_plan(
         "--revision",
         release.revision,
         "--evidence",
-        "build/composed-evidence/installed-coordinator",
     )
+    evidence = "build/composed-evidence/installed-coordinator"
+    # The second probe has no user manager, as in most containers, so it starts detached.
     return Plan(
         (),
         (
@@ -299,7 +300,17 @@ def coordinator_plan(
                 ("systemctl", "--user", "start", "default.target"),
                 (("XDG_RUNTIME_DIR", f"/run/user/{uid}"),),
             ),
-            Command(probe),
+            Command((*probe, evidence)),
+            Command(
+                (
+                    "sudo",
+                    "systemctl",
+                    "stop",
+                    f"user@{uid}.service",
+                    f"user-runtime-dir@{uid}.service",
+                )
+            ),
+            Command((*probe, f"{evidence}-detached")),
         ),
     )
 
