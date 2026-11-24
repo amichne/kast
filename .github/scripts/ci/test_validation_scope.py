@@ -27,10 +27,12 @@ from validation_scope import (
     PRODUCT_MODULES,
     Check,
     NativeCompilation,
+    QUEUE_BRANCH_PREFIX,
     Reason,
     Selection,
     SCOPE_CHECKS,
     Scope,
+    Stage,
     classify_diff,
     classify_paths,
     main,
@@ -74,6 +76,76 @@ class ValidationScopeTest(unittest.TestCase):
                 self.assertEqual(checks - {Check.PRODUCT}, disabled.checks)
                 self.assertEqual(disabled.checks, SCOPE_CHECKS[disabled.scope])
                 self.assertNotIn(disabled.scope, (Scope.FULL, Scope.PRODUCT))
+
+    def test_only_a_landing_run_keeps_the_product_gate(self):
+        for event, head_ref, stage in (
+            ("pull_request", "ci/some-change", Stage.REVIEW),
+            ("pull_request", "", Stage.REVIEW),
+            ("pull_request", "x/mergify/merge-queue/1", Stage.REVIEW),
+            ("pull_request", "mergify/merge-queue/3f9c1a2b7e", Stage.LANDING),
+            ("push", "", Stage.LANDING),
+            ("workflow_dispatch", "", Stage.LANDING),
+            ("merge_group", "", Stage.LANDING),
+        ):
+            with self.subTest(event=event, head_ref=head_ref):
+                self.assertIs(stage, Stage.of(event, head_ref))
+        for scope, checks in SCOPE_CHECKS.items():
+            selected = Selection(checks, Reason.CHANGED_INPUTS)
+            with self.subTest(scope=scope):
+                self.assertIs(selected, selected.at_stage(Stage.LANDING))
+                review = selected.at_stage(Stage.REVIEW)
+                self.assertEqual(checks - {Check.PRODUCT}, review.checks)
+                self.assertEqual(review.checks, SCOPE_CHECKS[review.scope])
+
+    def test_review_run_reports_source_scope_and_queue_run_reports_product_scope(self):
+        for head_ref, expected in (
+            ("ci/some-change", "source=run\nproduct=skip\nportable=run\ndocumentation=run\nscope=SOURCE_FULL\n"),
+            ("mergify/merge-queue/1", "source=run\nproduct=run\nportable=run\ndocumentation=run\nscope=FULL\n"),
+        ):
+            with self.subTest(head_ref=head_ref), tempfile.TemporaryDirectory() as temporary:
+                output = Path(temporary) / "outputs"
+                with (
+                    patch.dict(os.environ, {"KAST_NATIVE_COMPILATION": "true", "GITHUB_HEAD_REF": head_ref}),
+                    patch("validation_scope.select", return_value=Selection(ALL_CHECKS, Reason.CHANGED_INPUTS)),
+                    patch.object(sys, "argv", ["validation_scope.py", "--event", "pull_request",
+                                              "--github-output", str(output)]),
+                    redirect_stdout(io.StringIO()),
+                ):
+                    main()
+                self.assertEqual(expected, output.read_text())
+
+    def test_pull_requests_never_report_the_check_that_main_requires(self):
+        root = Path(__file__).resolve().parents[3]
+        workflow = yaml.safe_load((root / ".github/workflows/ci.yml").read_text())
+        names = [job.get("name", key) for key, job in workflow["jobs"].items()]
+        required = [name for name in names if "CI required checks" in name]
+        # A skipped job counts as a success, so the name itself must differ on a pull request.
+        self.assertEqual(
+            [
+                "${{ github.event_name == 'pull_request' && "
+                f"!startsWith(github.head_ref, '{QUEUE_BRANCH_PREFIX}') && "
+                "'Pull request checks' || 'CI required checks' }}"
+            ],
+            required,
+        )
+        self.assertIn("Source feedback", names)
+        rules = yaml.safe_load((root / ".mergify.yml").read_text())
+        (rule,) = rules["queue_rules"]
+        self.assertEqual(QUEUE_BRANCH_PREFIX, rule["queue_branch_prefix"])
+        self.assertIn("check-success = Source feedback", rule["queue_conditions"])
+        self.assertIn("check-success = CI required checks", rule["merge_conditions"])
+        # Equal conditions would let Mergify merge on the pull request's own checks.
+        self.assertNotEqual(rule["queue_conditions"], rule["merge_conditions"])
+        self.assertEqual("merge", rule["branch_protection_injection_mode"])
+
+    def test_superseded_runs_release_their_mac_jobs(self):
+        root = Path(__file__).resolve().parents[3]
+        workflow = yaml.safe_load((root / ".github/workflows/ci.yml").read_text())
+        for job in ("kotlin", "composed-macos"):
+            with self.subTest(job=job):
+                condition = workflow["jobs"][job]["if"]
+                self.assertIn("!cancelled()", condition)
+                self.assertNotIn("always()", condition)
 
     def test_disabled_native_compilation_keeps_every_source_check(self):
         with tempfile.TemporaryDirectory() as temporary:
@@ -568,7 +640,7 @@ class SourceInventoryTest(unittest.TestCase):
             "    needs: [source-work, sealed-product, installed-upgrade, installed-fresh]\n", joined
         )
 
-    def test_product_pr_and_main_use_the_same_mac_gate(self):
+    def test_queue_and_main_use_the_same_mac_gate(self):
         workflow = (Path(__file__).resolve().parents[2] / "workflows/ci.yml").read_text()
         native = next(line for line in workflow.splitlines() if line.startswith("  KAST_NATIVE_COMPILATION:"))
         self.assertNotIn("github.event_name", native)

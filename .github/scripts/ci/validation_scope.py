@@ -189,6 +189,22 @@ class NativeCompilation(str, Enum):
     DISABLED = "false"
 
 
+# .mergify.yml sets this prefix for the draft pull requests that hold the exact result for main.
+QUEUE_BRANCH_PREFIX = "mergify/merge-queue/"
+
+
+class Stage(str, Enum):
+    """A review run gives feedback. Only a landing run can qualify the product."""
+
+    REVIEW = "review"
+    LANDING = "landing"
+
+    @classmethod
+    def of(cls, event: str, head_ref: str) -> "Stage":
+        review = event == "pull_request" and not head_ref.startswith(QUEUE_BRANCH_PREFIX)
+        return cls.REVIEW if review else cls.LANDING
+
+
 class Scope(str, Enum):
     FULL = "FULL"
     PRODUCT = "PRODUCT"
@@ -224,6 +240,11 @@ class Selection:
 
     def with_native_compilation(self, mode: NativeCompilation) -> "Selection":
         if mode is NativeCompilation.DISABLED:
+            return Selection(self.checks - {Check.PRODUCT}, self.reason, self.plan)
+        return self
+
+    def at_stage(self, stage: Stage) -> "Selection":
+        if stage is Stage.REVIEW:
             return Selection(self.checks - {Check.PRODUCT}, self.reason, self.plan)
         return self
 
@@ -353,7 +374,8 @@ def main() -> None:
     args = parser.parse_args()
     native = NativeCompilation(os.environ.get("KAST_NATIVE_COMPILATION", "true"))
     selection = select(args.event, args.base, args.head, affected=True) if args.affected else select(args.event, args.base, args.head)
-    selection = selection.with_native_compilation(native)
+    stage = Stage.of(args.event, os.environ.get("GITHUB_HEAD_REF", ""))
+    selection = selection.with_native_compilation(native).at_stage(stage)
     with args.github_output.open("a", encoding="utf-8") as output:
         for check in Check:
             output.write(f"{check.value}={'run' if check in selection.checks else 'skip'}\n")
@@ -361,7 +383,11 @@ def main() -> None:
         if selection.plan is not None:
             output.write("plan=" + json.dumps(asdict(selection.plan), separators=(",", ":")) + "\n")
     selected = ",".join(check.value for check in Check if check in selection.checks)
-    print(f"validation-scope: {selected} ({selection.reason.value}); native-compilation={native.value}", flush=True)
+    print(
+        f"validation-scope: {selected} ({selection.reason.value}); "
+        f"stage={stage.value}; native-compilation={native.value}",
+        flush=True,
+    )
 
 
 if __name__ == "__main__":
