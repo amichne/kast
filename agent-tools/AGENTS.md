@@ -40,13 +40,16 @@ The legacy context helper uses Python 3.9 or later with the standard library. Ge
 `hooks/hooks.json` calls `kast --internal-entrypoint=query hook session-start` for passive context.
 The native query executable owns event admission and project selection. Hooks do not grant trust, create workspace state, or start a Host.
 Keep workspace decisions and IDE effects outside the harness adapters.
+`--host agent` selects the one session-start envelope that Claude Code and Codex read. Outside a Gradle project its reply is empty.
 The default Codex manifest selects the canonical CLI skill and session hook.
+The generator derives the Claude Code manifest and marketplace from that manifest. Do not author a second identity.
+Claude Code finds `skills/`, `hooks/hooks.json`, and `.mcp.json` at their default paths.
 `mcp.json` owns the optional MCP launcher input. It runs the native MCP server through `kast --internal-entrypoint=mcp`.
 The launcher resolves `kast` from `${HOME}/.local/bin` first, as the session hook does.
 The generator places optional MCP resources under `compositions/mcp`.
 Only that composition receives a root `.mcp.json`.
 No generated composition selects Python context hooks or a Python MCP server.
-Codex owns plugin configuration and cached resources.
+Each agent owns its plugin configuration and cached resources.
 
 Run `mise exec -- uv run --locked --project packaging pytest packaging/tests/test-agent-onboarding.py` for hook output, rejection, host-command, and MCP launcher cases.
 Run `mise exec -- uv run --locked --project packaging pytest packaging/tests/test-public-query-generation.py` for schema and brief parity.

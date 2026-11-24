@@ -15,7 +15,7 @@ internal sealed interface ManagementCommand {
 
     data object Version : ManagementCommand
 
-    /** Exports the canonical Kast agent skill; agent configuration is delivered through dotagents. */
+    /** Exports the canonical Kast agent skill; each agent installs the Kast plugin with its own commands. */
     data class InstallSkill(val output: String?, val json: Boolean) : ManagementCommand
 
     data class Versions(val json: Boolean) : ManagementCommand

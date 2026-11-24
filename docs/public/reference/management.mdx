@@ -156,7 +156,7 @@ kast uninstall
 
 The removal contract covers owned installation bytes and workspace state after process retirement.
 Repositories, external Gradle homes, and agent configuration remain outside that scope.
-To disconnect an agent, remove the Kast entries from `agents.toml` and the exported skill from your repository.
+To disconnect an agent, [remove the plugin](/reference/integrations#remove-the-plugin) and any exported skill before you uninstall.
 Uninstall also removes the fixed Kast-owned `kast-workspaces/shared/gradle` cache, without following links to external targets.
 Foreign siblings, foreign owners, or `.kast` recovery evidence prevent that cleanup.
 Removing one workspace does not remove the shared cache.
@@ -200,7 +200,7 @@ The reset deletes the `kast` command last.
 
 ## Change agents
 
-Edit the `agents` list in `agents.toml`, then follow [Connect your agent](/reference/integrations#3-apply-the-configuration).
+Remove the plugin from the old agent, then follow [Connect your agent](/reference/integrations) for the new one.
 
 <span id="explicit-workspace-control-in-the-hosted-app-server" />
 
