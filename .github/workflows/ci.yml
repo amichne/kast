@@ -250,7 +250,8 @@ jobs:
     name: Kotlin product
     # Runs beside source-work; the required job still demands its source proof.
     needs: [scope, assembly, kotlin-runner]
-    if: always() && vars.KAST_MACOS_CHECKS == 'true' && needs.scope.outputs.product == 'run' && needs.assembly.result == 'success' && needs.kotlin-runner.result == 'success' && (inputs.rollout == '' || inputs.rollout == 'none')
+    # A superseded run must release its Mac: always() would keep or even start this job.
+    if: ${{ !cancelled() && vars.KAST_MACOS_CHECKS == 'true' && needs.scope.outputs.product == 'run' && needs.assembly.result == 'success' && needs.kotlin-runner.result == 'success' && (inputs.rollout == '' || inputs.rollout == 'none') }}
     runs-on: ${{ fromJSON(needs.kotlin-runner.outputs.labels) }}
     timeout-minutes: 30
     steps:
@@ -498,8 +499,10 @@ jobs:
           CI_NEEDS: ${{ toJSON(needs) }}
         run: mise run ci:required --source-feedback
 
+  # A pull request never reports the check that main requires. Only a queue run on the exact
+  # result for main, or a run on main, has selected the product gate and can report it.
   required:
-    name: CI required checks
+    name: ${{ github.event_name == 'pull_request' && !startsWith(github.head_ref, 'mergify/merge-queue/') && 'Pull request checks' || 'CI required checks' }}
     needs: [scope, source, documentation, portable, kotlin, complete-product, two-platform-product]
     if: always() && (inputs.rollout == '' || inputs.rollout == 'none')
     runs-on: ubuntu-latest

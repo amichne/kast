@@ -219,8 +219,8 @@ remaining `packaging/tests/test-*.py` suite. Platform-specific installer cases r
 gated to macOS; the Linux container does not qualify them. The runner rejects
 unexpected skips and reports the expected platform skip count (currently 15 on
 Linux, zero on macOS arm64).
-CI runs this container suite on a disposable Ubuntu runner for every pull request
-and main push, alongside the macOS product checks.
+CI runs this container suite on a disposable Ubuntu runner for every pull request,
+merge queue run and main push. The macOS product checks run in the queue and on main.
 
 Run the same offline inventory without Docker using
 `mise run suite`; add suite paths to [run only those suites](#run-one-suite-or-one-generator-check). A container pass proves the offline installer contract

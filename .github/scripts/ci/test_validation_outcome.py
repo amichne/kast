@@ -88,6 +88,23 @@ class ValidationOutcomeTest(unittest.TestCase):
         self.assertEqual(replace(record(), scope=Scope.SOURCE, outcome=outcome.Outcome.SOURCE_VALIDATED,
                                  event="pull_request"), saved)
 
+    def test_review_gate_seals_source_and_a_queue_gate_cannot_omit_the_product(self):
+        needs = docs_only_results()
+        needs["scope"]["outputs"].update(source="run", portable="run", scope="SOURCE_FULL")
+        needs["source"]["result"] = needs["portable"]["result"] = "success"
+        with patch.object(outcome, "select", return_value=Selection(ALL_CHECKS, Reason.CHANGED_INPUTS)):
+            self.assertEqual(
+                replace(record(), scope=Scope.SOURCE_FULL, outcome=outcome.Outcome.SOURCE_VALIDATED,
+                        event="pull_request"),
+                outcome.record_gate(REPOSITORY, SOURCE, TREE, BASE, 456, 123, 1, "pull_request", needs,
+                                    head_ref="ci/some-change"),
+            )
+            self.assertEqual(
+                outcome.Failure.SELECTION_MISMATCH,
+                outcome.record_gate(REPOSITORY, SOURCE, TREE, BASE, 456, 123, 1, "pull_request", needs,
+                                    head_ref="mergify/merge-queue/1"),
+            )
+
     def test_closed_record_encodes_exact_no_publication_identity(self):
         document = json.loads(json.dumps(asdict(record())))
         self.assertEqual(
