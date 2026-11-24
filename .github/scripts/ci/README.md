@@ -291,7 +291,6 @@ Installed acceptance exercises the shipped Control, coordinator, and Host agains
 Four jobs run in parallel, each on its own runner: for each target, the upgrade part upgrades a queried baseline, and the fresh part covers every other case.
 The join admits both parts of both targets only on one product and one baseline, and writes the receipts that a release reads.
 A missing or failed receipt on either platform blocks the required check and preview publication.
-The pinned baseline is a two-platform record without installed acceptance. `UNACCEPTED_SEED_SHA256` admits exactly that record, and the next baseline pin removes it.
 
 ### Rerun failed product jobs
 

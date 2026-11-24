@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-TAG = "bootstrap-557978d7432f"
+TAG = "bootstrap-4b702a948ddc"
 
 
 @dataclass(frozen=True)
@@ -22,10 +22,10 @@ class BootstrapPin:
 BOOTSTRAP_PINS = (
     BootstrapPin(
         "macos-aarch64",
-        "60451e1905f4991083939d1d841fae8740676eb2d5a45a3d095272a3c11d92ae",
+        "171ae1299bfee89151b3f390bcd578aa4efab64f28e895aae09ec47f77cb8c46",
     ),
     BootstrapPin(
         "linux-x86_64",
-        "6d6a2ba78d3fa13df6d797f545171c81a11e08507cdcaad185a6a6f25ca7a5b8",
+        "0217c3cf18027e93ad130d3255c9d1ae444ae18534a35b0a2414f08ca5838b76",
     ),
 )
