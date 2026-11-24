@@ -16,7 +16,8 @@ GRADLE = (
     "./gradlew",
     "--no-daemon",
     "--no-parallel",
-    "--max-workers=2",
+    # Two workers let Gradle's parallel project configuration starve and never finish.
+    "--max-workers=1",
     "-Dorg.gradle.jvmargs=-Xmx3g",
     "-Pversion=1.2.3",
     "-PkastSourceRevision=" + "a" * 40,
