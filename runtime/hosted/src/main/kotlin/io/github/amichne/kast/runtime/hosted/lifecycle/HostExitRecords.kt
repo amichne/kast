@@ -6,9 +6,7 @@ import io.github.amichne.kast.distribution.contract.HostExitReason
 import io.github.amichne.kast.distribution.contract.HostExitRecord
 import io.github.amichne.kast.protocol.contract.IdeHostRuntimeIdentity
 import io.github.amichne.kast.protocol.contract.IdeLifecycleResult
-import java.nio.file.Files
 import java.nio.file.Path
-import java.nio.file.StandardCopyOption
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.serialization.Serializable
@@ -54,51 +52,32 @@ internal data class HostExitRecordObservation(
  * is simply never offered as evidence of a clean stop.
  */
 internal class HostExitRecords(
-    private val state: Path,
+    state: Path,
     private val hostLifetime: String,
     private val indexing: () -> Boolean,
     private val observe: (HostExitRecordObservation) -> Unit,
 ) : HostExitEvidence {
-    private val target = HostExitRecord.path(state)
+    private val file = HostStateFile(state, HostExitRecord.FILE_NAME)
 
     override fun record(reason: HostExitReason) {
         val index = if (indexing()) HostExitIndexState.DUMB else HostExitIndexState.SMART
         val encoded = JSON.encodeToString(HostExitRecord.serializer(), HostExitRecord(reason, index, hostLifetime))
-        var temporary: Path? = null
         val outcome =
-            try {
-                temporary = Files.createTempFile(state, ".host-exit-", ".tmp")
-                Files.writeString(temporary, encoded)
-                Files.move(
-                    temporary,
-                    target,
-                    StandardCopyOption.ATOMIC_MOVE,
-                    StandardCopyOption.REPLACE_EXISTING,
-                )
-                HostExitRecordOutcome.WRITTEN
-            } catch (_: java.io.IOException) {
-                temporary?.let(::discard)
-                HostExitRecordOutcome.FAILED
+            when (file.replace(encoded)) {
+                HostStateReplacement.REPLACED -> HostExitRecordOutcome.WRITTEN
+                HostStateReplacement.FAILED -> HostExitRecordOutcome.FAILED
             }
         observe(HostExitRecordObservation(HostExitRecordAction.RECORD, outcome, reason))
     }
 
     override fun retract() {
         val outcome =
-            try {
-                if (Files.deleteIfExists(target)) HostExitRecordOutcome.REMOVED else HostExitRecordOutcome.ABSENT
-            } catch (_: java.io.IOException) {
-                HostExitRecordOutcome.FAILED
+            when (file.remove()) {
+                HostStateRemoval.REMOVED -> HostExitRecordOutcome.REMOVED
+                HostStateRemoval.ABSENT -> HostExitRecordOutcome.ABSENT
+                HostStateRemoval.FAILED -> HostExitRecordOutcome.FAILED
             }
         observe(HostExitRecordObservation(HostExitRecordAction.RETRACT, outcome))
-    }
-
-    private fun discard(temporary: Path) {
-        try {
-            Files.deleteIfExists(temporary)
-        } catch (_: java.io.IOException) {
-            // The record outcome is already FAILED; a leftover temporary file is never read as a record.
-        }
     }
 
     companion object {

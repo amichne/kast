@@ -3,6 +3,7 @@ package io.github.amichne.kast.distribution.cli
 import io.github.amichne.kast.distribution.contract.ManagementRoot
 import io.github.amichne.kast.distribution.contract.configuration.WorkspaceDependencySharing
 import io.github.amichne.kast.kernel.Refinement
+import io.github.amichne.kast.protocol.contract.HostProgressRecord
 import java.nio.file.Path
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -21,6 +22,7 @@ internal sealed interface ManagedWorkspaceStatus {
         val savedDependencyConfiguration: Observation<WorkspaceDependencyMatch>,
         val seed: Observation<WorkspaceSeedRecord>,
         val hostStages: PassiveHostStages,
+        val progress: Observation<HostProgressRecord>,
     ) : ManagedWorkspaceStatus
 
     @Serializable
@@ -82,6 +84,7 @@ private fun workspaceStatus(
                         savedDependencyMatch(store, entry.workspace, installation),
                         Observation.unavailable(generation.failure.name),
                         PassiveHostStages.at(PassiveHostStep.GENERATION),
+                        Observation.unavailable(generation.failure.name),
                     )
                 is Refinement.Refined -> {
                     val host = readWorkspaceApplicationHost(generation.value)
@@ -95,6 +98,7 @@ private fun workspaceStatus(
                         savedDependencyMatch(store, entry.workspace, installation),
                         workspaceSeedStatus(generation.value),
                         PassiveHostStages.at(host.stage),
+                        workspaceProgress(generation.value.state, host.observation),
                     )
                 }
             }

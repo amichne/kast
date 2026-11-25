@@ -16,6 +16,7 @@ import (
 	"github.com/amichne/kast/frontend/internal/agent"
 	"github.com/amichne/kast/frontend/internal/install"
 	"github.com/amichne/kast/frontend/internal/reset"
+	"github.com/amichne/kast/frontend/internal/terminal"
 )
 
 // Process is the caller's process state, passed explicitly so tests control every effect.
@@ -31,6 +32,10 @@ type Process struct {
 	Signals <-chan os.Signal
 	// Exec replaces this process with the JVM entry; it returns only on failure.
 	Exec func(path string, argv []string, environment []string) error
+	// Capture runs the JVM entry as a child whose output this process presents.
+	Capture Capture
+	// Terminal reports whether a person reads a stream.
+	Terminal func(stream any) bool
 	// Reset performs `kast reset` on one home.
 	Reset func(home string, arguments []string, out io.Writer) error
 	// Install performs `kast install` with options on one home.
@@ -70,6 +75,9 @@ func Run(process Process) int {
 	}
 	parsed := parseInvocation(process.Arguments)
 	if !catalog.servedByCoordinator(parsed) {
+		if process.Capture != nil && catalog.runsAsChild(parsed) && catalog.presented(process, parsed.arguments, environment) {
+			return runChild(catalog, installation, parsed, process, environment)
+		}
 		return execute(catalog, installation, parsed, process)
 	}
 	process.Arguments = parsed.arguments
@@ -203,6 +211,45 @@ func runAgent(process Process, installation string, arguments []string) int {
 	}
 }
 
+// runChild presents one JVM command beside the signal wait. A signal ends the child, which a terminal also signals.
+func runChild(catalog *Catalog, installation string, parsed invocation, process Process,
+	environment map[string]string) int {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	finished := make(chan int, 1)
+	go func() { finished <- captured(ctx, catalog, installation, parsed, process, environment) }()
+	select {
+	case status := <-finished:
+		return status
+	case signal := <-process.Signals:
+		cancel()
+		select {
+		case <-finished:
+		case <-time.After(childGrace):
+		}
+		if signal == syscall.SIGTERM {
+			return catalog.status("TERMINATED")
+		}
+		return catalog.status("INTERRUPTED")
+	}
+}
+
+func captured(ctx context.Context, catalog *Catalog, installation string, parsed invocation, process Process,
+	environment map[string]string) int {
+	javaHome, err := catalog.runtimeHome(installation)
+	if err != nil {
+		diagnose(process.Stderr, "the Kast runtime is unavailable. Reinstall Kast.")
+		return catalog.status("BOOTSTRAP")
+	}
+	command := catalog.jvmCommand(installation, javaHome, process.Executable, parsed)
+	status, err := presentChild(ctx, command, parsed, process, environment)
+	if err != nil {
+		diagnose(process.Stderr, "the Kast runtime could not run: "+err.Error())
+		return catalog.status("BOOTSTRAP")
+	}
+	return status
+}
+
 // execute replaces this process with the JVM entry. The process identity, stdio and environment pass through, so
 // installation lifecycle owners observe the JVM exactly as they would a directly launched entry.
 func execute(catalog *Catalog, installation string, parsed invocation, process Process) int {
@@ -228,17 +275,23 @@ func complete(ctx context.Context, catalog *Catalog, installation string, parsed
 		Arguments:   process.Arguments,
 		Environment: environment,
 	}
+	presented := catalog.presented(process, process.Arguments, environment)
 	conn, err := dial(ctx, catalog.socket, catalog.socketAlias, catalog.handshake)
 	if isUnreachable(err) {
 		if status, settled := owner.terminal(); settled {
 			return status
+		}
+		if process.Capture != nil && presented && catalog.runsAsChild(parsed) {
+			return owner.finish(captured(ctx, catalog, installation, parsed, process, environment))
 		}
 		return owner.finish(execute(catalog, installation, parsed, process))
 	}
 	if err != nil {
 		return owner.finish(failureStatus(catalog, err, process.Stderr))
 	}
+	done := follow(ctx, process, environment)
 	completed, err := exchange(ctx, conn, request, process.Stdin)
+	done()
 	conn.CloseNow()
 	if status, settled := owner.terminal(); settled {
 		return status
@@ -252,7 +305,11 @@ func complete(ctx context.Context, catalog *Catalog, installation string, parsed
 	for _, line := range completed.Diagnostics {
 		fmt.Fprintln(process.Stderr, line)
 	}
-	return owner.finish(deliver(process.Stdout, completed.Output, completed.ExitCode, catalog))
+	output := completed.Output
+	if presented {
+		output = terminal.Document(output)
+	}
+	return owner.finish(deliver(process.Stdout, output, completed.ExitCode, catalog))
 }
 
 func failureStatus(catalog *Catalog, err error, stderr io.Writer) int {

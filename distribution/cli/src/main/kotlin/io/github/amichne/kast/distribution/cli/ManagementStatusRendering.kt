@@ -78,10 +78,11 @@ private fun workspaceStatusLines(workspace: ManagedWorkspaceStatus): List<String
     when (workspace) {
         is ManagedWorkspaceStatus.Rejected -> listOf("Workspace record ${workspace.entry}: ${workspace.failure}")
         is ManagedWorkspaceStatus.Recorded ->
-            listOf(
+            listOfNotNull(
                 "Workspace: ${workspace.workspace}",
                 "Workspace runtime: ${workspace.runtimeArchiveSha256.text { it }}",
                 "Workspace Host: ${workspaceHostText(workspace.host)}",
+                workspaceProgressLine(workspace.progress),
                 "Workspace dependencies: ${workspace.dependencySharing}; Gradle home: ${workspace.gradleHome}",
                 "Saved dependency configuration: ${workspace.savedDependencyConfiguration.text { words(it.name) }}",
                 "Workspace seed: ${workspace.seed.text { seedText(it.result) }}",

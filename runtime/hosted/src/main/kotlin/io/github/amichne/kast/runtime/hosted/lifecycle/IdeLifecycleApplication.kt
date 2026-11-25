@@ -48,8 +48,10 @@ class IdeLifecycleApplication(private val scope: CoroutineScope) : Disposable {
     internal val admission = HostedApplicationAdmission()
     private val json = Json { encodeDefaults = true }
     private val state = IdeLifecycleState(UUID.randomUUID())
+    private val progress = HostProgressRecords.forManagedHost(ManagedHeadlessHost.current(), state.host.toString())
     private val native =
         IdeLifecycleNative(state) { observation ->
+            progress?.prepared(observation)
             Logger.getInstance(IdeLifecycleApplication::class.java)
                 .info("kast_preparation " + json.encodeToString(NativePreparationObservation.serializer(), observation))
         }
@@ -178,6 +180,8 @@ class IdeLifecycleApplication(private val scope: CoroutineScope) : Disposable {
 
     private val exit =
         HostExitControl.start(scope, admission, settlement, runtimeIdentity, native::hasActivePreparation)
+
+    private val progressJob = launchHostProgress(scope, progress)
 
     init {
         ApplicationManager.getApplication()
@@ -342,6 +346,7 @@ class IdeLifecycleApplication(private val scope: CoroutineScope) : Disposable {
     override fun dispose() {
         state.shutdown()
         exit.idle?.cancel()
+        progressJob?.cancel()
         job.cancel()
     }
 
