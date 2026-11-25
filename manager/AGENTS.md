@@ -8,6 +8,8 @@ timestamp: "2026-11-23T00:00:00Z"
 source_revision: 402240fd87e8cf55254ddec55f6f02a809e4101c
 code_sources:
   - path: manager/cmd/kast/main.go
+  - path: manager/internal/agent/agent.go
+  - path: manager/internal/agent/harness.go
   - path: manager/internal/frontend/catalog.go
   - path: manager/internal/frontend/control.go
   - path: manager/internal/frontend/invocation.go
@@ -35,7 +37,7 @@ The Go binary is the installed Control executable at `share/kast/libexec/kast-ma
 It serves the public query commands through the persistent coordinator and owns bootstrap, transport, signals, output delivery, and process status for them.
 It also owns `kast reset`, which returns a damaged installation to "nothing installed" without a record, a runtime, or a JVM.
 It selects and downloads published builds for `kast install`, without changing an installation.
-It connects Claude Code or Codex to the installed plugin for `kast agent`, through that agent's own commands.
+It connects Claude Code, Codex, GitHub Copilot, and Pi to the installed plugin for `kast agent`, through each agent's own commands.
 Every other invocation replaces the process with `KastControlMain` on the Host's Java runtime, from the installation's `lib` class path.
 The coordinator and the JVM entry own lowering, defaults, workspace decisions, semantic admission, and presentation.
 Read the [tracer evidence](../docs/reviews/go-frontend-tracer.md) for the measured baseline.
@@ -73,8 +75,11 @@ Read the [tracer evidence](../docs/reviews/go-frontend-tracer.md) for the measur
 - The view reads progress snapshots. A slow or lost terminal never delays or stops a transfer.
 - After a signal, wait `installGrace` for the installation, so the view restores the cursor before the process ends.
 - Change agent configuration only through the agent's own commands. Never write its files.
-- Read both agent lists before an effect. An unreadable or absent list is a failure, never an empty one.
-- Reject a marketplace named `kast` whose path is not a Control layout. Claude Code would replace it silently.
+- Read an agent's lists before an effect on it. An unreadable or absent list is a failure, never an empty one.
+- An installation replaces any marketplace, plugin, or MCP server named `kast`. A removal rejects a marketplace whose path is not a Control layout.
+- Report success only when the agent then names this layout at this version.
+- A refresh changes only an agent that already has a Control layout. `kast upgrade` and the installer run it.
+- Without agent names, use every agent on the `PATH`. Ask first when a terminal can answer. An end of input selects nothing.
 - Never run an agent test against a real agent. Script the commands in `agent_test.go`, which rejects unexpected ones.
 - Read stdin only after `input_required`, and never beyond its stated bound.
   The coordinator cancels an invocation whose requested input misses `PublicInvocationProtocol.inputLimit` with `INPUT_EXPIRED`.
@@ -93,8 +98,9 @@ Read the [tracer evidence](../docs/reviews/go-frontend-tracer.md) for the measur
 - [reset.go](internal/reset/reset.go) - the reset sequence, its failures, and the supervisor and process adapters.
 - [paths.go](internal/reset/paths.go) - the exact deletion targets, their owners, and deletion without links.
 - [backup.go](internal/reset/backup.go) - the client configuration and workspace evidence that a reset copies first.
-- [agent.go](internal/agent/agent.go) - the agent vocabularies, ownership, and the install and remove sequences.
-- [native.go](internal/agent/native.go) - bounded agent commands without input.
+- [agent.go](internal/agent/agent.go) - ownership, selection, and the install, remove, and refresh sequences.
+- [harness.go](internal/agent/harness.go) - each agent's vocabulary and reported state.
+- [native.go](internal/agent/native.go) - the terminal question and bounded agent commands without input.
 - [release.go](internal/install/release.go) - build selection, strict record decoding, and the files a build needs.
 - [fetch.go](internal/install/fetch.go) - HTTPS transfers, resumption, digest admission, and the download directory.
 - [install.go](internal/install/install.go) - the installation modes, their output, and the native adapter.

@@ -286,7 +286,7 @@
         },
         {
             "path": "build-logic/src/main/kotlin/support/tasks/control/GenerateAgentToolsTask.kt",
-            "sha256": "72207984247ecddec5b2ea289dce0f0a4386a9923af9087c2a64a6f7dd8078d5"
+            "sha256": "90213d64d806b8b1c76bb3d7d1150ef15d5f2f14cf9a40d1edb24eda8037bd4e"
         },
         {
             "path": "build-logic/src/main/kotlin/support/tasks/control/GenerateComponentReleaseTask.kt",

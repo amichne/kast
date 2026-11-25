@@ -139,6 +139,28 @@ class GenerateAgentToolsTaskTest {
     }
 
     @Test
+    fun `both compositions carry the Copilot hook and a versioned Pi package`() {
+        val task = task()
+        task.generate()
+        val output = task.outputDirectory.get().asFile.toPath()
+        for (composition in listOf(output, output.resolve("compositions/mcp"))) {
+            val plugin = composition.resolve("plugins/kast")
+            // Copilot reads this file before hooks/hooks.json, so Claude Code and Codex keep their own envelope.
+            val copilot = Json.parseToJsonElement(Files.readString(plugin.resolve("hooks.json"))).jsonObject
+            assertEquals("1", copilot.getValue("version").jsonPrimitive.content)
+            val hook = copilot.getValue("hooks").jsonObject.getValue("sessionStart").jsonArray.single().jsonObject
+            assertTrue(hook.getValue("bash").jsonPrimitive.content.endsWith("hook session-start --host plain"))
+            assertTrue(Files.readString(plugin.resolve("hooks/hooks.json")).contains("--host agent"))
+            val pi = Json.parseToJsonElement(Files.readString(plugin.resolve("package.json"))).jsonObject
+            assertEquals("1.2.3", pi.getValue("version").jsonPrimitive.content)
+            val resources = pi.getValue("pi").jsonObject
+            for (path in listOf("extensions", "skills").flatMap { resources.getValue(it).jsonArray }) {
+                assertTrue(Files.exists(plugin.resolve(path.jsonPrimitive.content)), path.jsonPrimitive.content)
+            }
+        }
+    }
+
+    @Test
     fun `short host deadlines reject before replacing admitted output`() {
         val task = task()
         task.generate()

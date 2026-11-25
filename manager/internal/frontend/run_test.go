@@ -574,7 +574,7 @@ func TestAnAgentCommandRunsHereAndMapsItsFailuresToPublishedStatuses(t *testing.
 			calls := 0
 			process := resetProcess(t, nil, &stderr, "agent", "remove", "codex")
 			process.Executable = executable
-			process.Agent = func(_ context.Context, installation string, arguments []string, _ io.Writer) error {
+			process.Agent = func(_ context.Context, installation string, arguments []string, _ io.Reader, _ io.Writer) error {
 				calls++
 				if installation != expected || !slices.Equal(arguments, []string{"remove", "codex"}) {
 					t.Errorf("agent command on %q with %v", installation, arguments)
@@ -599,7 +599,7 @@ func TestASignalEndsAnAgentCommand(t *testing.T) {
 		signals <- signal
 		process := resetProcess(t, nil, io.Discard, "agent", "install", "claude")
 		process.Signals = signals
-		process.Agent = func(ctx context.Context, _ string, _ []string, _ io.Writer) error {
+		process.Agent = func(ctx context.Context, _ string, _ []string, _ io.Reader, _ io.Writer) error {
 			<-ctx.Done()
 			return ctx.Err()
 		}

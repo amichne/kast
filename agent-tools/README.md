@@ -1,7 +1,7 @@
 # Kast agent guidance
 
 This directory owns the canonical Kast skill for the native `kast` command.
-The build projects it into one plugin for Claude Code and Codex, with the session hook and an optional MCP server.
+The build projects it into one plugin for Claude Code, Codex, GitHub Copilot, and Pi, with the session hook and an optional MCP server.
 Kast writes no agent configuration. Each agent installs the plugin with its own commands.
 
 ## Export the skill
@@ -27,18 +27,21 @@ An installation holds two marketplaces, each with the plugin `kast@kast`:
 | `share/kast/agent-tools` | Skill and session hook |
 | `share/kast/agent-tools/compositions/mcp` | Skill, session hook, and MCP server |
 
-`.codex-plugin/plugin.json` is the one authored identity. The generator derives the Claude Code manifest and marketplace from it.
+`.codex-plugin/plugin.json` is the one authored identity. The generator derives the Claude Code manifest, the marketplace, and the Pi package version from it.
+GitHub Copilot reads the Claude Code marketplace.
 
 ```sh
-kast agent install claude
-kast agent install codex --without-mcp
+kast agent install
+kast agent install codex pi --without-mcp
+kast agent refresh
 kast agent remove codex
 ```
 
 These commands run each agent's own plugin commands. Without `--without-mcp`, the second directory is the source.
+Pi has no MCP server in a package, so the command registers it with `pi mcp add`.
 
 Start a fresh agent session. A completed plugin installation does not establish content in an existing agent session.
-Codex runs the session hook only after the user trusts it.
+Codex runs the session hook only after the user trusts it. Copilot runs it only in a trusted folder.
 The [agent setup guide](../docs/public/reference/integrations.mdx) gives the complete procedure.
 
 ## Workspace preparation

@@ -1,6 +1,7 @@
 package agent
 
 import (
+	"bufio"
 	"bytes"
 	"context"
 	"errors"
@@ -20,14 +21,64 @@ const (
 	maximumMessage = 300
 )
 
-// Native performs one invocation with the agent commands on this machine.
-func Native(ctx context.Context, installation string, arguments []string, out io.Writer) error {
-	return Run(ctx, Effects{Look: exec.LookPath, Run: runCommand, File: regular}, installation, arguments, out)
+// maximumManifest bounds the one file an invocation reads.
+const maximumManifest = 64 << 10
+
+// Native performs one invocation with the agent commands on this machine. It asks only when a person can answer.
+func Native(ctx context.Context, installation string, arguments []string, in io.Reader, out io.Writer) error {
+	effects := Effects{Look: exec.LookPath, Run: runCommand, Read: readManifest}
+	if terminal(in) && terminal(out) {
+		effects.Ask = func(ctx context.Context, question string) (string, error) {
+			return ask(ctx, in, out, question)
+		}
+	}
+	return Run(ctx, effects, installation, arguments, out)
 }
 
-func regular(path string) bool {
+func terminal(stream any) bool {
+	file, ok := stream.(*os.File)
+	if !ok || os.Getenv("TERM") == "dumb" {
+		return false
+	}
+	info, err := file.Stat()
+	return err == nil && info.Mode()&os.ModeCharDevice != 0
+}
+
+// ask reads one line. An end of input is no answer, so it never selects the default.
+func ask(ctx context.Context, in io.Reader, out io.Writer, question string) (string, error) {
+	if _, err := io.WriteString(out, question); err != nil {
+		return "", err
+	}
+	type reply struct {
+		line string
+		err  error
+	}
+	answered := make(chan reply, 1)
+	go func() {
+		line, err := bufio.NewReaderSize(in, maximumMessage).ReadString('\n')
+		answered <- reply{line, err}
+	}()
+	select {
+	case <-ctx.Done():
+		return "", ctx.Err()
+	case answer := <-answered:
+		if answer.err != nil {
+			return "", reject(UsageRejected, "Name the agents instead: "+usage, "no answer was given, so nothing was changed")
+		}
+		return strings.TrimSpace(answer.line), nil
+	}
+}
+
+// readManifest admits one small regular file.
+func readManifest(path string) ([]byte, error) {
 	info, err := os.Stat(path)
-	return err == nil && info.Mode().IsRegular()
+	if err != nil {
+		return nil, err
+	}
+	if !info.Mode().IsRegular() || info.Size() > maximumManifest {
+		return nil, errors.New("it is not a small regular file")
+	}
+	return os.ReadFile(path)
 }
 
 // runCommand gives an agent no input, so a prompt ends the command instead of waiting for an answer.

@@ -36,7 +36,7 @@ type Process struct {
 	// Install performs `kast install` with options on one home.
 	Install func(ctx context.Context, home, platform string, arguments []string, out, log io.Writer) error
 	// Agent performs `kast agent` on one installation, which is empty when none was found.
-	Agent func(ctx context.Context, installation string, arguments []string, out io.Writer) error
+	Agent func(ctx context.Context, installation string, arguments []string, in io.Reader, out io.Writer) error
 }
 
 // Run executes one invocation and returns the process status. The coordinator serves public queries, a reset runs here,
@@ -173,7 +173,7 @@ func runAgent(process Process, installation string, arguments []string) int {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	finished := make(chan error, 1)
-	go func() { finished <- process.Agent(ctx, installation, arguments, process.Stdout) }()
+	go func() { finished <- process.Agent(ctx, installation, arguments, process.Stdin, process.Stdout) }()
 	select {
 	case err := <-finished:
 		var rejection *agent.Rejection

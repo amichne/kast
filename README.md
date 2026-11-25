@@ -26,13 +26,13 @@ Setup takes three steps.
    The installer selects one complete build. Step 2 connects your agent.
    If your shell cannot find `kast`, add the directory that the installer prints to your `PATH`, then open a new terminal.
 
-2. Connect your agent. The installation includes one plugin for Claude Code and Codex, with the Kast skill, session hook, and MCP server:
+2. Connect your agent. The installation includes one plugin for Claude Code, Codex, GitHub Copilot, and Pi, with the Kast skill, session hook, and MCP server:
 
    ```shell
-   kast agent install claude
+   kast agent install
    ```
 
-   For Codex, use `kast agent install codex`. [Connect your agent](https://kast.michne.com/reference/integrations/) gives the steps for other agents.
+   The command lists the agents it finds, and you select them. [Connect your agent](https://kast.michne.com/reference/integrations/) gives the steps for other agents.
    Start a new agent session in your project. Agent setup does not start the runtime or grant trust.
 
 3. Query from a project root whose build code you trust. The first explicit semantic request grants trust to that exact root and starts its private Host. Replace `DECLARATION_NAME` with a class or function in your project.
