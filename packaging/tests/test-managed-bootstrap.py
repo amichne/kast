@@ -537,6 +537,84 @@ class BootstrapTest(unittest.TestCase):
                 self.assertEqual(effects, log.read_text().splitlines())
                 self.assertFalse(list(root.glob("kast-bootstrap.*")))
 
+    def test_a_completed_installation_offers_or_refreshes_agents(self) -> None:
+        offer, refresh = "agent install", "agent refresh"
+        cases: tuple[tuple[tuple[str, ...], bool, bool, int, list[str]], ...] = (
+            # arguments, terminal, the build has the selector, engine status, agent commands
+            ((), True, True, 0, [offer]),
+            ((), False, True, 0, [refresh]),
+            (("--json",), True, True, 0, [refresh]),
+            ((), True, False, 0, []),
+            ((), False, False, 0, []),
+            ((), True, True, 4, []),
+            (("--version", "1.2.3", "--dry-run"), True, True, 0, []),
+        )
+        for arguments, terminal, selector, outcome, effects in cases:
+            with (
+                self.subTest(arguments=arguments, terminal=terminal, selector=selector),
+                tempfile.TemporaryDirectory() as temporary,
+            ):
+                root = Path(temporary).resolve()
+                home, log, tools = root / "home", root / "effects", root / "tools"
+                command = home / ".local/bin/kast"
+                plugin = home / ".local/share/kast/installation/share/kast/agent-tools/plugins/kast"
+                for directory in (tools, command.parent, plugin):
+                    directory.mkdir(parents=True)
+                log.touch()
+                if selector:
+                    _ = (plugin / "package.json").write_text("{}")
+                # A failed agent command must not change the installation's status.
+                script(
+                    command, f'#!/bin/sh\necho "$*" >> {shlex.quote(str(log))}\necho shown\nexit 1\n'
+                )
+                engine = root / "engine"
+                script(
+                    engine,
+                    f'#!/bin/sh\n[ "$3" = -c ] && exit 0\necho INSTALLED\nexit {outcome}\n',
+                )
+                archive = root / "python.tar.gz"
+                with tarfile.open(archive, "w:gz") as output:
+                    output.add(engine, "python/bin/python3.12")
+                wheel = root / "wheel"
+                _ = wheel.write_bytes(b"wheel")
+                python = tuple(replace(pin, sha256=private.digest(archive)) for pin in private.PINS)
+                with (
+                    patch.object(generator, "PINS", python),
+                    patch.object(generator, "DEPENDENCY_SHA256", private.digest(wheel)),
+                ):
+                    installer = root / "install.sh"
+                    _ = installer.write_bytes(generator.render())
+                script(
+                    tools / "curl",
+                    '#!/bin/sh\nwhile [ "$#" -gt 1 ]; do\n'
+                    'if [ "$1" = --output ]; then destination=$2; fi\nshift\ndone\n'
+                    'case "$1" in\n'
+                    f'{"|".join(pin.url for pin in python)}) source={shlex.quote(str(archive))} ;;\n'
+                    f"{private.DEPENDENCY_URL}) source={shlex.quote(str(wheel))} ;;\n"
+                    '*) exit 92 ;;\nesac\n/bin/cat "$source" > "$destination"\n',
+                )
+                environment = {
+                    "HOME": str(home),
+                    "PATH": f"{tools}:{os.defpath}:/usr/bin:/bin",
+                    "TMPDIR": str(root),
+                }
+                vector = ["/bin/bash", str(installer), *arguments]
+                if terminal:
+                    status, _shown = on_terminal(vector, environment, "\n")
+                else:
+                    result = subprocess.run(
+                        vector,
+                        env=environment,
+                        capture_output=True,
+                        text=True,
+                        timeout=30,
+                        start_new_session=True,
+                    )
+                    status = result.returncode
+                    self.assertEqual("INSTALLED\n", result.stdout)
+                self.assertEqual(outcome, status)
+                self.assertEqual(effects, log.read_text().splitlines())
+
     def test_bootstrap_pins_name_one_published_release_per_target(self) -> None:
         self.assertRegex(published.TAG, r"\Abootstrap-[0-9a-f]{12}\Z")
         self.assertEqual(

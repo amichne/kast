@@ -1,12 +1,12 @@
 ---
 title: "Connect your agent"
 sidebarTitle: "Agent setup"
-description: "Install the Kast plugin in Claude Code or Codex, or export the Kast skill for another agent."
+description: "Install the Kast plugin in Claude Code, Codex, GitHub Copilot, or Pi, or export the Kast skill for another agent."
 icon: "plug"
 hideFooterPagination: true
 ---
 
-The Kast installation includes one plugin for Claude Code and Codex. It holds the Kast skill, a session hook, and the Kast MCP server.
+The Kast installation includes one plugin for Claude Code, Codex, GitHub Copilot, and Pi. It holds the Kast skill, a session hook, and the Kast MCP server.
 `kast agent` runs your agent's own plugin commands. Kast writes no agent configuration.
 
 ## Before you start
@@ -17,6 +17,15 @@ The Kast installation includes one plugin for Claude Code and Codex. It holds th
 <span id="2-declare-kast-in-agents-toml" />
 
 ## 1. Install the plugin
+
+```shell
+kast agent install
+```
+
+The command lists the supported agents on your `PATH`. Enter their numbers, press Enter for all of them, or enter `0` for none.
+Without a terminal, it selects all of them. The installer asks the same question after it installs Kast.
+
+Name an agent to skip the question: `claude`, `codex`, `copilot`, or `pi`. You can name more than one.
 
 <Tabs>
   <Tab title="Claude Code">
@@ -33,13 +42,28 @@ The Kast installation includes one plugin for Claude Code and Codex. It holds th
 
     Codex skips a new hook until you trust it. Run `/hooks` in a session, then review the Kast session hook.
   </Tab>
+  <Tab title="GitHub Copilot">
+    ```shell
+    kast agent install copilot
+    ```
+
+    Copilot runs the session hook only in a folder that you trust.
+  </Tab>
+  <Tab title="Pi">
+    ```shell
+    kast agent install pi
+    ```
+
+    Pi loads the skill and a small extension from one package. Kast adds the MCP server with `pi mcp add`.
+  </Tab>
 </Tabs>
 
 The plugin applies to all your projects. Outside a Gradle project, the session hook adds nothing to the session.
 
 Add `--without-mcp` to install only the skill and hook. Run the command again without it to add the MCP server.
 
-Another marketplace named `kast` stops the command with `MARKETPLACE_FOREIGN`, and nothing changes. The output names the command that removes it.
+The command replaces a marketplace, plugin, or MCP server with the name `kast`, from any source.
+It then reads the agent's own plugin list. If the list shows another version or directory, the command stops with `VERSION_STALE`.
 
 <span id="3-apply-the-configuration" />
 
@@ -62,27 +86,23 @@ The [MCP contract](/reference/mcp-catalog) describes the server's tools and repl
 
 ## Refresh after an upgrade
 
-An upgrade can change the plugin.
+`kast upgrade` updates the plugin in each agent that already has it, and adds it to no other agent.
+Start a new agent session to load the update. A changed hook needs a new review in Codex.
 
-- Claude Code reads the plugin from the installation. Start a new session.
-- Codex keeps a copy. Run `kast agent install codex` again, then start a new session. `kast upgrade` does not do this.
+If the upgrade reports that an agent keeps an older plugin, run the update yourself:
 
-A changed hook needs a new review in Codex.
+```shell
+kast agent refresh
+```
 
 ## Remove the plugin
 
-<Tabs>
-  <Tab title="Claude Code">
-    ```shell
-    kast agent remove claude
-    ```
-  </Tab>
-  <Tab title="Codex">
-    ```shell
-    kast agent remove codex
-    ```
-  </Tab>
-</Tabs>
+```shell
+kast agent remove
+```
+
+Without a name, the command removes the plugin from every agent on your `PATH`. Name an agent to select it.
+A marketplace named `kast` from another source stops the removal with `MARKETPLACE_FOREIGN`.
 
 `kast uninstall` does not change agent configuration. Remove the plugin first.
 

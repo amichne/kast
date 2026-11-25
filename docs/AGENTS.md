@@ -64,7 +64,7 @@ This directory owns the Mintlify site, contributor guides, and glossary rules. R
 - The value explorer and README preview share `docs/internal/tooling/value-journey` as their source. Run `mise run value-journey`. Commit both generated files.
 - Keep Guides, Architecture, and Reference visible in navigation. Group pages by reader goal.
 - Public setup starts with the remote installer, which selects the latest stable build. Use `kast upgrade --channel stable` for updates.
-- Use `kast agent install <claude|codex>` to connect an agent, and `kast install skill` to export the skill for another one. `kast agent` runs the agent's own commands. Kast writes no agent configuration.
+- Use `kast agent install` to connect Claude Code, Codex, GitHub Copilot, or Pi, and `kast install skill` to export the skill for another one. `kast agent` runs the agent's own commands. Kast writes no agent configuration.
 - Describe one complete managed product, private workspace state, and exact-root trust on the first explicit semantic request. Hooks stay passive; stop is temporary and scoped.
 - Keep intended product behavior separate from source checks, native acceptance, and publication. Do not require a user desktop IDEA installation, archive import, Python, or uv for product setup.
 - Use `snippets/deeper-reading.mdx` for bottom links from core pages. `sidebar-toggle.js` owns the desktop toggle for Maple.

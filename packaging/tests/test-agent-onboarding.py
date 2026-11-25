@@ -215,6 +215,21 @@ class AgentOnboardingTest(unittest.TestCase):
         self.assertTrue(hooks[0]["hooks"][0]["command"].endswith("kast --internal-entrypoint=query hook session-start --host agent"))
         self.assertLessEqual(hooks[0]["hooks"][0]["timeout"], 90)
 
+    def test_copilot_and_pi_run_the_same_passive_command(self):
+        shared = json.loads((PLUGIN / "hooks/hooks.json").read_text())["hooks"]["SessionStart"]
+        command = shared[0]["hooks"][0]["command"].removesuffix(" --host agent")
+        copilot = json.loads((PLUGIN / "hooks.json").read_text())
+        self.assertEqual({"version", "hooks"}, set(copilot))
+        self.assertEqual(1, copilot["version"])
+        (hook,) = copilot["hooks"]["sessionStart"]
+        self.assertEqual(f"{command} --host plain", hook["bash"])
+        self.assertLessEqual(hook["timeoutSec"], 90)
+        package = json.loads((PLUGIN / "package.json").read_text())
+        for extension in package["pi"]["extensions"]:
+            self.assertTrue((PLUGIN / extension).is_file(), extension)
+        for skills in package["pi"]["skills"]:
+            self.assertTrue((PLUGIN / skills / "kast/SKILL.md").is_file(), skills)
+
 
 if __name__ == "__main__":
     unittest.main()

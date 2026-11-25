@@ -129,4 +129,16 @@ if [[ "$status" == 3 ]]; then
   fi
 fi
 [[ -z "$outcome" ]] || printf '%s\n' "$outcome"
+# A build from before the selector has no Pi package. The selector is the confirmation. Without a terminal, or with
+# --json, only an agent that already has this Kast changes.
+if [[ "$status:$dry_run" == 0:0 && -x "$HOME/.local/bin/kast" &&
+  -f "$HOME/.local/share/kast/installation/share/kast/agent-tools/plugins/kast/package.json" ]]; then
+  if [[ "$json" == 0 ]] && (: <>/dev/tty) 2>/dev/null; then
+    "$HOME/.local/bin/kast" agent install </dev/tty >/dev/tty 2>/dev/tty || \
+      printf '%s\n' 'kast: the installation is complete. Run kast agent install to connect an agent.' >&2
+  else
+    "$HOME/.local/bin/kast" agent refresh </dev/null >&2 || \
+      printf '%s\n' 'kast: the installation is complete. Run kast agent refresh to update a connected agent.' >&2
+  fi
+fi
 exit "$status"

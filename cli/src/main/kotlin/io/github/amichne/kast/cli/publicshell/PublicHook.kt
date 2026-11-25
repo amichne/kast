@@ -50,7 +50,7 @@ internal sealed interface HookPreparation {
 
 @Serializable private data class HookAccepted(val preparation: HookPreparation, val additionalContext: String)
 
-@Serializable private data class HookSkipped(val additionalContext: String)
+@Serializable private data class HookContextOnly(val additionalContext: String)
 
 @Serializable
 private data class HookRejected(
@@ -141,7 +141,7 @@ private val hookHelpCommands =
         listOf("workspace", "wait", "--help"),
     )
 private const val HOOK_HELP =
-    "kast hook session-start [--workspace ABSOLUTE_PATH] [--wait none|indefinite|TIMEOUT_MS] [--host agent]\n" +
+    "kast hook session-start [--workspace ABSOLUTE_PATH] [--wait none|indefinite|TIMEOUT_MS] [--host agent|plain]\n" +
         "kast workspace wait [--workspace ABSOLUTE_PATH] [--wait indefinite|TIMEOUT_MS]\n" +
         "A positive timeout is in milliseconds. Indefinite waiting has no preparation deadline.\n" +
         "Omitted --wait uses KAST_WORKSPACE_PREPARATION_WAIT and saved configuration (default 1020000 ms).\n" +
@@ -157,7 +157,8 @@ private fun hookRootRejected(
     if (failure == CanonicalRootFailure.ROOT_MARKER_NOT_FOUND && !waitCommand)
         when (host) {
             // A user-wide agent hook runs in every directory, and most are not Gradle projects.
-            HookHost.AGENT ->
+            HookHost.AGENT,
+            HookHost.PLAIN ->
                 PublicPreparedOutput(hookJson.encodeToString(AgentHookSilence()), PublicShellExit.COMPLETE)
             HookHost.CLI ->
                 hookContext(host, "Kast workspace preparation skipped: this directory has no Gradle settings owner.")
@@ -215,8 +216,9 @@ private fun hookContext(host: HookHost, context: String, reply: HookAccepted? = 
     PublicPreparedOutput(
         when (host) {
             HookHost.CLI ->
-                if (reply == null) hookJson.encodeToString(HookSkipped(context)) else hookJson.encodeToString(reply)
+                if (reply == null) hookJson.encodeToString(HookContextOnly(context)) else hookJson.encodeToString(reply)
             HookHost.AGENT -> hookJson.encodeToString(AgentHookOutput(AgentHookContext(context)))
+            HookHost.PLAIN -> hookJson.encodeToString(HookContextOnly(context))
         },
         PublicShellExit.COMPLETE,
     )
