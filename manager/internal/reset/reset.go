@@ -133,6 +133,15 @@ func (r *Reset) Run(arguments []string) error {
 		r.print("Nothing was changed. Run `kast reset --yes` to stop and delete this.")
 		return nil
 	}
+	if err := r.perform(paths, found); err != nil {
+		return err
+	}
+	r.print(notInstalled)
+	return nil
+}
+
+// perform stops what runs, copies what the user would lose, and deletes the inventory.
+func (r *Reset) perform(paths *layout, found *inventory) error {
 	if err := r.stop(paths, found); err != nil {
 		return err
 	}
@@ -140,7 +149,8 @@ func (r *Reset) Run(arguments []string) error {
 		return err
 	}
 	// The backup took time. A process that started meanwhile keeps everything in place.
-	if running, err = r.observe(paths, found); err != nil {
+	running, err := r.observe(paths, found)
+	if err != nil {
 		return err
 	}
 	if lines := running.lines(); len(lines) > 0 {
@@ -273,7 +283,6 @@ func (r *Reset) finish(paths *layout, left []string) error {
 		return reject(ResetIncomplete, "these remain; correct what is listed and run `kast reset --yes` again:\n  %s",
 			strings.Join(remaining, "\n  "))
 	}
-	r.print(notInstalled)
 	return nil
 }
 

@@ -86,6 +86,9 @@ type release struct {
 	tag, version, revision, target string
 	channel                        channel
 	parts                          []part
+	// record is the exact admitted text, and sha its published digest.
+	record []byte
+	sha    string
 }
 
 func (r *release) bytes() (total int64) {
@@ -321,7 +324,7 @@ func admit(raw []byte, found reference, platform string) (*release, error) {
 		}
 	}
 	return &release{tag: found.tag, version: found.public, revision: record.SourceRevision, target: platform,
-		channel: found.channel, parts: parts}, nil
+		channel: found.channel, parts: parts, record: raw, sha: found.sha}, nil
 }
 
 // admit returns the target's files, or the name of the check that failed.

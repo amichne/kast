@@ -38,6 +38,10 @@ type Process struct {
 	Terminal func(stream any) bool
 	// Reset performs `kast reset` on one home.
 	Reset func(home string, arguments []string, out io.Writer) error
+	// Uninstall performs `kast uninstall` on one home. Settle stops every workspace Host or refuses.
+	Uninstall func(home string, arguments []string, out io.Writer, settle func() error) error
+	// Upgrade performs `kast upgrade` on one home.
+	Upgrade func(ctx context.Context, home, platform string, arguments []string, out, log io.Writer) error
 	// Install performs `kast install` with options on one home.
 	Install func(ctx context.Context, home, platform string, arguments []string, out, log io.Writer) error
 	// Agent performs `kast agent` on one installation, which is empty when none was found.
@@ -52,7 +56,14 @@ func Run(process Process) int {
 	if parsed := parseInvocation(process.Arguments); parsed.entry == "management" && len(parsed.arguments) > 0 {
 		switch {
 		case parsed.arguments[0] == "reset":
-			return runReset(process, environment["HOME"], parsed.arguments[1:])
+			return runReset(process, "reset", environment["HOME"], parsed.arguments[1:], process.Reset)
+		case parsed.arguments[0] == "uninstall":
+			uninstall := func(home string, arguments []string, out io.Writer) error {
+				return process.Uninstall(home, arguments, out, func() error { return settleHosts(process, environment) })
+			}
+			return runReset(process, "uninstall", environment["HOME"], parsed.arguments[1:], uninstall)
+		case parsed.arguments[0] == "upgrade":
+			return runUpgrade(process, environment["HOME"], parsed.arguments[1:])
 		case installs(parsed.arguments):
 			return runInstall(process, environment["HOME"], parsed.arguments[1:])
 		case parsed.arguments[0] == "agent":
@@ -103,24 +114,25 @@ func Run(process Process) int {
 	}
 }
 
-// runReset performs a reset beside the signal wait. A signal ends it between or inside deletions; running it again
-// finishes them.
-func runReset(process Process, home string, arguments []string) int {
+// runReset performs a reset or an uninstall beside the signal wait. A signal ends it between or inside deletions; a
+// reset finishes them.
+func runReset(process Process, name, home string, arguments []string,
+	perform func(home string, arguments []string, out io.Writer) error) int {
 	finished := make(chan error, 1)
-	go func() { finished <- process.Reset(home, arguments, process.Stdout) }()
+	go func() { finished <- perform(home, arguments, process.Stdout) }()
 	select {
 	case err := <-finished:
 		if err == nil {
 			return 0
 		}
-		diagnose(process.Stderr, "reset: "+err.Error())
+		diagnose(process.Stderr, name+": "+err.Error())
 		var rejection *reset.Rejection
 		if errors.As(err, &rejection) && rejection.Failure == reset.UsageRejected {
 			return inputStatus
 		}
 		return runtimeStatus
 	case signal := <-process.Signals:
-		diagnose(process.Stderr, "reset: interrupted. Run `kast reset` again to see what remains.")
+		diagnose(process.Stderr, name+": interrupted. Run `kast reset` again to see what remains.")
 		if signal == syscall.SIGTERM {
 			return terminatedStatus
 		}
@@ -173,6 +185,93 @@ func runInstall(process Process, home string, arguments []string) int {
 		}
 		return interruptedStatus
 	}
+}
+
+// settleHosts stops every workspace Host through the installed JVM entry, which owns settlement. Any other outcome is a
+// refusal.
+func settleHosts(process Process, environment map[string]string) error {
+	installation, err := locateInstallation(process.Executable, environment)
+	if err != nil {
+		return &reset.Refused{Reason: "the installation is unavailable"}
+	}
+	catalog, err := LoadCatalog(installation)
+	if err != nil {
+		return &reset.Refused{Reason: err.Error()}
+	}
+	javaHome, err := catalog.runtimeHome(installation)
+	if err != nil {
+		return &reset.Refused{Reason: "the runtime is unavailable"}
+	}
+	command := catalog.jvmCommand(installation, javaHome, process.Executable,
+		invocation{entry: "management", arguments: []string{"stop", "--all", "--json"}})
+	var out strings.Builder
+	status, err := process.Capture(context.Background(), command, process.Environment, strings.NewReader(""), &out,
+		io.Discard)
+	if err != nil {
+		return &reset.Refused{Reason: err.Error()}
+	}
+	if status != 0 {
+		return &reset.Refused{Reason: stopFailure(out.String(), status)}
+	}
+	return nil
+}
+
+// stopFailure reads the failure of WorkspaceStopOutcome.Rejected.
+func stopFailure(document string, status int) string {
+	var rejected struct {
+		Failure string `json:"failure"`
+	}
+	if json.Unmarshal([]byte(document), &rejected) != nil || rejected.Failure == "" {
+		return fmt.Sprintf("status %d", status)
+	}
+	return strings.ToLower(strings.ReplaceAll(rejected.Failure, "_", " "))
+}
+
+// runUpgrade performs an upgrade beside the signal wait. A signal asks the engine to stop, and this process waits for
+// it, because the engine must undo or record a replacement that it started.
+func runUpgrade(process Process, home string, arguments []string) int {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	finished := make(chan error, 1)
+	go func() {
+		finished <- process.Upgrade(ctx, home, platform(), arguments, process.Stdout, process.Stderr)
+	}()
+	var interrupted os.Signal
+	for {
+		select {
+		case err := <-finished:
+			if interrupted != nil {
+				diagnose(process.Stderr, "upgrade: interrupted. Run `kast upgrade` again.")
+				if interrupted == syscall.SIGTERM {
+					return terminatedStatus
+				}
+				return interruptedStatus
+			}
+			return upgradeStatus(process.Stderr, err)
+		case signal := <-process.Signals:
+			if interrupted == nil {
+				interrupted = signal
+				diagnose(process.Stderr, "upgrade: stopping safely")
+				cancel()
+			}
+		}
+	}
+}
+
+func upgradeStatus(stderr io.Writer, err error) int {
+	var rejection *install.Rejection
+	switch {
+	case err == nil:
+		return 0
+	case !errors.As(err, &rejection):
+		diagnose(stderr, "upgrade: "+err.Error())
+		return runtimeStatus
+	}
+	diagnose(stderr, "upgrade: "+rejection.Error()+"\n"+rejection.Next)
+	if rejection.Failure == install.UsageRejected {
+		return inputStatus
+	}
+	return runtimeStatus
 }
 
 // runAgent performs an agent command beside the signal wait. A signal ends the running agent command; every step

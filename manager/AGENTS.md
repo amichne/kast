@@ -37,6 +37,7 @@ The Go binary is the installed Control executable at `share/kast/libexec/kast-ma
 It serves the public query commands through the persistent coordinator and owns bootstrap, transport, signals, output delivery, and process status for them.
 It also owns `kast reset`, which returns a damaged installation to "nothing installed" without a record, a runtime, or a JVM.
 It selects and downloads published builds for `kast install`, without changing an installation.
+It owns the `kast upgrade` and `kast uninstall` commands. The installed engine still activates an upgrade.
 It connects Claude Code, Codex, GitHub Copilot, and Pi to the installed plugin for `kast agent`, through each agent's own commands.
 Every other invocation replaces the process with `KastControlMain` on the Host's Java runtime, from the installation's `lib` class path.
 The coordinator and the JVM entry own lowering, defaults, workspace decisions, semantic admission, and presentation.
@@ -56,7 +57,11 @@ Read the [tracer evidence](../docs/reviews/go-frontend-tracer.md) for the measur
   Pass the invoked command as `-Dkast.command`, because the JVM cannot observe it after `exec`.
 - When stdout is a terminal and the caller names no format, present results as an outline. `--json`, `--jq`, and a set output setting keep the exact document.
   A pipe always receives the exact document.
-- Run the JVM as a child only for a presented command in `childServed`. Never run `upgrade`, `uninstall`, `hook`, or a private entry as a child.
+- Run the JVM as a child only for a presented command in `childServed`, and to settle Hosts for an uninstall. Never run `hook` or a private entry as a child.
+- Verify every installed payload file before an upgrade runs the engine. Anything unexpected stops and names `kast reset`.
+- An upgrade succeeds only with a success document and status 0. After a signal, ask the engine to stop once and wait for it; never kill it.
+- An uninstall settles every Host before it stops a process, and refuses an unfinished upgrade or an entry that Kast did not write.
+- Never run an upgrade or uninstall test against a real engine, Host, or home. Script them in `upgrade_test.go` and `uninstall_test.go`.
 - Read `host-progress.json` only to draw a progress line on stderr. `HostProgressRecord` derives the phase; never derive it in Go.
 - Replace control characters in presented values, so a result cannot drive the terminal.
 - Route JVM warnings to stderr with `-Xlog:disable -Xlog:all=warning:stderr`, so standard output carries only the entry's document.
@@ -106,6 +111,10 @@ Read the [tracer evidence](../docs/reviews/go-frontend-tracer.md) for the measur
 - [progress.go](internal/terminal/progress.go) - the preparation progress line of the nearest workspace.
 - [reset.go](internal/reset/reset.go) - the reset sequence, its failures, and the supervisor and process adapters.
 - [paths.go](internal/reset/paths.go) - the exact deletion targets, their owners, and deletion without links.
+- [uninstall.go](internal/reset/uninstall.go) - what an uninstall refuses, and its order.
+- [upgrade.go](internal/install/upgrade.go) - build choice, the engine's command, and the result.
+- [payload.go](internal/install/payload.go) - proof of the installed files.
+- [stages.go](internal/install/stages.go) - the engine's stages and result as words.
 - [backup.go](internal/reset/backup.go) - the client configuration and workspace evidence that a reset copies first.
 - [agent.go](internal/agent/agent.go) - ownership, selection, and the install, remove, and refresh sequences.
 - [harness.go](internal/agent/harness.go) - each agent's vocabulary and reported state.

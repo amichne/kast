@@ -40,6 +40,8 @@ func main() {
 		Capture:     frontend.RunChild,
 		Terminal:    terminal.Is,
 		Reset:       reset.Native,
+		Uninstall:   reset.NativeUninstall,
+		Upgrade:     install.NativeUpgrade,
 		Install:     install.Native,
 		Agent:       agent.Native,
 	}))
