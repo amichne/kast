@@ -167,12 +167,14 @@ class PublicHookTest {
     @Test
     fun `an agent hook adds nothing outside a Gradle project and unknown hosts reject`() {
         val event = Json.encodeToString(TestHookEvent(directory.toString(), "1"))
-        val silent =
-            preparePublicHook(listOf("hook", "session-start", "--host", "agent"), input(event)) { _, _ ->
-                error("Non-project preparation")
-            }
-        assertEquals(PublicShellExit.COMPLETE, silent.exit)
-        assertEquals(emptySet<String>(), Json.parseToJsonElement(silent.text).jsonObject.keys)
+        for (host in listOf("agent", "plain")) {
+            val silent =
+                preparePublicHook(listOf("hook", "session-start", "--host", host), input(event)) { _, _ ->
+                    error("Non-project preparation")
+                }
+            assertEquals(PublicShellExit.COMPLETE, silent.exit, host)
+            assertEquals(emptySet<String>(), Json.parseToJsonElement(silent.text).jsonObject.keys, host)
+        }
         for (host in listOf("codex", "copilot", "claude", "Agent", "")) {
             val rejected =
                 preparePublicHook(listOf("hook", "session-start", "--host", host), input(event)) { _, _ ->
@@ -180,6 +182,22 @@ class PublicHookTest {
                 }
             assertEquals(PublicShellExit.INPUT, rejected.exit, host)
         }
+    }
+
+    /** Copilot and Pi read one top-level field and ignore the envelope that Claude Code and Codex read. */
+    @Test
+    fun `a plain host receives only a top-level additional context`() {
+        Files.writeString(directory.resolve("settings.gradle.kts"), "")
+        val event = Json.encodeToString(TestHookEvent(directory.toString(), "1"))
+        val output =
+            preparePublicHook(listOf("hook", "session-start", "--host", "plain"), input(event)) { _, _ ->
+                error("Model hook must not start a Host")
+            }
+        val document = Json.parseToJsonElement(output.text).jsonObject
+        assertEquals(setOf("additionalContext"), document.keys)
+        val text = document.getValue("additionalContext").jsonPrimitive.content
+        org.junit.jupiter.api.Assertions.assertTrue(text.contains("first semantic query"))
+        assertEquals(PublicShellExit.COMPLETE, output.exit)
     }
 
     @Test

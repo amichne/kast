@@ -59,6 +59,13 @@ abstract class GenerateAgentToolsTask : DefaultTask() {
         check(marketplace.name == "kast" && marketplace.plugins.size == 1) { "expected one Kast marketplace entry" }
         val entry = marketplace.plugins.single()
         check(entry.name == "kast" && entry.source.path == "./agent-tools") { "marketplace source identity changed" }
+        val pi = agentToolsJson.decodeFromString<PiPackage>(source.resolve("package.json").readText())
+        check(pi.pi.extensions == listOf("./pi/session-start.ts") && pi.pi.skills == listOf("./skills")) {
+            "The Pi package must select the session hook and the shared skill"
+        }
+        check(pi.name == manifest.name && pi.description == manifest.description && pi.license == manifest.license) {
+            "The Pi package must present the plugin identity"
+        }
         val version = productVersion.get()
         check(Regex("[0-9]+\\.[0-9]+\\.[0-9]+(?:-[0-9A-Za-z.-]+)?").matches(version)) {
             "agent plugin requires a semantic product version"
@@ -72,7 +79,8 @@ abstract class GenerateAgentToolsTask : DefaultTask() {
         }
         check(paths.filter(Files::isRegularFile).sumOf(Files::size) <= 1_048_576) { "agent plugin source exceeds one MiB" }
         val required = listOf("references/onboarding.md", "references/query-schema.json", "references/query-examples.json",
-            "skills/kast/SKILL.md", "skills/kast/public-cli.md", "hooks/hooks.json", "mcp.json")
+            "skills/kast/SKILL.md", "skills/kast/public-cli.md", "hooks/hooks.json", "hooks.json", "mcp.json", "package.json",
+            "pi/session-start.ts")
         check(required.all { source.resolve(it).isFile }) { "shared session context and generated references are required" }
         check(source.resolve("references/query-examples.json").readBytes()
             .contentEquals(canonicalQueryExamplesFile.get().asFile.readBytes())) { "examples must match the canonical query projection" }
@@ -100,6 +108,9 @@ abstract class GenerateAgentToolsTask : DefaultTask() {
             plugin.resolve(".codex-plugin/plugin.json").writeText(
                 agentToolsJson.encodeToString(AgentPluginManifest.serializer(), manifest.copy(version = version,
                     mcpServers = if (withMcp) "./.mcp.json" else null)) + "\n",
+            )
+            plugin.resolve("package.json").writeText(
+                agentToolsJson.encodeToString(PiPackage.serializer(), pi.copy(version = version)) + "\n",
             )
             val destination = composition.resolve(".agents/plugins/marketplace.json")
             destination.parentFile.mkdirs()
@@ -158,6 +169,20 @@ internal data class ClaudePluginManifest(
     val repository: String,
     val license: String,
 )
+
+/** Pi loads the plugin directory as a local package. It has no manifest for hooks or MCP servers. */
+@Serializable
+internal data class PiPackage(
+    val name: String,
+    val version: String,
+    val description: String,
+    val license: String,
+    val private: Boolean,
+    val pi: PiResources,
+)
+
+@Serializable
+internal data class PiResources(val extensions: List<String>, val skills: List<String>)
 
 @Serializable
 internal data class ClaudeMarketplace(

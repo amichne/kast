@@ -13,6 +13,9 @@ code_sources:
   - path: agent-tools/onboarding.template.md
   - path: agent-tools/README.md
   - path: agent-tools/hooks/hooks.json
+  - path: agent-tools/hooks.json
+  - path: agent-tools/package.json
+  - path: agent-tools/pi/session-start.ts
   - path: agent-tools/hooks/session_start.py
   - path: packaging/internal/query/generate-public-query.py
   - path: build-logic/src/main/kotlin/support/tasks/control/GenerateAgentToolsTask.kt
@@ -41,6 +44,9 @@ The legacy context helper uses Python 3.9 or later with the standard library. Ge
 The native query executable owns event admission and project selection. Hooks do not grant trust, create workspace state, or start a Host.
 Keep workspace decisions and IDE effects outside the harness adapters.
 `--host agent` selects the one session-start envelope that Claude Code and Codex read. Outside a Gradle project its reply is empty.
+`--host plain` prints only `additionalContext`, for GitHub Copilot and Pi. The same empty reply applies.
+`hooks.json` owns the Copilot hook. Copilot prefers it to `hooks/hooks.json`.
+`package.json` owns the Pi package, and `pi/session-start.ts` runs the same passive command. Pi has no hook configuration.
 The default Codex manifest selects the canonical CLI skill and session hook.
 The generator derives the Claude Code manifest and marketplace from that manifest. Do not author a second identity.
 Claude Code finds `skills/`, `hooks/hooks.json`, and `.mcp.json` at their default paths.

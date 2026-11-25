@@ -57,7 +57,9 @@ internal fun upgradeSelectedBuild(
                 runOwnedPublicQueryChild(arguments, directory, childEnvironment, childOutput)
             }
         )
-    when (val outcome = executeManagedUpgrade(root, home, selected, environment, execution)) {
+    val outcome = executeManagedUpgrade(root, home, selected, environment, execution)
+    agentRefresh(outcome, selected, home).run(environment)
+    when (outcome) {
         is ManagedUpgradeOutcome.ChildExited -> if (outcome.code != 0) kotlin.system.exitProcess(outcome.code)
         is ManagedUpgradeOutcome.Rejected -> presentUpgradeRejection(outcome.reason, selected.json, "REJECTED", output)
         is ManagedUpgradeOutcome.RecoveryRequired ->
