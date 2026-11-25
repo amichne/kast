@@ -412,7 +412,7 @@ private fun assertSemanticObservation(actual: JsonObject, progress: String) {
         ),
         universe.keys,
     )
-    assertEquals("kotlin", universe.text("declaration_language"))
+    assertEquals("kotlin-and-java", universe.text("declaration_language"))
     assertEquals("all", universe.getValue("match").jsonObject.text("type"))
     assertEquals(
         listOf("function"),
@@ -430,7 +430,7 @@ private fun assertSemanticObservation(actual: JsonObject, progress: String) {
     assertEquals("descendants", universe.getValue("directory").jsonObject.text("containment"))
     assertEquals("fixture", universe.getValue("package_name").jsonObject.text("name"))
     assertEquals("direct", universe.getValue("package_name").jsonObject.text("containment"))
-    assertEquals("kotlin-file-source-v2", actual.text("ordering"))
+    assertEquals("file-source-v3", actual.text("ordering"))
     assertEquals(progress, actual.getValue("progress").jsonObject.text("kind"))
     assertEquals(
         if (progress == "exhausted") emptyList<String>() else listOf("work-limit-reached"),

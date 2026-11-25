@@ -77,7 +77,7 @@ Those seed limits do not restrict the destinations of later relationship reads. 
 
 `SEARCH_TEXT` accepts one ASCII identifier word. It starts with a letter or underscore. Kast rejects phrases, substrings, qualified literals, and regular expressions.
 
-`ALL_DECLARATIONS` includes supported nested Kotlin declarations. It selects no Java declaration. It does not scan libraries directly. It keeps the admitted limits on declaration families.
+`ALL_DECLARATIONS` includes supported nested Kotlin declarations, and named Java classes and their methods. A Java declaration of a requested kind that Kast cannot select, such as a field, enum, record, or annotation type, leaves the result unproven. It does not scan libraries directly. It keeps the admitted limits on declaration families.
 
 `AT_LOCATION` selects the nearest containing named declaration. An offset on a call expression selects the declaration that contains the call.
 

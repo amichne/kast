@@ -221,7 +221,7 @@
         "type"
       ],
       "additionalProperties": false,
-      "description": "Enumerate the four supported Kotlin declaration families in admitted source files, ordered by canonical file identity and source position (KOTLIN_FILE_SOURCE_V2). Bounded pages preserve undiscovered files and source positions. Resume the exact continuation to advance the same semantic universe; discovery observations report exhaustion, retained progress, or a precise terminal cause."
+      "description": "Enumerate supported declaration families, with Java classes and methods, in admitted source files, ordered by file identity and source position (FILE_SOURCE_V3). Bounded pages preserve undiscovered files and source positions. Resume the exact continuation to advance the same semantic universe; observations report exhaustion, retained progress, or a terminal cause."
     },
     "ReferenceSource": {
       "type": "object",

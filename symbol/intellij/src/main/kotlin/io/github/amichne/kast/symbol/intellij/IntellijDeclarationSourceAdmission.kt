@@ -1,5 +1,6 @@
 package io.github.amichne.kast.symbol.intellij
 
+import com.intellij.ide.highlighter.JavaFileType
 import com.intellij.openapi.vfs.VirtualFile
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.symbol.contract.CanonicalWorkspaceFilePath
@@ -8,6 +9,7 @@ import io.github.amichne.kast.symbol.contract.SemanticFilePartition
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryContainment
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryFileIdentity
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryRequest
+import io.github.amichne.kast.symbol.contract.SymbolDiscoveryTarget
 import java.nio.file.Path
 import org.jetbrains.kotlin.idea.KotlinFileType
 
@@ -71,8 +73,18 @@ internal class IntellijDeclarationSourceAdmission(
 
     private fun admitted(file: VirtualFile, path: Path): Boolean {
         if (file.isDirectory) return relevantDirectory(path)
-        return relevantFile(path) && file.fileType == KotlinFileType.INSTANCE && scope.nativeScope.contains(file)
+        return relevantFile(path) && admitsLanguage(file) && scope.nativeScope.contains(file)
     }
+
+    /** Java files join an inventory without a name, and only when a requested kind can come from Java. */
+    fun admitsLanguage(file: VirtualFile): Boolean =
+        when (file.fileType) {
+            KotlinFileType.INSTANCE -> true
+            JavaFileType.INSTANCE ->
+                request.target is SymbolDiscoveryTarget.All &&
+                    request.requestedDeclarationKinds().any { it in JAVA_DECLARATION_KINDS }
+            else -> false
+        }
 
     fun identity(path: Path, url: String): SymbolDiscoveryFileIdentity =
         if (path == root) SymbolDiscoveryFileIdentity.External(DetachedVirtualFileUrl.parse(url).discoveryRefined())

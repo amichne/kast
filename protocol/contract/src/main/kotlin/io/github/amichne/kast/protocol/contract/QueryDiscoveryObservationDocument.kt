@@ -65,7 +65,7 @@ internal object QueryDiscoveryBytesSerializer :
 
 @Serializable
 enum class QueryDiscoveryOrderDocument {
-    @SerialName("kotlin-file-source-v2") KOTLIN_FILE_SOURCE_V2,
+    @SerialName("file-source-v3") FILE_SOURCE_V3,
     @SerialName("named-candidate-v1") NAMED_CANDIDATE_V1,
 }
 
@@ -142,7 +142,8 @@ enum class QueryDiscoveryInclusionPolicyDocument {
 
 @Serializable
 enum class QueryDiscoveryDeclarationLanguageDocument {
-    @SerialName("kotlin") KOTLIN
+    @SerialName("kotlin") KOTLIN,
+    @SerialName("kotlin-and-java") KOTLIN_AND_JAVA,
 }
 
 /** The observed universe remains separate from page measurements and exhaustion. */
