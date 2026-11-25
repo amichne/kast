@@ -79,6 +79,11 @@ internal sealed interface CliSource {
         @Required val models: List<io.github.amichne.kast.protocol.contract.ImpactRequestedModelDocument> = emptyList(),
     ) : CliSource
 
+    /** Compiled dependency declarations. Source scopes have no meaning, so this variant carries none. */
+    @Serializable
+    @SerialName("SEARCH_LIBRARY")
+    data class Library(val declarationName: String, val packageName: String) : CliSource
+
     @Serializable @SerialName("SYMBOL_REFS") data class References(val symbolRefs: List<String>) : CliSource
 
     @Serializable

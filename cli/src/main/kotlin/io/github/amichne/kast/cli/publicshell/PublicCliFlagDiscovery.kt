@@ -60,6 +60,7 @@ private class QueryFlagSchemas(private val input: JsonObject, private val catalo
             PublicCliFlag.REGION -> property("ReadSourceAction", "ReadSource", "region")
             PublicCliFlag.FILE -> property("LocationSource", "LocationSource", "file")
             PublicCliFlag.OFFSET -> property("LocationSource", "LocationSource", "offset")
+            PublicCliFlag.LIBRARY -> property("LibrarySource", "LibrarySource", "packageName")
             PublicCliFlag.CONTINUATION -> property("ResumeAction", "Resume", "continuation")
             PublicCliFlag.VERBOSE -> input.getValue("properties").jsonObject["verbose"] as? JsonObject
             PublicCliFlag.ALL -> definitions["AllSource"] as? JsonObject

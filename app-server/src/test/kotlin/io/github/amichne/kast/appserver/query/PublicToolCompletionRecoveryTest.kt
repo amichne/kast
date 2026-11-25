@@ -6,11 +6,18 @@ import io.github.amichne.kast.protocol.contract.BoundedProtocolList
 import io.github.amichne.kast.protocol.contract.ImpactWitnessSectionDocument
 import io.github.amichne.kast.protocol.contract.ProtocolOffset
 import io.github.amichne.kast.protocol.contract.ProtocolText
+import io.github.amichne.kast.protocol.contract.QueryCallbackFlowCauseDocument
+import io.github.amichne.kast.protocol.contract.QueryCallbackGraphBoundaryDocument
+import io.github.amichne.kast.protocol.contract.QueryCallbackGraphCauseDocument
+import io.github.amichne.kast.protocol.contract.QueryCallbackGraphFailureDocument
+import io.github.amichne.kast.protocol.contract.QueryCallbackGraphSubjectDocument
+import io.github.amichne.kast.protocol.contract.QueryCallbackObservationOrigin
 import io.github.amichne.kast.protocol.contract.QueryCompletionCauseDocument
 import io.github.amichne.kast.protocol.contract.QueryCompletionCoverageDocument
 import io.github.amichne.kast.protocol.contract.QueryCompletionEvidenceDocument
 import io.github.amichne.kast.protocol.contract.QueryCompletionLimitationsDocument
 import io.github.amichne.kast.protocol.contract.QueryDeclarationKindDocument
+import io.github.amichne.kast.protocol.contract.QueryExpansionScopeDocument
 import io.github.amichne.kast.protocol.contract.QueryFromDocument
 import io.github.amichne.kast.protocol.contract.QueryInvocationStop
 import io.github.amichne.kast.protocol.contract.QueryLimitationDocument
@@ -26,8 +33,11 @@ import io.github.amichne.kast.protocol.contract.QueryRunRejection
 import io.github.amichne.kast.protocol.contract.QueryRunRequest
 import io.github.amichne.kast.protocol.contract.QueryScopeDocument
 import io.github.amichne.kast.protocol.contract.QueryStaticModelDocument
+import io.github.amichne.kast.protocol.contract.QueryStepDocument
 import io.github.amichne.kast.protocol.contract.QuerySymbolFieldDocument
 import io.github.amichne.kast.protocol.contract.QueryTerminalReasonDocument
+import io.github.amichne.kast.protocol.contract.RelationKindDocument
+import io.github.amichne.kast.protocol.contract.SourceRangeDocument
 import io.github.amichne.kast.protocol.contract.SymbolDiscoveryMatchDocument
 import io.github.amichne.kast.protocol.contract.SymbolIdDocument
 import io.github.amichne.kast.protocol.contract.SymbolKindDocument
@@ -122,9 +132,65 @@ class PublicToolCompletionRecoveryTest {
         )
     }
 
+    @Test
+    fun `unproven callers suggest the source uses of the same exact symbols and domain`() {
+        val refs =
+            QueryFromDocument.References(bounded(listOf(QueryReferenceDocument.ExactSymbol(text("exact:v2:target")))))
+        val callers = QueryStepDocument.Related(RelationKindDocument.CALLERS)
+        val output = QueryOutputDocument.Symbols(bounded(listOf(QuerySymbolFieldDocument.NAME)))
+        val question = QueryQuestionDocument(refs, bounded(listOf(callers)), output)
+        val evidence = strictEvidence(question, emptyList(), unprovenCallbackGraph())
+        assertTrue(evidence.containsKey("seedQuery"), "A caller without proof needs a route to its source uses")
+        val admitted =
+            PublicToolContract.admit(PublicToolIdentity.QUERY_SYMBOLS, evidence.getValue("seedQuery"))
+                as Refinement.Refined
+        val run = (admitted.value.canonical as PublicToolCanonical.Query).request as QueryRunRequest.Run
+        assertEquals(refs, run.from)
+        assertEquals(listOf(QueryStepDocument.Related(RelationKindDocument.REFERENCES)), run.steps.values)
+        assertEquals(QueryOutputDocument.Occurrences, run.output)
+    }
+
+    @Test
+    fun `source uses are not suggested for another cause, relation, domain, or discovery`() {
+        val refs =
+            QueryFromDocument.References(bounded(listOf(QueryReferenceDocument.ExactSymbol(text("exact:v2:target")))))
+        val callers = QueryStepDocument.Related(RelationKindDocument.CALLERS)
+        val output = QueryOutputDocument.Symbols(bounded(listOf(QuerySymbolFieldDocument.NAME)))
+        val question = QueryQuestionDocument(refs, bounded(listOf(callers)), output)
+        val retainedSeed =
+            QueryStepDocument.Related(RelationKindDocument.CALLERS, QueryExpansionScopeDocument.RetainedSeed)
+        val withheld =
+            listOf(
+                question.copy(steps = bounded(listOf(QueryStepDocument.Related(RelationKindDocument.CALLEES)))),
+                question.copy(steps = bounded(listOf(callers, callers))),
+                question.copy(steps = bounded(listOf(retainedSeed))),
+                question.copy(from = QueryFromDocument.Location(text("Example.kt"), ProtocolOffset.parse(0).refined())),
+            )
+        for (other in withheld) assertFalse(
+            strictEvidence(other, emptyList(), unprovenCallbackGraph()).containsKey("seedQuery"),
+            "$other must not gain a wider or different question",
+        )
+        assertFalse(strictEvidence(question, emptyList()).containsKey("seedQuery"))
+    }
+
+    private fun unprovenCallbackGraph(): QueryCompletionCauseDocument {
+        val range = SourceRangeDocument.create(ProtocolOffset.parse(2).refined(), ProtocolOffset.parse(3).refined())
+        val location = QueryCallbackGraphBoundaryDocument.from(text("src/Zips.kt"), range.refined())
+        return QueryCompletionCauseDocument.CallbackGraphUnproven(
+            QueryCallbackGraphFailureDocument(
+                QueryCallbackGraphCauseDocument.Unavailable(QueryCallbackFlowCauseDocument.STORED_CALLBACK),
+                QueryCallbackObservationOrigin.RELATION,
+                ProtocolOffset.parse(0).refined(),
+                ProtocolOffset.parse(0).refined(),
+                QueryCallbackGraphSubjectDocument.Callback(location, location),
+            )
+        )
+    }
+
     private fun strictEvidence(
         question: QueryQuestionDocument,
         rows: List<QueryResultItemDocument>,
+        cause: QueryCompletionCauseDocument = QueryCompletionCauseDocument.IncompleteExecution,
     ): kotlinx.serialization.json.JsonObject {
         val retained =
             QueryCompletionEvidenceDocument.Retained(
@@ -135,7 +201,7 @@ class PublicToolCompletionRecoveryTest {
         val reason =
             QueryRunRejection.CompletionUnproven(
                 model = QueryStaticModelDocument.COMPILER_RESOLVED_STATIC_V1,
-                cause = QueryCompletionCauseDocument.IncompleteExecution,
+                cause = cause,
                 originalCoverage =
                     QueryCompletionCoverageDocument.Qualified(
                         ProtocolOffset.parse(rows.size).refined(),

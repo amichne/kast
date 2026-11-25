@@ -5,6 +5,7 @@ import io.github.amichne.kast.kernel.ReadLimits
 import io.github.amichne.kast.relation.contract.RelationCompilation
 import io.github.amichne.kast.relation.contract.RelationCompilerPort
 import io.github.amichne.kast.relation.contract.RelationCompilerRejection
+import io.github.amichne.kast.relation.contract.RelationRequest
 import io.github.amichne.kast.symbol.contract.SymbolGeneratedSourcePolicy
 import io.github.amichne.kast.symbol.contract.SymbolLibraryPolicy
 import io.github.amichne.kast.symbol.contract.SymbolSearchScope
@@ -29,11 +30,7 @@ object ProjectBoundIntellijRelationPort {
         val compiledModel = WorkspaceSearchScopeModelCompilation.Compiled(model)
         val inventories = IntellijReferenceInventoryReuse.Recent(limits)
         return RelationCompilerPort { request ->
-            val scope = request.subject.scope
-            if (
-                scope.generatedSources == SymbolGeneratedSourcePolicy.INCLUDE ||
-                    scope is SymbolSearchScope.Workspace && scope.libraries == SymbolLibraryPolicy.INCLUDE
-            ) {
+            if (request.unsupportedByBoundHost()) {
                 return@RelationCompilerPort RelationCompilation.Rejected(RelationCompilerRejection.SCOPE_REJECTED)
             }
             val query =
@@ -48,3 +45,11 @@ object ProjectBoundIntellijRelationPort {
         }
     }
 }
+
+/**
+ * A binary subject is admitted with its declaration, so its library scope is allowed. Its destinations must stay in
+ * source. An explicit destination can include generated source; a subject cannot.
+ */
+private fun RelationRequest.unsupportedByBoundHost(): Boolean =
+    subject.scope.generatedSources == SymbolGeneratedSourcePolicy.INCLUDE ||
+        (searchScope as? SymbolSearchScope.Workspace)?.libraries == SymbolLibraryPolicy.INCLUDE

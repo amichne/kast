@@ -282,11 +282,12 @@ sealed interface RelationSearchBoundary {
     fun effectiveScope(subject: RelationEndpoint): SymbolSearchScope =
         when (this) {
             RETAINED_SUBJECT -> subject.scope
+            // A binary subject keeps its own scope; every expansion destination is an imported source declaration.
             WORKSPACE_EXPANSION ->
                 SymbolSearchScope.Workspace(
                     subject.scope.sourceKinds,
                     subject.scope.generatedSources,
-                    (subject.scope as? SymbolSearchScope.Workspace)?.libraries ?: SymbolLibraryPolicy.EXCLUDE,
+                    SymbolLibraryPolicy.EXCLUDE,
                 )
             is Explicit -> scope
         }

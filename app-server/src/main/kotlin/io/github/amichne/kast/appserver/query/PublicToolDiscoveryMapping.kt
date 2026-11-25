@@ -32,6 +32,20 @@ internal fun PublicToolTextSource.lowerTextSource(): Refinement<QueryFromDocumen
         }
     }
 
+internal fun PublicToolLibrarySource.lowerLibrarySource(): Refinement<QueryFromDocument, PublicToolInputFailure> {
+    val name =
+        when (val admitted = DeclarationName.admit(declarationName, PublicToolParameter.SOURCE_DECLARATION_NAME)) {
+            is Refinement.Rejected -> return admitted
+            is Refinement.Refined -> admitted.value
+        }
+    val owner =
+        when (val admitted = PublicQueryPackageName.parse(packageName.value)) {
+            is Refinement.Rejected -> return rejected(PublicToolParameter.SOURCE_PACKAGE, PublicToolRule.PACKAGE_NAME)
+            is Refinement.Refined -> admitted.value
+        }
+    return Refinement.Refined(QueryFromDocument.Library(name.text, proven(ProtocolText.parse(owner.value))))
+}
+
 internal fun PublicToolScope.lowerDiscoveryScope(): Refinement<QueryScopeDocument, PublicToolInputFailure> =
     when (this) {
         is PublicToolDirectoryScope ->

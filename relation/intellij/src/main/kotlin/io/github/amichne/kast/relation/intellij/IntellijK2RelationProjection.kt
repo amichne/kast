@@ -21,7 +21,6 @@ import io.github.amichne.kast.symbol.contract.SymbolDiscoveryFileIdentity
 import io.github.amichne.kast.workspace.contract.CanonicalWorkspaceRoot
 import io.github.amichne.kast.workspace.intellij.read.IntellijReadCall
 import io.github.amichne.kast.workspace.intellij.read.IntellijReadObservation
-import io.github.amichne.kast.workspace.intellij.read.IntellijReadTermination
 import io.github.amichne.kast.workspace.intellij.read.call
 import io.github.amichne.kast.workspace.intellij.read.localIdentityAdmitted
 import io.github.amichne.kast.workspace.intellij.read.localIdentityRejected
@@ -185,8 +184,22 @@ internal class IntellijK2RelationProjection(
 
     fun confirmReferenceTarget(reference: KtReference, subject: RelationEndpoint): IntellijReferenceTargetResult {
         if (reference.isImportName()) return confirmImportedTarget(reference, subject)
+        if (!reference.element.isConventionCallSite())
+            return confirmResolvedTarget(reference, resolve(reference), subject)
+        val targets = resolveConventionTargets(reference).map { confirmResolvedTarget(reference, it, subject) }
+        return targets.firstOrNull { it is IntellijReferenceTargetResult.Confirmed }
+            ?: if (targets.isEmpty() || IntellijReferenceTargetResult.Unresolved in targets)
+                IntellijReferenceTargetResult.Unresolved
+            else IntellijReferenceTargetResult.Different
+    }
+
+    private fun confirmResolvedTarget(
+        reference: KtReference,
+        resolved: IntellijK2ResolvedDeclaration,
+        subject: RelationEndpoint,
+    ): IntellijReferenceTargetResult {
         val declaration =
-            when (val resolved = resolve(reference)) {
+            when (resolved) {
                 is IntellijK2ResolvedDeclaration.Found -> resolved.declaration
                 IntellijK2ResolvedDeclaration.InvokeReceiver,
                 is IntellijK2ResolvedDeclaration.FunctionInvocation,
@@ -297,19 +310,7 @@ internal class IntellijK2RelationProjection(
                 }
                 val parameterInvocation = resolvedParameterInvocation(reference, symbol)
                 if (parameterInvocation != null) return@observedAnalyze parameterInvocation
-                val psi = symbol.psi
-                val declaration = psi as? PsiNamedElement
-                when {
-                    psi == null -> {
-                        observation.terminated(IntellijReadTermination.K2_SYMBOL_WITHOUT_PSI)
-                        sourceLessCallable(symbol)
-                    }
-                    declaration == null -> {
-                        observation.terminated(IntellijReadTermination.K2_NON_KOTLIN_PSI)
-                        IntellijK2ResolvedDeclaration.Unresolved
-                    }
-                    else -> IntellijK2ResolvedDeclaration.Found(declaration)
-                }
+                resolvedSymbolDeclaration(symbol, observation)
             }
             .observedResolutionBy(observation)
 
