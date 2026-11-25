@@ -44,6 +44,17 @@ A difference does not convert or re-seed the workspace. Legacy records without a
 The `seed` observation contains the [creation receipt](/reference/lifecycles#seed-outcomes), or an unavailable reason when the receipt cannot be admitted.
 An unavailable receipt does not prove that seeding was not requested.
 
+The `progress` observation contains the latest import and index facts that the live Host recorded about itself.
+Without `--json`, status shows them as an approximate step:
+
+```text
+Workspace progress: step 2 of 5, importing the Gradle model; also indexing (about 106,835 files)
+```
+
+The steps are: open the project, import the Gradle model, scan files, index, and check readiness.
+IntelliJ work overlaps, so the line names the earliest unfinished step. File counts are IntelliJ estimates of queued files, not files that remain.
+A failed preparation names its step and reason. Progress grants no semantic readiness.
+
 ### Inspect or edit workspace settings
 
 Use `show` to see the resolved configuration and the exact workspace file.

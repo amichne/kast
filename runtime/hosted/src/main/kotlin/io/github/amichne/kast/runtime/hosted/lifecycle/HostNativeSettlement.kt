@@ -41,6 +41,8 @@ internal fun observeHostNativeWork(hasPreparation: () -> Boolean): Boolean =
 
 /** Whether any open project is in dumb mode; exit evidence records this so a later reader knows how complete it was. */
 internal fun observeHostIndexing(): Boolean =
-    ProjectManager.getInstance().openProjects.any {
-        !it.isDisposed && com.intellij.openapi.project.DumbService.isDumb(it)
-    }
+    observeOpenHostProjects().any { com.intellij.openapi.project.DumbService.isDumb(it) }
+
+/** The projects that are open now; a reader must expect any of them to close while it looks. */
+internal fun observeOpenHostProjects(): List<com.intellij.openapi.project.Project> =
+    ProjectManager.getInstance().openProjects.filterNot { it.isDisposed }

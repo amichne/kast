@@ -5823,6 +5823,26 @@
     },
     {
       "fingerprint": {
+        "path": "protocol/contract/src/test/kotlin/io/github/amichne/kast/protocol/contract/HostProgressRecordTest.kt",
+        "scope": "type:HostProgressRecordTest/fun:a record without a schema version is rejected()/declaration:<anonymous>",
+        "kind": "JSON_LITERAL",
+        "sha256": "30a7004fe2866f16dded554c4299ed87bd31cb3e8cd27cccfd51f5619531ab7f"
+      },
+      "count": 1,
+      "justification": "Negative fixture: a progress record missing its required schemaVersion must be rejected at decode."
+    },
+    {
+      "fingerprint": {
+        "path": "protocol/contract/src/test/kotlin/io/github/amichne/kast/protocol/contract/HostProgressRecordTest.kt",
+        "scope": "type:HostProgressRecordTest/fun:the record encodes every discriminator and its schema version()",
+        "kind": "JSON_LITERAL",
+        "sha256": "badbb526cf5b12f523c269a08b2d1a8c4a9b72ebbd333bad2180cee311874123"
+      },
+      "count": 1,
+      "justification": "Independent expected encoded shape for HostProgressRecord, including its discriminators and required schemaVersion."
+    },
+    {
+      "fingerprint": {
         "path": "protocol/wire/src/test/kotlin/io/github/amichne/kast/protocol/wire/CanonicalChangeGeneratedSerializationTest.kt",
         "scope": "type:CanonicalChangeGeneratedSerializationTest/fun:generated documents preserve exact change scalar payload shapes()",
         "kind": "JSON_LITERAL",
