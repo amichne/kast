@@ -29,6 +29,12 @@ internal sealed interface WorkspaceSeedClone {
     data class Failed(val stage: WorkspaceSeedCloneStage) : WorkspaceSeedClone
 }
 
+/**
+ * The file system records and the indexes over them, which are valid only together. Every other system directory holds
+ * one project's model or one runtime's paths.
+ */
+internal val WORKSPACE_SEED_STORAGE = listOf("caches", "index")
+
 /** APFS clonefile never falls back to a byte copy or a hard link. Other platforms remain unqualified. */
 internal fun cloneWorkspaceSystem(source: Path, destination: Path): WorkspaceSeedClone {
     if (!System.getProperty("os.name").startsWith("Mac")) return WorkspaceSeedClone.Unsupported
@@ -60,8 +66,12 @@ internal fun cloneWorkspaceSystem(source: Path, destination: Path): WorkspaceSee
 }
 
 private fun workspaceSeedFiles(source: Path): Refinement<List<Path>, ContainerFailure> {
-    val paths = Files.walk(source).use { it.limit(MAXIMUM_PROFILE_FILES + 1).toList() }
-    if (paths.size > MAXIMUM_PROFILE_FILES) return Refinement.Rejected(ContainerFailure.CAPACITY_EXCEEDED)
+    val paths = mutableListOf<Path>()
+    for (storage in WORKSPACE_SEED_STORAGE) {
+        val remaining = MAXIMUM_PROFILE_FILES + 1 - paths.size
+        Files.walk(source.resolve(storage)).use { walk -> paths += walk.limit(remaining.toLong()).toList() }
+        if (paths.size > MAXIMUM_PROFILE_FILES) return Refinement.Rejected(ContainerFailure.CAPACITY_EXCEEDED)
+    }
     val owner = Files.getOwner(source, NOFOLLOW_LINKS)
     for (path in paths) {
         if (Files.getOwner(path, NOFOLLOW_LINKS) != owner) return Refinement.Rejected(ContainerFailure.FOREIGN_STATE)
@@ -78,7 +88,7 @@ private fun cloneWorkspaceFiles(
     clone: MethodHandle,
 ): WorkspaceSeedClone =
     Arena.ofConfined().use { arena ->
-        for (path in paths.asSequence().filter { it != source }) {
+        for (path in paths) {
             val target = destination.resolve(source.relativize(path))
             if (Files.isDirectory(path, NOFOLLOW_LINKS)) {
                 Files.createDirectory(target, PosixFilePermissions.asFileAttribute(containerDirectoryMode))

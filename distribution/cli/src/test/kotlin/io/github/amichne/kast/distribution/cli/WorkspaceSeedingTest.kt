@@ -136,21 +136,20 @@ class WorkspaceSeedingTest {
             (store.create(creation(store, temporary, "donor", gradle, WorkspaceDependencySharing.PRIVATE), runtime)
                     as Refinement.Refined)
                 .value
-        Files.writeString(donor.state.resolve("system/library-index"), "original")
-        writeContainerRecord(
-            HostExitRecord.path(donor.state),
-            HostExitRecord(HostExitReason.IDLE, HostExitIndexState.SMART, "123e4567-e89b-12d3-a456-426614174000"),
-        )
+        replaceExit(donor, exitRecord())
+        Files.writeString(donor.state.resolve("system/index/library-index"), "original")
+        Files.writeString(donor.state.resolve("system/donor-model"), "private")
         val recipient =
             (store.create(creation(store, temporary, "recipient", gradle, WorkspaceDependencySharing.SHARED), runtime)
                     as Refinement.Refined)
                 .value
         assertEquals(1, probes)
         if (store.platform.publicName.startsWith("macos")) {
-            val copied = recipient.state.resolve("system/library-index")
+            val copied = recipient.state.resolve("system/index/library-index")
             assertEquals("original", Files.readString(copied))
             Files.writeString(copied, "recipient")
-            assertEquals("original", Files.readString(donor.state.resolve("system/library-index")))
+            assertEquals("original", Files.readString(donor.state.resolve("system/index/library-index")))
+            assertFalse(Files.exists(recipient.state.resolve("system/donor-model")))
         } else {
             Files.list(recipient.state.resolve("system")).use { assertEquals(0, it.count()) }
         }
@@ -203,6 +202,34 @@ class WorkspaceSeedingTest {
             else WorkspaceSeedResult.UnsupportedFilesystem,
             result,
         )
+    }
+
+    @Test
+    fun `a donor of another Kast build must run the same IDE distribution`(@TempDir temporary: Path) {
+        val store =
+            ContainerStore(
+                temporary.toRealPath().resolve("store"),
+                platform(),
+                WorkspaceSeedHostProbe { _, _, _ -> WorkspaceSeedEndpoint.HOST_UNAVAILABLE },
+                { _, _ -> WorkspaceSeedClone.Completed },
+            )
+        val gradle = Files.createDirectory(temporary.resolve("gradle")).toRealPath()
+        val current = containerRuntimeFixture(store, "current Host")
+        fun donor(name: String, runtime: AdmittedContainerRuntime): AdmittedContainer =
+            (store.create(creation(store, temporary, name, gradle, WorkspaceDependencySharing.PRIVATE), runtime)
+                    as Refinement.Refined)
+                .value
+                .also { replaceExit(it, exitRecord()) }
+        fun seeded(name: String): WorkspaceSeedResult =
+            seedResult(
+                (store.create(creation(store, temporary, name, gradle, WorkspaceDependencySharing.SHARED), current)
+                        as Refinement.Refined)
+                    .value
+            )
+        donor("other-ide", containerRuntimeFixture(store, "other Host", distribution = "b".repeat(64)))
+        assertEquals(WorkspaceSeedResult.NoEligibleDonor, seeded("first"))
+        val same = donor("same-ide", containerRuntimeFixture(store, "earlier Host"))
+        assertEquals(WorkspaceSeedResult.Seeded(same.id.text), seeded("second"))
     }
 
     @Test
@@ -303,11 +330,12 @@ class WorkspaceSeedFallbackTest {
         Files.setPosixFilePermissions(source, java.nio.file.attribute.PosixFilePermissions.fromString("rwxr-xr-x"))
         assertEquals(rejected, cloneWorkspaceSystem(source, destination))
         Files.setPosixFilePermissions(source, containerDirectoryMode)
-        Files.writeString(source.resolve("index"), "original")
-        Files.createSymbolicLink(source.resolve("link"), source.resolve("index"))
+        Files.createDirectory(source.resolve("caches"))
+        val index = Files.writeString(Files.createDirectory(source.resolve("index")).resolve("data"), "original")
+        Files.createSymbolicLink(source.resolve("index/link"), index)
         assertEquals(rejected, cloneWorkspaceSystem(source, destination))
         Files.list(destination).use { assertEquals(0, it.count()) }
-        assertEquals("original", Files.readString(source.resolve("index")))
+        assertEquals("original", Files.readString(index))
     }
 
     @Test
@@ -474,6 +502,7 @@ private fun exitRecord(): HostExitRecord =
     HostExitRecord(HostExitReason.IDLE, HostExitIndexState.SMART, "123e4567-e89b-12d3-a456-426614174000")
 
 private fun replaceExit(container: AdmittedContainer, record: HostExitRecord) {
+    for (storage in listOf("caches", "index")) Files.createDirectories(container.state.resolve("system/$storage"))
     Files.deleteIfExists(HostExitRecord.path(container.state))
     writeContainerRecord(HostExitRecord.path(container.state), record)
 }
@@ -496,6 +525,7 @@ private fun excludedDonors(store: ContainerStore): List<Pair<String, (AdmittedCo
                 val record = (readContainerRecord<ContainerGenerationRecord>(path) as Refinement.Refined).value
                 Files.writeString(path, containerJson.encodeToString(record.copy(archiveSha256 = "f".repeat(64))))
             },
+        "no-index" to { Files.delete(it.state.resolve("system/index")) },
         "removing" to
             {
                 Files.writeString(store.containers.resolve(".removing-${it.id.text}.json"), "removal pending")

@@ -156,21 +156,28 @@ Resuming admission retracts the record. Control deletes it before every launch a
 
 ## Workspace index seeding
 
-With [dependency sharing](/reference/installation#optional-dependency-sharing-and-index-seeding) set to `SHARED`, only new workspace containers attempt index seeding.
-Existing containers, upgrades, generation rebuilds, and repair are unchanged.
+A seed is the index storage of one stopped Host: the `caches` and `index` directories below its `state/system` directory.
+That storage belongs to one IDE distribution. Kast contributes no index, gist, or file type, so a donor can come from another Kast build.
+The donor and the recipient must have the same platform, platform build, and `distributionSha256` in their runtime manifests.
 
-Control filters donors by current generation, runtime archive, platform, and canonical Gradle home before attempting a lease.
-A donor can belong to any repository. It must have an admitted physical generation system directory and no removal receipt.
+A rebuilt generation, for example after an upgrade, uses the index storage of its own retired generation under any sharing policy.
+The retirement record proves that the exact Host stopped.
+
+With [dependency sharing](/reference/installation#optional-dependency-sharing-and-index-seeding) set to `SHARED`, a new workspace container uses another workspace as the donor.
+Control filters donors by IDE distribution and canonical Gradle home before attempting a lease.
+A donor can belong to any repository. It must have no removal receipt.
+The newest exit-record filesystem modification time wins, with ascending container ID as the tie-break.
+A non-blocking exclusive donor lease spans revalidation and cloning, and lifecycle must report `HOST_UNAVAILABLE`.
+Active or unproven donors are skipped. Selection never starts or stops a donor Host.
+
+Each donor must have an admitted private system directory, both storage directories, and an absent IntelliJ configuration `.lock`.
 Its Host exit record must have the supported schema, `SMART` index state, and a canonical UUID Host lifetime.
 The record's private location binds it to the generation and runtime; those are not extra record fields.
-The newest exit-record filesystem modification time wins, with ascending container ID as the tie-break.
-
-A non-blocking exclusive donor lease spans revalidation and cloning. Control requires both an absent IntelliJ configuration `.lock` and lifecycle `HOST_UNAVAILABLE`.
-Active or unproven donors are skipped. Selection never starts or stops a donor Host.
 Endpoint unavailability alone is not exit proof. The lock-removal/flush ordering experiment covered one macOS/IntelliJ build, not every platform or release.
 
-Cloning copies the whole `state/system` tree with native `clonefile` for each regular file, only on macOS APFS within one filesystem.
-Source admission rejects links, foreign owners, special files, and trees exceeding 250,000 entries.
+Cloning uses native `clonefile` for each regular file, only on macOS APFS within one filesystem.
+No project model, JDK, or profile path is cloned. The new Host imports its own Gradle model.
+Source admission rejects links, foreign owners, special files, and storage exceeding 250,000 entries.
 The sibling `state/host-exit.json` is not cloned. The recipient never inherits donor exit eligibility.
 There is no full-copy or hard-link fallback and no sharing between running Hosts' index storage.
 The Host still validates its own project before semantic readiness; a seed grants no live authority or freshness proof.
@@ -183,7 +190,7 @@ Progress emits the same result with `event: kast_workspace_seed`. Status exposes
 | Result type | Meaning |
 | --- | --- |
 | `NOT_REQUESTED` | Creation used `PRIVATE`. |
-| `SEEDED` | The clone completed; `donor` identifies the donor container. |
+| `SEEDED` | The clone completed; `donor` identifies the donor container. A rebuilt generation names its own container. |
 | `NO_ELIGIBLE_DONOR` | No donor passed selection. Creation continues empty. |
 | `DONORS_BUSY` | Selection encountered donor query-lease contention and found no usable donor. Creation continues empty. |
 | `UNSUPPORTED_FILESYSTEM` | The platform or clone filesystem is unsupported. Creation continues empty after cleanup. |
