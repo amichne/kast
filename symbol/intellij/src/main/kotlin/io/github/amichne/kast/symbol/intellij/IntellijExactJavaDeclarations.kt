@@ -5,6 +5,7 @@ import com.intellij.ide.highlighter.JavaFileType
 import com.intellij.navigation.NavigationItem
 import com.intellij.openapi.project.Project
 import com.intellij.psi.PsiClass
+import com.intellij.psi.PsiEnumConstant
 import com.intellij.psi.PsiField
 import com.intellij.psi.PsiMember
 import com.intellij.psi.PsiMethod
@@ -46,11 +47,19 @@ internal fun collectExactJavaDeclarations(
             )
     )
         return false
-    return CompilerSymbolKind.FUNCTION !in kinds ||
+    return (CompilerSymbolKind.FUNCTION !in kinds ||
         index.processElements(JavaStubIndexKeys.METHODS, name, project, javaScope, PsiMethod::class.java) {
             it.isConstructor || admit(it)
+        }) &&
+        // No declaration kind selects a field or an enum constant. Admission qualifies the match instead of hiding it.
+        index.processElements(JavaStubIndexKeys.FIELDS, name, project, javaScope, PsiField::class.java) {
+            it.selectionFamily() !in kinds || admit(it)
         }
 }
+
+/** Kotlin reads a Java field as a property and an enum constant as an enum entry. */
+private fun PsiField.selectionFamily(): CompilerSymbolKind =
+    if (this is PsiEnumConstant) CompilerSymbolKind.CLASSLIKE else CompilerSymbolKind.PROPERTY
 
 /**
  * A compiled Java declaration cannot be selected, because Kotlin property and operator syntax can use it by name. Its

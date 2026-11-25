@@ -39,7 +39,9 @@ internal enum class ConventionCallRole(val functionName: String?) {
     PROVIDE_DELEGATE("provideDelegate"),
     GET_VALUE("getValue"),
     SET_VALUE("setValue"),
-    INVOKE("invoke");
+    INVOKE("invoke"),
+    JAVA_GETTER(null),
+    JAVA_SETTER(null);
 
     /** Retained locators of one site differ only by role. */
     val discriminator: String
@@ -65,7 +67,9 @@ internal enum class ConventionCallRole(val functionName: String?) {
             ITERATOR,
             HAS_NEXT,
             NEXT,
-            GET_VALUE -> true
+            GET_VALUE,
+            JAVA_GETTER,
+            JAVA_SETTER -> true
         }
 }
 
@@ -154,6 +158,16 @@ internal fun IntellijK2RelationProjection.resolveConvention(
     reference: KtReference,
     role: ConventionCallRole,
 ): ConventionCallTarget =
+    when (role) {
+        ConventionCallRole.JAVA_GETTER,
+        ConventionCallRole.JAVA_SETTER -> resolveJavaAccessor(reference, role)
+        else -> resolveConventionFunction(reference, role)
+    }
+
+private fun IntellijK2RelationProjection.resolveConventionFunction(
+    reference: KtReference,
+    role: ConventionCallRole,
+): ConventionCallTarget =
     observation.observedAnalyze(reference.element) {
         val resolved = reference.resolveToSymbols()
         val functions =
@@ -168,7 +182,7 @@ internal fun IntellijK2RelationProjection.resolveConvention(
         }
     }
 
-private fun KaSession.selectedConvention(
+internal fun KaSession.selectedConvention(
     function: KaNamedFunctionSymbol,
     role: ConventionCallRole,
     observation: IntellijReadObservation,

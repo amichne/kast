@@ -3,6 +3,7 @@ package io.github.amichne.kast.relation.intellij
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.application.readAction
 import com.intellij.psi.PsiErrorElement
+import com.intellij.psi.PsiNamedElement
 import com.intellij.psi.util.PsiTreeUtil
 import io.github.amichne.kast.relation.contract.RelationBatch
 import io.github.amichne.kast.relation.contract.RelationCompilation
@@ -31,16 +32,25 @@ abstract class NativeConventionFixture : NativeReferenceFixtureTest() {
 
     /** [name] is relative to the fixture package, so a member needs its class name. */
     protected fun NativeReferenceFixture.relation(name: String, meaning: RelationMeaning): RelationCompilation =
-        runBlocking {
-            val selected = readAction { relationRequest(name, meaning) }
-            IntellijRelationCompilerQuery()
-                .read(
-                    project = project,
-                    currentLease = selected.subject.lease,
-                    request = selected,
-                    modelCompilation = model,
-                )
+        relation(meaning) {
+            PsiTreeUtil.collectElementsOfType(source(), KtNamedFunction::class.java).single {
+                it.fqName?.asString() == "consumer.$name"
+            }
         }
+
+    protected fun NativeReferenceFixture.relation(
+        meaning: RelationMeaning,
+        subject: () -> PsiNamedElement,
+    ): RelationCompilation = runBlocking {
+        val selected = readAction { relationRequest(subject(), meaning) }
+        IntellijRelationCompilerQuery()
+            .read(
+                project = project,
+                currentLease = selected.subject.lease,
+                request = selected,
+                modelCompilation = model,
+            )
+    }
 
     protected fun NativeReferenceFixture.complete(name: String, meaning: RelationMeaning): RelationBatch {
         val read = relation(name, meaning)
@@ -48,13 +58,12 @@ abstract class NativeConventionFixture : NativeReferenceFixtureTest() {
         return (read as RelationCompilation.Complete).batch
     }
 
-    private fun NativeReferenceFixture.relationRequest(name: String, meaning: RelationMeaning): RelationRequest {
-        val function =
-            PsiTreeUtil.collectElementsOfType(source(), KtNamedFunction::class.java).single {
-                it.fqName?.asString() == "consumer.$name"
-            }
+    private fun NativeReferenceFixture.relationRequest(
+        declaration: PsiNamedElement,
+        meaning: RelationMeaning,
+    ): RelationRequest {
         val projection = IntellijK2RelationProjection(project, request.subject.lease.workspaceRoot)
-        val evidence = (projection.project(function) as IntellijRelationDeclarationProjection.Projected).evidence
+        val evidence = (projection.project(declaration) as IntellijRelationDeclarationProjection.Projected).evidence
         val subject =
             RelationEndpoint.resolve(
                 lease = request.subject.lease,
