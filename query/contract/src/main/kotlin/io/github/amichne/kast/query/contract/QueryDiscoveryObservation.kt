@@ -4,6 +4,7 @@ import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryBlockCause
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryConstraints
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryElapsedNanoseconds
+import io.github.amichne.kast.symbol.contract.SymbolDiscoveryMatch
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryMeasurements
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryOutcome
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryProgress
@@ -14,13 +15,32 @@ import io.github.amichne.kast.symbol.contract.SymbolDiscoverySourceOffset
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryTarget
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryTimings
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryWorkCount
+import io.github.amichne.kast.symbol.contract.SymbolLibraryPolicy
 import io.github.amichne.kast.symbol.contract.SymbolSearchScope
 import io.github.amichne.kast.symbol.contract.fingerprintFields
 import io.github.amichne.kast.workspace.contract.SemanticReadAuthority
 
 /** Supported declaration discovery providers establish this language universe before enumeration. */
 enum class QueryDeclarationLanguage {
-    KOTLIN
+    KOTLIN,
+    KOTLIN_AND_JAVA;
+
+    companion object {
+        /** A library, fuzzy, or text search reads Kotlin declarations only. */
+        fun of(request: SymbolDiscoveryRequest): QueryDeclarationLanguage =
+            when (val target = request.target) {
+                is SymbolDiscoveryTarget.All,
+                is SymbolDiscoveryTarget.Location -> KOTLIN_AND_JAVA
+                is SymbolDiscoveryTarget.Name ->
+                    if (target.match == SymbolDiscoveryMatch.EXACT_NAME && !request.searchesLibraries()) KOTLIN_AND_JAVA
+                    else KOTLIN
+                is SymbolDiscoveryTarget.Text,
+                is SymbolDiscoveryTarget.TextDeclarations -> KOTLIN
+            }
+
+        private fun SymbolDiscoveryRequest.searchesLibraries(): Boolean =
+            (scope.scope as? SymbolSearchScope.Workspace)?.libraries == SymbolLibraryPolicy.INCLUDE
+    }
 }
 
 /** An observation exposes progress without exposing the retained inventory as transport authority. */
@@ -150,7 +170,7 @@ private constructor(
                 request.scope.scope,
                 request.target,
                 request.constraints,
-                QueryDeclarationLanguage.KOTLIN,
+                QueryDeclarationLanguage.of(request),
                 progress,
                 java.util.Collections.unmodifiableSet(
                     (outcome as? SymbolDiscoveryOutcome.Qualified)?.qualifications?.values.orEmpty().toSet()

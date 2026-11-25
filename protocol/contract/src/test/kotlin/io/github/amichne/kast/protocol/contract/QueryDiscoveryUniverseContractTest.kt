@@ -15,7 +15,7 @@ class QueryDiscoveryUniverseContractTest {
     private val json = Json { encodeDefaults = true }
 
     @Test
-    fun `every discovery progress variant declares its Kotlin declaration universe`() {
+    fun `every discovery progress variant declares its declaration language universe`() {
         val matches =
             listOf(
                 QueryMatchDocument.All,
@@ -52,7 +52,10 @@ class QueryDiscoveryUniverseContractTest {
                     ),
                     universe.keys,
                 )
-                assertEquals("kotlin", universe.getValue("declaration_language").jsonPrimitive.content)
+                assertEquals(
+                    if (match is QueryMatchDocument.All) "kotlin-and-java" else "kotlin",
+                    universe.getValue("declaration_language").jsonPrimitive.content,
+                )
                 assertEquals(kind, encoded.getValue("progress").jsonObject.getValue("kind").jsonPrimitive.content)
                 assertEquals(
                     if (match is QueryMatchDocument.All) "all" else "name",
@@ -65,8 +68,9 @@ class QueryDiscoveryUniverseContractTest {
     @Test
     fun `missing or unsupported declaration language cannot be admitted`() {
         val encoded = json.encodeToString(observation(QueryMatchDocument.All, QueryDiscoveryProgressDocument.Exhausted))
-        val missing = encoded.replace("\"declaration_language\":\"kotlin\",", "")
-        val unsupported = encoded.replace("\"declaration_language\":\"kotlin\"", "\"declaration_language\":\"java\"")
+        val missing = encoded.replace("\"declaration_language\":\"kotlin-and-java\",", "")
+        val unsupported =
+            encoded.replace("\"declaration_language\":\"kotlin-and-java\"", "\"declaration_language\":\"java\"")
         assertThrows(SerializationException::class.java) {
             json.decodeFromString<QueryDiscoveryObservationDocument>(missing)
         }
@@ -105,7 +109,8 @@ class QueryDiscoveryUniverseContractTest {
     ): QueryDiscoveryObservationDocument =
         QueryDiscoveryObservationDocument(
             QueryDiscoveryUniverseDocument(
-                QueryDiscoveryDeclarationLanguageDocument.KOTLIN,
+                if (match is QueryMatchDocument.All) QueryDiscoveryDeclarationLanguageDocument.KOTLIN_AND_JAVA
+                else QueryDiscoveryDeclarationLanguageDocument.KOTLIN,
                 match,
                 BoundedProtocolList.create(listOf(QueryDeclarationKindDocument.FUNCTION)).refined(),
                 QueryDiscoverySourcePolicyDocument.PRODUCTION_ONLY,
@@ -115,7 +120,7 @@ class QueryDiscoveryUniverseContractTest {
                 null,
                 null,
             ),
-            if (match is QueryMatchDocument.All) QueryDiscoveryOrderDocument.KOTLIN_FILE_SOURCE_V2
+            if (match is QueryMatchDocument.All) QueryDiscoveryOrderDocument.FILE_SOURCE_V3
             else QueryDiscoveryOrderDocument.NAMED_CANDIDATE_V1,
             progress,
             BoundedProtocolList.create(stops).refined(),

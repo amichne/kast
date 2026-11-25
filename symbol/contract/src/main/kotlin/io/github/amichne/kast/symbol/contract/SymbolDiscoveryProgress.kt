@@ -20,7 +20,7 @@ sealed interface SemanticFilePartition {
 
 /** Absolute file path, then declaration source offset; independent of native iterator order. */
 enum class SymbolDiscoveryProviderOrder {
-    KOTLIN_FILE_SOURCE_V2
+    FILE_SOURCE_V3
 }
 
 enum class SymbolDiscoveryBlockCause {
@@ -115,7 +115,7 @@ private constructor(
             scope == request.scope.scope &&
             target == request.target &&
             constraints == request.constraints &&
-            providerOrder == SymbolDiscoveryProviderOrder.KOTLIN_FILE_SOURCE_V2
+            providerOrder == SymbolDiscoveryProviderOrder.FILE_SOURCE_V3
 
     fun advancesFrom(previous: SymbolDiscoveryRemainder): Boolean =
         authority == previous.authority &&
@@ -159,7 +159,7 @@ private constructor(
                     request.scope.scope,
                     target,
                     request.constraints,
-                    SymbolDiscoveryProviderOrder.KOTLIN_FILE_SOURCE_V2,
+                    SymbolDiscoveryProviderOrder.FILE_SOURCE_V3,
                     java.util.Collections.unmodifiableList(frontier.toList()),
                     active,
                     inputRevision,

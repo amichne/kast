@@ -3,6 +3,7 @@ package io.github.amichne.kast.symbol.intellij
 import com.intellij.openapi.progress.ProgressManager
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.vfs.VirtualFile
+import com.intellij.psi.PsiJavaFile
 import com.intellij.psi.PsiManager
 import io.github.amichne.kast.kernel.ReadLimitParameter
 import io.github.amichne.kast.kernel.ReadLimits
@@ -27,7 +28,6 @@ import io.github.amichne.kast.workspace.intellij.read.IntellijReadObservation
 import io.github.amichne.kast.workspace.intellij.read.IntellijReadTermination
 import io.github.amichne.kast.workspace.intellij.read.call
 import java.nio.file.Path
-import org.jetbrains.kotlin.idea.KotlinFileType
 import org.jetbrains.kotlin.psi.KtFile
 
 /** Bounded VFS observations preserve native scope authority while detaching only admitted unread partitions. */
@@ -235,17 +235,20 @@ private constructor(
                 SymbolDiscoveryBlockCause.PARTITION_UNAVAILABLE,
                 IntellijReadTermination.DISCOVERY_PARTITION_KIND_MISMATCH,
             )
-        if (native.fileType != KotlinFileType.INSTANCE || !scope.nativeScope.contains(native))
+        if (!admission.admitsLanguage(native) || !scope.nativeScope.contains(native))
             return IntellijDeclarationPartitionObservation.OutsideUniverse
         if (!includeSource(native)) return IntellijDeclarationPartitionObservation.OutsideUniverse
-        val file =
+        val found =
             observation.call(IntellijReadCall.PSI_FIND_FILE) { PsiManager.getInstance(project).findFile(native) }
-                as? KtFile
-                ?: return rejected(
+        return when (found) {
+            is KtFile -> IntellijDeclarationPartitionObservation.Source.Kotlin(found)
+            is PsiJavaFile -> IntellijDeclarationPartitionObservation.Source.Java(found)
+            else ->
+                rejected(
                     SymbolDiscoveryBlockCause.PROVIDER_UNAVAILABLE,
                     IntellijReadTermination.DISCOVERY_SOURCE_UNAVAILABLE,
                 )
-        return IntellijDeclarationPartitionObservation.Source(file)
+        }
     }
 
     private fun expired(): Boolean {

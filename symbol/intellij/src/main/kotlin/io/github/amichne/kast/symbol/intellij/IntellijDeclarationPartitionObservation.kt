@@ -1,5 +1,7 @@
 package io.github.amichne.kast.symbol.intellij
 
+import com.intellij.psi.PsiClassOwner
+import com.intellij.psi.PsiJavaFile
 import io.github.amichne.kast.symbol.contract.SemanticFilePartition
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryBlockCause
 import org.jetbrains.kotlin.psi.KtFile
@@ -17,7 +19,15 @@ internal sealed interface IntellijDeclarationInitialInventory {
 internal sealed interface IntellijDeclarationPartitionObservation {
     data class Directory(val children: List<SemanticFilePartition>) : IntellijDeclarationPartitionObservation
 
-    data class Source(val file: KtFile) : IntellijDeclarationPartitionObservation
+    /** One authored source file; its language decides which declarations it can supply. */
+    sealed interface Source : IntellijDeclarationPartitionObservation {
+        val file: PsiClassOwner
+
+        data class Kotlin(override val file: KtFile) : Source
+
+        /** Only an inventory without a name reaches Java files; exact names use the Java indexes. */
+        data class Java(override val file: PsiJavaFile) : Source
+    }
 
     data object OutsideUniverse : IntellijDeclarationPartitionObservation
 
