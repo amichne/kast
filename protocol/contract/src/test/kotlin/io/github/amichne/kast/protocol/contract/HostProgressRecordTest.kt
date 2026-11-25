@@ -11,17 +11,17 @@ class HostProgressRecordTest {
         preparation: HostPreparationProgress,
         model: HostModelActivity = HostModelActivity.IDLE,
         index: HostIndexProgress = HostIndexProgress.Smart,
-    ) = HostProgressRecord("host", preparation, model, index, 7)
+    ) = HostProgressRecord("host", 42, preparation, model, index, 7)
 
     private fun running(stage: IdeLifecycleStage) = HostPreparationProgress.Running(stage, 1)
 
     @Test
     fun `the record encodes every discriminator and its schema version`() {
         assertEquals(
-            """{"hostLifetime":"host",""" +
+            """{"hostLifetime":"host","hostPid":42,""" +
                 """"preparation":{"type":"running","stage":"IMPORTING","startedAtEpochMillis":1},""" +
                 """"model":"IDLE","index":{"type":"indexing","queuedFiles":12},""" +
-                """"changedAtEpochMillis":7,"schemaVersion":1}""",
+                """"changedAtEpochMillis":7,"phase":"INDEXING","schemaVersion":1}""",
             Json.encodeToString(
                 HostProgressRecord.serializer(),
                 record(running(IdeLifecycleStage.IMPORTING), index = HostIndexProgress.Indexing(12)),
@@ -34,9 +34,16 @@ class HostProgressRecordTest {
         assertThrows<SerializationException> {
             Json.decodeFromString(
                 HostProgressRecord.serializer(),
-                """{"hostLifetime":"host","preparation":{"type":"ready"},"model":"IDLE",""" +
-                    """"index":{"type":"smart"},"changedAtEpochMillis":7}""",
+                """{"hostLifetime":"host","hostPid":42,"preparation":{"type":"ready"},"model":"IDLE",""" +
+                    """"index":{"type":"smart"},"changedAtEpochMillis":7,"phase":"READY"}""",
             )
+        }
+    }
+
+    @Test
+    fun `a phase that contradicts its facts is rejected`() {
+        assertThrows<IllegalArgumentException> {
+            record(HostPreparationProgress.Ready).copy(phase = HostPhase.INDEXING)
         }
     }
 

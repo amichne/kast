@@ -54,6 +54,11 @@ Read the [tracer evidence](../docs/reviews/go-frontend-tracer.md) for the measur
 - Route only the public query commands to the coordinator. `hook` and `workspace` read process-local state, so they run on the JVM.
 - Run the JVM by `exec`, so lifecycle owners observe one `java` process with the catalog's explicit class path and main class.
   Pass the invoked command as `-Dkast.command`, because the JVM cannot observe it after `exec`.
+- When stdout is a terminal and the caller names no format, present results as an outline. `--json`, `--jq`, and a set output setting keep the exact document.
+  A pipe always receives the exact document.
+- Run the JVM as a child only for a presented command in `childServed`. Never run `upgrade`, `uninstall`, `hook`, or a private entry as a child.
+- Read `host-progress.json` only to draw a progress line on stderr. `HostProgressRecord` derives the phase; never derive it in Go.
+- Replace control characters in presented values, so a result cannot drive the terminal.
 - Route JVM warnings to stderr with `-Xlog:disable -Xlog:all=warning:stderr`, so standard output carries only the entry's document.
 - Pass `-XX:SharedArchiveFile` only when the catalog's `sharedArchive` is a regular file. The installer creates it with the installed runtime, and the manifest digests it.
 - Dial a socket longer than the catalog's `socketAlias.maximumPathBytes` only through the alias that links to its exact directory.
@@ -95,6 +100,10 @@ Read the [tracer evidence](../docs/reviews/go-frontend-tracer.md) for the measur
 - [invocation.go](internal/frontend/invocation.go) - the typed envelope and the private-socket trust check.
 - [run.go](internal/frontend/run.go) - start or join, status mapping, signals, and delivery.
 - [control.go](internal/frontend/control.go) - installation location, entry selection, and the JVM command.
+- [interactive.go](internal/frontend/interactive.go) - when a person reads a result, and the JVM commands that run as a child.
+- [document.go](internal/terminal/document.go) - the outline of one JSON document.
+- [lines.go](internal/terminal/lines.go) - JSON lines among other text.
+- [progress.go](internal/terminal/progress.go) - the preparation progress line of the nearest workspace.
 - [reset.go](internal/reset/reset.go) - the reset sequence, its failures, and the supervisor and process adapters.
 - [paths.go](internal/reset/paths.go) - the exact deletion targets, their owners, and deletion without links.
 - [backup.go](internal/reset/backup.go) - the client configuration and workspace evidence that a reset copies first.

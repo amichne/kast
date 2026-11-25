@@ -33,7 +33,7 @@ class WorkspaceProgressStatusTest {
         model: HostModelActivity = HostModelActivity.IDLE,
         index: HostIndexProgress = HostIndexProgress.Smart,
         hostLifetime: String = "host",
-    ) = HostProgressRecord(hostLifetime, preparation, model, index, 7)
+    ) = HostProgressRecord(hostLifetime, 42, preparation, model, index, 7)
 
     private fun write(text: String) {
         Files.writeString(state.resolve(HostProgressRecord.FILE_NAME), text)

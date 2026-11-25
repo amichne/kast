@@ -24,7 +24,7 @@ class HostProgressRecordsTest {
     private val outcomes = mutableListOf<HostProgressRecordOutcome>()
     private var clock = 100L
 
-    private fun records(state: Path = directory) = HostProgressRecords(state, "host-7", { clock++ }, outcomes::add)
+    private fun records(state: Path = directory) = HostProgressRecords(state, "host-7", 42, { clock++ }, outcomes::add)
 
     private val target
         get() = directory.resolve("host-progress.json")
@@ -58,6 +58,7 @@ class HostProgressRecordsTest {
         assertEquals(
             HostProgressRecord(
                 "host-7",
+                42,
                 HostPreparationProgress.None,
                 HostModelActivity.IDLE,
                 HostIndexProgress.NoProject,

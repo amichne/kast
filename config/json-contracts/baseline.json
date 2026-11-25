@@ -5826,7 +5826,7 @@
         "path": "protocol/contract/src/test/kotlin/io/github/amichne/kast/protocol/contract/HostProgressRecordTest.kt",
         "scope": "type:HostProgressRecordTest/fun:a record without a schema version is rejected()/declaration:<anonymous>",
         "kind": "JSON_LITERAL",
-        "sha256": "30a7004fe2866f16dded554c4299ed87bd31cb3e8cd27cccfd51f5619531ab7f"
+        "sha256": "f0b7cd149463a93462be15273ccfc549346972793fcf11d17ada3f6ed8963ddb"
       },
       "count": 1,
       "justification": "Negative fixture: a progress record missing its required schemaVersion must be rejected at decode."
@@ -5836,7 +5836,7 @@
         "path": "protocol/contract/src/test/kotlin/io/github/amichne/kast/protocol/contract/HostProgressRecordTest.kt",
         "scope": "type:HostProgressRecordTest/fun:the record encodes every discriminator and its schema version()",
         "kind": "JSON_LITERAL",
-        "sha256": "badbb526cf5b12f523c269a08b2d1a8c4a9b72ebbd333bad2180cee311874123"
+        "sha256": "5bac27826e7a1bed6e3eec18805063e513a57a22847e40d60a8d38a294d53e47"
       },
       "count": 1,
       "justification": "Independent expected encoded shape for HostProgressRecord, including its discriminators and required schemaVersion."

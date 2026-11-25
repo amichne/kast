@@ -55,6 +55,14 @@ The steps are: open the project, import the Gradle model, scan files, index, and
 IntelliJ work overlaps, so the line names the earliest unfinished step. File counts are IntelliJ estimates of queued files, not files that remain.
 A failed preparation names its step and reason. Progress grants no semantic readiness.
 
+On a terminal, a query that waits for preparation shows the same step on stderr and erases it when the result arrives.
+
+### Read results on a terminal
+
+When standard output is a terminal, commands show an outline instead of JSON. A pipe receives the exact document.
+Use `--json` or `--jq` for machine output on a terminal, such as an agent that runs commands in a pseudo-terminal.
+`kast upgrade` and `kast uninstall` still print JSON progress lines.
+
 ### Inspect or edit workspace settings
 
 Use `show` to see the resolved configuration and the exact workspace file.

@@ -47,6 +47,7 @@ internal enum class HostProgressRecordOutcome {
 internal class HostProgressRecords(
     state: Path,
     private val hostLifetime: String,
+    private val hostPid: Long,
     private val now: () -> Long,
     private val observe: (HostProgressRecordOutcome) -> Unit,
 ) {
@@ -78,6 +79,7 @@ internal class HostProgressRecords(
         val facts =
             HostProgressRecord(
                 hostLifetime,
+                hostPid,
                 preparation,
                 if (activity.resolving) HostModelActivity.RESOLVING else HostModelActivity.IDLE,
                 index(activity),
@@ -127,7 +129,12 @@ internal class HostProgressRecords(
         fun forManagedHost(host: ManagedHeadlessHost?, hostLifetime: String): HostProgressRecords? =
             host?.let {
                 val logger = Logger.getInstance(HostProgressRecords::class.java)
-                HostProgressRecords(it.environment.state, hostLifetime, System::currentTimeMillis) { outcome ->
+                HostProgressRecords(
+                    it.environment.state,
+                    hostLifetime,
+                    ProcessHandle.current().pid(),
+                    System::currentTimeMillis,
+                ) { outcome ->
                     logger.info("kast_host_progress_record outcome=$outcome")
                 }
             }
