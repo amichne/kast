@@ -142,7 +142,7 @@ class NativeJavaLocationQueryTest : NativeSmartModeFixtureTest() {
         val unsupported =
             listOf("ignored = 1", "Endpoint()", "record Pair", "class Local").map { marker ->
                 request("Endpoint.java", java.indexOf(marker))
-            } + request("Endpoint.java", 0).copy(from = unsupportedJavaRecordByName())
+            } + unsupportedJavaByName().map { request("Endpoint.java", 0).copy(from = it) }
         for (query in unsupported) {
             val outcome = execute(fixture, query)
             assertTrue("Unsupported Java declaration: $outcome", outcome is OperationOutcome.Rejected)
@@ -154,6 +154,15 @@ class NativeJavaLocationQueryTest : NativeSmartModeFixtureTest() {
                 listOf(QueryLimitationDocument.DISCOVERY_INCOMPLETE),
                 (coverage as QueryCompletionCoverageDocument.Qualified).limitations.values,
             )
+        }
+    }
+
+    fun testFieldNamesOutsideTheSelectionProveAbsence() = runBlocking {
+        val (fixture, _) = prepare(javaDiscoverySources + ("Endpoint.java" to java))
+        for (source in excludedJavaByName()) {
+            val outcome = execute(fixture, request("Endpoint.java", 0).copy(from = source))
+            assertTrue("$source: $outcome", outcome is OperationOutcome.Complete)
+            assertEquals(0, (outcome as OperationOutcome.Complete).evidence.payload.items.values.size)
         }
     }
 

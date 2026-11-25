@@ -77,7 +77,7 @@ Those seed limits do not restrict the destinations of later relationship reads. 
 
 `SEARCH_TEXT` accepts one ASCII identifier word. It starts with a letter or underscore. Kast rejects phrases, substrings, qualified literals, and regular expressions.
 
-`ALL_DECLARATIONS` includes supported nested Kotlin declarations. It does not scan libraries directly. It keeps the admitted limits on declaration families.
+`ALL_DECLARATIONS` includes supported nested Kotlin declarations. It selects no Java declaration. It does not scan libraries directly. It keeps the admitted limits on declaration families.
 
 `AT_LOCATION` selects the nearest containing named declaration. An offset on a call expression selects the declaration that contains the call.
 
@@ -85,12 +85,15 @@ In Java source, `AT_LOCATION` and exact-name `SEARCH_DECLARATIONS` support named
 Use the compiler signature to select an overload.
 Use a class or method reference for `REFERENCES` across Java and Kotlin source. Use a method reference for `CALLERS`.
 An offset inside an unsupported Java member, such as a constructor or field, leaves the result unproven.
+An exact name that matches a Java field or enum constant also leaves the result unproven.
 
 Kotlin operators, loops, destructuring, and delegates call functions without call syntax. `CALLERS` and `CALLEES` include these calls.
+Kotlin property syntax calls Java getters and setters. `CALLEES` includes the method that the compiler selects.
 The editor search behind `CALLERS` and `REFERENCES` cannot find every such use. These cases stay unproven and keep the uses that Kast found:
 
 - an operator `next`, `hasNext`, `getValue`, `setValue`, or `set`
 - another operator whose receiver can come from an iterator or delegate that the workspace declares
+- a Java getter or setter, or a Kotlin override of one, if Kotlin code in the search scope contains its property name
 </Accordion>
 
 <a id="apply-only-the-steps-you-need" />
