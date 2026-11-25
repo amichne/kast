@@ -46,7 +46,10 @@ internal object QueryRelationDomainFingerprintSerializer :
 sealed interface QuerySemanticScopeDocument {
     @Serializable @SerialName("WORKSPACE") data object Workspace : QuerySemanticScopeDocument
 
-    @Serializable @SerialName("EXACT_FILE") data class ExactFile(val file: ProtocolText) : QuerySemanticScopeDocument
+    @Serializable
+    @SerialName("EXACT_FILE")
+    data class ExactFile(@Serializable(with = WorkspaceFileTextSerializer::class) val file: ProtocolText) :
+        QuerySemanticScopeDocument
 
     @Serializable @SerialName("MODULE") data class Module(val module: ProtocolText) : QuerySemanticScopeDocument
 

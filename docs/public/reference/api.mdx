@@ -181,6 +181,10 @@ TRACE accepts only `SYMBOLS` through `terminalStep.output`.
 | `VALUE_PATHS` | Track producer sites and transfers. Keep model use, how values changed form, terminals, and proof still needed. |
 | `IMPACT_WITNESS` | Retained impact sections from a complete-only `IMPACT` run or `READ_RESULT`. |
 
+A file below the workspace root is relative to that root, which `live.root` names. Use it unchanged as a `file` or directory input.
+A file outside the workspace, such as a library, keeps its absolute path.
+`encoded_bytes` measures rows before this change, so it is an upper bound for the presented rows.
+
 Explicit symbol `fields: []` selects identity and kind alone. `SOURCE` adds a bounded slice of committed source.
 
 File-scoped occurrences keep imports and aliases. They cannot act as declaration endpoints for later graph expansion.
@@ -193,7 +197,7 @@ File-scoped occurrences keep imports and aliases. They cannot act as declaration
 
 | Input | Requirement |
 | --- | --- |
-| `seeds` | Issued `enclosing` and producer `callable` references, plus UTF-16 `start` and `end` covering the whole constructor or function call. A nested or qualified selection must resolve to that same compiler invocation. |
+| `seeds` | Issued `enclosing` and producer `callable` references, plus UTF-16 `start` and `end` covering the whole constructor or function call. A nested or qualified selection must resolve to that same compiler invocation. Each Kotlin call in a `CALLERS` result with `OCCURRENCES` output has a complete `producerSeed`. Copy it unchanged instead of computing a range. |
 | `declarations` | Pair modeled callable references with identity claims. Kast checks those claims again. |
 | `flow` | `KOTLIN_FORWARD_V1` by default. Select `KOTLIN_JAVA_FORWARD_V2` to include the supported Java static methods. |
 | `domain` | Explicit expansion scope. |

@@ -25,7 +25,7 @@ import kotlinx.serialization.Serializable
 
 @Serializable
 internal data class QueryExcludedCompilerTargetWireDocument(
-    val file: String,
+    @Serializable(with = io.github.amichne.kast.protocol.contract.WorkspaceFileSerializer::class) val file: String,
     val range: SourceRangeWireDocument,
     val name: String,
     val kind: SymbolKindWireDocument,

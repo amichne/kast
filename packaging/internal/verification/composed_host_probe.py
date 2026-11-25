@@ -103,6 +103,13 @@ def rejected_reason(result: subprocess.CompletedProcess[bytes]) -> object:
     return fields(value.get("document")).get("reason")
 
 
+def workspace_file(document: dict[object, object], file: object) -> Path:
+    """Resolve a file against the live root. A baseline's absolute file replaces that root."""
+    root = fields(document.get("live")).get("root")
+    assert isinstance(root, str) and isinstance(file, str)
+    return Path(root) / file
+
+
 def caller_names(result: dict[object, object], fixture: Path) -> tuple[str, ...]:
     names: list[str] = []
     expected_file = (
@@ -113,7 +120,7 @@ def caller_names(result: dict[object, object], fixture: Path) -> tuple[str, ...]
         name = row.get("name")
         assert isinstance(name, str)
         names.append(name)
-        assert fields(row.get("location")).get("file") == str(expected_file)
+        assert workspace_file(result, fields(row.get("location")).get("file")) == expected_file
         connections = items(row.get("connections"))
         assert len(connections) == 1
         edge = fields(connections[0])
@@ -138,7 +145,7 @@ def java_reference_contexts(references: dict[object, object], fixture: Path) -> 
     for value in items(references.get("items")):
         occurrence = fields(fields(value).get("occurrence"))
         span = fields(occurrence.get("occurrence"))
-        assert span.get("file") == str(java)
+        assert workspace_file(references, span.get("file")) == java
         location = fields(span.get("range"))
         start, end, context = (
             location.get("startInclusive"),

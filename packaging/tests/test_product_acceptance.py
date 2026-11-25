@@ -83,6 +83,7 @@ class Summary:
 @dataclass(frozen=True)
 class Live:
     host: str = "compiler-workspace-one"
+    root: str = "/owned/workspace"
 
 
 @dataclass(frozen=True)
@@ -357,7 +358,10 @@ class AcceptanceTest(unittest.TestCase):
             )
             _ = java.write_text(source)
             names = ("forwardOnce", "mutualSecond", "aliasWrapper", "mutableAliasWrapper")
-            original_rows = tuple(Row(name, Location(str(forwarding)), (Edge(),)) for name in names)
+            live = Live(root=str(root))
+            original_rows = tuple(
+                Row(name, Location(str(forwarding.relative_to(root))), (Edge(),)) for name in names
+            )
             edited_rows = (
                 *original_rows,
                 Row("freshExternalCaller", Location(str(forwarding)), (Edge(),)),
@@ -366,7 +370,11 @@ class AcceptanceTest(unittest.TestCase):
             second = source.index("Nested", first + 6)
             third = source.index("Nested", second + 6)
             references = tuple(
-                ReferenceRow(Occurrence(Span(str(java), Range(offset, offset + 6)), context))
+                ReferenceRow(
+                    Occurrence(
+                        Span(str(java.relative_to(root)), Range(offset, offset + 6)), context
+                    )
+                )
                 for offset, context in zip(
                     (first, second, third), ("IMPORT", "TYPE", "CODE"), strict=True
                 )
@@ -379,10 +387,10 @@ class AcceptanceTest(unittest.TestCase):
                 runner = probe.Probe(root / "kast", root / "home", root, root, root, {})
                 replies = iter(
                     (
-                        Reply(Semantic(original_rows)),
-                        Reply(Semantic(references)),
+                        Reply(Semantic(original_rows, live=live)),
+                        Reply(Semantic(references, live=live)),
                         RejectedDocument(),
-                        Reply(Semantic(original_rows if stale else edited_rows)),
+                        Reply(Semantic(original_rows if stale else edited_rows, live=live)),
                     )
                 )
                 calls: list[str] = []
@@ -796,8 +804,21 @@ class AcceptanceTest(unittest.TestCase):
 
     def test_public_dispatch_and_exact_semantic_root_are_required(self) -> None:
         workspace = Path("/owned/first")
-        document = Semantic(
-            (Row("invokeCallback", Location(str(workspace / probe.INVOCATION_FILE))),)
+        absolute = Semantic(
+            (Row("invokeCallback", Location(str(workspace / probe.INVOCATION_FILE))),),
+            live=Live(root=str(workspace)),
+        )
+        document = replace(
+            absolute, items=(Row("invokeCallback", Location(str(probe.INVOCATION_FILE))),)
+        )
+        # The baseline prints the same file as an absolute path.
+        self.assertEqual(
+            "compiler-workspace-one",
+            probe.complete(
+                json.dumps(asdict(Reply(absolute))).encode(),
+                "invokeCallback",
+                workspace / probe.INVOCATION_FILE,
+            ),
         )
         raw = json.dumps(asdict(Reply(document))).encode()
         runner = probe.Probe(
@@ -832,6 +853,7 @@ class AcceptanceTest(unittest.TestCase):
             replace(document, items=()),
             replace(document, items=(Row("invokeCallback", Location("/foreign/Invocation.kt")),)),
             replace(document, live=Live("")),
+            replace(document, live=Live(root="/foreign")),
         ):
             with self.subTest(changed=changed), self.assertRaises(ValueError):
                 _ = probe.complete(

@@ -6,7 +6,11 @@ import io.github.amichne.kast.protocol.contract.QueryItemFailureDocument
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
-@Serializable internal data class QueryRefinementLocationCliDocument(val file: String, val offset: Int)
+@Serializable
+internal data class QueryRefinementLocationCliDocument(
+    @Serializable(with = io.github.amichne.kast.protocol.contract.WorkspaceFileSerializer::class) val file: String,
+    val offset: Int,
+)
 
 @Serializable
 internal sealed interface QueryItemFailureCliDocument {

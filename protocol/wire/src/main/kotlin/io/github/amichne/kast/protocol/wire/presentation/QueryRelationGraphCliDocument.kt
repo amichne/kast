@@ -69,7 +69,7 @@ private constructor(
     val kind: SymbolKindWireDocument,
     val name: String,
     val qualifiedIdentity: String?,
-    val file: String,
+    @Serializable(with = io.github.amichne.kast.protocol.contract.WorkspaceFileSerializer::class) val file: String,
     val range: SourceRangeWireDocument,
     @SerialName("compiler_identity") val compilerIdentity: String,
 ) {
