@@ -62,8 +62,14 @@ sealed interface QueryTextMatchDocument {
             }
 
             const val MAX_CONTEXT_LENGTH = 512
-            const val FILE_PATTERN =
-                "^(?!.*(?:^|[/\\\\])\\.{1,2}(?:[/\\\\]|$))(?:/|[A-Za-z]:[/\\\\])(?:[^/\\\\\\x00-\\x1F\\x7F-\\x9F]+[/\\\\])*[^/\\\\\\x00-\\x1F\\x7F-\\x9F]+$"
+            private const val FILE_ROOT = "^(?!.*(?:^|[/\\\\])\\.{1,2}(?:[/\\\\]|$))(?:/|[A-Za-z]:[/\\\\])"
+            private const val FILE_NAMES = "(?:[^/\\\\\\x00-\\x1F\\x7F-\\x9F]+[/\\\\])*[^/\\\\\\x00-\\x1F\\x7F-\\x9F]+$"
+
+            /** Admission keeps the absolute path that the native index reported. */
+            const val FILE_PATTERN = FILE_ROOT + FILE_NAMES
+
+            /** A presentation can make the same path relative to its workspace root. */
+            const val PRESENTED_FILE_PATTERN = "$FILE_ROOT?$FILE_NAMES"
         }
     }
 }

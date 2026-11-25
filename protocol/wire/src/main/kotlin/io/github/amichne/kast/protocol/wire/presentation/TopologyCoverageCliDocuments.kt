@@ -35,7 +35,7 @@ private data class TopologyCoverageRejectedCliDocument(
 @Serializable
 private data class TopologyCoverageNodeCliDocument(
     val compilerIdentity: String,
-    val file: String,
+    @Serializable(with = io.github.amichne.kast.protocol.contract.WorkspaceFileSerializer::class) val file: String,
     val range: TopologyCoverageRangeCliDocument,
 )
 

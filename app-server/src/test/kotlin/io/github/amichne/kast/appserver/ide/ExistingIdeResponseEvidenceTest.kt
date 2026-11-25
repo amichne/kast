@@ -12,11 +12,17 @@ import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.protocol.contract.BoundedProtocolList
 import io.github.amichne.kast.protocol.contract.DiagnosticCheckRequest
 import io.github.amichne.kast.protocol.contract.DiagnosticCheckResult
+import io.github.amichne.kast.protocol.contract.DiagnosticDocument
+import io.github.amichne.kast.protocol.contract.DiagnosticLocationDocument
+import io.github.amichne.kast.protocol.contract.DiagnosticRangeDocument
+import io.github.amichne.kast.protocol.contract.DiagnosticSeverityDocument
 import io.github.amichne.kast.protocol.contract.ProtocolCount
+import io.github.amichne.kast.protocol.contract.ProtocolOffset
 import io.github.amichne.kast.protocol.contract.ProtocolText
 import io.github.amichne.kast.protocol.wire.CanonicalOperationWireBindings
 import io.github.amichne.kast.protocol.wire.WireEncoding
 import io.github.amichne.kast.protocol.wire.presentation.OperationPreparation
+import io.github.amichne.kast.protocol.wire.presentation.ProjectedOperationOutcome
 import io.github.amichne.kast.protocol.wire.presentation.canonicalCliRequestPreparers
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
@@ -24,6 +30,10 @@ import java.io.DataInputStream
 import java.io.DataOutputStream
 import java.nio.file.Path
 import java.util.UUID
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.jsonArray
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertInstanceOf
 import org.junit.jupiter.api.Test
@@ -93,6 +103,22 @@ class ExistingIdeResponseEvidenceTest {
             ),
             evidence,
         )
+    }
+
+    @Test
+    fun `an admitted response presents workspace files relative to the admitted root`() {
+        val fixture = ResponseFixture()
+        val files = listOf("/workspace/src/Main.kt", "/workspace-other/Main.kt")
+        val decoded = fixture.decode(fixture.reply(files = files).decodeToString())
+        val outcome = (decoded.exchange as ExistingIdeExchange.Semantic).outcome as ProjectedOperationOutcome.Complete
+        val document = Json.parseToJsonElement(outcome.document.value).jsonObject
+        val locations = document.getValue("diagnostics").jsonArray.map { it.jsonObject.getValue("location").jsonObject }
+        assertEquals(
+            listOf("src/Main.kt", "/workspace-other/Main.kt"),
+            locations.map { it.getValue("file").jsonPrimitive.content },
+        )
+        val live = document.getValue("live").jsonObject
+        assertEquals("/workspace", live.getValue("root").jsonPrimitive.content)
     }
 
     @Test
@@ -256,7 +282,11 @@ private class ResponseFixture {
             )
         )
 
-    fun reply(host: UUID = descriptor.host, path: String = root.path.toString()): ByteArray {
+    fun reply(
+        host: UUID = descriptor.host,
+        path: String = root.path.toString(),
+        files: List<String> = emptyList(),
+    ): ByteArray {
         val basis =
             EvidenceBasis.Live(
                 refined(
@@ -269,12 +299,26 @@ private class ResponseFixture {
                     )
                 )
             )
-        return replyWithBasis(basis)
+        return replyWithBasis(basis, files)
     }
 
-    fun replyWithBasis(basis: EvidenceBasis): ByteArray {
+    private fun diagnostic(file: String): DiagnosticDocument {
+        val offset = refined(ProtocolOffset.parse(0))
+        return DiagnosticDocument(
+            DiagnosticSeverityDocument.WARNING,
+            refined(ProtocolText.parse("UNUSED")),
+            refined(ProtocolText.parse("unused")),
+            DiagnosticLocationDocument(
+                refined(ProtocolText.parse("candidate")),
+                refined(ProtocolText.parse(file)),
+                refined(DiagnosticRangeDocument.create(offset, offset)),
+            ),
+        )
+    }
+
+    fun replyWithBasis(basis: EvidenceBasis, files: List<String> = emptyList()): ByteArray {
         val binding = CanonicalOperationWireBindings.diagnosticCheck
-        val result = DiagnosticCheckResult(refined(BoundedProtocolList.create(emptyList())))
+        val result = DiagnosticCheckResult(refined(BoundedProtocolList.create(files.map(::diagnostic))))
         return (binding.encodeOutcome(OperationOutcome.Complete(EvidenceEnvelope(binding.operation.id, basis, result)))
                 as WireEncoding.Encoded)
             .document

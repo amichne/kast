@@ -6,7 +6,10 @@ import io.github.amichne.kast.kernel.EvidenceBasis
 import io.github.amichne.kast.kernel.LiveReadEvidence
 import kotlinx.serialization.Serializable
 
-/** Explicit live evidence survives the final CLI boundary; it never becomes a generation. */
+/**
+ * Explicit live evidence survives the final CLI boundary; it never becomes a generation. Its absolute root is the base
+ * of each relative file path in the same document.
+ */
 @Serializable
 data class LiveReadCliEvidence
 private constructor(

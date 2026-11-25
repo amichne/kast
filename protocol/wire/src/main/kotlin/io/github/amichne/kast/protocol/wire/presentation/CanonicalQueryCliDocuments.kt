@@ -35,7 +35,7 @@ object CanonicalQueryCliDocuments {
     fun classificationFacts(document: kotlinx.serialization.json.JsonObject): QueryClassificationFacts =
         queryClassificationFacts(document)
 
-    /** Exact UTF-8 size of the public items array, including punctuation and retained row identities. */
+    /** UTF-8 size of the items array before its paths become relative, so the presented array is never larger. */
     fun symbolPreviewBytes(items: List<QueryResultItemDocument.ExactSymbol>): Long = previewBytes(items)
 
     fun previewBytes(items: List<QueryResultItemDocument>): Long =

@@ -163,7 +163,11 @@ internal data class QuerySourceWindowCliDocument(
     @io.github.amichne.kast.protocol.contract.ProtocolIntegerConstraint(minimum = 1) val endLine: Long,
 )
 
-@Serializable internal data class QueryExactLocationCliDocument(val file: String, val range: SourceRangeCliDocument)
+@Serializable
+internal data class QueryExactLocationCliDocument(
+    @Serializable(with = io.github.amichne.kast.protocol.contract.WorkspaceFileSerializer::class) val file: String,
+    val range: SourceRangeCliDocument,
+)
 
 internal fun QueryResultItemDocument.toCliDocument(): QueryResultItemCliDocument =
     when (this) {

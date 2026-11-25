@@ -110,7 +110,7 @@ private data class SourceReadQualifiedCliDocument(
 private data class SourceSnapshotCliDocument
 private constructor(
     val canonicalRoot: String,
-    val file: String,
+    @Serializable(with = io.github.amichne.kast.protocol.contract.WorkspaceFileSerializer::class) val file: String,
     val textIdentity: String,
     val coordinateUnit: String,
     val length: Int,

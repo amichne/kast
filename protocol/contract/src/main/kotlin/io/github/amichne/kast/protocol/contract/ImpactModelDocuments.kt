@@ -45,7 +45,7 @@ enum class ImpactContentViewDocument {
 @Serializable
 data class ImpactDeclarationReferenceDocument(
     val basis: ImpactSemanticBasisDocument,
-    val file: ProtocolText,
+    @Serializable(with = WorkspaceFileTextSerializer::class) val file: ProtocolText,
     val range: ImpactSourceRangeDocument,
     @ProtocolStringConstraint(
         pattern = "^canonical-signature-sha256-v1\\|[0-9a-f]{64}$",

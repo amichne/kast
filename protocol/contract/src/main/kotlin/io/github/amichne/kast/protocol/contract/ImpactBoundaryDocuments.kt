@@ -42,7 +42,7 @@ sealed interface ImpactExecutionOwnerDocument {
 
 @Serializable
 data class ImpactCapturedBodyDocument(
-    val file: ProtocolText,
+    @Serializable(with = WorkspaceFileTextSerializer::class) val file: ProtocolText,
     val range: ImpactSourceRangeDocument,
     val compilerIdentity: ProtocolText,
 )
