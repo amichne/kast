@@ -380,7 +380,11 @@ class InstalledWorkspaceAdmissionTest {
             .use { query ->
                 assertNotEquals(previous.home, query.home)
                 assertEquals(previous.gradleHome.toString(), query.environment["GRADLE_USER_HOME"])
-                assertFalse(Files.exists(query.home.parent.resolve("workspace-seed.json")))
+                // The retired generation recorded no Host exit, so it proves no usable index storage.
+                assertEquals(
+                    Refinement.Refined(WorkspaceSeedRecord(WorkspaceSeedResult.NoEligibleDonor)),
+                    readContainerRecord<WorkspaceSeedRecord>(query.home.parent.resolve("workspace-seed.json")),
+                )
                 assertEquals(Refinement.Refined("prepared"), query.prepare { "prepared" })
                 assertEquals(trust, Files.readString(previous.directory.resolve("trust.xml")))
                 assertEquals(durable, Files.readString(previous.directory.resolve("container.json")))

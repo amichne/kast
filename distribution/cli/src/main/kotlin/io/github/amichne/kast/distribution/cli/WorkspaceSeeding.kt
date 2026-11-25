@@ -38,10 +38,34 @@ internal fun seedWorkspace(
             WorkspaceDependencySharing.PRIVATE -> WorkspaceSeedResult.NotRequested
             WorkspaceDependencySharing.SHARED -> selectWorkspaceSeed(store, staged, probe, clone)
         }
+    recordWorkspaceSeed(staged.staging, result)
+}
+
+/**
+ * A rebuilt generation starts from the index storage of its own retired one, under any sharing policy. Retirement
+ * proves that the exact Host stopped, and the preparation lock excludes another reader.
+ */
+internal fun seedGeneration(
+    previous: AdmittedContainer,
+    runtime: AdmittedContainerRuntime,
+    staging: Path,
+    clone: (Path, Path) -> WorkspaceSeedClone,
+): Refinement<Unit, ContainerFailure> = containerFiles {
+    val donor = containerFiles { admitSeedStorage(previous, runtime) }
+    val result =
+        when (donor) {
+            is Refinement.Rejected -> WorkspaceSeedResult.NoEligibleDonor
+            is Refinement.Refined ->
+                if (ideStopped(previous)) cloneSeed(previous, staging, clone) else WorkspaceSeedResult.NoEligibleDonor
+        }
+    recordWorkspaceSeed(staging, result)
+}
+
+private fun recordWorkspaceSeed(staging: Path, result: WorkspaceSeedResult): Refinement<Unit, ContainerFailure> {
     when (result) {
         is WorkspaceSeedResult.CloneFailed,
         WorkspaceSeedResult.UnsupportedFilesystem -> {
-            val cleanup = containerFiles { discardWorkspaceSeed(staged.staging.resolve("state/system")) }
+            val cleanup = containerFiles { discardWorkspaceSeed(staging.resolve("state/system")) }
             when (cleanup) {
                 is Refinement.Rejected -> {
                     System.err.println(
@@ -49,7 +73,7 @@ internal fun seedWorkspace(
                             WorkspaceSeedProgress(WorkspaceSeedResult.CleanupRejected(cleanup.failure))
                         )
                     )
-                    return@containerFiles cleanup
+                    return cleanup
                 }
                 is Refinement.Refined -> Unit
             }
@@ -62,9 +86,9 @@ internal fun seedWorkspace(
         is WorkspaceSeedResult.CleanupRejected -> Unit
     }
     // Persist only after successful cleanup. A partial clone can never reach publication.
-    writeContainerRecord(staged.staging.resolve("state/workspace-seed.json"), WorkspaceSeedRecord(result))
+    writeContainerRecord(staging.resolve("state/workspace-seed.json"), WorkspaceSeedRecord(result))
     System.err.println(containerJson.encodeToString(WorkspaceSeedProgress(result)))
-    Refinement.Refined(Unit)
+    return Refinement.Refined(Unit)
 }
 
 @Serializable
@@ -158,51 +182,66 @@ private fun seedFromStoppedDonor(
             is Refinement.Rejected -> return current
             is Refinement.Refined -> current.value.container
         }
-    val launch =
-        when (val selected = SelectedIdeInstallation.resolve(donor.runtime.home)) {
-            is SelectedIdeLaunch.Unavailable -> return Refinement.Rejected(ContainerFailure.RUNTIME_UNAVAILABLE)
-            is SelectedIdeLaunch.Resolved -> selected
-        }
-    val plugins =
-        when (val selected = SelectedIdeInstallation.pluginRoot(launch, donor.home)) {
-            is Refinement.Rejected -> return Refinement.Refined(WorkspaceSeedResult.NoEligibleDonor)
-            is Refinement.Refined -> selected.value
-        }
     if (
-        !Files.notExists(plugins.value.parent.resolve(".lock"), NOFOLLOW_LINKS) ||
+        !ideStopped(donor) ||
             probe.inspect(donor.runtime.home, donor.state, donor.home) != WorkspaceSeedEndpoint.HOST_UNAVAILABLE
     )
         return Refinement.Refined(WorkspaceSeedResult.NoEligibleDonor)
-    return Refinement.Refined(
-        when (val copied = clone(donor.state.resolve("system"), staged.staging.resolve("state/system"))) {
-            WorkspaceSeedClone.Completed -> WorkspaceSeedResult.Seeded(donor.id.text)
-            WorkspaceSeedClone.Unsupported -> WorkspaceSeedResult.UnsupportedFilesystem
-            is WorkspaceSeedClone.Failed -> WorkspaceSeedResult.CloneFailed(copied.stage)
-        }
-    )
+    return Refinement.Refined(cloneSeed(donor, staged.staging, clone))
 }
+
+private fun cloneSeed(
+    donor: AdmittedContainer,
+    staging: Path,
+    clone: (Path, Path) -> WorkspaceSeedClone,
+): WorkspaceSeedResult =
+    when (val copied = clone(donor.state.resolve("system"), staging.resolve("state/system"))) {
+        WorkspaceSeedClone.Completed -> WorkspaceSeedResult.Seeded(donor.id.text)
+        WorkspaceSeedClone.Unsupported -> WorkspaceSeedResult.UnsupportedFilesystem
+        is WorkspaceSeedClone.Failed -> WorkspaceSeedResult.CloneFailed(copied.stage)
+    }
+
+/** The IDE removes its configuration lock after it flushes its storage. An unknown layout proves nothing. */
+private fun ideStopped(donor: AdmittedContainer): Boolean =
+    when (val launch = SelectedIdeInstallation.resolve(donor.runtime.home)) {
+        is SelectedIdeLaunch.Unavailable -> false
+        is SelectedIdeLaunch.Resolved ->
+            when (val plugins = SelectedIdeInstallation.pluginRoot(launch, donor.home)) {
+                is Refinement.Rejected -> false
+                is Refinement.Refined -> Files.notExists(plugins.value.value.parent.resolve(".lock"), NOFOLLOW_LINKS)
+            }
+    }
 
 private fun seedCandidate(
     store: ContainerStore,
     owned: AdmittedWorkspace,
     runtime: AdmittedContainerRuntime,
 ): Refinement<WorkspaceSeedCandidate, ContainerFailure> {
-    // Reject the cheap runtime binding before admitting runtime files or touching a lease.
-    val generation =
-        when (val read = readContainerRecord<ContainerGenerationRecord>(owned.directory.resolve("generation.json"))) {
-            is Refinement.Rejected -> return read
-            is Refinement.Refined -> read.value
-        }
+    // Reject a pending removal before admitting runtime files or touching a lease.
+    if (!Files.notExists(store.containers.resolve(".removing-${owned.id.text}.json"), NOFOLLOW_LINKS))
+        return Refinement.Rejected(ContainerFailure.RUNTIME_MISMATCH)
+    return when (val donor = store.admitGeneration(owned)) {
+        is Refinement.Rejected -> donor
+        is Refinement.Refined -> admitSeedStorage(donor.value, runtime)
+    }
+}
+
+/**
+ * Index and file system storage belongs to one IDE distribution. Kast contributes no index, gist, or file type, so its
+ * own build does not change that storage.
+ */
+private fun admitSeedStorage(
+    donor: AdmittedContainer,
+    runtime: AdmittedContainerRuntime,
+): Refinement<WorkspaceSeedCandidate, ContainerFailure> {
+    val source = donor.runtime.manifest
+    val target = runtime.manifest
     if (
-        generation.archiveSha256 != runtime.archiveSha256 ||
-            !Files.notExists(store.containers.resolve(".removing-${owned.id.text}.json"), NOFOLLOW_LINKS)
+        source.distributionSha256 != target.distributionSha256 ||
+            source.platformBuild != target.platformBuild ||
+            source.platform != target.platform
     )
         return Refinement.Rejected(ContainerFailure.RUNTIME_MISMATCH)
-    val donor =
-        when (val read = store.admitGeneration(owned)) {
-            is Refinement.Rejected -> return read
-            is Refinement.Refined -> read.value
-        }
     val path = HostExitRecord.path(donor.state)
     val record =
         when (val read = readContainerRecord<HostExitRecord>(path)) {
@@ -215,7 +254,11 @@ private fun seedCandidate(
             UUID.fromString(record.hostLifetime).toString() != record.hostLifetime
     )
         return Refinement.Rejected(ContainerFailure.INVALID_RECORD)
-    if (admitPrivateContainerDirectory(donor.state.resolve("system")) is Refinement.Rejected)
+    val system = donor.state.resolve("system")
+    if (
+        admitPrivateContainerDirectory(system) is Refinement.Rejected ||
+            !WORKSPACE_SEED_STORAGE.all { Files.isDirectory(system.resolve(it), NOFOLLOW_LINKS) }
+    )
         return Refinement.Rejected(ContainerFailure.FOREIGN_STATE)
     return Refinement.Refined(WorkspaceSeedCandidate(donor, Files.getLastModifiedTime(path, NOFOLLOW_LINKS)))
 }
