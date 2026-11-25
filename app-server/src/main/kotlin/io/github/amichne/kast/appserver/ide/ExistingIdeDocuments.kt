@@ -9,6 +9,7 @@ import io.github.amichne.kast.distribution.managed.CanonicalRoot
 import io.github.amichne.kast.kernel.EvidenceBasis
 import io.github.amichne.kast.kernel.OperationOutcome
 import io.github.amichne.kast.kernel.Refinement
+import io.github.amichne.kast.protocol.contract.PresentedWorkspaceRoot
 import io.github.amichne.kast.protocol.wire.CanonicalOperationWireBindings
 import io.github.amichne.kast.protocol.wire.WireDecoding
 import io.github.amichne.kast.protocol.wire.presentation.CanonicalJsonDocument
@@ -214,7 +215,8 @@ object ExistingIdeDocuments {
                 is io.github.amichne.kast.protocol.contract.QuerySemanticHeaderDocumentAuthorityLive,
                 is io.github.amichne.kast.protocol.contract.QuerySemanticHeaderDocumentAuthorityRetainedResult -> false
             }
-        return if (admitted) ExistingIdeExchange.Semantic(header.project()) else responseRejected()
+        return if (admitted) ExistingIdeExchange.Semantic(header.project().relativeTo(context.root.presented()))
+        else responseRejected()
     }
 
     private fun changeResponse(
@@ -240,7 +242,7 @@ object ExistingIdeDocuments {
                 is WireDecoding.Decoded -> changeEvidence(decoded.value, operation, context)
             }
         return when (admitted) {
-            is Refinement.Refined -> completeResponse(operation.request, document)
+            is Refinement.Refined -> completeResponse(operation.request, document, context.root)
             is Refinement.Rejected -> operationRejection(raw, admitted.failure)
         }
     }
@@ -264,7 +266,7 @@ object ExistingIdeDocuments {
     ): ExistingIdeDecodedResponse {
         val document = raw.toString(Charsets.UTF_8)
         return when (val admitted = operation.kind.admitResponse(document, context.root, context.descriptor)) {
-            is Refinement.Refined -> completeResponseWithEvidence(operation.request, document)
+            is Refinement.Refined -> completeResponseWithEvidence(operation.request, document, context.root)
             is Refinement.Rejected ->
                 ExistingIdeDecodedResponse.withExchange(
                     operationRejection(raw, admitted.failure.failure),
@@ -276,15 +278,19 @@ object ExistingIdeDocuments {
     private fun completeResponse(
         request: PreparedOperationRequest,
         document: String,
-    ): ExistingIdeExchange = completeResponseWithEvidence(request, document).exchange
+        root: CanonicalRoot,
+    ): ExistingIdeExchange = completeResponseWithEvidence(request, document, root).exchange
 
     private fun completeResponseWithEvidence(
         request: PreparedOperationRequest,
         document: String,
+        root: CanonicalRoot,
     ): ExistingIdeDecodedResponse =
         when (val completed = request.complete(document)) {
             is OperationCompletion.Completed ->
-                ExistingIdeDecodedResponse.fromExchange(ExistingIdeExchange.Semantic(completed.outcome))
+                ExistingIdeDecodedResponse.fromExchange(
+                    ExistingIdeExchange.Semantic(completed.outcome.relativeTo(root.presented()))
+                )
             is OperationCompletion.Rejected ->
                 ExistingIdeDecodedResponse.rejected(ExistingIdeResponseDecodeFailure.Completion(completed.failure))
         }
@@ -342,6 +348,9 @@ object ExistingIdeDocuments {
             recovery,
         )
 }
+
+/** Every transport presents one admitted workspace's files relative to its canonical root. */
+private fun CanonicalRoot.presented(): PresentedWorkspaceRoot = PresentedWorkspaceRoot.fromCanonical(path.toString())
 
 /** The concrete operation decoder proves shape before its result can carry host evidence. */
 fun ExistingIdeReadOperation.admitOutcome(

@@ -66,7 +66,10 @@ data class ImpactImplementationEndpointDocument(
 )
 
 @Serializable
-data class ImpactImplementationOccurrenceDocument(val file: ProtocolText, val range: ImpactSourceRangeDocument)
+data class ImpactImplementationOccurrenceDocument(
+    @Serializable(with = WorkspaceFileTextSerializer::class) val file: ProtocolText,
+    val range: ImpactSourceRangeDocument,
+)
 
 @Serializable
 data class ImpactImplementationFactDocument(

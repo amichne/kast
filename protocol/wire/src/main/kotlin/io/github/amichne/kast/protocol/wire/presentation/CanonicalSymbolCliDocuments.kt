@@ -21,7 +21,7 @@ data class SymbolCliDocument(
     val kind: String,
     val name: String,
     val qualifiedIdentity: String?,
-    val file: String,
+    @Serializable(with = io.github.amichne.kast.protocol.contract.WorkspaceFileSerializer::class) val file: String,
     val range: SourceRangeCliDocument,
     val compilerEvidence: CompilerSymbolEvidenceCliDocument,
 )
@@ -114,7 +114,11 @@ data class LocalDeclarationAddressCliDocument(
 
 @Serializable
 sealed interface LocalDeclarationFileCliDocument {
-    @Serializable @SerialName("WORKSPACE") data class Workspace(val path: String) : LocalDeclarationFileCliDocument
+    @Serializable
+    @SerialName("WORKSPACE")
+    data class Workspace(
+        @Serializable(with = io.github.amichne.kast.protocol.contract.WorkspaceFileSerializer::class) val path: String
+    ) : LocalDeclarationFileCliDocument
 
     @Serializable @SerialName("EXTERNAL") data class External(val url: String) : LocalDeclarationFileCliDocument
 }

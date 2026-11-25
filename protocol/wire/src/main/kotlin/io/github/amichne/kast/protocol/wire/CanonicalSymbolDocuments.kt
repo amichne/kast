@@ -25,6 +25,7 @@ import io.github.amichne.kast.protocol.contract.SymbolKindDocument
 import io.github.amichne.kast.protocol.contract.SymbolQualifiedIdentityDocument
 import io.github.amichne.kast.protocol.contract.TraversalDepthDocument
 import io.github.amichne.kast.protocol.contract.TraversalRecordDocument
+import io.github.amichne.kast.protocol.contract.WorkspaceFileSerializer
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
@@ -41,7 +42,7 @@ internal data class RelationFactWireDocument(
 @Serializable
 internal data class RelationOccurrenceWireDocument(
     val candidateSelector: String,
-    val file: String,
+    @Serializable(with = WorkspaceFileSerializer::class) val file: String,
     val range: SourceRangeWireDocument,
 )
 
@@ -69,7 +70,7 @@ internal data class SymbolWireDocument(
     val kind: SymbolKindWireDocument,
     val name: String,
     val qualifiedIdentity: String?,
-    val file: String,
+    @Serializable(with = WorkspaceFileSerializer::class) val file: String,
     val range: SourceRangeWireDocument,
     val compilerEvidence: CompilerSymbolEvidenceWireDocument,
 )
@@ -162,7 +163,10 @@ internal data class LocalDeclarationAddressWireDocument(
 
 @Serializable
 internal sealed interface LocalDeclarationFileWireDocument {
-    @Serializable @SerialName("WORKSPACE") data class Workspace(val path: String) : LocalDeclarationFileWireDocument
+    @Serializable
+    @SerialName("WORKSPACE")
+    data class Workspace(@Serializable(with = WorkspaceFileSerializer::class) val path: String) :
+        LocalDeclarationFileWireDocument
 
     @Serializable @SerialName("EXTERNAL") data class External(val url: String) : LocalDeclarationFileWireDocument
 }

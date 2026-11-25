@@ -193,6 +193,15 @@ def json_object(text: str) -> JsonObject | Blocked:
     return value
 
 
+def witness_file(response: JsonObject, place: JsonObject, witness: SourceWitness) -> bool:
+    """A file is relative to the live root. An earlier product printed it absolute, without needing that root."""
+    file, live = place.get("file"), response.get("live")
+    root = live.get("root") if isinstance(live, dict) else None
+    if not isinstance(file, str):
+        return False
+    return str(Path(root if isinstance(root, str) else "/") / file) == witness.absolute_file
+
+
 def select_exact(response: JsonObject, witness: SourceWitness) -> Selected | Blocked:
     items = response.get("items")
     if not isinstance(items, list):
@@ -202,7 +211,7 @@ def select_exact(response: JsonObject, witness: SourceWitness) -> Selected | Blo
         if not isinstance(item, dict):
             continue
         location = item.get("location")
-        if not isinstance(location, dict) or location.get("file") != witness.absolute_file:
+        if not isinstance(location, dict) or not witness_file(response, location, witness):
             continue
         extent = location.get("range")
         if not isinstance(extent, dict):
@@ -664,7 +673,7 @@ def rejection_codes(response: JsonObject) -> tuple[str, ...]:
 
 
 def relation_witness_matches(
-    item: JsonObject, oracle: RelationWitness, witness: SourceWitness
+    response: JsonObject, item: JsonObject, oracle: RelationWitness, witness: SourceWitness
 ) -> bool:
     if oracle.projection == "TRAVERSAL_RECORDS":
         record = item.get("record")
@@ -697,7 +706,7 @@ def relation_witness_matches(
         and relation.get("provenance") == "k2-authored-source"
         and source.get("name") == witness.corpus.name_selected
         and target.get("name") == oracle.target
-        and occurrence.get("file") == witness.absolute_file
+        and witness_file(response, occurrence, witness)
         and type(start) is int
         and type(end) is int
         and 0 <= start < end <= len(witness.text.encode("utf-16-le")) // 2
@@ -758,7 +767,7 @@ def assess(
     ):
         return Failed(reason=Failure.WITNESS_MISSING)
     if isinstance(oracle, RelationWitness) and not any(
-        relation_witness_matches(item, oracle, witness) for item in items
+        relation_witness_matches(terminal, item, oracle, witness) for item in items
     ):
         return Failed(reason=Failure.WITNESS_MISSING)
     return Passed(assertion=oracle.type)

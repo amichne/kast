@@ -45,7 +45,11 @@ sealed interface RelationOmissionSamplesCliDocument {
         RelationOmissionSamplesCliDocument
 }
 
-@Serializable data class RelationOmissionLocationCliDocument(val file: String, val range: SourceRangeCliDocument)
+@Serializable
+data class RelationOmissionLocationCliDocument(
+    @Serializable(with = io.github.amichne.kast.protocol.contract.WorkspaceFileSerializer::class) val file: String,
+    val range: SourceRangeCliDocument,
+)
 
 fun RelationOmissionDocument.toCliDocument() =
     RelationOmissionCliDocument(

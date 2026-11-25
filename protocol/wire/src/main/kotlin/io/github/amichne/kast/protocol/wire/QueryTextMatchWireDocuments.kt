@@ -23,8 +23,9 @@ internal data class QueryTextMatchWireDocument(
     @ProtocolStringConstraint(
         minimumLength = 1,
         maximumLength = 1048576,
-        pattern = QueryTextMatchDocument.IndexedWord.FILE_PATTERN,
+        pattern = QueryTextMatchDocument.IndexedWord.PRESENTED_FILE_PATTERN,
     )
+    @Serializable(with = io.github.amichne.kast.protocol.contract.WorkspaceFileSerializer::class)
     val file: String,
     val range: SourceRangeWireDocument,
     @ProtocolStringConstraint(

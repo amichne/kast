@@ -1,5 +1,6 @@
 package io.github.amichne.kast.protocol.wire.presentation
 
+import io.github.amichne.kast.protocol.contract.PresentedWorkspaceRoot
 import io.github.amichne.kast.protocol.contract.ToolOutputDetail
 import java.io.OutputStream
 import kotlinx.serialization.ExperimentalSerializationApi
@@ -15,6 +16,8 @@ private val cliJson = Json {
     classDiscriminator = "type"
 }
 
+private fun cliJson(root: PresentedWorkspaceRoot): Json = Json(cliJson) { serializersModule = root.serializersModule() }
+
 interface OutputDocument {
     val value: String
 }
@@ -22,14 +25,21 @@ interface OutputDocument {
 /** A canonical compact JSON document ready for the process output boundary. */
 class CanonicalJsonDocument
 private constructor(
-    override val value: String,
-    private val render: (ToolOutputDetail) -> String,
+    private val detail: ToolOutputDetail,
+    private val json: Json,
+    private val render: (ToolOutputDetail, Json) -> String,
 ) : OutputDocument {
+    override val value: String = render(detail, json)
+
     /** The owner projects typed data; transports never remove arbitrary JSON keys. */
-    fun present(detail: ToolOutputDetail): CanonicalJsonDocument = CanonicalJsonDocument(render(detail), render)
+    fun present(detail: ToolOutputDetail): CanonicalJsonDocument = CanonicalJsonDocument(detail, json, render)
+
+    /** Presents each file below one canonical root relative to it, as file inputs require. */
+    fun relativeTo(root: PresentedWorkspaceRoot): CanonicalJsonDocument =
+        CanonicalJsonDocument(detail, cliJson(root), render)
 
     companion object {
-        /** Byte measurement uses the same serializer settings as the public process document. */
+        /** Byte measurement uses the process document's serializer settings before paths become relative. */
         @OptIn(ExperimentalSerializationApi::class)
         internal fun <Value> encodedBytes(serializer: KSerializer<Value>, value: Value): Long {
             val counter = Utf8ByteCounter()
@@ -47,8 +57,8 @@ private constructor(
     /** A generated serializer bound to the CLI's sole configured JSON instance. */
     class Factory<Value>(private val serializer: KSerializer<Value>, private val compact: (Value) -> Value) {
         fun create(value: Value): CanonicalJsonDocument {
-            val render: (ToolOutputDetail) -> String = { detail ->
-                cliJson.encodeToString(
+            val render: (ToolOutputDetail, Json) -> String = { detail, json ->
+                json.encodeToString(
                     serializer,
                     when (detail) {
                         ToolOutputDetail.COMPACT -> compact(value)
@@ -56,7 +66,7 @@ private constructor(
                     },
                 )
             }
-            return CanonicalJsonDocument(render(ToolOutputDetail.VERBOSE), render)
+            return CanonicalJsonDocument(ToolOutputDetail.VERBOSE, cliJson, render)
         }
     }
 }
@@ -77,6 +87,13 @@ private class Utf8ByteCounter : OutputStream() {
 
 /** Exhaustive operation-outcome projection before process status selection. */
 sealed interface ProjectedOperationOutcome {
+    fun relativeTo(root: PresentedWorkspaceRoot): ProjectedOperationOutcome =
+        when (this) {
+            is Complete -> Complete(document.relativeTo(root))
+            is Qualified -> Qualified(document.relativeTo(root))
+            is Rejected -> Rejected(document.relativeTo(root))
+        }
+
     data class Complete(val document: CanonicalJsonDocument) : ProjectedOperationOutcome
 
     data class Qualified(val document: CanonicalJsonDocument) : ProjectedOperationOutcome

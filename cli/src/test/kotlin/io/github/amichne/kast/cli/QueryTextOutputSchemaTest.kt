@@ -11,6 +11,7 @@ import io.github.amichne.kast.kernel.OperationOutcome
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.protocol.contract.BoundedProtocolList
 import io.github.amichne.kast.protocol.contract.CanonicalOperation
+import io.github.amichne.kast.protocol.contract.PresentedWorkspaceRoot
 import io.github.amichne.kast.protocol.contract.ProtocolOffset
 import io.github.amichne.kast.protocol.contract.ProtocolSourceText
 import io.github.amichne.kast.protocol.contract.ProtocolText
@@ -57,12 +58,16 @@ class QueryTextOutputSchemaTest {
         val matches = document.getValue("items").jsonArray.single().jsonObject.getValue("matches").jsonArray
         assertEquals("INDEXED_WORD", matches.single().jsonObject.getValue("type").jsonPrimitive.content)
         val valid = completedSchemaEnvelope(document)
+        val presented = projected.document.relativeTo(PresentedWorkspaceRoot.fromCanonical("/workspace"))
+        val relative = valid.replace("/workspace/app-server/Lifecycle.kt", "app-server/Lifecycle.kt")
+        assertEquals(relative, completedSchemaEnvelope(Json.parseToJsonElement(presented.value).jsonObject))
+        assertTrue(schema.validate(relative, InputFormat.JSON).isEmpty())
         listOf(
                 valid.replace("INDEXED_WORD", "OCCURRENCE"),
                 valid.replace("launchd restart", "x".repeat(513)),
                 valid.replace("\"line\":3", "\"line\":0"),
                 valid.replace("\"word\":\"launchd\"", "\"word\":\"launchd|restart\""),
-                valid.replace("/workspace/app-server/Lifecycle.kt", "app-server/Lifecycle.kt"),
+                valid.replace("/workspace/app-server/Lifecycle.kt", "../app-server/Lifecycle.kt"),
                 valid.replace("/workspace/app-server/Lifecycle.kt", "/workspace/app-server/./Lifecycle.kt"),
                 valid.replace("/workspace/app-server/Lifecycle.kt", "/workspace/app-server/Lifecycle.kt/"),
             )

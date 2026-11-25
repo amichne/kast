@@ -36,7 +36,7 @@ data class CompactSourceSnapshotDocument(
     val canonicalRoot: String,
     @EncodeDefault(EncodeDefault.Mode.NEVER) val generation: Long? = null,
     @EncodeDefault(EncodeDefault.Mode.NEVER) val sourceState: String? = null,
-    val file: String,
+    @Serializable(with = io.github.amichne.kast.protocol.contract.WorkspaceFileSerializer::class) val file: String,
     val textIdentity: String,
     val coordinateUnit: SourceCoordinateUnitWireDocument,
     @ProtocolIntegerConstraint(minimum = 0) val length: Int,

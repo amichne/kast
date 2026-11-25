@@ -129,7 +129,7 @@ private data class DiagnosticQualificationCliDocument(
 
 @Serializable
 private data class DiagnosticLimitationCliDocument(
-    val file: String,
+    @Serializable(with = io.github.amichne.kast.protocol.contract.WorkspaceFileSerializer::class) val file: String,
     val reason: String,
 )
 
@@ -144,7 +144,7 @@ private data class DiagnosticCliDocument(
 @Serializable
 private data class DiagnosticLocationCliDocument(
     val candidateSelector: String,
-    val file: String,
+    @Serializable(with = io.github.amichne.kast.protocol.contract.WorkspaceFileSerializer::class) val file: String,
     val range: SourceRangeCliDocument,
 )
 
