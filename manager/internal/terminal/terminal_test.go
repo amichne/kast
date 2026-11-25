@@ -106,10 +106,10 @@ const indexing = `{"schemaVersion":1,"hostPid":42,"phase":"INDEXING","index":{"t
 
 func TestProgressNamesTheStepOfTheNearestWorkspace(t *testing.T) {
 	for name, test := range map[string]struct{ generation, record, want string }{
-		"first generation": {"", indexing, "step 4 of 5, indexing (about 106,835 files)"},
-		"later generation": {"g2", indexing, "step 4 of 5, indexing (about 106,835 files)"},
+		"first generation": {"", indexing, "(4/5): indexing ~106,835 files"},
+		"later generation": {"g2", indexing, "(4/5): indexing ~106,835 files"},
 		"overlapping work": {"", strings.Replace(indexing, `"INDEXING"`, `"IMPORTING"`, 1),
-			"step 2 of 5, importing the Gradle model; also indexing (about 106,835 files)"},
+			"(2/5): importing the Gradle model, indexing ~106,835 files"},
 		"prepared":        {"", strings.Replace(indexing, `"INDEXING"`, `"READY"`, 1), ""},
 		"dead Host":       {"", strings.Replace(indexing, "42", "43", 1), ""},
 		"later schema":    {"", strings.Replace(indexing, ":1,", ":2,", 1), ""},
@@ -132,8 +132,16 @@ func TestADrawnLineIsReplacedOnlyWhenItChanges(t *testing.T) {
 	if drawn = progress.draw(&out, drawn, 2*time.Second); strings.Count(out.String(), eraseLine) != 1 {
 		t.Errorf("redrawn: %q", out.String())
 	}
-	if want := "Preparing workspace: step 4 of 5, indexing (about 106,835 files), 2s"; drawn != want {
+	if want := "Preparing (4/5): indexing ~106,835 files, 2s"; drawn != want {
 		t.Errorf("got %q want %q", drawn, want)
+	}
+}
+
+func TestTheLongestLineKeepsItsElapsedTime(t *testing.T) {
+	record := strings.NewReplacer(`"INDEXING"`, `"IMPORTING"`, "106835", "9999999").Replace(indexing)
+	drawn := container(t, "", record).draw(&bytes.Buffer{}, "", 1020*time.Second)
+	if !strings.HasSuffix(drawn, "indexing ~9,999,999 files, 1020s") {
+		t.Errorf("got %q", drawn)
 	}
 }
 
