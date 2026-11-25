@@ -123,7 +123,9 @@ private class NamedDirectoryPartitionCollection(
                 retainedBytes -= partition.detachedBytes()
                 true
             }
-            is IntellijDeclarationPartitionObservation.Source -> {
+            is IntellijDeclarationPartitionObservation.Source.Java ->
+                callbacks.reject(SymbolDiscoveryBlockCause.PARTITION_UNAVAILABLE)
+            is IntellijDeclarationPartitionObservation.Source.Kotlin -> {
                 frontier.pollFirstEntry()
                 files[partition.orderingPath] = observed.file
                 retainedBytes += NATIVE_FILE_BINDING_BYTES

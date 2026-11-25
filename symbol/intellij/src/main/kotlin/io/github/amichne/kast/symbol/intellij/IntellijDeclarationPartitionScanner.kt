@@ -123,7 +123,7 @@ internal class IntellijDeclarationPartitionScanner(
         }
         when (
             state.request.constraints.packageName.admitPackage {
-                IntellijPackageEvidence.Known(file.packageFqName.asString())
+                IntellijPackageEvidence.Known(file.packageName)
             }
         ) {
             IntellijDiscoveryItemAdmission.FILTERED -> state.finishFile()

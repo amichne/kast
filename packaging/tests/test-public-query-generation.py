@@ -233,6 +233,13 @@ class PublicQueryGenerationTest(unittest.TestCase):
             self.assertEqual(expected_candidate, definitions["ImpactProducer"]["properties"].pop("candidateRef"))
             if "candidateRef" in definitions["ImpactProducer"]["required"]:
                 definitions["ImpactProducer"]["required"].remove("candidateRef")
+            # The inventory also reads Java, so its description and ordering version changed.
+            definitions['AllSource']['description'] = (
+                'Enumerate the four supported Kotlin declaration families in admitted source files, ordered by '
+                'canonical file identity and source position (KOTLIN_FILE_SOURCE_V2). Bounded pages preserve '
+                'undiscovered files and source positions. Resume the exact continuation to advance the same semantic '
+                'universe; discovery observations report exhaustion, retained progress, or a precise terminal cause.'
+            )
             # Optional detail syntax and three source-backed descriptions form the intentional delta.
             # Remove that exact delta to keep the prior complete grammar pinned byte-for-byte.
             definitions['ReadResultAction']['properties'].pop('detail')

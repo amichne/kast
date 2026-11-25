@@ -184,9 +184,9 @@ kast result read --ref "$result" --cursor "$next_cursor" --output occurrences --
 ```
 
 Each row names the `legacy/` target, the `app/` file, and the context: `CODE`, `TYPE`, or `IMPORT`.
-A complete, empty result proves that no `main` code in `app/` references a Kotlin declaration from `legacy/`.
+A complete, empty result proves that no `main` code in `app/` references a declaration from `legacy/`.
 That claim covers calls, constructions, imports, property reads, and type uses.
-`--all` selects Kotlin declarations only. If `legacy/` contains Java source, this recipe does not prove the boundary.
+`--all` includes Java classes and methods. A Java field, enum, record, or annotation type in `legacy/` leaves its kinds unproven.
 For calls and constructions only, use `--relation callers`. Its symbol rows name the calling declarations.
 The seed covers classes, functions, properties, and type aliases. Constructors count through their class.
 Reflection, dependency injection, and other uses outside static resolution stay outside the claim.
@@ -201,7 +201,8 @@ kast query --all --kind function --in services/orders --source-set main --visibi
   --without "$tested" --jq "$verdict"
 ```
 
-This proves direct calls to functions from Kotlin tests only. Constructors, properties, and Java tests stay outside the claim.
+This proves direct test calls to functions only. Constructors and properties stay outside the claim.
+`callees` cannot read a Java method, so a Java test leaves the first result unproven.
 Indirect calls, reflection, and framework entry points also stay outside it.
 
 **Blast radius before an edit, then compiler verification after it:**
@@ -301,7 +302,8 @@ If Kast cannot answer, use ordinary source reads and state the limitation.
   `callees` includes these calls. `callers` and `references` of a Java getter or setter stay qualified if Kotlin code
   in the search scope contains the property name. Report "at least these".
 - Kast cannot select a Java field or enum constant. A `--name` that matches one stays qualified.
-  `--all` and a fuzzy name select Kotlin declarations only.
+  `--all` includes Java classes and methods, and a Java field leaves its properties unproven.
+  A fuzzy name selects Kotlin declarations only.
 - `--name` alone finds workspace source only. A library name, such as `listOfNotNull`, then returns a complete, empty result.
   That result says nothing about its uses. Add `--library PACKAGE` to select the library declaration.
 - Static resolution excludes reflection, dependency injection, and runtime dispatch that the compiler cannot see.

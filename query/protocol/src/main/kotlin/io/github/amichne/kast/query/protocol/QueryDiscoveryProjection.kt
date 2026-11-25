@@ -43,7 +43,7 @@ import io.github.amichne.kast.symbol.contract.SymbolSourceKindPolicy
 internal fun QueryDiscoveryObservation.projectDiscoveryObservation(): QueryDiscoveryObservationDocument? {
     return QueryDiscoveryObservationDocument(
         universeDocument() ?: return null,
-        if (target is SymbolDiscoveryTarget.All) QueryDiscoveryOrderDocument.KOTLIN_FILE_SOURCE_V2
+        if (target is SymbolDiscoveryTarget.All) QueryDiscoveryOrderDocument.FILE_SOURCE_V3
         else QueryDiscoveryOrderDocument.NAMED_CANDIDATE_V1,
         progress.document() ?: return null,
         BoundedProtocolList.create(
@@ -68,6 +68,7 @@ private fun QueryDiscoveryObservation.universeDocument(): QueryDiscoveryUniverse
     return QueryDiscoveryUniverseDocument(
         when (declarationLanguage) {
             QueryDeclarationLanguage.KOTLIN -> QueryDiscoveryDeclarationLanguageDocument.KOTLIN
+            QueryDeclarationLanguage.KOTLIN_AND_JAVA -> QueryDiscoveryDeclarationLanguageDocument.KOTLIN_AND_JAVA
         },
         target.matchDocument() ?: return null,
         BoundedProtocolList.create(kinds.map { it.document() }.sortedBy { it.ordinal }).valueOrNull() ?: return null,

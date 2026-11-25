@@ -217,7 +217,9 @@ internal object IntellijDeclarationDiscoveryTestFixture {
                 inventories++
                 return IntellijDeclarationPartitionObservation.Directory(native.children.mapNotNull(::detachedChild))
             }
-            return files.singleOrNull { it.virtualFile == native }?.let(IntellijDeclarationPartitionObservation::Source)
+            return files
+                .singleOrNull { it.virtualFile == native }
+                ?.let(IntellijDeclarationPartitionObservation.Source::Kotlin)
                 ?: IntellijDeclarationPartitionObservation.OutsideUniverse
         }
 

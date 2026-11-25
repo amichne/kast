@@ -151,7 +151,7 @@ object AgentInterfaceDiscoveryFixture {
         QueryDiscoveryObservationDocument(
             universe =
                 QueryDiscoveryUniverseDocument(
-                    QueryDiscoveryDeclarationLanguageDocument.KOTLIN,
+                    QueryDiscoveryDeclarationLanguageDocument.KOTLIN_AND_JAVA,
                     QueryMatchDocument.All,
                     bounded(listOf(QueryDeclarationKindDocument.FUNCTION)),
                     QueryDiscoverySourcePolicyDocument.PRODUCTION_ONLY,
@@ -161,7 +161,7 @@ object AgentInterfaceDiscoveryFixture {
                     QueryDirectoryScopeDocument(text("src"), QueryContainmentDocument.DESCENDANTS),
                     QueryPackageScopeDocument(text("fixture"), QueryContainmentDocument.DIRECT),
                 ),
-            ordering = QueryDiscoveryOrderDocument.KOTLIN_FILE_SOURCE_V2,
+            ordering = QueryDiscoveryOrderDocument.FILE_SOURCE_V3,
             progress = progress,
             observedStops =
                 bounded(
