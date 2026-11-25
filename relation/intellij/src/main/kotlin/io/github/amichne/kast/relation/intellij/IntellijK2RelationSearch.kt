@@ -99,16 +99,21 @@ internal class IntellijK2RelationSearch(
         fun references(plan: IntellijRelationPlan.References): IntellijRelationTermination {
             if (
                 request.meaning != RelationMeaning.TypeUses &&
-                    projection.conventionSearchCoverage(project, subject) == ConventionSearchCoverage.INCOMPLETE
+                    projection.conventionSearchCoverage(project, subject, searchedScope().nativeScope) ==
+                        ConventionSearchCoverage.INCOMPLETE
             )
                 limitations += RelationLimitation.PROVIDER_INCOMPLETE
             return readReferences(plan)
         }
 
+        /** A caller read also confirms calls that a stored callback makes outside the destination scope. */
+        private fun searchedScope(): CompiledRelationScope =
+            if (request.meaning == RelationMeaning.Callers) callbackEvidence.sources else scope
+
         private fun readReferences(plan: IntellijRelationPlan.References): IntellijRelationTermination =
             IntellijRetainedRelationRead(
                     project = project,
-                    scope = if (request.meaning == RelationMeaning.Callers) callbackEvidence.sources else scope,
+                    scope = searchedScope(),
                     projection = projection,
                     limits = limits,
                     observation = observation,

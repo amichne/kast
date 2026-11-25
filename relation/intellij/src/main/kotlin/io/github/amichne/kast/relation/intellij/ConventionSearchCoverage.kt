@@ -37,27 +37,30 @@ internal enum class ConventionSearchCoverage {
  * Native search has no provider for loop steps or for the indexed write in a compound assignment, and it misses
  * delegate accessors behind `provideDelegate`. For other operators it follows inferred types, and that route stops at
  * values from a source-declared iterator or delegate. Such a link qualifies the subject only when the link can produce
- * the subject's receiver type.
+ * the subject's receiver type. Native search also enumerates a Java accessor by its method name only, so [searched]
+ * qualifies the accessor when its Kotlin code contains the property name.
  */
 internal fun IntellijK2RelationProjection.conventionSearchCoverage(
     project: Project,
     subject: PsiNamedElement,
+    searched: GlobalSearchScope,
 ): ConventionSearchCoverage {
     val incomplete =
-        when (subject) {
-            // Kotlin accepts a matching Java method as an operator without a modifier.
-            is PsiMethod -> subject.name in UNSEARCHABLE_CONVENTIONS
-            is KtNamedFunction ->
-                isConventionSubject(subject) &&
-                    (subject.isBinaryDeclaration() ||
-                        subject.name in UNSEARCHABLE_CONVENTIONS ||
-                        hasBrokenTypeLink(project, functionReceiver(subject)))
-            // A data class property is also the target of its generated component function.
-            is KtParameter -> subject.isDataComponent() && hasBrokenTypeLink(project, dataReceiver(subject))
-            // Decompiled source lists that property in the class body, and native search misses its destructuring.
-            is KtProperty -> subject.isBinaryDeclaration() && subject.isDataProperty()
-            else -> false
-        }
+        hasUnsearchedPropertyUses(project, subject, searched) ||
+            when (subject) {
+                // Kotlin accepts a matching Java method as an operator without a modifier.
+                is PsiMethod -> subject.name in UNSEARCHABLE_CONVENTIONS
+                is KtNamedFunction ->
+                    isConventionSubject(subject) &&
+                        (subject.isBinaryDeclaration() ||
+                            subject.name in UNSEARCHABLE_CONVENTIONS ||
+                            hasBrokenTypeLink(project, functionReceiver(subject)))
+                // A data class property is also the target of its generated component function.
+                is KtParameter -> subject.isDataComponent() && hasBrokenTypeLink(project, dataReceiver(subject))
+                // Decompiled source lists that property in the class body, and native search misses its destructuring.
+                is KtProperty -> subject.isBinaryDeclaration() && subject.isDataProperty()
+                else -> false
+            }
     return if (incomplete) ConventionSearchCoverage.INCOMPLETE else ConventionSearchCoverage.EXHAUSTIVE
 }
 

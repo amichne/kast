@@ -26,7 +26,7 @@ import io.github.amichne.kast.workspace.intellij.read.IntellijReadPhase
 internal class IntellijRetainedRelationRead(
     project: Project,
     private val scope: CompiledRelationScope,
-    projection: IntellijK2RelationProjection,
+    private val projection: IntellijK2RelationProjection,
     private val limits: ReadLimits,
     private val observation: IntellijReadObservation,
     private val cancellationCheck: () -> Unit,
@@ -114,7 +114,7 @@ internal class IntellijRetainedRelationRead(
                 request,
                 collector,
                 {
-                    IntellijCalleeInventory(locators, collector, cancellationCheck, limits, observation)
+                    IntellijCalleeInventory(locators, projection, collector, cancellationCheck, limits, observation)
                         .prepare(subject.declaration)
                 },
                 { state, locator ->

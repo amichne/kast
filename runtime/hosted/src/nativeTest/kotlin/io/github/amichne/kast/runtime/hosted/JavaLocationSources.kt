@@ -28,6 +28,7 @@ internal val javaLocationSource =
         public static Endpoint sameOwner(Endpoint value) { return value; }
         public interface Contract { int convert(int value); }
         public record Pair(int value) {}
+        public enum Mode { ACTIVE }
         public void unsupported() { class Local {} }
     }
     """
@@ -153,9 +154,35 @@ internal suspend fun assertWarmJavaNames(
     assertParameters(listOf("kotlin/String!"))
 }
 
-internal fun unsupportedJavaRecordByName() =
+/** Each declaration exists in `Endpoint.java`, and no supported kind can select it. Both exact-name routes meet it. */
+internal fun unsupportedJavaByName() =
+    listOf(null, "src").flatMap { directory ->
+        listOf(
+            javaByName("Pair", QueryDeclarationKindDocument.CLASS, directory),
+            javaByName("ignored", QueryDeclarationKindDocument.PROPERTY, directory),
+            javaByName("ACTIVE", QueryDeclarationKindDocument.CLASS, directory),
+        )
+    }
+
+/** A field is no function, an enum constant is no property, and another directory or package holds neither. */
+internal fun excludedJavaByName() =
+    listOf(
+        javaByName("ignored", QueryDeclarationKindDocument.FUNCTION, null),
+        javaByName("ACTIVE", QueryDeclarationKindDocument.PROPERTY, null),
+        javaByName("ignored", QueryDeclarationKindDocument.PROPERTY, "src/other"),
+        javaByName("ignored", QueryDeclarationKindDocument.PROPERTY, null).let { source ->
+            val foreign = QueryPackageScopeDocument(packetQueryText("foreign"), QueryContainmentDocument.DIRECT)
+            source.copy(scope = source.scope.copy(packageName = foreign))
+        },
+    )
+
+private fun javaByName(name: String, kind: QueryDeclarationKindDocument, directory: String?) =
     QueryFromDocument.Symbols(
-        QueryMatchDocument.Name(packetQueryText("Pair"), SymbolDiscoveryMatchDocument.EXACT_NAME),
-        QueryScopeDocument(packetQueryList(listOf(packetQueryText("main"))), null, null),
-        packetQueryList(listOf(QueryDeclarationKindDocument.CLASS)),
+        QueryMatchDocument.Name(packetQueryText(name), SymbolDiscoveryMatchDocument.EXACT_NAME),
+        QueryScopeDocument(
+            packetQueryList(listOf(packetQueryText("main"))),
+            directory?.let { QueryDirectoryScopeDocument(packetQueryText(it), QueryContainmentDocument.DIRECT) },
+            null,
+        ),
+        packetQueryList(listOf(kind)),
     )

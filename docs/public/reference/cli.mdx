@@ -171,6 +171,8 @@ Kast cannot select an enum entry.
 If `--name` matches an enum entry and the selected kinds include `class`, the result is qualified with `enum-entry-unselectable`.
 The result still contains the other declarations that match, for example a property with the same name.
 A selection without `class` in its kinds, or an `--all` selection, excludes enum entries and can be complete.
+Kast cannot select a Java field or a Java enum constant. A `--name` that matches one leaves the result unproven.
+An `--all` selection contains Kotlin declarations only. It proves nothing about Java declarations.
 Retained results expire. A source change can invalidate their basis.
 
 Restrict where relation hops search with `--relation-in`:

@@ -11,15 +11,18 @@ import io.github.amichne.kast.relation.contract.RelationProviderState
 import io.github.amichne.kast.workspace.intellij.read.IntellijReadObservation
 import io.github.amichne.kast.workspace.intellij.read.IntellijReadPhase
 import org.jetbrains.kotlin.idea.references.KtReference
+import org.jetbrains.kotlin.idea.references.mainReference
 import org.jetbrains.kotlin.psi.KtCallElement
 import org.jetbrains.kotlin.psi.KtCallExpression
 import org.jetbrains.kotlin.psi.KtCallableReferenceExpression
+import org.jetbrains.kotlin.psi.KtNameReferenceExpression
 import org.jetbrains.kotlin.psi.KtNamedDeclaration
 import org.jetbrains.kotlin.psi.KtOperationReferenceExpression
 
 /** One native call-site discovery, retaining exact sites and confirming only the unconsumed suffix. */
 internal class IntellijCalleeInventory(
     private val locators: IntellijRelationLocators,
+    private val projection: IntellijK2RelationProjection,
     private val collector: IntellijRelationCollector,
     private val cancellationCheck: () -> Unit,
     private val limits: ReadLimits,
@@ -55,9 +58,21 @@ internal class IntellijCalleeInventory(
                 is KtCallElement -> collect(element, subject, inventory)
                 is KtCallableReferenceExpression -> collectReference(element, subject, inventory)
                 is KtOperationReferenceExpression -> !element.isInfixName() || collectInfix(element, subject, inventory)
+                is KtNameReferenceExpression -> collectJavaProperty(element, subject, inventory)
                 else -> true
             }
         return ordinary && collectConvention(element, subject, inventory)
+    }
+
+    /** Only a name that K2 resolves to a Java property spends candidate capacity. */
+    private fun collectJavaProperty(
+        site: KtNameReferenceExpression,
+        subject: KtNamedDeclaration,
+        inventory: IntellijRelationInventory<RelationProviderLocator.Callee>,
+    ): Boolean {
+        val owner = site.nearestDeclaration()
+        if (owner.enclosing()?.declaration !== subject) return true
+        return collectRoles(site.mainReference, projection.javaAccessorRoles(site), owner, inventory)
     }
 
     private fun collectInfix(
@@ -78,12 +93,17 @@ internal class IntellijCalleeInventory(
         val references = site.conventionReferences()
         // Every call expression is a possible invoke site, so a missing invoke reference is not a missing call.
         if (references.isEmpty()) return site is KtCallExpression || unresolvedSite()
-        return references.all { reference ->
-            roles.all { role ->
-                collector.admitProviderCandidate() == IntellijRelationProviderEnumerationAdmission.READY &&
-                    inventory.append(locators.callee(CalleeProviderItem.Convention(reference, role, owner)))
-            }
-        }
+        return references.all { reference -> collectRoles(reference, roles, owner, inventory) }
+    }
+
+    private fun collectRoles(
+        reference: KtReference,
+        roles: List<ConventionCallRole>,
+        owner: ContainingDeclaration,
+        inventory: IntellijRelationInventory<RelationProviderLocator.Callee>,
+    ): Boolean = roles.all { role ->
+        collector.admitProviderCandidate() == IntellijRelationProviderEnumerationAdmission.READY &&
+            inventory.append(locators.callee(CalleeProviderItem.Convention(reference, role, owner)))
     }
 
     private fun unresolvedSite(): Boolean {
