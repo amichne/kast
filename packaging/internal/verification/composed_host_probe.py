@@ -104,7 +104,7 @@ def rejected_reason(result: subprocess.CompletedProcess[bytes]) -> object:
 
 
 def workspace_file(document: dict[object, object], file: object) -> Path:
-    """Resolve a file against the live root. A baseline's absolute file replaces that root in the join."""
+    """Resolve a file against the live root. A baseline's absolute file replaces that root."""
     root = fields(document.get("live")).get("root")
     assert isinstance(root, str) and isinstance(file, str)
     return Path(root) / file
