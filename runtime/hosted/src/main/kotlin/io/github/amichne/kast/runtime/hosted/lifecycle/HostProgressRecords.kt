@@ -126,36 +126,34 @@ internal class HostProgressRecords(
         private val JSON = Json { encodeDefaults = true }
 
         /** Desktop Hosts have no private state, so nothing records their progress. */
-        fun forManagedHost(host: ManagedHeadlessHost?, hostLifetime: String): HostProgressRecords? =
-            host?.let {
-                val logger = Logger.getInstance(HostProgressRecords::class.java)
-                HostProgressRecords(
-                    it.environment.state,
-                    hostLifetime,
-                    ProcessHandle.current().pid(),
-                    System::currentTimeMillis,
-                ) { outcome ->
-                    logger.info("kast_host_progress_record outcome=$outcome")
-                }
+        fun forManagedHost(host: ManagedHeadlessHost?, hostLifetime: String): HostProgressRecords? = host?.let {
+            val logger = Logger.getInstance(HostProgressRecords::class.java)
+            HostProgressRecords(
+                it.environment.state,
+                hostLifetime,
+                ProcessHandle.current().pid(),
+                System::currentTimeMillis,
+            ) { outcome ->
+                logger.info("kast_host_progress_record outcome=$outcome")
             }
+        }
     }
 }
 
 /** Each observation reads flags only. It takes no read lock, so it never waits for the work it describes. */
-internal fun launchHostProgress(scope: CoroutineScope, records: HostProgressRecords?): Job? =
-    records?.let {
-        scope.launch(Dispatchers.IO) {
-            while (isActive) {
-                try {
-                    it.record(observeHostNativeActivity())
-                } catch (_: ProcessCanceledException) {
-                    // A project closed during this observation; the next one sees the projects that remain.
-                    ensureActive()
-                }
-                delay(PROGRESS_POLL_MILLIS)
+internal fun launchHostProgress(scope: CoroutineScope, records: HostProgressRecords?): Job? = records?.let {
+    scope.launch(Dispatchers.IO) {
+        while (isActive) {
+            try {
+                it.record(observeHostNativeActivity())
+            } catch (_: ProcessCanceledException) {
+                // A project closed during this observation; the next one sees the projects that remain.
+                ensureActive()
             }
+            delay(PROGRESS_POLL_MILLIS)
         }
     }
+}
 
 private suspend fun observeHostNativeActivity(): HostNativeActivity {
     val projects = observeOpenHostProjects()
