@@ -20,7 +20,7 @@ private constructor(val file: ProtocolText, val range: SourceRangeDocument) {
 
 @Serializable
 private data class QueryCallbackGraphBoundaryFields(
-    val file: ProtocolText,
+    @Serializable(with = WorkspaceFileTextSerializer::class) val file: ProtocolText,
     val start: ProtocolOffset,
     val end: ProtocolOffset,
 )

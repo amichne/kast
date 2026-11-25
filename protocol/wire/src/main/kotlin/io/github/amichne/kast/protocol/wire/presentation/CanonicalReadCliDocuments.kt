@@ -29,7 +29,7 @@ data class RelationFactCliDocument(
 @Serializable
 data class RelationOccurrenceCliDocument(
     val candidateSelector: String,
-    val file: String,
+    @Serializable(with = io.github.amichne.kast.protocol.contract.WorkspaceFileSerializer::class) val file: String,
     val range: SourceRangeCliDocument,
 )
 

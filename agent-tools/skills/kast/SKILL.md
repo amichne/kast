@@ -91,6 +91,10 @@ kast query --name OrderService --in services/orders --source-set main --kind cla
 Select one row by its file and signature, then copy its `ref` unchanged.
 A name can match overloads and declarations in other packages. Never take the first row when several rows match.
 For a position in a file, use `--file PATH --offset N`. The offset counts UTF-16 code units.
+Copy `N` from the `range` of a Kast result. Do not compute it from the file's bytes.
+
+File paths in results are relative to the workspace root, which `live.root` names. Pass them to `--file` and `--in` unchanged.
+An absolute path is a file outside the workspace, such as a library.
 
 Follow relations from an exact declaration. Each `--relation` adds one hop, in the order given:
 
@@ -262,9 +266,23 @@ kast describe query --section examples --jq '[.content[].value | select(.request
 kast query --request walk.json --jq "$verdict"
 ```
 
-**Value flow from one invocation:** adapt the `completeImpactFindings` example.
-It needs the exact enclosing ref, the exact callable ref, and the UTF-16 range of the whole invocation.
-Report unresolved obligations as limits of the answer.
+**Value flow from one invocation:** let Kast issue the seed. Never compute an offset or a range.
+Each Kotlin call in a `callers` result has a `producerSeed` with its enclosing ref, callable ref, and range:
+
+```sh
+kast query --ref "$ref" --relation callers --output occurrences --retain \
+  --jq '[.document.items[] | select(.producerSeed) | {file: .relation.occurrence.file, producerSeed}]'
+```
+
+Copy one `producerSeed` unchanged into `source.seeds` of this request, then run it with `kast query --request impact.json`:
+
+```json
+{"request": {"type": "RUN", "source": {"type": "IMPACT", "seeds": [PRODUCER_SEED], "declarations": [],
+  "domain": {"type": "WORKSPACE"}, "flow": "KOTLIN_FORWARD_V1", "models": []},
+  "steps": [], "terminalStep": {"type": "EMIT", "output": {"type": "VALUE_PATHS"}}, "retention": "RETAIN"}}
+```
+
+A row without a `producerSeed` cannot start value flow. Report unresolved obligations as limits of the answer.
 
 ## Read source
 

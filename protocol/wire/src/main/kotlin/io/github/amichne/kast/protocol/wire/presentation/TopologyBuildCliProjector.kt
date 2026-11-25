@@ -83,7 +83,7 @@ private data class TopologyBuildExtractionRejectedCliDocument(
     val operation: String,
     val status: String,
     val reason: String,
-    val file: String,
+    @Serializable(with = io.github.amichne.kast.protocol.contract.WorkspaceFileSerializer::class) val file: String,
     val failure: String,
 )
 

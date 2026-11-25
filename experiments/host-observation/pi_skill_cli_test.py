@@ -141,7 +141,8 @@ def grade(case: str, answer: str, calls: list[dict[str, Any]], workspace: Path) 
             assert doc["evidence_window"]["type"] == "FINAL"
             assert doc["invocation"]["accumulated_row_count"] == len(expected)
             assert all(row["name"] == LIVE_NAMES[case] for row in doc["items"])
-            assert [Path(row["location"]["file"]) for row in doc["items"]] == expected
+            files = [workspace / row["location"]["file"] for row in doc["items"]]
+            assert files == expected
             assert answer == (LIVE_FILE if expected else "ABSENT")
             return
         pytest.fail("No complete scoped live result supports the answer")

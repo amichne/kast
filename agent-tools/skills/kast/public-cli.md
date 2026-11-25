@@ -15,7 +15,7 @@ Semantic results, errors, plans, and descriptors use JSON by default. Keep reque
 | Which declaration is this? | Selection | Name, scope, location, or issued exact refs; no implicit relationship expansion | Exact symbols with signatures and locations |
 | Who calls it, or what lies within N relationship hops? | Relation / traversal | `EXPAND_RELATION` follows one selected relation; `WALK` repeats it to `maximumDepth` | Symbols or individual occurrences; `TRAVERSAL_RECORDS` preserve walk depth |
 | What declarations are affected through the standard use recipe? | `TRACE` terminal | Exact declarations; references, implementations or overrides, direct callers, and one further caller layer | Grouped symbols with proven connections and occurrences |
-| Where does this produced value flow? | `IMPACT` source | Exact enclosing and callable refs plus the whole producer invocation range; forward Kotlin value flow | `VALUE_PATHS` or six `IMPACT_WITNESS` views, retaining model provenance and unresolved boundaries |
+| Where does this produced value flow? | `IMPACT` source | A `producerSeed` from a `callers` row with `--output occurrences`; forward Kotlin value flow | `VALUE_PATHS` or six `IMPACT_WITNESS` views, retaining model provenance and unresolved boundaries |
 
 | Which declarations satisfy a compound condition? | Set stages over retained results | `--intersect`, `--union`, `--minus`, `--with`, `--without` with a retained right side | Symbols by canonical identity; absence stages need complete right coverage |
 

@@ -357,12 +357,16 @@ def semantic(document: object, name: str, expected_file: Path) -> str:
     live = document.get("live")
     if (
         not product.mapping(location)
-        or location.get("file") != str(expected_file)
+        or not isinstance(location.get("file"), str)
         or not product.mapping(live)
+        or not isinstance(live.get("root"), str)
         or not isinstance(live.get("host"), str)
         or not live["host"]
     ):
         raise ValueError("semantic root or compiler workspace lifetime missing")
+    # A baseline can print an absolute file. An absolute part replaces the root in this join.
+    if Path(str(live["root"])) / str(location["file"]) != expected_file:
+        raise ValueError("semantic file differs from independent expected declaration")
     return str(live["host"])
 
 
