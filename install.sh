@@ -45,10 +45,10 @@ done
 case "$(uname -s):$(uname -m)" in
   Darwin:arm64|Darwin:aarch64)
     python_url='https://github.com/astral-sh/python-build-standalone/releases/download/20260211/cpython-3.12.12%2B20260211-aarch64-apple-darwin-install_only_stripped.tar.gz'; python_sha='22625deaf5757e7c266cf1a096c9151a06b598b1e14632a2ec9993d58ec5fe84'; hasher=(shasum -a 256)
-    bootstrap_url='https://github.com/amichne/kast/releases/download/bootstrap-4b702a948ddc/kast-bootstrap-macos-aarch64'; bootstrap_sha='171ae1299bfee89151b3f390bcd578aa4efab64f28e895aae09ec47f77cb8c46' ;;
+    bootstrap_url='https://github.com/amichne/kast/releases/download/bootstrap-32d92ee987a7/kast-bootstrap-macos-aarch64'; bootstrap_sha='eab3272c4d8097950fb81540060e80c0515b6c501237b7fab9352b769f70fd1a' ;;
   Linux:x86_64|Linux:amd64)
     python_url='https://github.com/astral-sh/python-build-standalone/releases/download/20260211/cpython-3.12.12%2B20260211-x86_64-unknown-linux-gnu-install_only_stripped.tar.gz'; python_sha='1dbaa624a09e15afe7efbdac08d42993135a68db8d34f986ef6977a6d77bdc3c'; hasher=(sha256sum)
-    bootstrap_url='https://github.com/amichne/kast/releases/download/bootstrap-4b702a948ddc/kast-bootstrap-linux-x86_64'; bootstrap_sha='0217c3cf18027e93ad130d3255c9d1ae444ae18534a35b0a2414f08ca5838b76' ;;
+    bootstrap_url='https://github.com/amichne/kast/releases/download/bootstrap-32d92ee987a7/kast-bootstrap-linux-x86_64'; bootstrap_sha='0dfd36a7953393ecb440a1ecaa1c3e7580c567a5f386b105da1aa5192fd3be9c' ;;
   *) fail 'supported complete products: macOS ARM64 and Linux x86-64' ;;
 esac
 for tool in curl tar mktemp mkdir rm "${hasher[0]}"; do
