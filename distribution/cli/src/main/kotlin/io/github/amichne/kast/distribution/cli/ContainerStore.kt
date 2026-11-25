@@ -179,7 +179,7 @@ internal class ContainerStore(
         val identity = java.util.UUID.randomUUID().toString()
         val current = AdmittedContainer(previous.owned, runtime, generations.resolve(identity))
         val staging = generations.resolve(".creating-$identity")
-        when (val prepared = stageGeneration(current, staging)) {
+        when (val prepared = stageGeneration(previous, current, staging)) {
             is Refinement.Rejected -> return@containerFiles prepared
             is Refinement.Refined -> Unit
         }
@@ -212,7 +212,11 @@ internal class ContainerStore(
         return admitGeneration(previous.owned)
     }
 
-    private fun stageGeneration(container: AdmittedContainer, staging: Path): Refinement<Unit, ContainerFailure> {
+    private fun stageGeneration(
+        previous: AdmittedContainer,
+        container: AdmittedContainer,
+        staging: Path,
+    ): Refinement<Unit, ContainerFailure> {
         Files.createDirectory(staging, PosixFilePermissions.asFileAttribute(containerDirectoryMode))
         for (child in listOf("state/home", "state/system", "state/log", "state/tmp", "config")) {
             Files.createDirectories(
@@ -220,7 +224,10 @@ internal class ContainerStore(
                 PosixFilePermissions.asFileAttribute(containerDirectoryMode),
             )
         }
-        return initializeProfile(container, staging)
+        return when (val initialized = initializeProfile(container, staging)) {
+            is Refinement.Rejected -> initialized
+            is Refinement.Refined -> seedGeneration(previous, container.runtime, staging, seedClone)
+        }
     }
 
     fun recordRetirement(container: AdmittedContainer): Refinement<Unit, ContainerFailure> = containerFiles {

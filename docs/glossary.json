@@ -54,11 +54,11 @@
     {
       "id": "index-seeding",
       "term": "index seeding",
-      "definition": "An optional creation step that clones the IDE system directory from a compatible stopped workspace into a new workspace container. The Host still validates its project before semantic readiness.",
+      "definition": "A step that clones the IDE index storage of a compatible stopped Host into a new workspace container or a rebuilt generation. The Host still validates its project before semantic readiness.",
       "scope": "Current Kast documentation and agent instructions.",
-      "example": "A SHARED workspace creation records SEEDED with its donor container ID after a copy-on-write clone completes.",
+      "example": "A SHARED workspace creation records SEEDED with its donor container ID after a copy-on-write clone completes. A generation rebuilt after an upgrade records its own container ID.",
       "distinction": "An index seed is copied initial state, not shared live storage, a retained index snapshot, a search seed declaration, or proof of freshness.",
-      "justification": "seedWorkspace owns donor selection, creation evidence, and safe empty fallback; cloneWorkspaceSystem owns filesystem cloning.",
+      "justification": "seedWorkspace and seedGeneration own donor admission, creation evidence, and safe empty fallback; cloneWorkspaceSystem owns filesystem cloning.",
       "usage": [
         {
           "url": "https://ampcode.com/artifacts/design-opt-in-index-seeding-with-a-shared-gradle-home-c64caf61-e5ae-40e0-922f-4b4092cc4c49",
@@ -71,6 +71,10 @@
         {
           "path": "distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/WorkspaceSeeding.kt",
           "locator": "seedWorkspace"
+        },
+        {
+          "path": "distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/WorkspaceSeeding.kt",
+          "locator": "seedGeneration"
         },
         {
           "path": "distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/WorkspaceSeedClone.kt",

@@ -183,8 +183,9 @@ Managed Gradle imports skip dependency source downloads and publish the Gradle m
 The Host holds the scan queue while it applies that model. Project dependencies are indexed after the model settles.
 Each Host keeps its own live IDE indexes.
 
-Index seeding clones an IDE system directory from a stopped, compatible workspace into a new container with copy-on-write storage.
-The donor can belong to another repository. Its runtime archive, platform, and canonical Gradle home must match.
+Index seeding clones the index storage of a stopped, compatible workspace into a new container with copy-on-write storage.
+The donor can belong to another repository or another Kast build. Its IDE distribution, platform, and canonical Gradle home must match.
+After an upgrade, each workspace keeps its own index storage when the IDE distribution is the same. It still imports its Gradle model again.
 Initial clone support is limited to macOS APFS on the same filesystem. There is no full-copy fallback.
 If no donor qualifies or cloning is unsupported, creation continues empty.
 A clone failure also continues empty, but only after partial clone cleanup succeeds; failed cleanup rejects creation.

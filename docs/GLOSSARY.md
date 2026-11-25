@@ -24,15 +24,16 @@ Source evidence:
 
 ### index seeding
 
-An optional creation step that clones the IDE system directory from a compatible stopped workspace into a new workspace container. The Host still validates its project before semantic readiness.
+A step that clones the IDE index storage of a compatible stopped Host into a new workspace container or a rebuilt generation. The Host still validates its project before semantic readiness.
 
-Example: A SHARED workspace creation records SEEDED with its donor container ID after a copy-on-write clone completes.
+Example: A SHARED workspace creation records SEEDED with its donor container ID after a copy-on-write clone completes. A generation rebuilt after an upgrade records its own container ID.
 Keep distinct: An index seed is copied initial state, not shared live storage, a retained index snapshot, a search seed declaration, or proof of freshness.
 
 Source evidence:
 
 - [`Revision 9, Phase 1 implementation decisions: donor admission and clone outcomes`](https://ampcode.com/artifacts/design-opt-in-index-seeding-with-a-shared-gradle-home-c64caf61-e5ae-40e0-922f-4b4092cc4c49), checked 2026-11-14.
 - `distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/WorkspaceSeeding.kt`: `seedWorkspace`.
+- `distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/WorkspaceSeeding.kt`: `seedGeneration`.
 - `distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/WorkspaceSeedClone.kt`: `cloneWorkspaceSystem`.
 
 ### idle shutdown

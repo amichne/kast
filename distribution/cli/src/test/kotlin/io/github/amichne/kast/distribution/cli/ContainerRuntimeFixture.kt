@@ -15,6 +15,7 @@ internal fun containerRuntimeFixture(
     store: ContainerStore,
     hostPayload: String = "fixture-not-a-plugin",
     version: String = "1.2.3",
+    distribution: String = "a".repeat(64),
 ): AdmittedContainerRuntime {
     Files.createDirectories(
         store.root,
@@ -43,7 +44,8 @@ internal fun containerRuntimeFixture(
     val records = payload.map { (path, bytes) ->
         RuntimeArchiveEntry.File(path, bytes.size.toLong(), digest(bytes), path.endsWith("/idea"))
     }
-    val manifest = containerRuntimeManifestFixture(platform, records).copy(version = version)
+    val manifest =
+        containerRuntimeManifestFixture(platform, records).copy(version = version, distributionSha256 = distribution)
     val zip = Files.createTempFile(store.root.parent, "payload-", ".zip")
     ZipOutputStream(Files.newOutputStream(zip)).use { output ->
         output.putNextEntry(ZipEntry("manifest.json"))
