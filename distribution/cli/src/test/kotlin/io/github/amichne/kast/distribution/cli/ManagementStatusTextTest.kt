@@ -123,6 +123,7 @@ class ManagementStatusTextTest {
             savedDependencyConfiguration = Observation.verified(WorkspaceDependencyMatch.MATCHES_CREATION),
             seed = Observation.verified(WorkspaceSeedRecord(WorkspaceSeedResult.NoEligibleDonor)),
             hostStages = PassiveHostStages.at(PassiveHostStep.COMPLETE),
+            progress = Observation.unavailable(WorkspaceProgressFailure.HOST_NOT_OBSERVED.name),
         )
 }
 

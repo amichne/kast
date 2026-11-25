@@ -12,6 +12,7 @@ import (
 	"github.com/amichne/kast/frontend/internal/frontend"
 	"github.com/amichne/kast/frontend/internal/install"
 	"github.com/amichne/kast/frontend/internal/reset"
+	"github.com/amichne/kast/frontend/internal/terminal"
 )
 
 func main() {
@@ -36,6 +37,8 @@ func main() {
 		Stderr:      os.Stderr,
 		Signals:     signals,
 		Exec:        syscall.Exec,
+		Capture:     frontend.RunChild,
+		Terminal:    terminal.Is,
 		Reset:       reset.Native,
 		Install:     install.Native,
 		Agent:       agent.Native,
