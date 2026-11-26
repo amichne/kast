@@ -34,15 +34,17 @@ process.stdout.write(JSON.stringify({ type: 'complete', document: { status: 'com
   return { workspace, calls, kast, revision: git('rev-parse', 'HEAD'), git: execFileSync('which', ['git'], { encoding: 'utf8' }).trim() };
 }
 
-async function kastTool(t) {
+async function kastTool(t, { recipe } = {}) {
   const fixture = corpusWorkspace(t);
   Object.assign(process.env, { KAST_CORPUS_WORKSPACE: fixture.workspace, KAST_CORPUS_REVISION: fixture.revision,
     KAST_CORPUS_GIT: fixture.git, KAST_CORPUS_KAST: fixture.kast });
+  if (recipe) process.env.KAST_CORPUS_RECIPE = recipe;
+  else delete process.env.KAST_CORPUS_RECIPE;
   const tools = new Map();
   const { default: extension } = await import('./corpus-tool.ts');
   extension({ registerTool: tool => tools.set(tool.name, tool) });
-  const run = async argv => {
-    const result = await tools.get('kast').execute('call', { argv });
+  const run = async (argv, name = 'kast') => {
+    const result = await tools.get(name).execute('call', { argv });
     return { error: result.isError, details: result.details, text: result.content[0].text };
   };
   const executed = () => existsSync(fixture.calls)
@@ -86,4 +88,44 @@ test('a refused Kast command names its cause and flag and never reaches the exec
     assert.equal(reply.details.cause, cause);
   }
   assert.deepEqual(executed(), []);
+});
+
+test('the recipe tool admits read-only recipe forms, issues their result and refuses the rest unrun', async t => {
+  const root = mkdtempSync(join(tmpdir(), 'kast-recipe-stub-'));
+  t.after(() => rmSync(root, { recursive: true, force: true }));
+  const calls = join(root, 'recipe.jsonl');
+  const recipe = join(root, 'kast-recipe');
+  const issued = 'result:v1:0d6e2c5a-7b3f-4c1d-9e8a-6f5b4a3c2d1e';
+  writeFileSync(recipe, `#!/bin/sh
+printf '%s\\n' "$*" >> ${JSON.stringify(calls)}
+printf '%s' '{"verdict":{"type":"complete","status":"complete","exhaustive":true,"failures":0,"omissions":0,"total":0,"excluded_callback_calls":2,"evidence_complete":true},"result":"${issued}","items":[]}'
+`, { mode: 0o700 });
+  const { run } = await kastTool(t, { recipe });
+  const recipeCalls = () => existsSync(calls) ? readFileSync(calls, 'utf8').trim().split('\n') : [];
+  const admittedForms = [
+    ['verdict', '--ref', 'exact:v5:A', '--relation', 'callers'],
+    ['verdict', '--ref', 'exact:v5:B', '--relation', 'callers', '--intersect', issued],
+    ['call-sites', '--ref', 'exact:v5:A', '--relation-in', 'core', '--relation-production-only'],
+    ['impact', '--ref', 'exact:v5:A', '--seed', '2'],
+  ];
+  for (const argv of admittedForms) {
+    const reply = await run(argv, 'kast_recipe');
+    assert.equal(reply.error, false, `${argv.join(' ')} was refused: ${reply.text}`);
+    assert.equal(reply.details.receipt.kind, 'recipe');
+    assert.equal(reply.details.receipt.complete, true);
+  }
+  assert.equal(recipeCalls().length, admittedForms.length);
+  for (const [argv, cause] of [
+    [['verdict', '--name', 'a', '--jq', '$ENV'], 'JQ_NOT_ADMITTED'],
+    [['verdict', '--request', 'walk.json'], 'REQUEST_DOCUMENT_NOT_ADMITTED'],
+    [['call-sites', '--ref', 'exact:v5:A', '--in', 'core'], 'FLAG_NOT_ADMITTED'],
+    [['call-sites', '--ref', 'exact:v5:A', '--relation-in', '../outside'], 'PATH_OUTSIDE_WORKSPACE'],
+    [['impact', '--name', 'a'], 'FLAG_NOT_ADMITTED'],
+    [['shell'], 'COMMAND_NOT_ADMITTED'],
+  ]) {
+    const reply = await run(argv, 'kast_recipe');
+    assert.equal(reply.error, true, argv.join(' '));
+    assert.equal(JSON.parse(reply.text).cause, cause, argv.join(' '));
+  }
+  assert.equal(recipeCalls().length, admittedForms.length);
 });

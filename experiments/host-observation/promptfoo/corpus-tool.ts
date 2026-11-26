@@ -255,4 +255,85 @@ export default function (pi: ExtensionAPI) {
       return reply(text, { status: result.status, elapsedMillis, receipt, ...(reason && { reason }) }, result.status !== 0);
     },
   });
+
+  const recipe = process.env.KAST_CORPUS_RECIPE;
+  if (!recipe) return;
+  pi.registerTool({
+    name: 'kast_recipe', label: 'Kast recipe command',
+    description: 'Run the Kast skill\'s scripts/kast-recipe command with argv after kast-recipe: verdict QUERY_FLAGS..., call-sites --ref REF [scope flags], or impact --ref REF [--seed N] [--flow FLOW].',
+    parameters: Type.Object({ argv: Type.Array(Type.String({ maxLength: 4096 }), { minItems: 1, maxItems: 32 }) },
+      { additionalProperties: false }),
+    async execute(_id, { argv }) {
+      let admission: Admission;
+      try {
+        admission = admitsRecipe(argv);
+      } catch {
+        admission = refused('ADMISSION_FAILED');
+      }
+      if (!admission.admitted) {
+        const { cause, flag } = admission;
+        return reply({ error: 'KAST_COMMAND_REJECTED', cause, ...(flag && { flag }) },
+          { reason: 'KAST_COMMAND_REJECTED', cause, ...(flag && { flag }) }, true);
+      }
+      const started = performance.now();
+      const env = {
+        ...runtimeEnvironment(), KAST_RECIPE_KAST: kast,
+        ...(process.env.KAST_GRADLE_JAVA_HOME && { KAST_GRADLE_JAVA_HOME: process.env.KAST_GRADLE_JAVA_HOME }),
+      };
+      const result = spawnSync('/bin/sh', [recipe, ...argv], { cwd: workspace, env, encoding: 'utf8',
+        timeout: 150_000, maxBuffer: 4 * 1024 * 1024, killSignal: 'SIGKILL' });
+      const elapsedMillis = Math.round(performance.now() - started);
+      if (result.error?.code === 'ETIMEDOUT') return reject('KAST_TIME_LIMIT', { elapsedMillis });
+      if (result.error?.code === 'ENOBUFS') return reject('KAST_OUTPUT_LIMIT', { elapsedMillis });
+      if (result.error || result.status === null) return reject('KAST_EFFECT_UNAVAILABLE', { elapsedMillis });
+      rememberIssuedRecipe(result.stdout);
+      const receipt = recipeReceipt(argv[0], result.stdout, result.status, elapsedMillis);
+      const text = (result.stdout || result.stderr || 'Kast returned no output.').replaceAll(`${workspace}/`, '');
+      return reply(text, { status: result.status, elapsedMillis, receipt }, result.status !== 0);
+    },
+  });
+
+  /** The recipe forwards verdict flags to `kast query`; the same read-only admission applies to them. */
+  function admitsRecipe(argv: string[]): Admission {
+    if (argv.some(value => value.includes('\0') || value.includes('\n'))) return refused('CONTROL_CHARACTER');
+    const [command, ...rest] = argv;
+    if (command === 'verdict') {
+      if (rest[0] === '--request') return refused('REQUEST_DOCUMENT_NOT_ADMITTED');
+      return admitsKast(['query', ...rest]);
+    }
+    if (command === 'call-sites') {
+      const scope = new Set(['--ref', '--relation-in', '--relation-source-set']);
+      const flags = parseFlags(rest.filter(arg => !queryBooleanFlags.has(arg)), scope);
+      if (!flags) return refused('FLAG_NOT_ADMITTED', unknownFlag(rest, new Set([...scope, ...queryBooleanFlags])));
+      if ((flags.get('--ref') ?? []).length !== 1) return refused('SOURCE_MISSING');
+      return (flags.get('--relation-in') ?? []).every(path => path === '.' || withinWorkspace(path))
+        ? admitted : refused('PATH_OUTSIDE_WORKSPACE');
+    }
+    if (command === 'impact') {
+      const flags = parseFlags(rest, new Set(['--ref', '--seed', '--flow']));
+      if (!flags) return refused('FLAG_NOT_ADMITTED', unknownFlag(rest, new Set(['--ref', '--seed', '--flow'])));
+      return (flags.get('--ref') ?? []).length === 1 ? admitted : refused('SOURCE_MISSING');
+    }
+    return refused('COMMAND_NOT_ADMITTED');
+  }
+
+  function rememberIssuedRecipe(stdout: string) {
+    try {
+      const value = JSON.parse(stdout)?.result;
+      if (typeof value === 'string' && value.length <= 4096) issuedResults.add(value);
+    } catch {
+      // Unparsed recipe output issues no result.
+    }
+  }
+
+  /** Complete only for a complete, exhaustive verdict with no failures, omissions or deferred evidence. */
+  function recipeReceipt(command: string, stdout: string, status: number, elapsedMillis: number) {
+    let document;
+    try { document = JSON.parse(stdout); } catch { return { kind: 'recipe', command, complete: false, status, elapsedMillis }; }
+    const verdict = document?.verdict;
+    const complete = verdict ? verdict.type === 'complete' && verdict.exhaustive === true && verdict.failures === 0 &&
+      verdict.omissions === 0 && verdict.evidence_complete === true : document?.type === 'complete';
+    return { kind: 'recipe', command, complete, status, elapsedMillis,
+      ...(verdict && { excludedCallbackCalls: count(verdict.excluded_callback_calls) }) };
+  }
 }
