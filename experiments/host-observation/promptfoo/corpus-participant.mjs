@@ -16,9 +16,10 @@ export { system as corpusParticipantSystem };
 const maxReceipts = 64;
 
 function summarize(trial, tools) {
-  const kastCalls = trial.calls.filter(call => call.tool === 'kast');
+  const kastCalls = trial.calls.filter(call => call.tool === 'kast' || call.tool === 'kast_recipe');
   const semanticReceipts = kastCalls.flatMap(call => call.receipt ? [call.receipt] : []);
-  const toolFailures = trial.calls.flatMap(call => call.reason ? [{ tool: call.tool, reason: call.reason }] : []);
+  const toolFailures = trial.calls.flatMap(call => call.reason ? [{ tool: call.tool, reason: call.reason,
+    ...(typeof call.cause === 'string' && { cause: call.cause }), ...(typeof call.flag === 'string' && { flag: call.flag }) }] : []);
   const projection = projectPiTrial(trial);
   return {
     ...projection,
@@ -49,14 +50,16 @@ export async function participate(request, effects = {}) {
   const { workspace, model, arm, prompt, skillBody, revision, repository, caseId, requestedPanel = 'RESTRICTED' } = request ?? {};
   let observation = projectPiTrial(undefined);
   if (typeof workspace !== 'string' || !isAbsolute(workspace) || typeof model !== 'string' ||
-      !/^openai-codex\/[A-Za-z0-9_.-]+$/.test(model) || !['source', 'kast'].includes(arm) ||
+      !/^(?:openai-codex|claude-code)\/[A-Za-z0-9_.-]+$/.test(model) || !['source', 'kast'].includes(arm) ||
       typeof prompt !== 'string' || !prompt.trim() || typeof revision !== 'string' || !/^[a-f0-9]{40}$/.test(revision) ||
       !['A', 'RESTRICTED'].includes(requestedPanel) ||
       (arm === 'kast' && (typeof skillBody !== 'string' || !skillBody.trim()))) {
     return { ...observation, error: 'PARTICIPANT_REQUEST_REJECTED',
       metadata: { ...observation.metadata, timing: timing.snapshot() } };
   }
-  const toolNames = arm === 'kast' ? [...sourceTools, 'kast'] : [...sourceTools];
+  // The shipped kast-recipe command joins the Kast arm only when a run names it.
+  const recipe = arm === 'kast' ? process.env.KAST_EVAL_RECIPE : undefined;
+  const toolNames = arm === 'kast' ? [...sourceTools, 'kast', ...(recipe ? ['kast_recipe'] : [])] : [...sourceTools];
   const metadata = { revision, model, effort: 'low', arm, requestedPanel, panel: 'RESTRICTED', baseline: corpusBaseline,
     ...(typeof caseId === 'string' && /^[a-z0-9-]{1,100}$/.test(caseId) && { caseId }),
     admission: { state: requestedPanel === 'A' ? 'BLOCKED' : 'RESTRICTED', reason: corpusBaseline.panelA.reason },
@@ -89,6 +92,7 @@ export async function participate(request, effects = {}) {
       extensionEnvironment: {
         KAST_CORPUS_WORKSPACE: root, KAST_CORPUS_GIT: git, KAST_CORPUS_REVISION: revision, KAST_CORPUS_KAST: kast,
         ...(kast && process.env.KAST_GRADLE_JAVA_HOME && { KAST_GRADLE_JAVA_HOME: process.env.KAST_GRADLE_JAVA_HOME }),
+        ...(recipe && { KAST_CORPUS_RECIPE: recipe }),
       },
     }), trial => trial.error || trial.termination ? 'FAILED' : 'COMPLETED');
     observation = summarize(trial, toolNames);

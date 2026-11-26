@@ -1,0 +1,172 @@
+{
+  "cases": [
+    {
+      "id": "ktfmt-shared-format-137",
+      "task": "I need to review the callers of ktfmt's org.jetbrains.kotlinx.ktfmt.cli.Main.format(File?, ParsedArgs), declared in core/src/main/kotlin/org/jetbrains/kotlinx/ktfmt/cli/Main.kt at line 146, before I change it. Other declarations share its name. Which call sites in core/src/main/kotlin resolve statically to that exact declaration? Return only a JSON array of repository-relative path:line strings, one per call site.",
+      "expected": [
+        "core/src/main/kotlin/org/jetbrains/kotlinx/ktfmt/cli/Main.kt:104",
+        "core/src/main/kotlin/org/jetbrains/kotlinx/ktfmt/cli/Main.kt:127"
+      ],
+      "nearMiss": [
+        "core/src/main/kotlin/org/jetbrains/kotlinx/ktfmt/cli/Main.kt:127",
+        "core/src/main/kotlin/org/jetbrains/kotlinx/ktfmt/cli/Main.kt:162"
+      ],
+      "sources": [
+        "core/src/main/kotlin/org/jetbrains/kotlinx/ktfmt/cli/Main.kt:137",
+        "core/src/main/kotlin/org/jetbrains/kotlinx/ktfmt/cli/Main.kt:104",
+        "core/src/main/kotlin/org/jetbrains/kotlinx/ktfmt/cli/Main.kt:127"
+      ],
+      "dimension": "Call sites of one declaration among same-named declarations, oracle from javap invokes"
+    },
+    {
+      "id": "ktfmt-shared-kotlincode-31",
+      "task": "I need to review the callers of ktfmt's org.jetbrains.kotlinx.ktfmt.format.KotlinCode(InputStream, FileType), declared in core/src/main/kotlin/org/jetbrains/kotlinx/ktfmt/format/KotlinCode.kt at line 31, before I change it. Other declarations share its name. Which call sites in core/src/main/kotlin resolve statically to that exact declaration? Return only a JSON array of repository-relative path:line strings, one per call site.",
+      "expected": [
+        "core/src/main/kotlin/org/jetbrains/kotlinx/ktfmt/cli/Main.kt:159",
+        "core/src/main/kotlin/org/jetbrains/kotlinx/ktfmt/format/KotlinCode.kt:29"
+      ],
+      "nearMiss": [
+        "core/src/main/kotlin/org/jetbrains/kotlinx/ktfmt/format/KotlinCode.kt:29",
+        "core/src/main/kotlin/org/jetbrains/kotlinx/ktfmt/format/Formatter.kt:75"
+      ],
+      "sources": [
+        "core/src/main/kotlin/org/jetbrains/kotlinx/ktfmt/format/KotlinCode.kt:31",
+        "core/src/main/kotlin/org/jetbrains/kotlinx/ktfmt/cli/Main.kt:159",
+        "core/src/main/kotlin/org/jetbrains/kotlinx/ktfmt/format/KotlinCode.kt:29"
+      ],
+      "dimension": "Call sites of one declaration among same-named declarations, oracle from javap invokes"
+    },
+    {
+      "id": "ktfmt-shared-tostring-51",
+      "task": "I need to review the callers of ktfmt's org.jetbrains.kotlinx.ktfmt.format.KotlinCode.toString(), declared in core/src/main/kotlin/org/jetbrains/kotlinx/ktfmt/format/KotlinCode.kt at line 51, before I change it. Other declarations share its name. Which call sites in core/src/main/kotlin resolve statically to that exact declaration? Return only a JSON array of repository-relative path:line strings, one per call site.",
+      "expected": [
+        "core/src/main/kotlin/org/jetbrains/kotlinx/ktfmt/cli/Main.kt:167",
+        "core/src/main/kotlin/org/jetbrains/kotlinx/ktfmt/format/Formatter.kt:127"
+      ],
+      "nearMiss": [
+        "core/src/main/kotlin/org/jetbrains/kotlinx/ktfmt/format/Formatter.kt:127",
+        "core/src/main/kotlin/org/jetbrains/kotlinx/ktfmt/cli/Main.kt:147"
+      ],
+      "sources": [
+        "core/src/main/kotlin/org/jetbrains/kotlinx/ktfmt/format/KotlinCode.kt:51",
+        "core/src/main/kotlin/org/jetbrains/kotlinx/ktfmt/cli/Main.kt:167",
+        "core/src/main/kotlin/org/jetbrains/kotlinx/ktfmt/format/Formatter.kt:127"
+      ],
+      "dimension": "Call sites of one declaration among same-named declarations, oracle from javap invokes"
+    },
+    {
+      "id": "ktfmt-shared-formatlambdaexpression-212",
+      "task": "I need to review the callers of ktfmt's org.jetbrains.kotlinx.ktfmt.format.visitor.CallFormatterImpl.formatLambdaExpression(KtLambdaExpression, Output.BreakTag?), declared in core/src/main/kotlin/org/jetbrains/kotlinx/ktfmt/format/visitor/CallFormatter.kt at line 213, before I change it. Other declarations share its name. Which call sites in core/src/main/kotlin resolve statically to that exact declaration? Return only a JSON array of repository-relative path:line strings, one per call site.",
+      "expected": [
+        "core/src/main/kotlin/org/jetbrains/kotlinx/ktfmt/format/visitor/CallFormatter.kt:141",
+        "core/src/main/kotlin/org/jetbrains/kotlinx/ktfmt/format/visitor/CallFormatter.kt:430"
+      ],
+      "nearMiss": [
+        "core/src/main/kotlin/org/jetbrains/kotlinx/ktfmt/format/visitor/CallFormatter.kt:430",
+        "core/src/main/kotlin/org/jetbrains/kotlinx/ktfmt/format/visitor/AbstractKotlinFormatter.kt:241"
+      ],
+      "sources": [
+        "core/src/main/kotlin/org/jetbrains/kotlinx/ktfmt/format/visitor/CallFormatter.kt:212",
+        "core/src/main/kotlin/org/jetbrains/kotlinx/ktfmt/format/visitor/CallFormatter.kt:141",
+        "core/src/main/kotlin/org/jetbrains/kotlinx/ktfmt/format/visitor/CallFormatter.kt:430"
+      ],
+      "dimension": "Call sites of one declaration among same-named declarations, oracle from javap invokes"
+    },
+    {
+      "id": "ktfmt-shared-emitqualifiedexpression-472",
+      "task": "I need to review the callers of ktfmt's org.jetbrains.kotlinx.ktfmt.format.visitor.CallFormatterImpl.emitQualifiedExpression(KtExpression), declared in core/src/main/kotlin/org/jetbrains/kotlinx/ktfmt/format/visitor/CallFormatter.kt at line 485, before I change it. Other declarations share its name. Which call sites in core/src/main/kotlin resolve statically to that exact declaration? Return only a JSON array of repository-relative path:line strings, one per call site.",
+      "expected": [
+        "core/src/main/kotlin/org/jetbrains/kotlinx/ktfmt/format/visitor/CallFormatter.kt:467",
+        "core/src/main/kotlin/org/jetbrains/kotlinx/ktfmt/format/visitor/CallFormatter.kt:551"
+      ],
+      "nearMiss": [
+        "core/src/main/kotlin/org/jetbrains/kotlinx/ktfmt/format/visitor/CallFormatter.kt:551",
+        "core/src/main/kotlin/org/jetbrains/kotlinx/ktfmt/format/visitor/kotlinlang/KotlinLangCallFormatter.kt:80"
+      ],
+      "sources": [
+        "core/src/main/kotlin/org/jetbrains/kotlinx/ktfmt/format/visitor/CallFormatter.kt:472",
+        "core/src/main/kotlin/org/jetbrains/kotlinx/ktfmt/format/visitor/CallFormatter.kt:467",
+        "core/src/main/kotlin/org/jetbrains/kotlinx/ktfmt/format/visitor/CallFormatter.kt:551"
+      ],
+      "dimension": "Call sites of one declaration among same-named declarations, oracle from javap invokes"
+    },
+    {
+      "id": "ktfmt-shared-formatcontextreceiverlist-269",
+      "task": "I need to review the callers of ktfmt's org.jetbrains.kotlinx.ktfmt.format.visitor.ListFormatterImpl.formatContextReceiverList(KtContextReceiverList), declared in core/src/main/kotlin/org/jetbrains/kotlinx/ktfmt/format/visitor/ListFormatter.kt at line 274, before I change it. Other declarations share its name. Which call sites in core/src/main/kotlin resolve statically to that exact declaration? Return only a JSON array of repository-relative path:line strings, one per call site.",
+      "expected": [
+        "core/src/main/kotlin/org/jetbrains/kotlinx/ktfmt/format/visitor/ListFormatter.kt:249",
+        "core/src/main/kotlin/org/jetbrains/kotlinx/ktfmt/format/visitor/kotlinlang/KotlinLangListFormatter.kt:69"
+      ],
+      "nearMiss": [
+        "core/src/main/kotlin/org/jetbrains/kotlinx/ktfmt/format/visitor/kotlinlang/KotlinLangListFormatter.kt:69",
+        "core/src/main/kotlin/org/jetbrains/kotlinx/ktfmt/format/visitor/AbstractKotlinFormatter.kt:221"
+      ],
+      "sources": [
+        "core/src/main/kotlin/org/jetbrains/kotlinx/ktfmt/format/visitor/ListFormatter.kt:269",
+        "core/src/main/kotlin/org/jetbrains/kotlinx/ktfmt/format/visitor/ListFormatter.kt:249",
+        "core/src/main/kotlin/org/jetbrains/kotlinx/ktfmt/format/visitor/kotlinlang/KotlinLangListFormatter.kt:69"
+      ],
+      "dimension": "Call sites of one declaration among same-named declarations, oracle from javap invokes"
+    },
+    {
+      "id": "ktfmt-shared-formattype-192",
+      "task": "I need to review the callers of ktfmt's org.jetbrains.kotlinx.ktfmt.format.visitor.TypeFormatterImpl.formatType(KtElement, KtTypeElement?), declared in core/src/main/kotlin/org/jetbrains/kotlinx/ktfmt/format/visitor/TypeFormatter.kt at line 193, before I change it. Other declarations share its name. Which call sites in core/src/main/kotlin resolve statically to that exact declaration? Return only a JSON array of repository-relative path:line strings, one per call site.",
+      "expected": [
+        "core/src/main/kotlin/org/jetbrains/kotlinx/ktfmt/format/visitor/TypeFormatter.kt:63",
+        "core/src/main/kotlin/org/jetbrains/kotlinx/ktfmt/format/visitor/TypeFormatter.kt:73"
+      ],
+      "nearMiss": [
+        "core/src/main/kotlin/org/jetbrains/kotlinx/ktfmt/format/visitor/TypeFormatter.kt:73",
+        "core/src/main/kotlin/org/jetbrains/kotlinx/ktfmt/format/visitor/TypeFormatter.kt:54"
+      ],
+      "sources": [
+        "core/src/main/kotlin/org/jetbrains/kotlinx/ktfmt/format/visitor/TypeFormatter.kt:192",
+        "core/src/main/kotlin/org/jetbrains/kotlinx/ktfmt/format/visitor/TypeFormatter.kt:63",
+        "core/src/main/kotlin/org/jetbrains/kotlinx/ktfmt/format/visitor/TypeFormatter.kt:73"
+      ],
+      "dimension": "Call sites of one declaration among same-named declarations, oracle from javap invokes"
+    },
+    {
+      "id": "ktfmt-shared-reflow-348",
+      "task": "I need to review the callers of ktfmt's org.jetbrains.kotlinx.ktfmt.kdoc.Paragraph.reflow(String>, Int, Int), declared in core/src/main/kotlin/org/jetbrains/kotlinx/ktfmt/kdoc/Paragraph.kt at line 348, before I change it. Other declarations share its name. Which call sites in core/src/main/kotlin resolve statically to that exact declaration? Return only a JSON array of repository-relative path:line strings, one per call site.",
+      "expected": [
+        "core/src/main/kotlin/org/jetbrains/kotlinx/ktfmt/kdoc/Paragraph.kt:328",
+        "core/src/main/kotlin/org/jetbrains/kotlinx/ktfmt/kdoc/Paragraph.kt:337",
+        "core/src/main/kotlin/org/jetbrains/kotlinx/ktfmt/kdoc/Paragraph.kt:345"
+      ],
+      "nearMiss": [
+        "core/src/main/kotlin/org/jetbrains/kotlinx/ktfmt/kdoc/Paragraph.kt:337",
+        "core/src/main/kotlin/org/jetbrains/kotlinx/ktfmt/kdoc/Paragraph.kt:345",
+        "core/src/main/kotlin/org/jetbrains/kotlinx/ktfmt/kdoc/KDocFormatter.kt:121"
+      ],
+      "sources": [
+        "core/src/main/kotlin/org/jetbrains/kotlinx/ktfmt/kdoc/Paragraph.kt:348",
+        "core/src/main/kotlin/org/jetbrains/kotlinx/ktfmt/kdoc/Paragraph.kt:328",
+        "core/src/main/kotlin/org/jetbrains/kotlinx/ktfmt/kdoc/Paragraph.kt:337",
+        "core/src/main/kotlin/org/jetbrains/kotlinx/ktfmt/kdoc/Paragraph.kt:345"
+      ],
+      "dimension": "Call sites of one declaration among same-named declarations, oracle from javap invokes"
+    },
+    {
+      "id": "ktfmt-shared-getindent-38",
+      "task": "I need to review the callers of ktfmt's org.jetbrains.kotlinx.ktfmt.kdoc.getIndent(Int), declared in core/src/main/kotlin/org/jetbrains/kotlinx/ktfmt/kdoc/Utilities.kt at line 38, before I change it. Other declarations share its name. Which call sites in core/src/main/kotlin resolve statically to that exact declaration? Return only a JSON array of repository-relative path:line strings, one per call site.",
+      "expected": [
+        "core/src/main/kotlin/org/jetbrains/kotlinx/ktfmt/kdoc/ParagraphListBuilder.kt:887",
+        "core/src/main/kotlin/org/jetbrains/kotlinx/ktfmt/kdoc/ParagraphListBuilder.kt:902",
+        "core/src/main/kotlin/org/jetbrains/kotlinx/ktfmt/kdoc/ParagraphListBuilder.kt:952"
+      ],
+      "nearMiss": [
+        "core/src/main/kotlin/org/jetbrains/kotlinx/ktfmt/kdoc/ParagraphListBuilder.kt:902",
+        "core/src/main/kotlin/org/jetbrains/kotlinx/ktfmt/kdoc/ParagraphListBuilder.kt:952",
+        "core/src/main/kotlin/org/jetbrains/kotlinx/ktfmt/kdoc/Utilities.kt:212"
+      ],
+      "sources": [
+        "core/src/main/kotlin/org/jetbrains/kotlinx/ktfmt/kdoc/Utilities.kt:38",
+        "core/src/main/kotlin/org/jetbrains/kotlinx/ktfmt/kdoc/ParagraphListBuilder.kt:887",
+        "core/src/main/kotlin/org/jetbrains/kotlinx/ktfmt/kdoc/ParagraphListBuilder.kt:902",
+        "core/src/main/kotlin/org/jetbrains/kotlinx/ktfmt/kdoc/ParagraphListBuilder.kt:952"
+      ],
+      "dimension": "Call sites of one declaration among same-named declarations, oracle from javap invokes"
+    }
+  ]
+}

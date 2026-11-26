@@ -3,7 +3,7 @@ import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { casesForSuite, delegateModels, suites } from './corpus-cases.mjs';
+import { casesForSuite, delegateModels, delegatePiModel, suites } from './corpus-cases.mjs';
 import { exactAnswer } from './corpus-grading.mjs';
 import { child } from './skill-provider.mjs';
 import { corpusBaseline } from './corpus-source.mjs';
@@ -55,7 +55,7 @@ export function createCorpusProvider({ cases, controls = false, requestedPanel =
           const workspace = resolve(environment.KAST_CORPUS_ROOT, task.workspace);
           const skillBody = arm === 'kast' ? await readFile(environment.KAST_CORPUS_SKILL, 'utf8') : '';
           metadata.skillSha256 = skillBody ? hash(skillBody) : null;
-          const participant = { workspace, model: 'openai-codex/' + model, arm, prompt, skillBody,
+          const participant = { workspace, model: delegatePiModel(model), arm, prompt, skillBody,
             revision: task.revision, repository: task.repository, caseId, requestedPanel };
           await writeFile(join(directory, 'request.json'), JSON.stringify(participant), { mode: 0o600 });
         });
