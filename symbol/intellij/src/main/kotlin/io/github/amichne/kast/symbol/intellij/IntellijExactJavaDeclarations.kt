@@ -29,13 +29,7 @@ internal fun collectExactJavaDeclarations(
     if (target !is SymbolDiscoveryTarget.Name || target.match != SymbolDiscoveryMatch.EXACT_NAME) return true
     val name = target.pattern.value
     val kinds = request.requestedDeclarationKinds()
-    // A library search also selects compiled Java members that Kotlin can reach only by their own name.
-    val compiled =
-        request.scope.scope.libraryPolicy() == SymbolLibraryPolicy.INCLUDE && javaNameHasOnlyItsOwnKotlinSyntax(name)
-    val javaScope =
-        if (compiled)
-            GlobalSearchScope.getScopeRestrictedByFileTypes(scope, JavaFileType.INSTANCE, JavaClassFileType.INSTANCE)
-        else GlobalSearchScope.getScopeRestrictedByFileTypes(scope, JavaFileType.INSTANCE)
+    val javaScope = javaSelectionScope(request, name, scope)
     fun admit(member: PsiMember): Boolean {
         val membership = request.constraints.packageName.admitPackage(member::indexedPackage)
         return membership == IntellijDiscoveryItemAdmission.FILTERED || accept(member)
@@ -62,6 +56,16 @@ internal fun collectExactJavaDeclarations(
             it.selectionFamily() !in kinds || admit(it)
         }
 }
+
+/** A library search also selects compiled Java members that Kotlin can reach only by their own name. */
+private fun javaSelectionScope(
+    request: SymbolDiscoveryRequest,
+    name: String,
+    scope: GlobalSearchScope,
+): GlobalSearchScope =
+    if (request.scope.scope.libraryPolicy() == SymbolLibraryPolicy.INCLUDE && javaNameHasOnlyItsOwnKotlinSyntax(name))
+        GlobalSearchScope.getScopeRestrictedByFileTypes(scope, JavaFileType.INSTANCE, JavaClassFileType.INSTANCE)
+    else GlobalSearchScope.getScopeRestrictedByFileTypes(scope, JavaFileType.INSTANCE)
 
 /** Kotlin reads a Java field as a property and an enum constant as an enum entry. */
 private fun PsiField.selectionFamily(): CompilerSymbolKind =
