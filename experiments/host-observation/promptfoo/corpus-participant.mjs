@@ -49,7 +49,7 @@ export async function participate(request, effects = {}) {
   const { workspace, model, arm, prompt, skillBody, revision, repository, caseId, requestedPanel = 'RESTRICTED' } = request ?? {};
   let observation = projectPiTrial(undefined);
   if (typeof workspace !== 'string' || !isAbsolute(workspace) || typeof model !== 'string' ||
-      !/^openai-codex\/[A-Za-z0-9_.-]+$/.test(model) || !['source', 'kast'].includes(arm) ||
+      !/^(?:openai-codex|claude-code)\/[A-Za-z0-9_.-]+$/.test(model) || !['source', 'kast'].includes(arm) ||
       typeof prompt !== 'string' || !prompt.trim() || typeof revision !== 'string' || !/^[a-f0-9]{40}$/.test(revision) ||
       !['A', 'RESTRICTED'].includes(requestedPanel) ||
       (arm === 'kast' && (typeof skillBody !== 'string' || !skillBody.trim()))) {

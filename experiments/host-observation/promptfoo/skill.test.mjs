@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { execFile, spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
-import { mkdtemp, readFile, readdir, realpath, rm, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, readFile, readdir, realpath, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import test from 'node:test';
 import { join } from 'node:path';
@@ -284,6 +284,50 @@ console.log(JSON.stringify({ type: 'message_end', message: { role: 'assistant', 
   assert.equal(runtime.sourceRevision, 'unknown');
   assert.doesNotMatch(JSON.stringify(runtime), /catalog-secret|unrelated-secret|Authorization|refresh/);
   await assert.rejects(runIsolatedPi({ directory, prompt: 'Rejected.', toolNames: ['kast'] }), /Kast access needs participant guidance/);
+});
+
+test('a Claude Code participant gets the relay extension, its catalog and no copied credential', async t => {
+  const directory = await mkdtemp(join(tmpdir(), 'kast-claude-code-launch-test-'));
+  t.after(() => rm(directory, { recursive: true, force: true }));
+  const fakePi = join(directory, 'pi.mjs');
+  const extension = join(directory, 'pi-claude-code');
+  const catalog = join(directory, 'models.json');
+  const auth = join(directory, 'auth.json');
+  await mkdir(extension);
+  await writeFile(join(extension, 'package.json'), '{}');
+  await writeFile(auth, JSON.stringify({ 'openai-codex': { type: 'oauth', access: 'codex-secret', refresh: 'codex-secret' } }));
+  const claudeModels = { checkedAt: 1000, models: [{ provider: 'claude-code', id: 'claude-test',
+    thinkingLevelMap: { low: 'low' }, cost: { input: 1, output: 1, cacheRead: 1, cacheWrite: 1 } }] };
+  await writeFile(catalog, JSON.stringify({ 'claude-code': claudeModels,
+    'openai-codex': { checkedAt: 1000, models: [{ provider: 'openai-codex', id: 'other' }] } }));
+  await writeFile(fakePi, `#!${process.execPath}
+import { writeFileSync } from 'node:fs';
+const args = process.argv.slice(2);
+writeFileSync('observed.json', JSON.stringify({ args }));
+console.log(JSON.stringify({ type: 'message_end', message: { role: 'assistant', provider: 'claude-code', model: 'claude-test',
+  stopReason: 'stop', usage: { input: 2, output: 1, cacheRead: 0, cacheWrite: 0, totalTokens: 3 },
+  content: [{ type: 'text', text: 'answer' }] } }));
+`, { mode: 0o700 });
+  const env = { ...process.env, KAST_EVAL_PI: fakePi, KAST_EVAL_PI_AUTH: auth, KAST_EVAL_PI_MODELS: catalog,
+    KAST_EVAL_PI_CLAUDE_CODE: extension };
+  delete env.KAST_EVAL_CODEX_AUTH;
+  const provider = new URL('./skill-provider.mjs', import.meta.url).href;
+  const setup = `import { runIsolatedPi } from ${JSON.stringify(provider)};
+    const [directory, model] = process.argv.slice(1);
+    console.log(JSON.stringify(await runIsolatedPi({ directory, system: 'Shared instructions.', prompt: 'Shared question.', model })));`;
+  const trialDirectory = await mkdtemp(join(directory, 'project-'));
+  await promisify(execFile)(process.execPath, ['--input-type=module', '-e', setup, trialDirectory, 'claude-code/claude-test'], { env });
+  const { args } = JSON.parse(await readFile(join(trialDirectory, 'observed.json'), 'utf8'));
+  assert.deepEqual(args.flatMap((arg, index) => arg === '-e' ? [args[index + 1]] : []), [extension]);
+  assert.deepEqual(args.slice(args.indexOf('--model'), args.indexOf('--model') + 4), ['--model', 'claude-code/claude-test', '--thinking', 'low']);
+  assert.equal(await readFile(join(trialDirectory, 'pi', 'auth.json'), 'utf8'), '{}');
+  assert.deepEqual(JSON.parse(await readFile(join(trialDirectory, 'pi', 'models-store.json'), 'utf8')), { 'claude-code': claudeModels });
+
+  await writeFile(catalog, JSON.stringify({ 'openai-codex': { checkedAt: 1000, models: [] } }));
+  const rejected = async model => promisify(execFile)(process.execPath,
+    ['--input-type=module', '-e', setup, await mkdtemp(join(directory, 'project-')), model], { env });
+  await assert.rejects(rejected('claude-code/claude-test'), /Pi claude-code model catalog unavailable/);
+  await assert.rejects(rejected('anthropic/claude-test'), /Unsupported Pi provider/);
 });
 
 test('historical skill snapshots keep the reported bytes in both arms', () => {
