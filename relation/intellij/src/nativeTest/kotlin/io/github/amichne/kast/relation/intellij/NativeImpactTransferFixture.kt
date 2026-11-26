@@ -102,6 +102,7 @@ abstract class NativeImpactTransferFixture : NativeReviewedValueFixture() {
     protected companion object {
         const val NULL_GUARD = "src/main/kotlin/fixture/impact/nullguard/NullGuard.kt"
         const val EQUALITY_CONTROL = "src/main/kotlin/fixture/impact/equalitycontrol/EqualityControl.kt"
+        const val EQUALITY_SINK = "src/main/kotlin/fixture/impact/equalitysink/EqualitySink.kt"
         const val SUBJECT_SUPPORT = "src/main/kotlin/fixture/impact/subject/SubjectSupport.kt"
         const val SUBJECT_INLINE = "src/main/kotlin/fixture/impact/subject/SubjectInline.kt"
         const val SUBJECT_HOISTED = "src/main/kotlin/fixture/impact/subject/SubjectHoisted.kt"
