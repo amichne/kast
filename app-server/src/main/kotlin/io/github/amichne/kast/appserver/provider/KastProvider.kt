@@ -78,7 +78,6 @@ internal class KastProviderOptions(
 @Serializable
 internal enum class KastQualificationFailure {
     SCHEMA_UNAVAILABLE,
-    SCHEMA_SIZE_LIMIT,
     SCHEMA_INVALID,
     SCHEMA_INCOMPATIBLE,
 }
