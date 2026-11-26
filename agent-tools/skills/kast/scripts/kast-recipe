@@ -1,0 +1,240 @@
+#!/bin/sh
+# kast-recipe: mechanical Kast recipes for agents.
+#
+# The agent decides which declaration, which scope, and what a result proves.
+# This command does the mechanical work: projection, every result page, line
+# numbers, documentation-link filtering, and IMPACT request construction.
+# Each command prints one compact JSON document on stdout. A Kast rejection
+# passes through unchanged with Kast's exit status. A recipe refusal prints
+# {"type":"recipe_rejected","reason":TOKEN} and exits 64.
+#
+# Requires only the installed `kast` command and POSIX sh, sed, grep, sort, uniq and paste.
+set -eu
+
+KAST=${KAST_RECIPE_KAST:-kast}
+# Large enough that evidence is inlined instead of deferred; a deferred entry is reported, never guessed.
+BUDGET=16000000
+
+usage() {
+    cat >&2 <<'EOF'
+Usage:
+  kast-recipe verdict QUERY_FLAGS...
+      Run `kast query QUERY_FLAGS`, read every page, and print one verdict with all rows.
+  kast-recipe call-sites --ref REF [RELATION_SCOPE_FLAGS...]
+      List every source use of REF as file and line, without documentation links.
+  kast-recipe impact --ref REF [--seed N] [--flow KOTLIN_FORWARD_V1|KOTLIN_JAVA_FORWARD_V2]
+      Follow the value produced by the Nth Kotlin call to REF.
+
+QUERY_FLAGS are ordinary `kast query` flags, without --jq, --json or --retain.
+RELATION_SCOPE_FLAGS are --relation-in DIR, --relation-source-set NAME,
+--relation-production-only and --relation-exclude-generated.
+EOF
+    exit 64
+}
+
+refuse() {
+    printf '{"type":"recipe_rejected","reason":"%s"}\n' "$1"
+    exit 64
+}
+
+# Print a captured Kast or recipe document unchanged and exit with its status.
+pass_through() {
+    printf '%s\n' "$1"
+    exit "$2"
+}
+
+# Projections in Kast's embedded jq. String interpolation is unavailable there.
+META='(.document.next_cursor|tostring) + " " + (.document.retention.reference // "none")'
+EXCLUDED='[.document.relation_observations[]?.callback_observations[]?
+  | select(.named_policy.type == "EXCLUDED") | .occurrence
+  | .file + ":" + (.range.startInclusive|tostring)] | unique | length'
+EVIDENCE='((.document.evidence_window.type // "FINAL") == "FINAL") and ((.document.deferred_evidence // []) | length == 0)'
+VERDICT="{type, status: .document.status, exhaustive: .document.coverage.exhaustive,
+  failures: .document.original_evidence_summary.failure_count,
+  omissions: .document.original_evidence_summary.omission_count,
+  total: (.document.row_window.total // (.document.items | length)),
+  excluded_callback_calls: ($EXCLUDED), evidence_complete: ($EVIDENCE)}"
+SYMBOL='if .type == "exact-symbol" then {name, signature, ref, file: .location.file}
+  elif .occurrence then {target: .occurrence.target.qualifiedIdentity, file: .occurrence.occurrence.file,
+    context: .occurrence.context, owner: .occurrence.ownership.declaration.qualifiedIdentity}
+  elif .relation.occurrence then {file: .relation.occurrence.file, caller: .ref}
+  else . end'
+OCCURRENCE='(.occurrence.occurrence.file // .relation.occurrence.file) + "|"
+  + (.occurrence.occurrence.candidateSelector // .relation.occurrence.candidateSelector) + "|"
+  + (.occurrence.context // "CODE")'
+
+meta_of() { printf '%s' "$1" | sed -n 's/^\["\([^"]*\)",.*$/\1/p'; }
+
+# Items of every page after the first, comma-joined without brackets. $1 result, $2 cursor, $3 kind.
+remaining_items() {
+    ref=$1 cursor=$2 kind=$3 joined=""
+    while [ "$cursor" != "null" ]; do
+        page=$("$KAST" result read --ref "$ref" --cursor "$cursor" --output "$kind" \
+            --max-returned-bytes "$BUDGET" --jq "[$META, [.document.items[]? | $SYMBOL]]") || pass_through "$page" $?
+        meta=$(meta_of "$page")
+        [ -n "$meta" ] || refuse PAGE_UNREADABLE
+        cursor=${meta%% *}
+        items=$(printf '%s' "$page" | sed -e 's/^\["[^"]*",\[//' -e 's/\]\]$//')
+        if [ -n "$items" ]; then joined=${joined:+$joined,}$items; fi
+    done
+    printf '%s' "$joined"
+}
+
+cmd_verdict() {
+    [ "$#" -gt 0 ] || usage
+    kind=symbols previous=""
+    for argument in "$@"; do
+        case "$argument" in
+            --jq|--jq=*|--json|--retain) refuse FLAG_OWNED_BY_RECIPE ;;
+        esac
+        if [ "$previous" = "--output" ]; then kind=$argument; fi
+        previous=$argument
+    done
+    projection="[$META, $VERDICT, [.document.items[]? | $SYMBOL]]"
+    if [ "$1" = "--request" ]; then
+        # A request document owns its retention, budget and output; Kast admits no other flag beside it.
+        [ "$#" -eq 2 ] || refuse REQUEST_TAKES_ONE_FILE
+        kind=$(sed -n 's/.*"output":{"type":"\([A-Z_]*\)".*/\1/p' "$2" 2>/dev/null | tr 'A-Z_' 'a-z-')
+        first=$("$KAST" query --request "$2" --jq "$projection") || pass_through "$first" $?
+    else
+        first=$("$KAST" query "$@" --retain --max-returned-bytes "$BUDGET" --jq "$projection") ||
+            pass_through "$first" $?
+    fi
+    [ -n "$kind" ] || kind=symbols
+    meta=$(meta_of "$first")
+    [ -n "$meta" ] || refuse PAGE_UNREADABLE
+    rest=$(printf '%s' "$first" | sed 's/^\["[^"]*",//')
+    verdict=$(printf '%s' "$rest" | sed 's/^\({[^{}]*}\),.*$/\1/')
+    items=$(printf '%s' "$rest" | sed -e 's/^{[^{}]*},\[//' -e 's/\]\]$//')
+    cursor=${meta%% *} ref=${meta#* }
+    if [ "$cursor" != "null" ]; then
+        [ "$ref" != "none" ] || refuse PAGES_NOT_RETAINED
+        more=$(remaining_items "$ref" "$cursor" "$kind") || pass_through "$more" $?
+        if [ -n "$more" ]; then items=${items:+$items,}$more; fi
+    fi
+    if [ "$ref" = "none" ]; then handle=null; else handle="\"$ref\""; fi
+    printf '{"verdict":%s,"result":%s,"items":[%s]}\n' "$verdict" "$handle" "$items"
+}
+
+# Rows "file|candidate|context" of every page after the first, ';'-joined. $1 result, $2 cursor.
+remaining_rows() {
+    ref=$1 cursor=$2 joined=""
+    while [ "$cursor" != "null" ]; do
+        page=$("$KAST" result read --ref "$ref" --cursor "$cursor" --output occurrences \
+            --max-returned-bytes "$BUDGET" --jq "[$META, ([.document.items[]? | $OCCURRENCE] | join(\";\"))]") ||
+            pass_through "$page" $?
+        meta=$(meta_of "$page")
+        [ -n "$meta" ] || refuse PAGE_UNREADABLE
+        cursor=${meta%% *}
+        rows=$(printf '%s' "$page" | sed -e 's/^\["[^"]*","//' -e 's/"\]$//')
+        if [ -n "$rows" ]; then joined=${joined:+$joined;}$rows; fi
+    done
+    printf '%s' "$joined"
+}
+
+cmd_call_sites() {
+    [ "${1:-}" = "--ref" ] && [ -n "${2:-}" ] || usage
+    ref=$2
+    shift 2
+    for argument in "$@"; do
+        case "$argument" in
+            --relation-in|--relation-source-set|--relation-production-only|--relation-exclude-generated) ;;
+            --*) refuse FLAG_NOT_A_RELATION_SCOPE ;;
+        esac
+    done
+    first=$("$KAST" query --ref "$ref" --relation references --output occurrences "$@" --retain \
+        --max-returned-bytes "$BUDGET" --jq "[$META, $VERDICT, ([.document.items[]? | $OCCURRENCE] | join(\";\"))]") ||
+        pass_through "$first" $?
+    meta=$(meta_of "$first")
+    [ -n "$meta" ] || refuse PAGE_UNREADABLE
+    rest=$(printf '%s' "$first" | sed 's/^\["[^"]*",//')
+    verdict=$(printf '%s' "$rest" | sed 's/^\({[^{}]*}\),.*$/\1/')
+    rows=$(printf '%s' "$rest" | sed -e 's/^{[^{}]*},"//' -e 's/"\]$//')
+    cursor=${meta%% *} retained=${meta#* }
+    if [ "$cursor" != "null" ]; then
+        [ "$retained" != "none" ] || refuse PAGES_NOT_RETAINED
+        more=$(remaining_rows "$retained" "$cursor") || pass_through "$more" $?
+        if [ -n "$more" ]; then rows=${rows:+$rows;}$more; fi
+    fi
+    sites="" documentation=0
+    remaining=$rows
+    while [ -n "$remaining" ]; do
+        row=${remaining%%;*}
+        case "$remaining" in *';'*) remaining=${remaining#*;} ;; *) remaining="" ;; esac
+        file=${row%%|*}
+        tail=${row#*|}
+        candidate=${tail%%|*}
+        context=${tail#*|}
+        case "$file" in *'"'*|*'\'*|'') refuse PATH_NOT_REPRESENTABLE ;; esac
+        case "$candidate" in candidate:*) ;; *) refuse CANDIDATE_MISSING ;; esac
+        case "$context" in *[!A-Z_]*|'') refuse CONTEXT_UNRECOGNIZED ;; esac
+        # Kast maps the UTF-16 occurrence to its line; no offset arithmetic happens here.
+        line=$("$KAST" source read --ref "$candidate" --jq '.document.text.lines.startInclusive') ||
+            pass_through "$line" $?
+        case "$line" in ''|*[!0-9]*) refuse LINE_UNAVAILABLE ;; esac
+        text=$(sed -n "${line}p" "$file" 2>/dev/null) || refuse SOURCE_LINE_UNREADABLE
+        case "$(printf '%s' "$text" | sed 's/^[[:space:]]*//')" in
+            '*'*|'/*'*|'//'*) documentation=$((documentation + 1)) ;;
+            *) sites=${sites:+$sites,}$(printf '{"file":"%s","line":%s,"context":"%s"}' "$file" "$line" "$context") ;;
+        esac
+    done
+    printf '{"verdict":%s,"sites":[%s],"documentation_links":%s}\n' "$verdict" "$sites" "$documentation"
+}
+
+cmd_impact() {
+    [ "${1:-}" = "--ref" ] && [ -n "${2:-}" ] || usage
+    ref=$2 seed_index=1 flow=KOTLIN_FORWARD_V1
+    shift 2
+    while [ "$#" -gt 0 ]; do
+        [ "$#" -ge 2 ] || usage
+        case "$1" in
+            --seed) seed_index=$2 ;;
+            --flow) flow=$2 ;;
+            *) usage ;;
+        esac
+        shift 2
+    done
+    case "$seed_index" in ''|*[!0-9]*|0*) refuse SEED_INDEX_INVALID ;; esac
+    case "$flow" in KOTLIN_FORWARD_V1|KOTLIN_JAVA_FORWARD_V2) ;; *) refuse FLOW_INVALID ;; esac
+    # The seed is copied from Kast's own callers row; no offset or range is computed here.
+    seed=$("$KAST" query --ref "$ref" --relation callers --output occurrences --max-returned-bytes "$BUDGET" \
+        --jq "[.document.items[]? | select(.producerSeed) | .producerSeed] | .[$seed_index - 1] // null") ||
+        pass_through "$seed" $?
+    [ "$seed" != "null" ] || refuse PRODUCER_SEED_UNAVAILABLE
+    request=$(printf '{"request":{"type":"RUN","source":{"type":"IMPACT","seeds":[%s],"declarations":[],"domain":{"type":"WORKSPACE"},"flow":"%s","models":[]},"steps":[],"terminalStep":{"type":"EMIT","output":{"type":"VALUE_PATHS"}},"retention":"RETAIN","executionBudget":{"maxReturnedBytes":%s}}}' "$seed" "$flow" "$BUDGET")
+    if output=$(printf '%s' "$request" | "$KAST" query --request - \
+        --jq '{type, status: .document.status, paths: (.document.items | length), result: .document.retention.reference}'); then
+        printf '%s\n' "$output"
+        return 0
+    else
+        status=$?
+    fi
+    # A qualified investigation retains its paths; summarize where they stopped.
+    # A rejection retains evidence under "evidence"; a qualified answer under "retention".
+    retained=$(printf '%s' "$output" | sed -n \
+        -e 's/.*"evidence":{"type":"RETAINED","result":"\(result:v1:[0-9a-f-]*\)".*/\1/p' \
+        -e 't' \
+        -e 's/.*"retention":{"kind":"retained","reference":"\(result:v1:[0-9a-f-]*\)".*/\1/p')
+    [ -n "$retained" ] || pass_through "$output" "$status"
+    # The findings of a qualified investigation are qualified too, so Kast prints them unprojected.
+    findings=$(printf '{"request":{"type":"READ_RESULT","result":"%s","output":{"type":"IMPACT_WITNESS","section":"FINDINGS"}}}' "$retained" |
+        "$KAST" query --request - --json) || true
+    frontiers=$(printf '%s' "$findings" |
+        grep -o '"terminal":{"type":"[A-Z_]*","cause":"[A-Z_]*"' |
+        sed 's/"terminal":{"type":"\([A-Z_]*\)","cause":"\([A-Z_]*\)"/\1:\2/' |
+        sort | uniq -c |
+        sed 's/^ *\([0-9][0-9]*\) \(.*\)$/{"frontier":"\2","count":\1}/' |
+        paste -s -d, -)
+    printf '{"type":"qualified","result":"%s","frontiers":[%s]}\n' "$retained" "$frontiers"
+    exit "$status"
+}
+
+[ "$#" -gt 0 ] || usage
+command=$1
+shift
+case "$command" in
+    verdict) cmd_verdict "$@" ;;
+    call-sites) cmd_call_sites "$@" ;;
+    impact) cmd_impact "$@" ;;
+    *) usage ;;
+esac
