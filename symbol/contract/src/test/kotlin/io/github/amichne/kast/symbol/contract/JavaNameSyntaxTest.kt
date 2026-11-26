@@ -1,4 +1,4 @@
-package io.github.amichne.kast.symbol.intellij
+package io.github.amichne.kast.symbol.contract
 
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
@@ -6,7 +6,7 @@ import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 
 /** Which Java member names Kotlin source can reach only by the name itself. */
-class JavaLibraryNameSyntaxTest {
+class JavaNameSyntaxTest {
     @Test
     fun `plain method, field and class names have only their own syntax`() {
         for (name in

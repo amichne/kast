@@ -22,6 +22,7 @@ import io.github.amichne.kast.workspace.contract.CanonicalWorkspaceRoot
 import io.github.amichne.kast.workspace.intellij.read.IntellijReadCall
 import io.github.amichne.kast.workspace.intellij.read.IntellijReadObservation
 import io.github.amichne.kast.workspace.intellij.read.call
+import io.github.amichne.kast.workspace.intellij.read.declarationLeafAt
 import io.github.amichne.kast.workspace.intellij.read.localIdentityAdmitted
 import io.github.amichne.kast.workspace.intellij.read.localIdentityRejected
 import io.github.amichne.kast.workspace.intellij.read.observedAnalyze
@@ -73,7 +74,7 @@ internal class IntellijK2RelationProjection(
         val candidates =
             generateSequence(
                     observation.call(IntellijReadCall.PSI_FIND_ELEMENT) {
-                        psiFile.findElementAt(subject.range.startInclusive)
+                        psiFile.declarationLeafAt(subject.range.startInclusive)
                     }
                 ) {
                     it.parent

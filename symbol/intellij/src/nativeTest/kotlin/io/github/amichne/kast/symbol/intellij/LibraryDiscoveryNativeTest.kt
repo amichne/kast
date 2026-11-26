@@ -15,6 +15,8 @@ import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.kernel.ResourceBudget
 import io.github.amichne.kast.kernel.ResultLimit
 import io.github.amichne.kast.kernel.WorkUnitLimit
+import io.github.amichne.kast.symbol.contract.CompilerSymbolKind
+import io.github.amichne.kast.symbol.contract.SymbolDiscoveryBatch
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryBudget
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryByteLimit
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryCandidateLocation
@@ -28,6 +30,7 @@ import io.github.amichne.kast.symbol.contract.SymbolDiscoveryPackageConstraint
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryPattern
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryQualification
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryRequest
+import io.github.amichne.kast.symbol.contract.SymbolDiscoverySelection
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryTarget
 import io.github.amichne.kast.symbol.contract.SymbolGeneratedSourcePolicy
 import io.github.amichne.kast.symbol.contract.SymbolLibraryPolicy
@@ -76,15 +79,25 @@ class LibraryDiscoveryNativeTest : HeavyPlatformTestCase() {
     }
 
     fun testCompiledJavaMembersReachableOnlyByTheirNameAreSelected() {
-        for ((owner, name) in listOf("java.io" to "File", "java.io" to "mkdirs", "java.io" to "separatorChar")) {
-            val outcome = discover(owner, name)
-            assertTrue("$owner $name: $outcome", outcome is SymbolDiscoveryOutcome.Complete)
-            val candidates = outcome.batch().candidates
-            assertTrue("$owner $name selected nothing", candidates.isNotEmpty())
-            for (candidate in candidates) {
+        val expected =
+            mapOf(
+                "File" to CompilerSymbolKind.CLASSLIKE,
+                "mkdirs" to CompilerSymbolKind.FUNCTION,
+                "separatorChar" to CompilerSymbolKind.PROPERTY,
+            )
+        for ((name, kind) in expected) {
+            val discovered = discoverWithScope("java.io", name)
+            val outcome = discovered.outcome
+            assertTrue("$name: $outcome", outcome is SymbolDiscoveryOutcome.Complete)
+            val batch = outcome.batch()
+            assertTrue("$name selected nothing", batch.candidates.isNotEmpty())
+            for (candidate in batch.candidates) {
                 val file = (candidate.location as SymbolDiscoveryCandidateLocation.Declaration).file
-                assertTrue("$owner $name: $file", file is SymbolDiscoveryFileIdentity.External)
+                assertTrue("$name: $file", file is SymbolDiscoveryFileIdentity.External)
             }
+            // A selected candidate must also resolve to its compiler identity, which a relation subject needs.
+            val kinds = selectedKinds(discovered.scope, batch)
+            assertEquals(name, setOf(kind), kinds.toSet())
         }
     }
 
@@ -101,24 +114,51 @@ class LibraryDiscoveryNativeTest : HeavyPlatformTestCase() {
         }
     }
 
-    private fun discover(owner: String, name: String): SymbolDiscoveryOutcome {
+    private fun discover(owner: String, name: String): SymbolDiscoveryOutcome = discoverWithScope(owner, name).outcome
+
+    private class Discovered(val outcome: SymbolDiscoveryOutcome, val scope: CompiledIntellijSearchScope)
+
+    private fun discoverWithScope(owner: String, name: String): Discovered {
         prepare()
-        lateinit var outcome: SymbolDiscoveryOutcome
+        lateinit var discovered: Discovered
         ApplicationManager.getApplication().runReadAction {
             val request = request(owner, name)
             val compiled =
                 IntellijSearchScopeCompiler(request.constraints).compile(project, request.scope, model(request))
             assertTrue(compiled.toString(), compiled is IntellijSearchScopeCompilation.Compiled)
+            val scope = (compiled as IntellijSearchScopeCompilation.Compiled).capability
             val execution =
                 IntellijNativeDiscoveryQuery(
                         environmentState = { project.discoveryEnvironmentState() },
                         cancellationCheck = {},
                     )
-                    .discoverNative(project, (compiled as IntellijSearchScopeCompilation.Compiled).capability, request)
+                    .discoverNative(project, scope, request)
             assertTrue(execution.toString(), execution is IntellijNativeDiscoveryExecution.Produced)
-            outcome = (execution as IntellijNativeDiscoveryExecution.Produced).outcome
+            discovered = Discovered((execution as IntellijNativeDiscoveryExecution.Produced).outcome, scope)
         }
-        return outcome
+        return discovered
+    }
+
+    private fun selectedKinds(
+        scope: CompiledIntellijSearchScope,
+        batch: SymbolDiscoveryBatch,
+    ): List<CompilerSymbolKind> {
+        val query =
+            IntellijSymbolSelectorQuery(
+                lookup = IntellijKotlinCompilerSymbolLookup(IntellijPsiExactDeclarationLookup(project)),
+                environmentState = { project.discoveryEnvironmentState() },
+                cancellationCheck = {},
+            )
+        val kinds = mutableListOf<CompilerSymbolKind>()
+        ApplicationManager.getApplication().runReadAction {
+            for (ordinal in batch.candidates.indices) {
+                val selection = SymbolDiscoverySelection.select(batch, ordinal).refined()
+                val resolved = query.resolve(scope, selection)
+                assertTrue(resolved.toString(), resolved is IntellijSymbolSelectorResolution.Resolved)
+                kinds += (resolved as IntellijSymbolSelectorResolution.Resolved).selector.kind
+            }
+        }
+        return kinds
     }
 
     private fun prepare() {

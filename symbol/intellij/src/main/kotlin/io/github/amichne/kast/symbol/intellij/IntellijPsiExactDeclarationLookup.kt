@@ -21,6 +21,7 @@ import io.github.amichne.kast.symbol.contract.SymbolSelector
 import io.github.amichne.kast.workspace.intellij.read.IntellijReadCall
 import io.github.amichne.kast.workspace.intellij.read.IntellijReadObservation
 import io.github.amichne.kast.workspace.intellij.read.call
+import io.github.amichne.kast.workspace.intellij.read.declarationLeafAt
 import java.nio.file.Path
 
 internal data class IntellijExactDeclarationLookupKey(
@@ -124,7 +125,7 @@ internal class IntellijPsiExactDeclarationLookup(
                 return liveRejected(IntellijExactDeclarationLookupRejection.UNSUPPORTED_DECLARATION)
         }
         val leaf =
-            observation.call(IntellijReadCall.PSI_FIND_ELEMENT) { psiFile.findElementAt(key.offset.value) }
+            observation.call(IntellijReadCall.PSI_FIND_ELEMENT) { psiFile.declarationLeafAt(key.offset.value) }
                 ?: return liveRejected(IntellijExactDeclarationLookupRejection.STALE_LOCATION)
         return findExactDeclarationAncestor(leaf, key)
     }
