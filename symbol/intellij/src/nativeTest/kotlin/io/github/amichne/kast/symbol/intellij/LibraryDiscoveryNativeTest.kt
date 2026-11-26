@@ -50,6 +50,14 @@ class LibraryDiscoveryNativeTest : HeavyPlatformTestCase() {
 
     override fun runInDispatchThread() = false
 
+    override fun setUpProject() {
+        super.setUpProject()
+        // The class-file mirror of a selected Java member can initialize this application-lifetime service.
+        com.intellij.codeInsight.ExternalAnnotationsManager.getInstance(
+            com.intellij.openapi.project.ProjectManager.getInstance().defaultProject
+        )
+    }
+
     fun testExactNameSelectsEveryCompiledKotlinOverload() {
         val outcome = discover("kotlin.collections", "listOfNotNull")
         assertTrue(outcome.toString(), outcome is SymbolDiscoveryOutcome.Complete)
@@ -67,8 +75,22 @@ class LibraryDiscoveryNativeTest : HeavyPlatformTestCase() {
         assertEquals(0, outcome.batch().candidates.size)
     }
 
-    fun testCompiledJavaDeclarationsLeaveTheSearchIncomplete() {
-        for ((owner, name) in listOf("java.io" to "File", "java.io" to "getName", "java.io" to "separatorChar")) {
+    fun testCompiledJavaMembersReachableOnlyByTheirNameAreSelected() {
+        for ((owner, name) in listOf("java.io" to "File", "java.io" to "mkdirs", "java.io" to "separatorChar")) {
+            val outcome = discover(owner, name)
+            assertTrue("$owner $name: $outcome", outcome is SymbolDiscoveryOutcome.Complete)
+            val candidates = outcome.batch().candidates
+            assertTrue("$owner $name selected nothing", candidates.isNotEmpty())
+            for (candidate in candidates) {
+                val file = (candidate.location as SymbolDiscoveryCandidateLocation.Declaration).file
+                assertTrue("$owner $name: $file", file is SymbolDiscoveryFileIdentity.External)
+            }
+        }
+    }
+
+    fun testCompiledJavaNamesWithOtherKotlinSyntaxLeaveTheSearchIncomplete() {
+        // An accessor, the property name Kotlin writes for an accessor, and a convention name.
+        for ((owner, name) in listOf("java.io" to "getName", "java.io" to "name", "java.io" to "compareTo")) {
             val outcome = discover(owner, name)
             assertTrue("$owner $name: $outcome", outcome is SymbolDiscoveryOutcome.Qualified)
             assertEquals(

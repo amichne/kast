@@ -29,7 +29,13 @@ internal fun collectExactJavaDeclarations(
     if (target !is SymbolDiscoveryTarget.Name || target.match != SymbolDiscoveryMatch.EXACT_NAME) return true
     val name = target.pattern.value
     val kinds = request.requestedDeclarationKinds()
-    val javaScope = GlobalSearchScope.getScopeRestrictedByFileTypes(scope, JavaFileType.INSTANCE)
+    // A library search also selects compiled Java members that Kotlin can reach only by their own name.
+    val compiled =
+        request.scope.scope.libraryPolicy() == SymbolLibraryPolicy.INCLUDE && javaNameHasOnlyItsOwnKotlinSyntax(name)
+    val javaScope =
+        if (compiled)
+            GlobalSearchScope.getScopeRestrictedByFileTypes(scope, JavaFileType.INSTANCE, JavaClassFileType.INSTANCE)
+        else GlobalSearchScope.getScopeRestrictedByFileTypes(scope, JavaFileType.INSTANCE)
     fun admit(member: PsiMember): Boolean {
         val membership = request.constraints.packageName.admitPackage(member::indexedPackage)
         return membership == IntellijDiscoveryItemAdmission.FILTERED || accept(member)
@@ -62,9 +68,60 @@ private fun PsiField.selectionFamily(): CompilerSymbolKind =
     if (this is PsiEnumConstant) CompilerSymbolKind.CLASSLIKE else CompilerSymbolKind.PROPERTY
 
 /**
- * A compiled Java declaration cannot be selected, because Kotlin property and operator syntax can use it by name. Its
- * presence in the requested package therefore leaves a library search incomplete rather than empty. Kotlin class files
- * have no Java stubs, so this index never reports a Kotlin declaration.
+ * Kotlin names a Java member by other syntax in two cases. An accessor (`getX`, `isX`, `setX`) reads as the property
+ * `x`. A convention name (`plus`, `get`, `invoke`, `componentN`, ...) also answers an operator or delegate. Every other
+ * Java member name appears in Kotlin source only as itself, so selecting it by that name misses no use.
+ */
+internal fun javaNameHasOnlyItsOwnKotlinSyntax(name: String): Boolean =
+    !name.isJavaAccessorShaped() && name !in KOTLIN_CONVENTION_NAMES && !COMPONENT_NAME.matches(name)
+
+private fun String.isJavaAccessorShaped(): Boolean =
+    listOf("get", "set", "is").any { prefix ->
+        length > prefix.length && startsWith(prefix) && this[prefix.length].isUpperCase()
+    }
+
+private val COMPONENT_NAME = Regex("component[1-9][0-9]*")
+
+private val KOTLIN_CONVENTION_NAMES =
+    setOf(
+        "plus",
+        "minus",
+        "times",
+        "div",
+        "rem",
+        "mod",
+        "rangeTo",
+        "rangeUntil",
+        "unaryPlus",
+        "unaryMinus",
+        "not",
+        "inc",
+        "dec",
+        "contains",
+        "get",
+        "set",
+        "invoke",
+        "compareTo",
+        "equals",
+        "iterator",
+        "next",
+        "hasNext",
+        "plusAssign",
+        "minusAssign",
+        "timesAssign",
+        "divAssign",
+        "remAssign",
+        "modAssign",
+        "getValue",
+        "setValue",
+        "provideDelegate",
+    )
+
+/**
+ * A compiled Java declaration that Kotlin can name through other syntax cannot be selected by its own name. Its
+ * presence in the requested package therefore leaves a library search incomplete rather than empty. A Java accessor
+ * whose Kotlin property name is the requested name does the same, because Kotlin source writes that name for it. Kotlin
+ * class files have no Java stubs, so these indexes never report a Kotlin declaration.
  */
 internal fun hasUnselectableJavaDeclaration(
     project: Project,
@@ -78,16 +135,59 @@ internal fun hasUnselectableJavaDeclaration(
     fun excluded(member: PsiMember): Boolean =
         request.constraints.packageName.admitPackage(member::indexedPackage) == IntellijDiscoveryItemAdmission.FILTERED
     val index = StubIndex.getInstance()
-    return !(index.processElements(
-        JavaStubIndexKeys.CLASS_SHORT_NAMES,
-        name,
-        project,
-        compiled,
-        PsiClass::class.java,
-        ::excluded,
-    ) &&
-        index.processElements(JavaStubIndexKeys.METHODS, name, project, compiled, PsiMethod::class.java, ::excluded) &&
-        index.processElements(JavaStubIndexKeys.FIELDS, name, project, compiled, PsiField::class.java, ::excluded))
+    fun present(key: String): Boolean =
+        !(index.processElements(
+            JavaStubIndexKeys.CLASS_SHORT_NAMES,
+            key,
+            project,
+            compiled,
+            PsiClass::class.java,
+            ::excluded,
+        ) &&
+            index.processElements(
+                JavaStubIndexKeys.METHODS,
+                key,
+                project,
+                compiled,
+                PsiMethod::class.java,
+                ::excluded,
+            ) &&
+            index.processElements(JavaStubIndexKeys.FIELDS, key, project, compiled, PsiField::class.java, ::excluded))
+    if (!javaNameHasOnlyItsOwnKotlinSyntax(name)) return present(name)
+    return accessorsNamedAsProperty(name).any { accessor ->
+        !index.processElements(
+            JavaStubIndexKeys.METHODS,
+            accessor,
+            project,
+            compiled,
+            PsiMethod::class.java,
+            ::excluded,
+        )
+    }
+}
+
+/**
+ * Every `getS` or `setS` that Kotlin reads as the property [name]. Kotlin decapitalizes `S` smartly, so `getURL` reads
+ * as `url` and `getURLConnection` as `urlConnection`. An `isS` accessor keeps its own name and is accessor-shaped
+ * already. A name that starts with an upper-case letter is never a synthetic property name.
+ */
+internal fun accessorsNamedAsProperty(name: String): List<String> {
+    if (name.isEmpty() || !name[0].isLowerCase()) return emptyList()
+    val suffixes =
+        (1..name.length)
+            .map { length -> name.take(length).uppercase() + name.drop(length) }
+            .filter { it.decapitalizeSmart() == name }
+            .distinct()
+    return suffixes.flatMap { listOf("get$it", "set$it") }
+}
+
+/** Kotlin's synthetic property name rule: lower the leading upper-case run, except a last capital before lower case. */
+private fun String.decapitalizeSmart(): String {
+    if (isEmpty() || !this[0].isUpperCase()) return this
+    if (length == 1 || !this[1].isUpperCase()) return this[0].lowercaseChar() + substring(1)
+    val run = indexOfFirst { !it.isUpperCase() }.let { if (it < 0) length else it }
+    if (run == length) return lowercase()
+    return substring(0, run - 1).lowercase() + substring(run - 1)
 }
 
 /** The outer class stub supplies its package without a package PSI read inside an index callback. */
