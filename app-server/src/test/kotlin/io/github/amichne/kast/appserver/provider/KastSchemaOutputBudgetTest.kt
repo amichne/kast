@@ -1,6 +1,5 @@
 package io.github.amichne.kast.appserver.provider
 
-import io.github.amichne.kast.appserver.BrokerOperationalLimits
 import io.github.amichne.kast.appserver.core.CanonicalBrokerDirectory
 import io.github.amichne.kast.kernel.Refinement
 import java.nio.file.Files
@@ -12,9 +11,12 @@ import org.junit.jupiter.api.Assertions.assertInstanceOf
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
 
+/** The Kast schema is no longer size-limited; the process executor keeps its own combined output limit. */
 class KastSchemaOutputBudgetTest {
+    private val limit = 1_024 * 1_024
+
     @Test
-    fun `schema output admits larger contracts while retaining the combined stream boundary`(@TempDir root: Path) =
+    fun `process output up to its limit completes and one byte more on either stream rejects`(@TempDir root: Path) =
         runBlocking {
             val executable = root.resolve("schema-output")
             Files.writeString(
@@ -30,19 +32,19 @@ class KastSchemaOutputBudgetTest {
                         executable = (BrokerExecutable.admit(executable) as Refinement.Refined).value,
                         arguments = listOf(output.toString(), if (extra) "extra" else "quiet"),
                         workingDirectory = checkNotNull(CanonicalBrokerDirectory.admit(root.toRealPath())),
-                        maximumOutputBytes = BrokerOperationalLimits.maximumKastSchemaBytes,
+                        maximumOutputBytes = limit,
                         timeoutMillis = 5_000,
                     ) as Refinement.Refined
                 return JdkBrokerProcessExecutor.execute(request.value)
             }
-            for (size in listOf(600 * 1_024, BrokerOperationalLimits.maximumKastSchemaBytes)) {
+            for (size in listOf(600 * 1_024, limit)) {
                 val result = assertInstanceOf(BrokerProcessExecution.Completed::class.java, execute(size, false))
                 assertEquals(0, result.exitCode)
                 assertEquals(size, result.stdout.length)
                 assertEquals("", result.stderr)
             }
             for (extra in listOf(false, true)) {
-                val size = BrokerOperationalLimits.maximumKastSchemaBytes + if (extra) 0 else 1
+                val size = limit + if (extra) 0 else 1
                 assertEquals(
                     BrokerProcessExecution.Rejected(BrokerProcessFailure.OUTPUT_LIMIT),
                     execute(size, extra),

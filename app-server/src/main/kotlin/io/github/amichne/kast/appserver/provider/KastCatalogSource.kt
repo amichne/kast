@@ -1,6 +1,5 @@
 package io.github.amichne.kast.appserver.provider
 
-import io.github.amichne.kast.appserver.BrokerOperationalLimits
 import io.github.amichne.kast.kernel.Refinement
 import java.io.IOException
 import java.nio.ByteBuffer
@@ -21,21 +20,15 @@ internal class PackagedKastCatalog(private val path: Path) : KastCatalogSource {
             if (!Files.isRegularFile(path, NOFOLLOW_LINKS)) {
                 Refinement.Rejected(KastQualificationFailure.SCHEMA_UNAVAILABLE)
             } else {
-                val bytes =
-                    Files.newInputStream(path, NOFOLLOW_LINKS).use {
-                        it.readNBytes(BrokerOperationalLimits.maximumKastSchemaBytes + 1)
-                    }
-                if (bytes.size > BrokerOperationalLimits.maximumKastSchemaBytes) {
-                    Refinement.Rejected(KastQualificationFailure.SCHEMA_SIZE_LIMIT)
-                } else {
-                    val text =
-                        StandardCharsets.UTF_8.newDecoder()
-                            .onMalformedInput(CodingErrorAction.REPORT)
-                            .onUnmappableCharacter(CodingErrorAction.REPORT)
-                            .decode(ByteBuffer.wrap(bytes))
-                            .toString()
-                    Refinement.Refined(text)
-                }
+                // The packaged contract ships with this installation; its size is not an admission decision.
+                val bytes = Files.newInputStream(path, NOFOLLOW_LINKS).use { it.readAllBytes() }
+                val text =
+                    StandardCharsets.UTF_8.newDecoder()
+                        .onMalformedInput(CodingErrorAction.REPORT)
+                        .onUnmappableCharacter(CodingErrorAction.REPORT)
+                        .decode(ByteBuffer.wrap(bytes))
+                        .toString()
+                Refinement.Refined(text)
             }
         } catch (_: java.nio.charset.CharacterCodingException) {
             Refinement.Rejected(KastQualificationFailure.SCHEMA_INVALID)

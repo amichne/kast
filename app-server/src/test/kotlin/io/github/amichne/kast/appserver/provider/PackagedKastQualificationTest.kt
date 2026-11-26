@@ -32,7 +32,7 @@ class PackagedKastQualificationTest {
     }
 
     @Test
-    fun `packaged catalog bounds bytes and rejects absent symlink and invalid UTF8`(@TempDir root: Path) {
+    fun `packaged catalog reads in full and rejects absent symlink and invalid UTF8`(@TempDir root: Path) {
         val catalog = root.resolve("catalog.json")
         val source = PackagedKastCatalog(catalog)
         assertEquals(Refinement.Rejected(KastQualificationFailure.SCHEMA_UNAVAILABLE), source.read())
@@ -45,10 +45,9 @@ class PackagedKastQualificationTest {
         Files.delete(catalog)
         Files.write(catalog, byteArrayOf(0xc3.toByte(), 0x28))
         assertEquals(Refinement.Rejected(KastQualificationFailure.SCHEMA_INVALID), source.read())
-        val maximum = io.github.amichne.kast.appserver.BrokerOperationalLimits.maximumKastSchemaBytes
-        Files.writeString(catalog, " ".repeat(maximum))
-        assertEquals(maximum, (source.read() as Refinement.Refined).value.length)
-        Files.writeString(catalog, " ".repeat(maximum + 1))
-        assertEquals(Refinement.Rejected(KastQualificationFailure.SCHEMA_SIZE_LIMIT), source.read())
+        // Larger than the former 1 MiB schema cap: a packaged contract is read in full.
+        val large = 2 * 1_024 * 1_024 + 1
+        Files.writeString(catalog, " ".repeat(large))
+        assertEquals(large, (source.read() as Refinement.Refined).value.length)
     }
 }
