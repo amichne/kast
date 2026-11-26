@@ -99,6 +99,12 @@ abstract class GenerateAgentToolsTask : DefaultTask() {
             val composition = if (withMcp) output.resolve("compositions/mcp") else output
             val plugin = composition.resolve("plugins/kast")
             source.copyRecursively(plugin, overwrite = false)
+            // copyRecursively drops modes; a shipped skill command must stay executable in the plugin and its export.
+            source.walkTopDown().filter { it.isFile && it.canExecute() }.forEach { executable ->
+                check(plugin.resolve(executable.relativeTo(source)).setExecutable(true, false)) {
+                    "agent plugin could not keep ${executable.relativeTo(source)} executable"
+                }
+            }
             plugin.resolve(skillPath).writeText(versionedSkill)
             plugin.resolve("hooks/session_start.py").delete()
             plugin.resolve("hooks/session_start.py.lock").delete()

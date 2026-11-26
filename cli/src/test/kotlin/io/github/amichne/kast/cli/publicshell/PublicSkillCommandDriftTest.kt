@@ -27,9 +27,6 @@ class PublicSkillCommandDriftTest {
             "exact_ref" to "exact:v5:AAAAAAAAAAAAAAAAAAAAAA",
             "result" to "result:v1:11111111-1111-1111-1111-111111111111",
             "next_cursor" to "1",
-            "verdict" to ".",
-            "handle" to ".",
-            "uses" to ".",
             "A" to "exact:v5:AAAAAAAAAAAAAAAAAAAAAA",
             "B" to "exact:v5:AAAAAAAAAAAAAAAAAAAAAQ",
             "callersA" to "result:v1:22222222-2222-2222-2222-222222222222",
@@ -90,10 +87,25 @@ class PublicSkillCommandDriftTest {
             .findAll(markdown)
             .flatMap { block -> block.groupValues[1].replace("\\\n", " ").lines() }
             .map(String::trim)
-            .filter { it.startsWith("kast ") }
-            .map { shellWords(it).drop(1) }
+            .mapNotNull(::kastArguments)
             .filter { it.firstOrNull() in setOf("query", "source", "result", "diagnostic", "describe") }
             .toList()
+
+    /**
+     * The arguments that reach the shipped CLI. `kast-recipe verdict` forwards its flags to `kast query`;
+     * `kast-recipe call-sites --ref R` runs a references query with the forwarded relation scope.
+     */
+    private fun kastArguments(line: String): List<String>? =
+        when {
+            line.startsWith("kast ") -> shellWords(line).drop(1)
+            line.startsWith("$RECIPE verdict ") -> listOf("query") + shellWords(line).drop(2)
+            line.startsWith("$RECIPE call-sites ") -> {
+                val forwarded = shellWords(line).drop(2)
+                listOf("query") + forwarded.take(2) + listOf("--relation", "references", "--output", "occurrences") +
+                    forwarded.drop(2)
+            }
+            else -> null
+        }
 
     /** Sufficient for the guidance's quoting: bare words, single quotes, and double quotes around one variable. */
     private fun shellWords(line: String): List<String> {
@@ -137,4 +149,8 @@ class PublicSkillCommandDriftTest {
         Regex("""\$(\w+)""").replace(quoted) { match ->
             checkNotNull(placeholders[match.groupValues[1]]) { "unknown guidance variable in: $line" }
         }
+
+    private companion object {
+        const val RECIPE = "scripts/kast-recipe"
+    }
 }

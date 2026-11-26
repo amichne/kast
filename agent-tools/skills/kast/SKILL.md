@@ -41,31 +41,24 @@ Source text alone cannot decide that last kind of question. Query Kast before yo
 
 Skip Kast for file content, a literal, or an edit in a known file. A Kast call costs more tokens than a read.
 
-## Set up the verdict filter
+## Run queries through `kast-recipe`
 
-Run commands from the workspace root, or add `--workspace /absolute/root`. Set this filter once:
-
-```sh
-verdict='{type, status: .document.status, exhaustive: .document.coverage.exhaustive,
-  failures: .document.original_evidence_summary.failure_count,
-  omissions: .document.original_evidence_summary.omission_count,
-  total: (.document.row_window.total // (.document.items | length)),
-  rows: .document.row_window.type, next_cursor: .document.next_cursor,
-  result: .document.retention.reference,
-  items: [.document.items[]? |
-    if .type == "exact-symbol" then {name, signature, ref, file: .location.file} else . end]}'
-```
-
-For a retained set, project the verdict without its rows:
+`scripts/kast-recipe` ships in this skill's directory. It runs Kast, reads every result page, and prints one JSON document.
+Run it from the workspace root. It needs only the installed `kast` command.
 
 ```sh
-handle='{type, status: .document.status, exhaustive: .document.coverage.exhaustive,
-  failures: .document.original_evidence_summary.failure_count,
-  omissions: .document.original_evidence_summary.omission_count,
-  result: .document.retention.reference}'
+scripts/kast-recipe verdict --name OrderService --in services/orders --source-set main --kind class \
+  --fields name,signature,location
 ```
 
-A result is **complete** only when `type` and `status` are `complete`, `exhaustive` is `true`, and both counts are `0`.
+Pass ordinary `kast query` flags. The command adds `--retain`, `--jq`, and a large return budget, so do not pass them.
+Its output has three parts:
+
+- `verdict` holds `type`, `status`, `exhaustive`, `failures`, `omissions`, `total`, `excluded_callback_calls`, and `evidence_complete`.
+- `result` is the retained result. Pass it to `--from` or to a set stage.
+- `items` holds every row, read from every page.
+
+A result is **complete** only when `type` and `status` are `complete`, `exhaustive` is `true`, both counts are `0`, and `evidence_complete` is `true`.
 Match the strength of each claim to the verdict:
 
 | Verdict | Claim |
@@ -74,9 +67,7 @@ Match the strength of each claim to the verdict:
 | Complete and empty | "None exist in this scope, under static compiler resolution." |
 | Qualified or rejected | "At least these." Report the omissions and failures. Never claim absence. |
 
-`rows` set to `MORE` means that more rows exist. The query still reports `complete`.
-`total` counts every row of the query, not only this page. Do not read pages to count rows.
-Read the next page with `kast result read`. Use the original output kind for every page.
+A Kast rejection prints its document unchanged with Kast's status. A refusal by the recipe prints `recipe_rejected` and its reason.
 Never repeat a query to recover output.
 
 ## Select exactly
@@ -84,8 +75,8 @@ Never repeat a query to recover output.
 Put each known constraint on the first call:
 
 ```sh
-kast query --name OrderService --in services/orders --source-set main --kind class \
-  --fields name,signature,location --jq "$verdict"
+scripts/kast-recipe verdict --name OrderService --in services/orders --source-set main --kind class \
+  --fields name,signature,location
 ```
 
 Select one row by its file and signature, then copy its `ref` unchanged.
@@ -99,23 +90,34 @@ An absolute path is a file outside the workspace, such as a library.
 Follow relations from an exact declaration. Each `--relation` adds one hop, in the order given:
 
 ```sh
-kast query --ref "$ref" --relation callers --jq "$verdict"
-kast query --ref "$ref" --relation implementations --relation callers --jq "$verdict"
+scripts/kast-recipe verdict --ref "$ref" --relation callers
+scripts/kast-recipe verdict --ref "$ref" --relation implementations --relation callers
 ```
 
 Relations are `references`, `callers`, `callees`, `implementations`, `inheritors`, `overrides`, and `type-uses`.
 
+A `callers` row names a calling declaration. It is not a call site.
+A call inside a lambda passed to a non-inline parameter runs later, so Kast does not count its enclosing function as a caller.
+`excluded_callback_calls` counts those calls. When it is above `0`, the rows leave that many calls out.
+To list call sites, use `call-sites`:
+
+```sh
+scripts/kast-recipe call-sites --ref "$ref" --relation-in core/src/main/kotlin
+```
+
+Each site has its `file`, `line`, and `context`. Kast supplies the line. The command drops documentation links and counts them in `documentation_links`.
+The scope flags are `--relation-in`, `--relation-source-set`, `--relation-production-only`, and `--relation-exclude-generated`.
+
 ## Build a working set
 
-Add `--retain` to keep a result for later stages. Record each `result` reference with the question that it answers.
+Every `verdict` keeps its result. Record each `result` reference with the question that it answers.
 A retained result holds every row of the investigation, not only the presented page.
 It is immutable. Later stages reuse it without semantic work.
 
 Start a pipeline from a retained result with `--from`, or enumerate a scope with `--all`:
 
 ```sh
-kast query --all --kind function --in services/orders --source-set main --visibility public \
-  --retain --jq "$handle"
+scripts/kast-recipe verdict --all --kind function --in services/orders --source-set main --visibility public
 ```
 
 Pipeline flags apply in the order that you write them:
@@ -153,8 +155,8 @@ Each recipe states its claim. Report the claim only when every result in the rec
 
 ```sh
 # Save .result as callersA.
-kast query --ref "$A" --relation callers --retain --jq "$handle"
-kast query --ref "$B" --relation callers --intersect "$callersA" --jq "$verdict"
+scripts/kast-recipe verdict --ref "$A" --relation callers
+scripts/kast-recipe verdict --ref "$B" --relation callers --intersect "$callersA"
 ```
 
 **A module boundary: nothing in `app/` uses `legacy/`:**
@@ -163,28 +165,10 @@ Seed every declaration kind in `legacy/`. Do not add `--kind`.
 `callers` on a class finds its constructions, so a function-only seed misses `LegacyClient()`.
 
 Read occurrences, not symbols. A symbol row needs a declaration owner, so an import-only use has no symbol row.
-Project each use site with this filter:
 
 ```sh
-uses='{type, status: .document.status, exhaustive: .document.coverage.exhaustive,
-  failures: .document.original_evidence_summary.failure_count,
-  omissions: .document.original_evidence_summary.omission_count,
-  total: (.document.row_window.total // (.document.items | length)),
-  rows: .document.row_window.type, next_cursor: .document.next_cursor,
-  result: .document.retention.reference,
-  items: [.document.items[]? | {target: .occurrence.target.qualifiedIdentity,
-    file: .occurrence.occurrence.file, context: .occurrence.context}]}'
-```
-
-```sh
-kast query --all --in legacy --source-set main --relation references \
-  --relation-in app --relation-source-set main --output occurrences --retain --jq "$uses"
-```
-
-If `rows` is `MORE`, use the returned `result` and `next_cursor` to read the next page.
-
-```sh
-kast result read --ref "$result" --cursor "$next_cursor" --output occurrences --jq "$uses"
+scripts/kast-recipe verdict --all --in legacy --source-set main --relation references \
+  --relation-in app --relation-source-set main --output occurrences
 ```
 
 Each row names the `legacy/` target, the `app/` file, and the context: `CODE`, `TYPE`, or `IMPORT`.
@@ -199,10 +183,9 @@ Reflection, dependency injection, and other uses outside static resolution stay 
 
 ```sh
 # Save .result as tested.
-kast query --all --kind function --in services/orders --source-set test \
-  --relation callees --retain --jq "$handle"
-kast query --all --kind function --in services/orders --source-set main --visibility public \
-  --without "$tested" --jq "$verdict"
+scripts/kast-recipe verdict --all --kind function --in services/orders --source-set test --relation callees
+scripts/kast-recipe verdict --all --kind function --in services/orders --source-set main --visibility public \
+  --without "$tested"
 ```
 
 This proves direct test calls to functions only. Constructors and properties stay outside the claim.
@@ -212,7 +195,7 @@ Indirect calls, reflection, and framework entry points also stay outside it.
 **Blast radius before an edit, then compiler verification after it:**
 
 ```sh
-kast query --ref "$ref" --terminal trace --jq "$verdict"
+scripts/kast-recipe verdict --ref "$ref" --terminal trace
 ```
 
 `TRACE` collects references, implementations or overrides, direct callers, and one more caller layer.
@@ -229,8 +212,8 @@ Report the diagnostics and their coverage. An incomplete empty diagnostic result
 **How many times is `A` used, and by how many functions:**
 
 ```sh
-kast query --ref "$A" --relation references --output occurrences --max-results 1 --jq "$uses"
-kast query --request owners.json --jq "$verdict"
+scripts/kast-recipe verdict --ref "$A" --relation references --output occurrences
+scripts/kast-recipe verdict --request owners.json
 ```
 
 Write `owners.json` with the ref of `A`:
@@ -238,18 +221,19 @@ Write `owners.json` with the ref of `A`:
 ```json
 {"request":{"type":"RUN","source":{"type":"SYMBOL_REFS","symbolRefs":["REF_OF_A"]},
   "steps":[{"type":"EXPAND_RELATION","relation":"REFERENCES"},{"type":"DISTINCT_SYMBOLS"}],
-  "executionBudget":{"maxResults":1},
+  "retention":"RETAIN",
   "terminalStep":{"type":"EMIT","output":{"type":"SYMBOLS","fields":["NAME"]}}}}
 ```
 
 The first `total` counts use sites. The second counts the declarations that own them.
+With `--request`, the document owns its retention and budget, so the recipe adds no flag.
 A plain `references` query emits one symbol row for each use, so its `total` counts uses.
 
 **Where does the workspace use a library declaration:**
 
 ```sh
-kast query --library kotlin.collections --name listOfNotNull --fields name,signature,location --jq "$verdict"
-kast query --ref "$ref" --relation references --output occurrences --jq "$uses"
+scripts/kast-recipe verdict --library kotlin.collections --name listOfNotNull --fields name,signature,location
+scripts/kast-recipe call-sites --ref "$ref"
 ```
 
 `--library` takes the exact declaring package. Each overload and each imported library version has its own row.
@@ -263,26 +247,20 @@ A library ref expires when the read basis moves. Select it again.
 
 ```sh
 kast describe query --section examples --jq '[.content[].value | select(.request.steps[0].type == "WALK")] | .[0]'
-kast query --request walk.json --jq "$verdict"
+scripts/kast-recipe verdict --request walk.json
 ```
 
 **Value flow from one invocation:** let Kast issue the seed. Never compute an offset or a range.
-Each Kotlin call in a `callers` result has a `producerSeed` with its enclosing ref, callable ref, and range:
 
 ```sh
-kast query --ref "$ref" --relation callers --output occurrences --retain \
-  --jq '[.document.items[] | select(.producerSeed) | {file: .relation.occurrence.file, producerSeed}]'
+scripts/kast-recipe impact --ref "$ref" --seed 1
 ```
 
-Copy one `producerSeed` unchanged into `source.seeds` of this request, then run it with `kast query --request impact.json`:
-
-```json
-{"request": {"type": "RUN", "source": {"type": "IMPACT", "seeds": [PRODUCER_SEED], "declarations": [],
-  "domain": {"type": "WORKSPACE"}, "flow": "KOTLIN_FORWARD_V1", "models": []},
-  "steps": [], "terminalStep": {"type": "EMIT", "output": {"type": "VALUE_PATHS"}}, "retention": "RETAIN"}}
-```
-
-A row without a `producerSeed` cannot start value flow. Report unresolved obligations as limits of the answer.
+The command takes the producer seed of the first Kotlin call to `$ref` from Kast's `callers` rows, unchanged, and runs `IMPACT`.
+Choose another call with `--seed N`. Add `--flow KOTLIN_JAVA_FORWARD_V2` to follow supported Java static methods.
+A complete run reports its path count and `result`.
+A qualified run reports its `result` and each `frontier` where paths stopped, with a count. Report those frontiers as limits of the answer.
+A call without a producer seed is refused with `PRODUCER_SEED_UNAVAILABLE`.
 
 ## Read source
 
