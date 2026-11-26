@@ -1,12 +1,10 @@
 package io.github.amichne.kast.symbol.contract
 
 /**
- * Kotlin names a Java member by other syntax in two cases. An accessor (`getX`, `isX`, `setX`) reads as the property
- * `x`. A convention name (`plus`, `get`, `invoke`, `componentN`, ...) also answers an operator or delegate. Every other
- * Java member name appears in Kotlin source only as itself, so a search for that name misses no use.
+ * Whether Kotlin also calls a function named [name] through operator or delegate syntax (`plus`, `get`, `invoke`,
+ * `componentN`, ...). Kotlin accepts a Java method with such a name as an operator without a modifier.
  */
-fun javaNameHasOnlyItsOwnKotlinSyntax(name: String): Boolean =
-    !name.isJavaAccessorShaped() && name !in KOTLIN_CONVENTION_NAMES && !COMPONENT_NAME.matches(name)
+fun isKotlinConventionName(name: String): Boolean = name in KOTLIN_CONVENTION_NAMES || COMPONENT_NAME.matches(name)
 
 /**
  * Every `getS` or `setS` that Kotlin reads as the property [name]. Kotlin decapitalizes `S` smartly, so `getURL` reads
@@ -22,11 +20,6 @@ fun accessorsNamedAsProperty(name: String): List<String> {
             .distinct()
     return suffixes.flatMap { listOf("get$it", "set$it") }
 }
-
-private fun String.isJavaAccessorShaped(): Boolean =
-    listOf("get", "set", "is").any { prefix ->
-        length > prefix.length && startsWith(prefix) && this[prefix.length].isUpperCase()
-    }
 
 /** Kotlin's synthetic property name rule: lower the leading upper-case run, except a last capital before lower case. */
 private fun String.decapitalizeSmart(): String {

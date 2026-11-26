@@ -18,7 +18,6 @@ import io.github.amichne.kast.symbol.contract.SymbolDiscoveryRequest
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryTarget
 import io.github.amichne.kast.symbol.contract.SymbolLibraryPolicy
 import io.github.amichne.kast.symbol.contract.accessorsNamedAsProperty
-import io.github.amichne.kast.symbol.contract.javaNameHasOnlyItsOwnKotlinSyntax
 
 /** Both exact-name routes feed source declarations into the same bounded admission and compiler projection. */
 internal fun collectExactJavaDeclarations(
@@ -31,7 +30,7 @@ internal fun collectExactJavaDeclarations(
     if (target !is SymbolDiscoveryTarget.Name || target.match != SymbolDiscoveryMatch.EXACT_NAME) return true
     val name = target.pattern.value
     val kinds = request.requestedDeclarationKinds()
-    val javaScope = javaSelectionScope(request, name, scope)
+    val javaScope = javaSelectionScope(request, scope)
     fun admit(member: PsiMember): Boolean {
         val membership = request.constraints.packageName.admitPackage(member::indexedPackage)
         return membership == IntellijDiscoveryItemAdmission.FILTERED || accept(member)
@@ -59,13 +58,9 @@ internal fun collectExactJavaDeclarations(
         }
 }
 
-/** A library search also selects compiled Java members that Kotlin can reach only by their own name. */
-private fun javaSelectionScope(
-    request: SymbolDiscoveryRequest,
-    name: String,
-    scope: GlobalSearchScope,
-): GlobalSearchScope =
-    if (request.scope.scope.libraryPolicy() == SymbolLibraryPolicy.INCLUDE && javaNameHasOnlyItsOwnKotlinSyntax(name))
+/** A library search also selects compiled Java declarations by their own name. */
+private fun javaSelectionScope(request: SymbolDiscoveryRequest, scope: GlobalSearchScope): GlobalSearchScope =
+    if (request.scope.scope.libraryPolicy() == SymbolLibraryPolicy.INCLUDE)
         GlobalSearchScope.getScopeRestrictedByFileTypes(scope, JavaFileType.INSTANCE, JavaClassFileType.INSTANCE)
     else GlobalSearchScope.getScopeRestrictedByFileTypes(scope, JavaFileType.INSTANCE)
 
@@ -74,10 +69,9 @@ private fun PsiField.selectionFamily(): CompilerSymbolKind =
     if (this is PsiEnumConstant) CompilerSymbolKind.CLASSLIKE else CompilerSymbolKind.PROPERTY
 
 /**
- * A compiled Java declaration that Kotlin can name through other syntax cannot be selected by its own name. Its
- * presence in the requested package therefore leaves a library search incomplete rather than empty. A Java accessor
- * whose Kotlin property name is the requested name does the same, because Kotlin source writes that name for it. Kotlin
- * class files have no Java stubs, so these indexes never report a Kotlin declaration.
+ * Kotlin source writes the property name for a Java accessor, and no declaration has that name. A compiled accessor
+ * that Kotlin reads as the requested name therefore leaves a library search incomplete rather than empty. Kotlin class
+ * files have no Java stubs, so this index never reports a Kotlin declaration.
  */
 internal fun hasUnselectableJavaDeclaration(
     project: Project,
@@ -91,25 +85,6 @@ internal fun hasUnselectableJavaDeclaration(
     fun excluded(member: PsiMember): Boolean =
         request.constraints.packageName.admitPackage(member::indexedPackage) == IntellijDiscoveryItemAdmission.FILTERED
     val index = StubIndex.getInstance()
-    fun present(key: String): Boolean =
-        !(index.processElements(
-            JavaStubIndexKeys.CLASS_SHORT_NAMES,
-            key,
-            project,
-            compiled,
-            PsiClass::class.java,
-            ::excluded,
-        ) &&
-            index.processElements(
-                JavaStubIndexKeys.METHODS,
-                key,
-                project,
-                compiled,
-                PsiMethod::class.java,
-                ::excluded,
-            ) &&
-            index.processElements(JavaStubIndexKeys.FIELDS, key, project, compiled, PsiField::class.java, ::excluded))
-    if (!javaNameHasOnlyItsOwnKotlinSyntax(name)) return present(name)
     return accessorsNamedAsProperty(name).any { accessor ->
         !index.processElements(
             JavaStubIndexKeys.METHODS,

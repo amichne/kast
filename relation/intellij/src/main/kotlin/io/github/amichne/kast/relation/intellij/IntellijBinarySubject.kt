@@ -1,22 +1,22 @@
 package io.github.amichne.kast.relation.intellij
 
+import com.intellij.psi.PsiCompiledElement
 import com.intellij.psi.PsiMember
 import com.intellij.psi.PsiNamedElement
 import io.github.amichne.kast.relation.contract.RelationMeaning
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryFileIdentity
-import io.github.amichne.kast.symbol.contract.javaNameHasOnlyItsOwnKotlinSyntax
 import org.jetbrains.kotlin.psi.KtFile
 import org.jetbrains.kotlin.psi.KtNamedDeclaration
 
 /**
- * A compiled declaration can be the subject of a source search. Its body was never source, so outgoing calls are unread
- * rather than absent. A compiled Java member is a subject only when Kotlin source can name it by nothing but its own
- * name. Kotlin property and operator syntax can use the other Java members without writing that name.
+ * A compiled Kotlin or Java declaration can be the subject of a source search. Its body was never source, so outgoing
+ * calls are unread rather than absent. Convention coverage qualifies the uses that Kotlin property and operator syntax
+ * can make without writing the subject's name.
  */
 internal fun IntellijRelationSubjectLookup.Found.admitBinary(meaning: RelationMeaning): IntellijRelationSubjectLookup =
     when {
         evidence.file is SymbolDiscoveryFileIdentity.Workspace -> this
-        !declaration.isSelectableBinary() ->
+        declaration !is KtNamedDeclaration && declaration !is PsiMember ->
             IntellijRelationSubjectLookup.Rejected(IntellijRelationSubjectFailure.UNSUPPORTED_SUBJECT)
         else ->
             when (meaning) {
@@ -31,11 +31,5 @@ internal fun IntellijRelationSubjectLookup.Found.admitBinary(meaning: RelationMe
             }
     }
 
-private fun PsiNamedElement.isSelectableBinary(): Boolean =
-    when (this) {
-        is KtNamedDeclaration -> true
-        is PsiMember -> name?.let(::javaNameHasOnlyItsOwnKotlinSyntax) == true
-        else -> false
-    }
-
-internal fun PsiNamedElement.isBinaryDeclaration(): Boolean = (containingFile as? KtFile)?.isCompiled == true
+internal fun PsiNamedElement.isBinaryDeclaration(): Boolean =
+    (containingFile as? KtFile)?.isCompiled == true || this is PsiCompiledElement

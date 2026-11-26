@@ -5,24 +5,12 @@ import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 
-/** Which Java member names Kotlin source can reach only by the name itself. */
+/** Which names Kotlin also reaches through operator syntax, and which accessors Kotlin reads as a property. */
 class JavaNameSyntaxTest {
     @Test
-    fun `plain method, field and class names have only their own syntax`() {
-        for (name in
-            listOf("sync", "mkdirs", "separatorChar", "File", "getaway", "issue", "settle", "g", "component")) {
-            assertTrue(javaNameHasOnlyItsOwnKotlinSyntax(name), name)
-        }
-    }
-
-    @Test
-    fun `accessors and convention names have other Kotlin syntax`() {
+    fun `operator and delegate names are conventions`() {
         for (name in
             listOf(
-                "getName",
-                "isFile",
-                "setReadable",
-                "getURL",
                 "plus",
                 "get",
                 "invoke",
@@ -35,7 +23,14 @@ class JavaNameSyntaxTest {
                 "component12",
                 "plusAssign",
             )) {
-            assertFalse(javaNameHasOnlyItsOwnKotlinSyntax(name), name)
+            assertTrue(isKotlinConventionName(name), name)
+        }
+    }
+
+    @Test
+    fun `other names are not conventions`() {
+        for (name in listOf("mkdirs", "getName", "component", "component0", "plusOne", "File", "")) {
+            assertFalse(isKotlinConventionName(name), name)
         }
     }
 

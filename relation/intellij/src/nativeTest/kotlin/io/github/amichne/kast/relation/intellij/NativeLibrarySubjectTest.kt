@@ -109,10 +109,23 @@ class NativeLibrarySubjectTest : NativeReferenceFixtureTest() {
         assertEquals(setOf("java field"), references.sites("separatorChar"))
     }
 
-    /** Kotlin source reads `getName` as the property `name`, so native search by the method name can miss a use. */
-    fun testACompiledJavaAccessorIsNotASubject() {
-        val read = libraryFixture().read(RelationMeaning.References) { javaMember("java.io.File", "getName") }
-        assertFalse("An accessor must not complete, received $read", read is RelationCompilation.Complete)
+    /** No Kotlin code contains `parentFile`, so the explicit calls are every use of the getter. */
+    fun testACompiledJavaAccessorWithoutPropertyUsesCompletes() {
+        val fixture = libraryFixture()
+        val references = fixture.complete(RelationMeaning.References) { javaMember("java.io.File", "getParentFile") }
+        assertEquals(setOf("java getter"), references.sites("getParentFile"))
+    }
+
+    /**
+     * Kotlin source reads `getName` as the property `name`, and native search enumerates the method name only. A
+     * compiled convention method also answers an operator, which native search misses for compiled declarations.
+     */
+    fun testCompiledJavaAccessorAndConventionUsesFailClosed() {
+        val fixture = libraryFixture()
+        for (name in listOf("getName", "compareTo")) {
+            val read = fixture.read(RelationMeaning.References) { javaMember("java.io.File", name) }
+            assertTrue("$name must fail closed, received $read", read is RelationCompilation.Qualified)
+        }
     }
 
     /** A decompiled body has no calls to read, so an empty callee set would be a false proof. */
@@ -268,5 +281,7 @@ private val SOURCE =
     fun useJavaMethod() = java.io.File("x").mkdirs() /*java method*/
     fun useJavaField() = java.io.File.separatorChar /*java field*/
     fun useJavaAccessor() = java.io.File("x").name /*java accessor*/
+    fun useJavaGetter() = java.io.File("x").getParentFile() /*java getter*/
+    fun useJavaConvention() = java.io.File("a") < java.io.File("b")
     """
         .trimIndent()

@@ -78,12 +78,15 @@ class LibraryDiscoveryNativeTest : HeavyPlatformTestCase() {
         assertEquals(0, outcome.batch().candidates.size)
     }
 
-    fun testCompiledJavaMembersReachableOnlyByTheirNameAreSelected() {
+    /** An accessor and a convention method are declarations by their own name, like any other Java member. */
+    fun testCompiledJavaDeclarationsAreSelectedByTheirName() {
         val expected =
             mapOf(
                 "File" to CompilerSymbolKind.CLASSLIKE,
                 "mkdirs" to CompilerSymbolKind.FUNCTION,
                 "separatorChar" to CompilerSymbolKind.PROPERTY,
+                "getName" to CompilerSymbolKind.FUNCTION,
+                "compareTo" to CompilerSymbolKind.FUNCTION,
             )
         for ((name, kind) in expected) {
             val discovered = discoverWithScope("java.io", name)
@@ -101,9 +104,9 @@ class LibraryDiscoveryNativeTest : HeavyPlatformTestCase() {
         }
     }
 
-    fun testCompiledJavaNamesWithOtherKotlinSyntaxLeaveTheSearchIncomplete() {
-        // An accessor, the property name Kotlin writes for an accessor, and a convention name.
-        for ((owner, name) in listOf("java.io" to "getName", "java.io" to "name", "java.io" to "compareTo")) {
+    /** Kotlin writes `name` for the accessor `getName`, and no declaration has that name. */
+    fun testAPropertyNameReadThroughACompiledAccessorLeavesTheSearchIncomplete() {
+        for ((owner, name) in listOf("java.io" to "name", "java.io" to "parentFile")) {
             val outcome = discover(owner, name)
             assertTrue("$owner $name: $outcome", outcome is SymbolDiscoveryOutcome.Qualified)
             assertEquals(
