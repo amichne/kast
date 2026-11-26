@@ -92,8 +92,8 @@ class PublicSkillCommandDriftTest {
             .toList()
 
     /**
-     * The arguments that reach the shipped CLI. `kast-recipe verdict` forwards its flags to `kast query`;
-     * `kast-recipe call-sites --ref R` runs a references query with the forwarded relation scope.
+     * The arguments that reach the shipped CLI. `kast-recipe verdict` forwards its flags to `kast query`; `kast-recipe
+     * call-sites --ref R` runs a references query with the forwarded relation scope.
      */
     private fun kastArguments(line: String): List<String>? =
         when {
@@ -101,7 +101,9 @@ class PublicSkillCommandDriftTest {
             line.startsWith("$RECIPE verdict ") -> listOf("query") + shellWords(line).drop(2)
             line.startsWith("$RECIPE call-sites ") -> {
                 val forwarded = shellWords(line).drop(2)
-                listOf("query") + forwarded.take(2) + listOf("--relation", "references", "--output", "occurrences") +
+                listOf("query") +
+                    forwarded.take(2) +
+                    listOf("--relation", "references", "--output", "occurrences") +
                     forwarded.drop(2)
             }
             else -> null
