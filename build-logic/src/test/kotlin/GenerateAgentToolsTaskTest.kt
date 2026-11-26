@@ -8,6 +8,7 @@ import kotlinx.serialization.json.jsonPrimitive
 import org.gradle.testfixtures.ProjectBuilder
 import org.junit.jupiter.api.Assertions.assertArrayEquals
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
@@ -267,10 +268,26 @@ class GenerateAgentToolsTaskTest {
         assertTrue(Files.notExists(task.outputDirectory.get().asFile.toPath()))
     }
 
+    @Test
+    fun `both compositions ship the skill command executable and its guidance not executable`() {
+        val task = task()
+        task.generate()
+        val output = task.outputDirectory.get().asFile.toPath()
+        for (root in listOf(output, output.resolve("compositions/mcp"))) {
+            val plugin = root.resolve("plugins/kast")
+            assertTrue(Files.isExecutable(plugin.resolve(RECIPE)), "$root: $RECIPE lost its executable mode")
+            assertFalse(Files.isExecutable(plugin.resolve("skills/kast/SKILL.md")), "$root: SKILL.md became executable")
+            assertArrayEquals(Files.readAllBytes(task.sourceDirectory.get().asFile.toPath().resolve(RECIPE)),
+                Files.readAllBytes(plugin.resolve(RECIPE)))
+        }
+    }
+
     private fun task(): GenerateAgentToolsTask {
         val repository = Path.of("..").toAbsolutePath().normalize()
         val source = directory.resolve("source").toFile()
         repository.resolve("agent-tools").toFile().copyRecursively(source)
+        // copyRecursively drops modes; restore the executable mode that Git records for the shipped command.
+        check(source.resolve(RECIPE).setExecutable(true, false))
         val marketplace = directory.resolve("marketplace.json")
         Files.copy(repository.resolve(".agents/plugins/marketplace.json"), marketplace)
         val project = ProjectBuilder.builder().withProjectDir(directory.toFile()).build()
@@ -281,5 +298,9 @@ class GenerateAgentToolsTaskTest {
             productVersion.set("1.2.3")
             outputDirectory.set(directory.resolve("output").toFile())
         }
+    }
+
+    private companion object {
+        const val RECIPE = "skills/kast/scripts/kast-recipe"
     }
 }

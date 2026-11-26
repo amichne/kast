@@ -707,6 +707,13 @@ val configurationIngressTest = tasks.register<Exec>("configurationIngressTest") 
     commandLine("python3", layout.projectDirectory.file("packaging/tests/test-configuration-ingress.py"))
 }
 
+val kastRecipeTest = tasks.register<Exec>("kastRecipeTest") {
+    group = "verification"
+    description = "Runs the shipped kast-recipe command against a strictly scripted kast executable."
+    inputs.files("agent-tools/skills/kast/scripts/kast-recipe", "packaging/tests/test-kast-recipe.py")
+    commandLine("python3", layout.projectDirectory.file("packaging/tests/test-kast-recipe.py"))
+}
+
 val verifyConfigurationIngress = tasks.register<Exec>("verifyConfigurationIngress") {
     group = "verification"
     description = "Rejects undeclared Kast input references and ambient reads outside named ingress owners."
@@ -841,7 +848,9 @@ val componentReleaseTest = tasks.register<Exec>("componentReleaseTest") {
     commandLine(pythonTestExecutable.get(), "-m", "unittest", "discover", "-s", "distribution/release", "-p", "test_component_release.py")
 }
 
-tasks.named("check") { dependsOn(verifyConfigurationIngress, verifyKnowledgeBase, hostObservationTest, componentReleaseTest) }
+tasks.named("check") {
+    dependsOn(verifyConfigurationIngress, verifyKnowledgeBase, hostObservationTest, componentReleaseTest, kastRecipeTest)
+}
 
 val semanticCoverageDirectory = layout.projectDirectory.dir("config/kotlin-semantic-coverage")
 val semanticInputGate = tasks.register<Exec>("verifyKotlinSemanticInputs") {
