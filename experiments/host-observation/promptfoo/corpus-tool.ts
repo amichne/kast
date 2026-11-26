@@ -9,10 +9,21 @@ const scope = Type.Optional(path);
 const offset = Type.Optional(Type.Integer({ minimum: 0, maximum: 1_000_000 }));
 const suffix = Type.Optional(Type.String({ pattern: '^\\.[a-zA-Z0-9.]+$', maxLength: 24 }));
 const presentation = ['--output', '--fields', '--max-results', '--max-returned-bytes'];
+// Every read-only query flag that the shipped skill teaches. Effectful or workspace-moving flags stay excluded.
+const resultHandleFlags = ['--from', '--intersect', '--union', '--minus', '--with', '--without'];
 const queryFlags = new Set([
   ...presentation, '--name', '--ref', '--file', '--offset', '--in', '--kind', '--source-set',
-  '--name-match', '--relation', '--terminal', '--max-elapsed-ms',
+  '--name-match', '--relation', '--terminal', '--max-elapsed-ms', '--jq', '--jq-timeout-ms', '--jq-max-bytes',
+  '--visibility', '--library', '--relation-in', '--relation-source-set', ...resultHandleFlags,
 ]);
+const queryBooleanFlags = new Set(['--retain', '--all', '--relation-production-only', '--relation-exclude-generated']);
+const querySources = ['--name', '--ref', '--file', '--library', '--from'];
+const jqEscape = /\b(?:env|input|inputs|include|import|module)\b|\$ENV/i;
+
+type Admission = { admitted: true } | { admitted: false; cause: string; flag?: string };
+const admitted: Admission = { admitted: true };
+const refused = (cause: string, flag?: string): Admission =>
+  ({ admitted: false, cause, ...(flag && /^--[a-z][a-z-]{0,39}$/.test(flag) && { flag }) });
 const resultReadFlags = new Set([...presentation, '--ref', '--cursor', '--evidence-cursor', '--detail']);
 const resultResumeFlags = new Set(['--continuation', '--max-results', '--max-returned-bytes']);
 const discoveryFlags = new Set([
@@ -151,34 +162,46 @@ export default function (pi: ExtensionAPI) {
   const issuedContinuations = new Set<string>();
   const trackedFile = (path: string) => source.hasFile(path);
 
-  function admitsKast(argv: string[], stdin?: string) {
-    if (argv.some(value => value.includes('\0') || value.includes('\n'))) return false;
+  function unknownFlag(args: string[], allowed: Set<string>) {
+    return args.map(arg => arg.split('=')[0]).find(arg => arg.startsWith('--') && arg !== '--json' && !allowed.has(arg));
+  }
+
+  function admitsKast(argv: string[], stdin?: string): Admission {
+    if (argv.some(value => value.includes('\0') || value.includes('\n'))) return refused('CONTROL_CHARACTER');
     if (stdin !== undefined) {
       return ['query --request -', 'query --request - --json'].includes(argv.join(' ')) &&
-        admittedQueryDocument(stdin, trackedFile);
+        admittedQueryDocument(stdin, trackedFile) ? admitted : refused('REQUEST_DOCUMENT_NOT_ADMITTED');
     }
-    if (help.has(argv.join(' '))) return true;
+    if (help.has(argv.join(' '))) return admitted;
     const [command, operation, ...rest] = argv;
     if (command === 'describe') {
-      if (!readableOperations.has(operation)) return false;
+      if (!readableOperations.has(operation)) return refused('OPERATION_NOT_ADMITTED');
       const flags = parseFlags(rest, discoveryFlags);
-      return flags !== null && (flags.get('--jq') ?? []).every(value =>
-        !/\b(?:env|input|inputs|include|import|module)\b|\$ENV/i.test(value));
+      if (!flags) return refused('FLAG_NOT_ADMITTED', unknownFlag(rest, discoveryFlags));
+      return (flags.get('--jq') ?? []).every(value => !jqEscape.test(value)) ? admitted : refused('JQ_NOT_ADMITTED', '--jq');
     }
-    if (command === 'source') return permittedKast(argv, 'repository', stdin);
+    if (command === 'source') return permittedKast(argv, 'repository', stdin) ? admitted : refused('SOURCE_READ_NOT_ADMITTED');
     if (command === 'result') {
-      const flags = operation === 'read' ? parseFlags(rest, resultReadFlags)
-        : operation === 'resume' ? parseFlags(rest, resultResumeFlags) : null;
-      if (!flags) return false;
+      const allowed = operation === 'read' ? resultReadFlags : operation === 'resume' ? resultResumeFlags : null;
+      if (!allowed) return refused('OPERATION_NOT_ADMITTED');
+      const flags = parseFlags(rest, allowed);
+      if (!flags) return refused('FLAG_NOT_ADMITTED', unknownFlag(rest, allowed));
       const values = flags.get(operation === 'read' ? '--ref' : '--continuation') ?? [];
       const issued = operation === 'read' ? issuedResults : issuedContinuations;
-      return values.length === 1 && issued.has(values[0]);
+      return values.length === 1 && issued.has(values[0]) ? admitted : refused('HANDLE_NOT_ISSUED');
     }
-    if (command !== 'query') return false;
-    const flags = parseFlags(argv.slice(1).filter(arg => arg !== '--retain'), queryFlags);
-    if (!flags || !['--name', '--ref', '--file'].some(flag => flags.has(flag))) return false;
-    return (flags.get('--in') ?? []).every(path => path === '.' || withinWorkspace(path)) &&
-      (flags.get('--file') ?? []).every(path => withinWorkspace(path) && trackedFile(path));
+    if (command !== 'query') return refused('COMMAND_NOT_ADMITTED');
+    const args = argv.slice(1).filter(arg => !queryBooleanFlags.has(arg));
+    const flags = parseFlags(args, queryFlags);
+    if (!flags) return refused('FLAG_NOT_ADMITTED', unknownFlag(args, queryFlags));
+    if (!argv.includes('--all') && !querySources.some(flag => flags.has(flag))) return refused('SOURCE_MISSING');
+    const paths = [...(flags.get('--in') ?? []), ...(flags.get('--relation-in') ?? [])];
+    if (!paths.every(path => path === '.' || withinWorkspace(path))) return refused('PATH_OUTSIDE_WORKSPACE');
+    if (!(flags.get('--file') ?? []).every(path => withinWorkspace(path) && trackedFile(path)))
+      return refused('PATH_NOT_TRACKED', '--file');
+    const handle = resultHandleFlags.find(flag => (flags.get(flag) ?? []).some(value => !issuedResults.has(value)));
+    if (handle) return refused('HANDLE_NOT_ISSUED', handle);
+    return (flags.get('--jq') ?? []).every(value => !jqEscape.test(value)) ? admitted : refused('JQ_NOT_ADMITTED', '--jq');
   }
 
   function rememberIssued(stdout: string) {
@@ -200,10 +223,16 @@ export default function (pi: ExtensionAPI) {
     parameters: Type.Object({ argv: Type.Array(Type.String({ maxLength: 4096 }), { minItems: 1, maxItems: 32 }),
       stdin: Type.Optional(Type.String({ maxLength: 8192 })) }, { additionalProperties: false }),
     async execute(_id, { argv, stdin }) {
+      let admission: Admission;
       try {
-        if (!admitsKast(argv, stdin)) return reject('KAST_COMMAND_REJECTED');
+        admission = admitsKast(argv, stdin);
       } catch {
-        return reject('KAST_COMMAND_REJECTED');
+        admission = refused('ADMISSION_FAILED');
+      }
+      if (!admission.admitted) {
+        const { cause, flag } = admission;
+        return reply({ error: 'KAST_COMMAND_REJECTED', cause, ...(flag && { flag }) },
+          { reason: 'KAST_COMMAND_REJECTED', cause, ...(flag && { flag }) }, true);
       }
       const started = performance.now();
       const env = {

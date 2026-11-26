@@ -18,7 +18,8 @@ const maxReceipts = 64;
 function summarize(trial, tools) {
   const kastCalls = trial.calls.filter(call => call.tool === 'kast');
   const semanticReceipts = kastCalls.flatMap(call => call.receipt ? [call.receipt] : []);
-  const toolFailures = trial.calls.flatMap(call => call.reason ? [{ tool: call.tool, reason: call.reason }] : []);
+  const toolFailures = trial.calls.flatMap(call => call.reason ? [{ tool: call.tool, reason: call.reason,
+    ...(typeof call.cause === 'string' && { cause: call.cause }), ...(typeof call.flag === 'string' && { flag: call.flag }) }] : []);
   const projection = projectPiTrial(trial);
   return {
     ...projection,
