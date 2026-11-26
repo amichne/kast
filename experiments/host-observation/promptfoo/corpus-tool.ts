@@ -24,7 +24,8 @@ type Admission = { admitted: true } | { admitted: false; cause: string; flag?: s
 const admitted: Admission = { admitted: true };
 const refused = (cause: string, flag?: string): Admission =>
   ({ admitted: false, cause, ...(flag && /^--[a-z][a-z-]{0,39}$/.test(flag) && { flag }) });
-const resultReadFlags = new Set([...presentation, '--ref', '--cursor', '--evidence-cursor', '--detail']);
+const resultReadFlags = new Set([...presentation, '--ref', '--cursor', '--evidence-cursor', '--detail',
+  '--jq', '--jq-timeout-ms', '--jq-max-bytes']);
 const resultResumeFlags = new Set(['--continuation', '--max-results', '--max-returned-bytes']);
 const discoveryFlags = new Set([
   '--section', '--pointer', '--cursor', '--max-results', '--max-returned-bytes', '--jq', '--jq-timeout-ms', '--jq-max-bytes',
@@ -188,7 +189,8 @@ export default function (pi: ExtensionAPI) {
       if (!flags) return refused('FLAG_NOT_ADMITTED', unknownFlag(rest, allowed));
       const values = flags.get(operation === 'read' ? '--ref' : '--continuation') ?? [];
       const issued = operation === 'read' ? issuedResults : issuedContinuations;
-      return values.length === 1 && issued.has(values[0]) ? admitted : refused('HANDLE_NOT_ISSUED');
+      if (values.length !== 1 || !issued.has(values[0])) return refused('HANDLE_NOT_ISSUED');
+      return (flags.get('--jq') ?? []).every(value => !jqEscape.test(value)) ? admitted : refused('JQ_NOT_ADMITTED', '--jq');
     }
     if (command !== 'query') return refused('COMMAND_NOT_ADMITTED');
     const args = argv.slice(1).filter(arg => !queryBooleanFlags.has(arg));

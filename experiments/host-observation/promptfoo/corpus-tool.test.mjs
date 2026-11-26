@@ -28,7 +28,8 @@ function corpusWorkspace(t) {
   const kast = join(root, 'kast');
   writeFileSync(kast, `#!${process.execPath}
 require('node:fs').appendFileSync(${JSON.stringify(calls)}, JSON.stringify(process.argv.slice(2)) + '\\n');
-process.stdout.write(JSON.stringify({ type: 'complete', document: { status: 'complete', items: [] } }));
+process.stdout.write(JSON.stringify({ type: 'complete', document: { status: 'complete', items: [],
+  retention: { reference: 'result:v1:issued' } } }));
 `, { mode: 0o700 });
   return { workspace, calls, kast, revision: git('rev-parse', 'HEAD'), git: execFileSync('which', ['git'], { encoding: 'utf8' }).trim() };
 }
@@ -57,6 +58,7 @@ test('the corpus Kast tool admits the read-only query forms the shipped skill te
     ['query', '--name', 'a', '--relation', 'callers', '--relation-in', 'core', '--relation-source-set', 'main',
       '--relation-production-only', '--relation-exclude-generated', '--output', 'occurrences', '--retain', '--json'],
     ['query', '--library', 'kotlin.collections', '--name', 'listOfNotNull', '--fields', 'name,signature,location'],
+    ['result', 'read', '--ref', 'result:v1:issued', '--output', 'occurrences', '--jq', '.document.items'],
   ];
   for (const argv of taught) {
     const reply = await run(argv);
