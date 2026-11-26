@@ -65,6 +65,44 @@ class NativeImpactTransferGapTest : NativeImpactTransferFixture() {
         }
     }
 
+    // F4: an equality whose `equals` the compiler proves cannot retain an operand consumes the tracked value.
+
+    fun testProvenEqualityConsumesItsOperand() {
+        val fixture = fixture(EQUALITY_SINK)
+        val consumed =
+            listOf(
+                "finalLeft" to "source",
+                "finalRight" to "source",
+                "identity" to "source",
+                "stringEquality" to "text",
+            )
+        for ((function, producer) in consumed) {
+            val owner = PacketDeclaration(EQUALITY_SINK, "", function)
+            val run = trace(fixture, owner, producer)
+            val compare = fixture.markedExpression(owner, "compare")
+            assertTrue(
+                "$function: the tracked value aliased into the Boolean comparison: ${run.summary()}",
+                run.sites.none { it.range == compare.anchor },
+            )
+            assertSupported(function, run)
+        }
+    }
+
+    fun testUnprovenEqualityKeepsItsResolvedCallObligation() {
+        val fixture = fixture(EQUALITY_SINK)
+        val unproven =
+            listOf("openEquality" to "open", "interfaceEquality" to "keyed", "overriddenReceivesValue" to "source")
+        for ((function, producer) in unproven) {
+            val owner = PacketDeclaration(EQUALITY_SINK, "", function)
+            val run = trace(fixture, owner, producer)
+            val compare = fixture.markedExpression(owner, "compare")
+            assertTrue(
+                "$function: an equality that may run a source override lost its obligation: ${run.summary()}",
+                run.obligations.any { it.within(compare.anchor) },
+            )
+        }
+    }
+
     // F3: a producer result bound by a `when` subject keeps its selected nested path in both declaration placements.
 
     fun testInlineWhenSubjectCarriesTheSelectedPayloadPath() = assertSubjectRoute(SUBJECT_INLINE, "inlineSubject")
