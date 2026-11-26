@@ -115,26 +115,54 @@ export function child(command, args, options) {
   });
 }
 
+// Each admitted Pi provider names how the participant authenticates. Claude Code
+// keeps its own login: the isolated agent directory receives no credential, and
+// the pi-claude-code extension relays model requests through the `claude` CLI
+// while Pi still executes every tool.
+const piProviders = new Set(['openai-codex', 'claude-code']);
+
+export function piProviderOf(model) {
+  const provider = typeof model === 'string' ? model.slice(0, model.indexOf('/')) : '';
+  if (!piProviders.has(provider)) throw Error('Unsupported Pi provider');
+  return provider;
+}
+
+async function claudeCodeExtension() {
+  const path = process.env.KAST_EVAL_PI_CLAUDE_CODE ??
+    join(homedir(), '.pi', 'agent', 'git', 'github.com', 'earendil-works', 'pi-claude-code');
+  try { await access(join(path, 'package.json'), constants.R_OK); }
+  catch { throw Error('Install pi-claude-code or set KAST_EVAL_PI_CLAUDE_CODE'); }
+  return path;
+}
+
 async function credentials(agentDirectory, expectedModel) {
+  const provider = piProviderOf(expectedModel);
   const defaultAgent = join(homedir(), '.pi', 'agent');
-  const piAuth = process.env.KAST_EVAL_PI_AUTH ?? join(defaultAgent, 'auth.json');
-  const type = process.env.KAST_EVAL_CODEX_AUTH ? 'CODEX_CHATGPT' : 'PI_OAUTH';
-  let document;
-  try {
-    document = await readFile(process.env.KAST_EVAL_CODEX_AUTH ?? piAuth, 'utf8');
-  } catch {
-    throw Error('Supply a signed-in Pi credential with KAST_EVAL_PI_AUTH or a Codex credential with KAST_EVAL_CODEX_AUTH');
+  if (provider === 'openai-codex') {
+    const piAuth = process.env.KAST_EVAL_PI_AUTH ?? join(defaultAgent, 'auth.json');
+    const type = process.env.KAST_EVAL_CODEX_AUTH ? 'CODEX_CHATGPT' : 'PI_OAUTH';
+    let document;
+    try {
+      document = await readFile(process.env.KAST_EVAL_CODEX_AUTH ?? piAuth, 'utf8');
+    } catch {
+      throw Error('Supply a signed-in Pi credential with KAST_EVAL_PI_AUTH or a Codex credential with KAST_EVAL_CODEX_AUTH');
+    }
+    const admitted = decodeReplayCredential(document, type, Date.now());
+    if (admitted.type !== 'ready') throw Error(`Pi credential rejected: ${admitted.reason}`);
+    await writeFile(join(agentDirectory, 'auth.json'), JSON.stringify({ 'openai-codex': admitted.credential }), { mode: 0o600 });
+  } else {
+    await writeFile(join(agentDirectory, 'auth.json'), '{}', { mode: 0o600 });
   }
-  const admitted = decodeReplayCredential(document, type, Date.now());
-  if (admitted.type !== 'ready') throw Error(`Pi credential rejected: ${admitted.reason}`);
-  await writeFile(join(agentDirectory, 'auth.json'), JSON.stringify({ 'openai-codex': admitted.credential }), { mode: 0o600 });
   const catalogPath = process.env.KAST_EVAL_PI_MODELS ?? join(defaultAgent, 'models-store.json');
   const catalog = await readFile(catalogPath, 'utf8').catch(error => {
     if (error.code === 'ENOENT' && !process.env.KAST_EVAL_PI_MODELS) return '{}';
     throw Error('Pi model catalog unavailable');
   });
-  const models = JSON.parse(catalog)['openai-codex'];
-  const copiedCatalog = models ? JSON.stringify({ 'openai-codex': models }) : undefined;
+  const models = JSON.parse(catalog)[provider];
+  // Without its catalog entry Pi treats a Claude model as custom and loses the
+  // effort mapping, so the requested effort would not reach the model.
+  if (!models && provider === 'claude-code') throw Error('Pi claude-code model catalog unavailable');
+  const copiedCatalog = models ? JSON.stringify({ [provider]: models }) : undefined;
   if (models) {
     await writeFile(join(agentDirectory, 'models-store.json'), copiedCatalog, { mode: 0o600 });
   }
@@ -343,6 +371,7 @@ export async function runIsolatedPi({
   const args = [
     '--offline', '--no-session', '--no-context-files', '--no-extensions', '--no-skills', '--no-mcp',
     '--no-prompt-templates', '--no-themes', '--no-approve', '--no-builtin-tools',
+    ...(piProviderOf(model) === 'claude-code' ? ['-e', await claudeCodeExtension()] : []),
     ...(extension ? ['-e', extension] : []), ...(guidance ? ['-e', guidanceTool] : []),
     '--model', model, '--thinking', effort,
     '--system-prompt', systemFile, '--mode', 'json', '-p', '--', prompt,

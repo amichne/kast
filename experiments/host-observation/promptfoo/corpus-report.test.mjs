@@ -10,6 +10,8 @@ import { casesForSuite, delegateModels } from './corpus-cases.mjs';
 import { decodePiTrial, settlePiTrial } from './skill-provider.mjs';
 
 const sha = value => createHash('sha256').update(value).digest('hex');
+// One source/kast pair per Spring case and delegate model.
+const pairs = casesForSuite('spring').length * delegateModels.length;
 function fixture() {
   const tests = casesForSuite('spring').flatMap(task => delegateModels.flatMap(model => ['source', 'kast'].map(arm => ({
     vars: { caseId: task.id, suite: 'spring', arm, model },
@@ -49,8 +51,8 @@ function runReport(document, coordinator = { profile: { workspace: 'spring' }, c
 
 test('retained corpus report characterizes complete paired outcomes without new inference', () => {
   const report = runReport(fixture());
-  assert.deepEqual(report.outcomes, { bothCorrect: 6, bothIncorrect: 0, sourceOnlyCorrect: 0, kastOnlyCorrect: 0, incomplete: 0 });
-  assert.deepEqual(report.jointlyCorrectTokens, { source: 600, kast: 600 });
+  assert.deepEqual(report.outcomes, { bothCorrect: pairs, bothIncorrect: 0, sourceOnlyCorrect: 0, kastOnlyCorrect: 0, incomplete: 0 });
+  assert.deepEqual(report.jointlyCorrectTokens, { source: pairs * 100, kast: pairs * 100 });
 });
 
 test('corpus report preserves per-response and partial accounting evidence instead of only token totals', () => {
@@ -78,7 +80,7 @@ test('a correct-looking answer without grade evidence remains an unassessed repo
   const document = fixture();
   delete document.results.results[0].gradingResult;
   const report = runReport(document);
-  assert.equal(report.outcomes.bothCorrect, 5);
+  assert.equal(report.outcomes.bothCorrect, pairs - 1);
   assert.equal(report.outcomes.incomplete, 1);
   assert.equal(report.rounds[0][0].rows[0].outcome, 'unassessed');
   assert.equal(report.rounds[0][0].rows[0].reason, 'MISSING_ASSESSMENT');
@@ -93,8 +95,8 @@ test('configured canonical subsets determine the denominator and missing rows st
   document.results.results.pop();
   document.results.stats.successes = document.results.results.length;
   const report = runReport(document);
-  assert.equal(report.rounds[0][0].rows.length, 6);
-  assert.equal(report.outcomes.bothCorrect, 2);
+  assert.equal(report.rounds[0][0].rows.length, 2 * delegateModels.length);
+  assert.equal(report.outcomes.bothCorrect, delegateModels.length - 1);
   assert.equal(report.outcomes.incomplete, 1);
   const missing = report.rounds[0][0].rows.find(row => row.reason === 'MISSING_TRIAL');
   assert.equal(missing.outcome, 'unassessed');
@@ -114,7 +116,7 @@ test('cached, failed and incomplete-meter rows survive without fresh-trial or ze
     .map(message => JSON.stringify({ type: 'message_end', message })).join('\n');
   failed.response.metadata.accounting = settlePiTrial({ status: 0, stdout }, 'openai-codex/' + failed.vars.model, [], true).accounting;
   delete document.results.results[4].response.tokenUsage;
-  document.results.stats = { successes: 11, failures: 0, errors: 1 };
+  document.results.stats = { successes: 2 * pairs - 1, failures: 0, errors: 1 };
   const report = runReport(document, { profile: { workspace: 'spring' }, coordinator: 'FAILED' });
   assert.equal(report.outcomes.incomplete, 2);
   assert.equal(report.jointlyCorrectTokens.source, null);
@@ -139,7 +141,7 @@ test('corpus dollars use admitted native receipts while forged task and answer i
   }
   const report = runReport(document);
   assert.equal(report.measurements.dollars.state, 'complete');
-  assert.equal(report.measurements.dollars.total, 12);
+  assert.equal(report.measurements.dollars.total, 2 * pairs);
   assert.equal(report.measurements.dollars.provenance, 'provider-reported');
   assert.equal(report.measurements.context.state, 'complete');
   const unknown = structuredClone(document);
