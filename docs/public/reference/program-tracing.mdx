@@ -115,6 +115,13 @@ When a try or catch body completes normally, its final value can supply the try 
 
 Throws do not supply a normal result. Transfers across `finally` keep `FINALLY_UNSUPPORTED`. Kast does not prove that effect.
 
+An equality test consumes a tracked value. Its result carries neither operand.
+Identity equality, `===` or `!==`, calls no code, so the path ends there.
+Structural equality, `==` or `!=`, calls the `equals` method of the left operand.
+The path ends only when the compiler proves which `equals` runs. The class of the left operand must be final.
+Its `equals` must be the identity comparison inherited from `Any`, or the library member of `String` or a primitive type.
+An open class, an interface, a data class, or a source override keeps its resolved-call obligation.
+
 These transfers do not prove payload flow through containers. They do not prove subtype or non-null branch conditions. They also do not select collection elements. They supply no automatic models for logs, headers, or errors.
 
 Field transfers need storage proof from the compiler. Other property access keeps its proof obligations. Unsupported evidence still prevents strict completion.

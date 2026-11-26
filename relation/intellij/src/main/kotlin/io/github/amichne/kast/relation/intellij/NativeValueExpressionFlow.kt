@@ -230,6 +230,7 @@ internal class NativeValueExpressionFlow(
 
     private fun binaryDestination(expression: KtExpression, binary: KtBinaryExpression) {
         if (binary.isLiteralNullPredicateOperand(expression)) return
+        if (binary.isReviewedEqualityOperand(expression, observation)) return
         if (!arithmetic.read(expression, binary)) assignmentDestination(expression, binary)
     }
 
