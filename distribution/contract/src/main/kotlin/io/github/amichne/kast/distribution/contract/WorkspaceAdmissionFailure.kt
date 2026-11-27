@@ -30,10 +30,18 @@ sealed interface WorkspaceConfigurationConflict : WorkspaceAdmissionFailure {
         val source: ConfigurationSource,
     ) : WorkspaceConfigurationConflict
 
+    /**
+     * A Host keeps the settings it started with. [differences] names every changed input; [values] repeats only the
+     * public settings among them, so a caller sees both sides without reading a secret or a private path.
+     */
     @Serializable
     @SerialName("HOST_SETTINGS")
-    data class HostSettings(val stage: HostSettingsComparison, val differences: List<String>) :
-        WorkspaceConfigurationConflict
+    data class HostSettings(
+        val stage: HostSettingsComparison,
+        val differences: List<String>,
+        val workspace: String,
+        @Required val values: List<HostSettingDifference> = emptyList(),
+    ) : WorkspaceConfigurationConflict
 
     fun recovery(): String =
         when (this) {
@@ -41,14 +49,28 @@ sealed interface WorkspaceConfigurationConflict : WorkspaceAdmissionFailure {
                 "Remove the explicit $key setting at $location or set it to ${recorded.name} to reuse this workspace."
             is GradleSelection ->
                 "Use the saved Gradle import selection in the caller environment and retry the request."
-            is HostSettings ->
+            is HostSettings -> {
+                val stop = "kast stop --workspace ${shellArgument(workspace)}"
                 when (stage) {
-                    HostSettingsComparison.PREPARING -> "Retry after preparation with the same Host settings."
+                    HostSettingsComparison.PREPARING ->
+                        "The Host is still starting with the prepared values. Retry with those values, or wait for " +
+                            "preparation, run `$stop`, and retry to start it with the requested values."
                     HostSettingsComparison.PREPARED ->
-                        "Restore the settings of the prepared Host or stop this workspace and retry."
+                        "The running Host keeps the prepared values. Run `$stop` and retry to start it with the " +
+                            "requested values, or restore the prepared values."
                 }
+            }
         }
 }
+
+/** One changed public Host setting. A side that does not set the key is null. */
+@Serializable data class HostSettingDifference(val key: String, val prepared: String?, val requested: String?)
+
+private val plainShellArgument = Regex("[A-Za-z0-9_./:@%+=-]+")
+
+/** Quotes one word so a recovery command pastes into a POSIX shell unchanged. */
+fun shellArgument(value: String): String =
+    if (plainShellArgument.matches(value)) value else "'" + value.replace("'", "'\\''") + "'"
 
 @Serializable
 enum class HostSettingsComparison {

@@ -271,6 +271,28 @@ kast source read --ref "$ref" --region class-body
 
 Start with the default anchor region. A body region can be absent.
 
+## Host settings and memory
+
+Each workspace runs one Host. It keeps the settings it started with until it stops.
+`kast config explain KEY --workspace . --json` describes one setting: its meaning, accepted values, effective value and source, and the commands that change and apply it.
+`kast config show --workspace . --json` lists every effective setting.
+
+A `CONFIGURATION_CONFLICT` whose `conflict.type` is `HOST_SETTINGS` means this request asks for other values than the running Host uses.
+`conflict.values` lists each public setting with its `prepared` and `requested` value. Run the `kast stop --workspace` command that `recovery` names, then retry once.
+
+`KAST_HOST_MAX_HEAP_MIB` sets the Host heap in whole MiB from 1024 to 32768. When it is not set, the Host inherits its IDE heap, or 1536 MiB.
+When the user or a failure reports that the Host ran out of memory, raise the heap and retry:
+
+```sh
+kast config explain KAST_HOST_MAX_HEAP_MIB --workspace . --json
+kast config set KAST_HOST_MAX_HEAP_MIB 4096 --workspace . --json
+kast stop --workspace .
+```
+
+Start from the effective value, or 1536 MiB when it is not set, and double it after each failure.
+Stop at 32768 MiB or at half of the machine's memory, whichever is lower, and report that limit to the user.
+Keep the first value that works. Do not lower it to search for a minimum.
+
 ## Failures
 
 A rejection prints its document without the `--jq` projection and exits with a nonzero status.

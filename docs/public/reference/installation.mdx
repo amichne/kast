@@ -202,7 +202,12 @@ There is no public container creation, archive import, or desktop fallback step.
 
 `KAST_HOST_MAX_HEAP_MIB` sets the managed Host's maximum JVM heap in whole MiB from 1024 through 32768.
 For example, `KAST_HOST_MAX_HEAP_MIB=8192` selects 8 GiB. An invalid value rejects the configuration.
-The setting supports saved installation and workspace configuration.
+The setting supports saved installation and workspace configuration. Save it for one workspace with `kast config`:
+
+```shell
+kast config set KAST_HOST_MAX_HEAP_MIB 8192 --workspace . --json
+kast stop --workspace .
+```
 
 If the setting is absent, Kast first looks for `-Xmx` in the private IDEA profile's copy of the bundled VM options file.
 The copy must use the bundled file's name. Kast reads only its heap setting.
@@ -211,7 +216,8 @@ The selected file must specify at most one `-Xmx` with a positive, whole MiB val
 Desktop and Toolbox profiles are outside the managed Host's private profile.
 
 Each launch writes one `-Xmx` to the private `host.vmoptions` file and records its source in `launcher.log`.
-A running Host keeps its heap. To apply a change, run `kast stop --all` before the next query.
+A running Host keeps its heap. To apply a change, run `kast stop --workspace .` for that workspace, or `kast stop --all`, before the next query.
+A request with another heap than the running Host's returns `CONFIGURATION_CONFLICT` with both values and that stop command.
 
 ## Optional idle shutdown
 
