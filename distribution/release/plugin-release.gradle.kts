@@ -18,6 +18,8 @@ val agentPluginArchive = tasks.register<Zip>("assembleKastAgentPlugin") {
     archiveFileName.set("kast-plugin-v$controlVersion.zip")
     isPreserveFileTimestamps = false
     isReproducibleFileOrder = true
+    // Reproducible archives reset modes, and the agent skill runs its shipped commands by path.
+    filesMatching("skills/kast/scripts/*") { permissions { unix("755") } }
 }
 val marketplaceArchive = tasks.register<Zip>("assembleKastMarketplace") {
     group = "distribution"
@@ -27,6 +29,7 @@ val marketplaceArchive = tasks.register<Zip>("assembleKastMarketplace") {
     archiveFileName.set("kast-marketplace-v$controlVersion.zip")
     isPreserveFileTimestamps = false
     isReproducibleFileOrder = true
+    filesMatching("**/skills/kast/scripts/*") { permissions { unix("755") } }
 }
 
 val controlRecord = tasks.named("generateControlReleaseRecord")

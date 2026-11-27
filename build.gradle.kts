@@ -236,6 +236,8 @@ val assembleKastControlDist = tasks.register<Tar>("assembleKastControlDist") {
             )
         ) permissions { unix("755") }
     }
+    // Reproducible archives reset modes, and the agent skill runs its shipped commands by path.
+    filesMatching("share/kast/agent-tools/**/skills/kast/scripts/*") { permissions { unix("755") } }
 }
 
 val controlDistributionMaximumEntries = 16_384
