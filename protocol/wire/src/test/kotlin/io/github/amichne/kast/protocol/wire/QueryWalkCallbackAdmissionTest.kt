@@ -102,7 +102,7 @@ class QueryWalkCallbackAdmissionTest {
                                                             )
                                                         else
                                                             QueryCallbackResultSiteWireDocument.Target(
-                                                                entry.observation.target
+                                                                entry.observation.sourceTarget
                                                             ),
                                                 ),
                                         )

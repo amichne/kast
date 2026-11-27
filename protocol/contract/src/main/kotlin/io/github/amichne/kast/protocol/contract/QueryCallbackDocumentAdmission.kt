@@ -281,6 +281,12 @@ internal fun QueryCallbackCallableDocument.reference(basis: ImpactSemanticBasisD
         compilerTarget.compilerEvidence.identity,
     )
 
+internal fun QueryCallbackTargetDocument.validDeclaration(): Boolean =
+    when (this) {
+        is QueryCallbackTargetDocument.Source -> callable.validDeclaration()
+        is QueryCallbackTargetDocument.Binary -> compilerTarget.compilerEvidence.signature.supports(compilerTarget.kind)
+    }
+
 internal fun QueryCallbackCallableDocument.validDeclaration(): Boolean =
     declaration.file == compilerTarget.file &&
         declaration.range == compilerTarget.range &&

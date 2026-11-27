@@ -189,7 +189,8 @@ class NativeDeclaredEffectTraceTest : NativeSmartModeFixtureTest() {
         assertEquals(caller, Path.of(callback.occurrence.file.value))
         assertEquals(caller, Path.of(callback.callbackBody.file.value))
         assertEquals(caller, Path.of(callback.lexicalOwner.declaration.file.value))
-        assertEquals(targets, Path.of(callback.target.declaration.file.value))
+        val target = callback.target as io.github.amichne.kast.protocol.contract.QueryCallbackTargetDocument.Source
+        assertEquals(targets, Path.of(target.callable.declaration.file.value))
         val binding = flow.binding as QueryCallbackBindingDocument.DependencyContract
         assertEquals(caller, Path.of(binding.occurrence.file.value))
         val supplier = binding.owner as QueryCallbackBodyDocument.Named

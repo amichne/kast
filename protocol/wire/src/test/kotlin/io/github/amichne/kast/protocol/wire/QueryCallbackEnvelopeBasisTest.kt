@@ -184,7 +184,7 @@ class QueryCallbackEnvelopeBasisTest {
                     QueryCallbackBodyWireDocument.Named(original.lexicalOwner),
                     QueryCallableTargetWireDocument.NamedReference(
                         QueryNamedCallbackReferenceWireDocument(
-                            original.target,
+                            original.sourceTarget,
                             QueryCallbackReferenceReceiverWireDocument.Absent,
                             QueryCallbackReferenceReceiverWireDocument.Unbound,
                             QueryNamedCallbackReferenceFlowWireDocument.Unavailable(

@@ -198,6 +198,8 @@ private class NavigationWitnesses {
     }
 
     fun target(observation: QueryCallbackObservationDocument) {
+        // A compiled target has no source node to navigate to.
+        val target = observation.target as? QueryCallbackTargetDocument.Source ?: return
         val body =
             when (val flow = observation.flow) {
                 is QueryCallbackFlowDocument.Observed -> flow.body
@@ -210,7 +212,7 @@ private class NavigationWitnesses {
             edges.add(
                 NavigationEdge(
                     callable(body),
-                    callable(QueryCallbackBodyDocument.Named(observation.target)),
+                    callable(QueryCallbackBodyDocument.Named(target.callable)),
                     QueryCallbackNavigationEvidenceDocument.FunctionInvocation(
                         observation.occurrence,
                         observation.namedPolicy,

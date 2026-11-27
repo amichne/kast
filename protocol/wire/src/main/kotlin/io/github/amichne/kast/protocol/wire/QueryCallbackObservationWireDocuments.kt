@@ -17,7 +17,7 @@ import io.github.amichne.kast.protocol.contract.QueryCallbackInvocationDocument
 import io.github.amichne.kast.protocol.contract.QueryCallbackInvocationScanDocument
 import io.github.amichne.kast.protocol.contract.QueryCallbackNamedUnavailableCauseDocument
 import io.github.amichne.kast.protocol.contract.QueryCallbackObservationDocument
-import io.github.amichne.kast.protocol.contract.QueryExcludedCompilerTargetDocument
+import io.github.amichne.kast.protocol.contract.QueryCallbackTargetDocument
 import io.github.amichne.kast.protocol.contract.QueryReferenceDocument
 import io.github.amichne.kast.protocol.contract.QueryRelationDomainDocument
 import io.github.amichne.kast.protocol.contract.QueryRelationDomainFingerprint
@@ -35,6 +35,23 @@ internal data class QueryCallbackCallableWireDocument(
     val declaration: RelationOccurrenceWireDocument,
     @SerialName("compiler_target") val compilerTarget: QueryExcludedCompilerTargetWireDocument,
 )
+
+@Serializable
+@JsonClassDiscriminator("type")
+internal sealed interface QueryCallbackTargetWireDocument {
+    @Serializable
+    @SerialName("SOURCE")
+    data class Source(
+        val declaration: RelationOccurrenceWireDocument,
+        @SerialName("compiler_target") val compilerTarget: QueryExcludedCompilerTargetWireDocument,
+    ) : QueryCallbackTargetWireDocument
+
+    /** A compiled declaration has compiler facts and no source handle. */
+    @Serializable
+    @SerialName("BINARY")
+    data class Binary(@SerialName("compiler_target") val compilerTarget: QueryExcludedCompilerTargetWireDocument) :
+        QueryCallbackTargetWireDocument
+}
 
 @Serializable
 @JsonClassDiscriminator("type")
@@ -110,7 +127,7 @@ internal sealed interface QueryCallbackFlowWireDocument {
 @Serializable
 internal data class QueryCallbackObservationWireDocument(
     val occurrence: RelationOccurrenceWireDocument,
-    val target: QueryCallbackCallableWireDocument,
+    val target: QueryCallbackTargetWireDocument,
     @SerialName("lexical_owner") val lexicalOwner: QueryCallbackCallableWireDocument,
     @SerialName("callback_body") val callbackBody: RelationOccurrenceWireDocument,
     @SerialName("named_policy") val namedPolicy: QueryCallbackNamedPolicyWireDocument,
@@ -136,16 +153,14 @@ internal fun RelationOccurrenceDocument.callbackWire() =
     RelationOccurrenceWireDocument(candidateSelector.value, file.value, range.toWireDocument())
 
 internal fun QueryCallbackCallableDocument.callbackWire() =
-    QueryCallbackCallableWireDocument(
-        declaration.callbackWire(),
-        QueryExcludedCompilerTargetWireDocument(
-            compilerTarget.file.value,
-            compilerTarget.range.toWireDocument(),
-            compilerTarget.name.value,
-            compilerTarget.kind.toWireDocument(),
-            compilerTarget.compilerEvidence.toWireDocument(),
-        ),
-    )
+    QueryCallbackCallableWireDocument(declaration.callbackWire(), compilerTarget.callbackWire())
+
+internal fun QueryCallbackTargetDocument.callbackWire(): QueryCallbackTargetWireDocument =
+    when (this) {
+        is QueryCallbackTargetDocument.Source ->
+            QueryCallbackTargetWireDocument.Source(callable.declaration.callbackWire(), compilerTarget.callbackWire())
+        is QueryCallbackTargetDocument.Binary -> QueryCallbackTargetWireDocument.Binary(compilerTarget.callbackWire())
+    }
 
 internal fun QueryCallbackBodyDocument.Anonymous.callbackWire() =
     QueryCallbackBodyWireDocument.Anonymous(occurrence.callbackWire(), compilerEvidence.toWireDocument())
@@ -209,17 +224,17 @@ internal fun QueryWalkCallbackObservationDocument.toWireDocument() =
 
 internal fun QueryCallbackCallableWireDocument.toContract(): WireDocumentConversion<QueryCallbackCallableDocument> =
     declaration.toContract().flatMapConverted { declaration ->
-        combineConverted(
-                ProtocolText.parse(compilerTarget.file).toWireDocumentConversion(),
-                compilerTarget.range.toContract(),
-                ProtocolText.parse(compilerTarget.name).toWireDocumentConversion(),
-                compilerTarget.compilerEvidence.toContract(),
-            ) { file, range, name, proof ->
-                QueryExcludedCompilerTargetDocument.create(file, range, name, compilerTarget.kind.toContract(), proof)
-                    .toWireDocumentConversion()
+        compilerTarget.toContract().mapConverted { QueryCallbackCallableDocument(declaration, it) }
+    }
+
+internal fun QueryCallbackTargetWireDocument.toContract(): WireDocumentConversion<QueryCallbackTargetDocument> =
+    when (this) {
+        is QueryCallbackTargetWireDocument.Source ->
+            QueryCallbackCallableWireDocument(declaration, compilerTarget).toContract().mapConverted {
+                QueryCallbackTargetDocument.Source(it)
             }
-            .flattenConverted()
-            .mapConverted { QueryCallbackCallableDocument(declaration, it) }
+        is QueryCallbackTargetWireDocument.Binary ->
+            compilerTarget.toContract().mapConverted { QueryCallbackTargetDocument.Binary(it) }
     }
 
 internal fun QueryCallbackBodyWireDocument.Anonymous.toContract():

@@ -16,6 +16,7 @@ import io.github.amichne.kast.protocol.contract.QueryCallbackForwardingEvidenceD
 import io.github.amichne.kast.protocol.contract.QueryCallbackInvocationDocument
 import io.github.amichne.kast.protocol.contract.QueryCallbackNamedPolicyDocument
 import io.github.amichne.kast.protocol.contract.QueryCallbackObservationDocument
+import io.github.amichne.kast.protocol.contract.QueryCallbackTargetDocument
 import io.github.amichne.kast.protocol.contract.QueryCallbackParameterIdentityDocument
 import io.github.amichne.kast.protocol.contract.QueryExcludedCompilerTargetDocument
 import io.github.amichne.kast.protocol.contract.QueryRelationDomainFingerprint
@@ -61,7 +62,7 @@ private fun RelationCallbackObservation.projectCallbackObservation(
     val projection = CallbackProjection(authority, basis)
     return QueryCallbackObservationDocument.create(
             projection.occurrence(occurrence) ?: return null,
-            projection.callable(target) ?: return null,
+            projection.target(target) ?: return null,
             projection.callable(lexicalOwner) ?: return null,
             projection.occurrence(callbackBody) ?: return null,
             policy.projectPolicy(projection) ?: return null,
@@ -137,6 +138,15 @@ internal class CallbackProjection(val authority: QueryReferenceAuthority, val ba
 
     fun callable(value: CompilerGroundedSymbolEvidence): QueryCallbackCallableDocument? =
         callable(value.file, value.range, value.name.value, value.kind, value.compilerIdentity.value, value.signature)
+
+    /** A compiled target, such as a library callers subject, has no source handle and keeps its compiler facts. */
+    fun target(value: CompilerGroundedSymbolEvidence): QueryCallbackTargetDocument? =
+        when (value.file) {
+            is io.github.amichne.kast.symbol.contract.SymbolDiscoveryFileIdentity.Workspace ->
+                callable(value)?.let(QueryCallbackTargetDocument::Source)
+            is io.github.amichne.kast.symbol.contract.SymbolDiscoveryFileIdentity.External ->
+                dependencyTarget(value)?.let(QueryCallbackTargetDocument::Binary)
+        }
 
     fun callable(value: RelationEndpoint): QueryCallbackCallableDocument? =
         callable(value.file, value.range, value.name.value, value.kind, value.compilerIdentity.value, value.signature)

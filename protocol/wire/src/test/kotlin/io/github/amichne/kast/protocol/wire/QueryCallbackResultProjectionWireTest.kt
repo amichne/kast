@@ -27,7 +27,7 @@ class QueryCallbackResultProjectionWireTest {
                 Triple(QueryCallbackResultSiteWireDocument.Occurrence(wire.occurrence), "OCCURRENCE", "occurrence"),
                 Triple(QueryCallbackResultSiteWireDocument.Invocation(invocation), "INVOCATION", "invocation"),
                 Triple(QueryCallbackResultSiteWireDocument.DirectInvocation(direct), "DIRECT_INVOCATION", "binding"),
-                Triple(QueryCallbackResultSiteWireDocument.Target(wire.target), "TARGET", "target"),
+                Triple(QueryCallbackResultSiteWireDocument.Target(wire.sourceTarget), "TARGET", "target"),
                 Triple(QueryCallbackResultSiteWireDocument.AnonymousTarget(flow.body), "ANONYMOUS_TARGET", "body"),
             )
         for ((site, kind, payload) in cases) {
@@ -54,7 +54,12 @@ class QueryCallbackResultProjectionWireTest {
         assertEquals(JsonPrimitive("exact:seed"), projection.getValue("subject").jsonObject.getValue("token"))
         assertEquals(JsonPrimitive("1".repeat(64)), projection.getValue("domain"))
         assertEquals(JsonPrimitive("callees"), projection.getValue("relation"))
-        assertEquals(encoded.getValue("target"), projection.getValue("site").jsonObject.getValue("target"))
+        // The admitted site names the same source callable; only the observation target carries its variant.
+        val target = encoded.getValue("target").jsonObject
+        val site = projection.getValue("site").jsonObject.getValue("target").jsonObject
+        assertEquals(JsonPrimitive("SOURCE"), target.getValue("type"))
+        assertEquals(setOf("declaration", "compiler_target"), site.keys)
+        for (field in site.keys) assertEquals(target.getValue(field), site.getValue(field))
         assertEquals(JsonPrimitive("TARGET"), projection.getValue("site").jsonObject.getValue("type"))
         assertEquals(WireDocumentConversion.Converted(value), wire.toContract())
     }
