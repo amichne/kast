@@ -31,8 +31,9 @@ uv run --locked --project .. pytest -q --noconftest -p no:cacheprovider test_cor
 
 These tests exercise the real deterministic rules with pinned inputs or injected process effects. They do not invoke models or the Promptfoo CLI.
 
-The pinned Promptfoo 0.125.1 CLI attempts telemetry even when `PROMPTFOO_DISABLE_TELEMETRY=1` is set.
-Its telemetry-disabled notification still posts to `r.promptfoo.app`; `PROMPTFOO_DISABLE_UPDATE=1` stops the separate update check.
+The Promptfoo 0.125.1 CLI attempted telemetry even when `PROMPTFOO_DISABLE_TELEMETRY=1` was set.
+Its telemetry-disabled notification still posted to `r.promptfoo.app`; `PROMPTFOO_DISABLE_UPDATE=1` stopped the separate update check.
+The pinned 0.126.0 CLI has not been rechecked, so treat its outbound behavior as unchanged.
 The CLI integration checks remain blocked in an environment that rejects those requests. `npm test` includes those checks.
 The direct checks above do not replace CLI integration qualification. Do not describe the CLI as fully offline until its outbound behavior is resolved.
 
