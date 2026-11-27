@@ -43,7 +43,7 @@ Owns installer adapters, isolated runtime archives, offline lifecycle helpers, c
 ## Key Files
 
 - [generate_bootstrap.py](internal/bootstrap/generate_bootstrap.py) - canonical bootstrap and retained support membership.
-- [bootstrap_release.py](internal/bootstrap/bootstrap_release.py) - pinned digests of the published Go bootstrap. `install.sh` runs it only for a preview dry run.
+- [bootstrap_release.py](internal/bootstrap/bootstrap_release.py) - pinned digests of the published Go bootstrap. `install.sh` verifies it and passes every installation to its `kast install`.
 - [local_product_install.py](internal/product/local_product_install.py) - contributor assembly, qualification, and canonical product activation.
 - [managed_headless.py](managed_headless.py) - archive assembly without product installation.
 - [composed_host.py](internal/composition/composed_host.py) - module-based assembly from a pinned donor inventory.

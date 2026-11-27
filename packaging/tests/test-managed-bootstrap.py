@@ -1,25 +1,20 @@
-"""Restricted-PATH contracts; scripted interpreters are not native qualification."""
+"""Restricted-PATH contracts; scripted executables are not native qualification."""
 
-import ast
 import hashlib
 import io
-import json
 import os
-import pty
 import shlex
 import shutil
 import subprocess
-import sys
 import tarfile
 import tempfile
 import unittest
-import zipfile
 from dataclasses import replace
 from pathlib import Path
 from unittest.mock import patch
 
 try:
-    import defusedxml
+    import defusedxml  # noqa: F401  # The retained support's dependency must be importable.
 
     import bootstrap_release as published
     import generate_bootstrap as generator
@@ -34,27 +29,6 @@ except ModuleNotFoundError as missing:
 def script(path: Path, source: str) -> None:
     _ = path.write_text(source)
     path.chmod(0o755)
-
-
-def on_terminal(command: list[str], environment: dict[str, str], answer: str) -> tuple[int, str]:
-    """Run one command with its own controlling terminal and one typed answer."""
-    child, terminal = pty.fork()
-    if child == 0:
-        os.execve(command[0], command, environment)
-    shown = b""
-    with os.fdopen(terminal, "r+b", buffering=0) as stream:
-        _ = stream.write(answer.encode())
-        while True:
-            try:
-                chunk = stream.read(4096)
-            except OSError:
-                # Linux reports a closed terminal as EIO; macOS reports end of file.
-                break
-            if not chunk:
-                break
-            shown += chunk
-    _, status = os.waitpid(child, 0)
-    return os.waitstatus_to_exitcode(status), shown.decode(errors="replace")
 
 
 class BootstrapTest(unittest.TestCase):
@@ -156,18 +130,6 @@ class BootstrapTest(unittest.TestCase):
                 generator.stage_support(output)
             self.assertTrue(artifact.is_dir())
 
-    def test_engine_members_keep_their_source_syntax_tree_and_positions(self) -> None:
-        for name in generator.SOURCES:
-            source = generator.source_file(name).read_bytes()
-            engine = generator.engine_member(name)
-            with self.subTest(name=name):
-                self.assertEqual(
-                    ast.dump(ast.parse(source), include_attributes=True),
-                    ast.dump(ast.parse(engine), include_attributes=True),
-                )
-                self.assertEqual(source.count(b"\n"), engine.count(b"\n"))
-                self.assertLessEqual(len(engine), len(source))
-
     def test_checked_in_bootstrap_is_the_exact_generated_inventory(self) -> None:
         self.assertEqual(generator.render(), (generator.REPOSITORY / "install.sh").read_bytes())
         # Linux limits each exec argument to 32 pages, including the terminating NUL.
@@ -219,143 +181,14 @@ class BootstrapTest(unittest.TestCase):
                     self.assertIn("select exactly one build", result.stderr)
                     self.assertEqual([bootstrap], list(root.iterdir()))
 
-    def test_both_target_bootstraps_run_the_engine_without_python_or_uv_on_path(self) -> None:
-        for system, machine in (("Darwin", "arm64"), ("Linux", "x86_64")):
-            with self.subTest(system=system), tempfile.TemporaryDirectory() as temporary:
-                root = Path(temporary).resolve()
-                tools, home = root / "tools", root / "home"
-                tools.mkdir()
-                home.mkdir()
-                for name in ("tar", "gzip", "mktemp", "mkdir", "rm"):
-                    tool = shutil.which(name, path=os.defpath)
-                    assert tool is not None
-                    (tools / name).symlink_to(tool)
-                hasher = shutil.which("shasum", path=os.defpath)
-                assert hasher is not None
-                (tools / "shasum").symlink_to(hasher)
-                script(tools / "sha256sum", f'#!/bin/sh\nexec {shlex.quote(hasher)} -a 256 "$@"\n')
-                script(
-                    tools / "uname",
-                    f'#!/bin/sh\ncase "$1" in -s) echo {system};; '
-                    f"-m) echo {machine};; *) exit 91;; esac\n",
-                )
-                archive = root / "interpreter.tar.gz"
-                # External interpreter observation only; the real engine still runs.
-                raw = (
-                    f"#!{sys.executable}\nimport os,sys\n"
-                    "os.execv(sys.executable,[sys.executable,*sys.argv[1:]])\n"
-                ).encode()
-                with tarfile.open(archive, "w:gz") as incoming:
-                    entry = tarfile.TarInfo("python/bin/python3.12")
-                    entry.size, entry.mode = len(raw), 0o755
-                    incoming.addfile(entry, io.BytesIO(raw))
-                wheel = root / "dependency.whl"
-                dependency = Path(defusedxml.__file__).parent
-                with zipfile.ZipFile(wheel, "w") as output:
-                    for source in dependency.glob("*.py"):
-                        output.write(source, "defusedxml/" + source.name)
-                pins = tuple(replace(pin, sha256=private.digest(archive)) for pin in private.PINS)
-                with (
-                    patch.object(generator, "PINS", pins),
-                    patch.object(generator, "DEPENDENCY_SHA256", private.digest(wheel)),
-                ):
-                    bootstrap = root / "install.sh"
-                    _ = bootstrap.write_bytes(generator.render())
-                log = root / "transfers"
-                urls = "|".join(shlex.quote(pin.url) for pin in pins)
-                script(
-                    tools / "curl",
-                    "\n".join(
-                        (
-                            "#!/bin/sh",
-                            "destination=''",
-                            'while [ "$#" -gt 0 ]; do',
-                            'if [ "$1" = --output ]; then shift; destination=$1; fi',
-                            "url=$1; shift",
-                            "done",
-                            f'printf "%s\\n" "$url" >> {shlex.quote(str(log))}',
-                            'case "$url" in',
-                            f'{urls}) /bin/cp {shlex.quote(str(archive))} "$destination" ;;',
-                            f"{shlex.quote(private.DEPENDENCY_URL)}) "
-                            f'/bin/cp {shlex.quote(str(wheel))} "$destination" ;;',
-                            "*) exit 92 ;;",
-                            "esac",
-                            "",
-                        )
-                    ),
-                )
-                local = root / "local product ; literal"
-                local.mkdir()
-                result = subprocess.run(
-                    [
-                        "/bin/bash",
-                        str(bootstrap),
-                        "--local-artifact",
-                        str(local),
-                        "--recover-only",
-                        "--dry-run",
-                        "--json",
-                    ],
-                    env={"HOME": str(home), "PATH": str(tools), "TMPDIR": str(root)},
-                    capture_output=True,
-                    text=True,
-                    timeout=30,
-                )
-                self.assertEqual(1, result.returncode, result.stderr)
-                self.assertEqual("RECOVERY_REQUIRED", json.loads(result.stdout)["type"])
-                self.assertEqual(
-                    [pins[0 if system == "Darwin" else 1].url, private.DEPENDENCY_URL],
-                    log.read_text().splitlines(),
-                )
-                self.assertEqual([], list(home.iterdir()))
-                self.assertFalse(list(root.glob("kast-bootstrap.*")))
-                # Valid encoding is not integrity evidence. Reject changed engine bytes
-                # before extracting or running the installer, even after admitted downloads.
-                prefix, separator, body = bootstrap.read_text().partition("<<'KAST_ENGINE'\n")
-                self.assertTrue(separator)
-                bad_engine = root / "bad-engine.sh"
-                changed = ("0" if body[0] != "0" else "1") + body[1:]
-                _ = bad_engine.write_text(prefix + separator + changed)
-                log.unlink()
-                corrupt_engine = subprocess.run(
-                    ["/bin/bash", str(bad_engine), "--recover-only", "--json"],
-                    env={"HOME": str(home), "PATH": str(tools), "TMPDIR": str(root)},
-                    capture_output=True,
-                    text=True,
-                    timeout=30,
-                )
-                self.assertEqual(1, corrupt_engine.returncode)
-                self.assertIn("bootstrap engine digest mismatch", corrupt_engine.stderr)
-                self.assertEqual("", corrupt_engine.stdout)
-                self.assertEqual([], list(home.iterdir()))
-                self.assertFalse(list(root.glob("kast-bootstrap.*")))
-                # A transfer can return bytes successfully without returning admitted bytes.
-                # Corruption must stop before interpreter execution or the dependency fetch.
-                _ = archive.write_bytes(b"not the pinned interpreter")
-                log.unlink()
-                corrupt = subprocess.run(
-                    ["/bin/bash", str(bootstrap), "--recover-only", "--json"],
-                    env={"HOME": str(home), "PATH": str(tools), "TMPDIR": str(root)},
-                    capture_output=True,
-                    text=True,
-                    timeout=30,
-                )
-                self.assertEqual(1, corrupt.returncode)
-                self.assertIn("bootstrap artifact digest mismatch", corrupt.stderr)
-                self.assertEqual(
-                    [pins[0 if system == "Darwin" else 1].url], log.read_text().splitlines()
-                )
-                self.assertEqual([], list(home.iterdir()))
-                self.assertFalse(list(root.glob("kast-bootstrap.*")))
-
-    def test_only_a_channel_dry_run_uses_the_pinned_bootstrap(self) -> None:
+    def test_every_selection_runs_only_the_pinned_bootstrap(self) -> None:
         for system, machine in (("Darwin", "arm64"), ("Linux", "x86_64")):
             with self.subTest(system=system), tempfile.TemporaryDirectory() as temporary:
                 root = Path(temporary).resolve()
                 tools, home, local = root / "tools", root / "home", root / "local"
                 for directory in (tools, home, local):
                     directory.mkdir()
-                for name in ("tar", "mktemp", "mkdir", "rm", "chmod"):
+                for name in ("mktemp", "rm", "chmod"):
                     tool = shutil.which(name, path=os.defpath)
                     assert tool is not None
                     (tools / name).symlink_to(tool)
@@ -378,9 +211,7 @@ class BootstrapTest(unittest.TestCase):
                 with patch.object(generator, "BOOTSTRAP_PINS", pins):
                     installer = root / "install.sh"
                     _ = installer.write_bytes(generator.render())
-                pin, python = (
-                    (pins[0], private.PINS[0]) if system == "Darwin" else (pins[1], private.PINS[1])
-                )
+                pin = pins[0] if system == "Darwin" else pins[1]
                 log = root / "transfers"
                 script(
                     tools / "curl",
@@ -410,210 +241,38 @@ class BootstrapTest(unittest.TestCase):
                     )
                     self.assertEqual([], list(home.iterdir()))
                     self.assertFalse(list(root.glob("kast-bootstrap.*")))
-                    return result, log.read_text().splitlines()
+                    return result, log.read_text().splitlines() if log.exists() else []
 
                 stable = ("--channel", "stable")
-                for arguments, added in (
-                    (("--dry-run",), stable),
-                    (("--dry-run", "--json"), stable),
-                    (("--dry-run", *stable), ()),
-                    (("--channel", "preview", "--json", "--dry-run"), ()),
+                for arguments, forwarded in (
+                    ((), stable),
+                    (("--json",), ("--json", *stable)),
+                    (("--dry-run",), ("--dry-run", *stable)),
+                    (("--channel", "preview", "--json", "--dry-run"), None),
+                    (("--version", "1.2.3", "--replace-existing"), None),
+                    (("--commit", "abcdef0"), None),
+                    # A local directory reaches the executable as its absolute physical path.
+                    (("--local-artifact", f"{local}/../local"), ("--local-artifact", str(local))),
                 ):
                     result, transfers = run(*arguments)
                     # The executable owns the status and the output.
                     self.assertEqual(4, result.returncode, result.stderr)
-                    self.assertEqual(["install", *arguments, *added], result.stdout.splitlines())
+                    self.assertEqual(
+                        ["install", *(arguments if forwarded is None else forwarded)],
+                        result.stdout.splitlines(),
+                    )
                     self.assertEqual([pin.url], transfers)
-                for arguments in (
-                    (),
-                    ("--json",),
-                    stable,
-                    ("--channel", "preview"),
-                    ("--dry-run", "--version", "1.2.3"),
-                    ("--dry-run", "--commit", "abcdef0"),
-                    ("--dry-run", "--recover-only"),
-                    ("--local-artifact", str(local), "--dry-run"),
-                ):
-                    result, transfers = run(*arguments)
-                    self.assertEqual((92, ""), (result.returncode, result.stdout))
-                    self.assertEqual([python.url], transfers)
+                for retired in (("--recover-only",), ("--private-python-archive", "x")):
+                    result, transfers = run(*retired)
+                    self.assertEqual(1, result.returncode)
+                    self.assertIn("unsupported product installation option", result.stderr)
+                    self.assertEqual([], transfers)
                 # Bytes other than the pinned ones never run.
                 script(executable, '#!/bin/sh\nprintf "must not run\\n"\n')
-                result, transfers = run("--dry-run")
+                result, transfers = run()
                 self.assertEqual((1, ""), (result.returncode, result.stdout))
                 self.assertIn("bootstrap artifact digest mismatch", result.stderr)
                 self.assertEqual([pin.url], transfers)
-
-    def test_only_a_confirmed_reset_replaces_an_unsupported_prior(self) -> None:
-        plan, erase = "kast reset", "kast reset --yes"
-        declined = ["engine"]
-        cases: tuple[tuple[tuple[str, ...], str | None, int, list[str]], ...] = (
-            # No terminal answers for the user.
-            ((), None, 3, declined),
-            (("--json",), None, 3, declined),
-            (("--replace-existing",), None, 0, ["engine", erase, "engine"]),
-            (("--replace-existing", "--json"), None, 0, ["engine", erase, "engine"]),
-            # A terminal shows the plan before it asks.
-            ((), "y\n", 0, ["engine", plan, erase, "engine"]),
-            ((), "n\n", 1, ["engine", plan]),
-            ((), "\n", 1, ["engine", plan]),
-            # Structured output never asks.
-            (("--json",), "y\n", 3, declined),
-        )
-        for arguments, answer, expected, effects in cases:
-            with (
-                self.subTest(arguments=arguments, answer=answer),
-                tempfile.TemporaryDirectory() as temporary,
-            ):
-                root = Path(temporary).resolve()
-                home, log = root / "home", root / "effects"
-                home.mkdir()
-                tools = root / "tools"
-                tools.mkdir()
-                # Scripted process boundaries: the engine's statuses and the reset's effect.
-                engine, executable = root / "engine", root / "bootstrap"
-                script(
-                    engine,
-                    '#!/bin/sh\n[ "$3" = -c ] && exit 0\n'
-                    f"echo engine >> {shlex.quote(str(log))}\n"
-                    f"if [ -e {shlex.quote(str(root / 'erased'))} ]; then echo INSTALLED; exit 0; fi\n"
-                    "echo UNSUPPORTED; exit 3\n",
-                )
-                script(
-                    executable,
-                    f'#!/bin/sh\necho "kast $*" >> {shlex.quote(str(log))}\n'
-                    f'[ "$2" != --yes ] || : > {shlex.quote(str(root / "erased"))}\necho plan\n',
-                )
-                archive = root / "python.tar.gz"
-                with tarfile.open(archive, "w:gz") as output:
-                    output.add(engine, "python/bin/python3.12")
-                wheel = root / "wheel"
-                _ = wheel.write_bytes(b"wheel")
-                python = tuple(replace(pin, sha256=private.digest(archive)) for pin in private.PINS)
-                bootstraps = tuple(
-                    replace(pin, sha256=private.digest(executable))
-                    for pin in published.BOOTSTRAP_PINS
-                )
-                with (
-                    patch.object(generator, "PINS", python),
-                    patch.object(generator, "BOOTSTRAP_PINS", bootstraps),
-                    patch.object(generator, "DEPENDENCY_SHA256", private.digest(wheel)),
-                ):
-                    installer = root / "install.sh"
-                    _ = installer.write_bytes(generator.render())
-                script(
-                    tools / "curl",
-                    '#!/bin/sh\nwhile [ "$#" -gt 1 ]; do\n'
-                    'if [ "$1" = --output ]; then destination=$2; fi\nshift\ndone\n'
-                    'case "$1" in\n'
-                    f'{"|".join(pin.url for pin in python)}) source={shlex.quote(str(archive))} ;;\n'
-                    f'{"|".join(pin.url for pin in bootstraps)}) source={shlex.quote(str(executable))} ;;\n'
-                    f"{private.DEPENDENCY_URL}) source={shlex.quote(str(wheel))} ;;\n"
-                    '*) exit 92 ;;\nesac\n/bin/cat "$source" > "$destination"\n',
-                )
-                environment = {
-                    "HOME": str(home),
-                    "PATH": f"{tools}:{os.defpath}:/usr/bin:/bin",
-                    "TMPDIR": str(root),
-                }
-                command = ["/bin/bash", str(installer), *arguments]
-                if answer is None:
-                    result = subprocess.run(
-                        command,
-                        env=environment,
-                        capture_output=True,
-                        text=True,
-                        timeout=30,
-                        # A new session has no controlling terminal.
-                        start_new_session=True,
-                    )
-                    status, shown = result.returncode, result.stdout
-                    self.assertEqual("INSTALLED\n" if expected == 0 else "UNSUPPORTED\n", shown)
-                    self.assertEqual(expected != 0, "--replace-existing" in result.stderr)
-                else:
-                    status, shown = on_terminal(command, environment, answer)
-                    self.assertEqual("[y/N]" in shown, plan in effects)
-                self.assertEqual(expected, status, shown)
-                self.assertEqual(effects, log.read_text().splitlines())
-                self.assertFalse(list(root.glob("kast-bootstrap.*")))
-
-    def test_a_completed_installation_offers_or_refreshes_agents(self) -> None:
-        offer, refresh = "agent install", "agent refresh"
-        cases: tuple[tuple[tuple[str, ...], bool, bool, int, list[str]], ...] = (
-            # arguments, terminal, the build has the selector, engine status, agent commands
-            ((), True, True, 0, [offer]),
-            ((), False, True, 0, [refresh]),
-            (("--json",), True, True, 0, [refresh]),
-            ((), True, False, 0, []),
-            ((), False, False, 0, []),
-            ((), True, True, 4, []),
-            (("--version", "1.2.3", "--dry-run"), True, True, 0, []),
-        )
-        for arguments, terminal, selector, outcome, effects in cases:
-            with (
-                self.subTest(arguments=arguments, terminal=terminal, selector=selector),
-                tempfile.TemporaryDirectory() as temporary,
-            ):
-                root = Path(temporary).resolve()
-                home, log, tools = root / "home", root / "effects", root / "tools"
-                command = home / ".local/bin/kast"
-                plugin = home / ".local/share/kast/installation/share/kast/agent-tools/plugins/kast"
-                for directory in (tools, command.parent, plugin):
-                    directory.mkdir(parents=True)
-                log.touch()
-                if selector:
-                    _ = (plugin / "package.json").write_text("{}")
-                # A failed agent command must not change the installation's status.
-                script(
-                    command, f'#!/bin/sh\necho "$*" >> {shlex.quote(str(log))}\necho shown\nexit 1\n'
-                )
-                engine = root / "engine"
-                script(
-                    engine,
-                    f'#!/bin/sh\n[ "$3" = -c ] && exit 0\necho INSTALLED\nexit {outcome}\n',
-                )
-                archive = root / "python.tar.gz"
-                with tarfile.open(archive, "w:gz") as output:
-                    output.add(engine, "python/bin/python3.12")
-                wheel = root / "wheel"
-                _ = wheel.write_bytes(b"wheel")
-                python = tuple(replace(pin, sha256=private.digest(archive)) for pin in private.PINS)
-                with (
-                    patch.object(generator, "PINS", python),
-                    patch.object(generator, "DEPENDENCY_SHA256", private.digest(wheel)),
-                ):
-                    installer = root / "install.sh"
-                    _ = installer.write_bytes(generator.render())
-                script(
-                    tools / "curl",
-                    '#!/bin/sh\nwhile [ "$#" -gt 1 ]; do\n'
-                    'if [ "$1" = --output ]; then destination=$2; fi\nshift\ndone\n'
-                    'case "$1" in\n'
-                    f'{"|".join(pin.url for pin in python)}) source={shlex.quote(str(archive))} ;;\n'
-                    f"{private.DEPENDENCY_URL}) source={shlex.quote(str(wheel))} ;;\n"
-                    '*) exit 92 ;;\nesac\n/bin/cat "$source" > "$destination"\n',
-                )
-                environment = {
-                    "HOME": str(home),
-                    "PATH": f"{tools}:{os.defpath}:/usr/bin:/bin",
-                    "TMPDIR": str(root),
-                }
-                vector = ["/bin/bash", str(installer), *arguments]
-                if terminal:
-                    status, _shown = on_terminal(vector, environment, "\n")
-                else:
-                    result = subprocess.run(
-                        vector,
-                        env=environment,
-                        capture_output=True,
-                        text=True,
-                        timeout=30,
-                        start_new_session=True,
-                    )
-                    status = result.returncode
-                    self.assertEqual("INSTALLED\n", result.stdout)
-                self.assertEqual(outcome, status)
-                self.assertEqual(effects, log.read_text().splitlines())
 
     def test_bootstrap_pins_name_one_published_release_per_target(self) -> None:
         self.assertRegex(published.TAG, r"\Abootstrap-[0-9a-f]{12}\Z")
