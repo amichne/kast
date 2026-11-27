@@ -57,9 +57,6 @@ func admitPayload(installation string) error {
 			return damaged(file.Path + " changed")
 		}
 	}
-	if !expected[bridgePath] {
-		return damaged("the installation has no activation engine")
-	}
 	for _, directory := range []string{"bin", "lib", "share"} {
 		if extra := unlisted(installation, directory, expected); extra != "" {
 			return damaged(extra + " is not part of the installation")

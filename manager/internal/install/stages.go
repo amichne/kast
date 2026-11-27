@@ -107,7 +107,17 @@ func (s *stages) accept(line []byte) {
 	if json.Unmarshal(line, &document) != nil || document.Stage == "" || document.Outcome != "STARTED" {
 		return
 	}
-	text := stageText(document.Stage)
+	s.begin(stageText(document.Stage))
+}
+
+// enter shows the stage this process begins.
+func (s *stages) enter(text string) {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+	s.begin(text)
+}
+
+func (s *stages) begin(text string) {
 	if text == s.current {
 		return
 	}

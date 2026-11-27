@@ -61,7 +61,7 @@ On a terminal, a query that waits for preparation shows the same step on stderr 
 
 When standard output is a terminal, commands show an outline instead of JSON. A pipe receives the exact document.
 Use `--json` or `--jq` for machine output on a terminal, such as an agent that runs commands in a pseudo-terminal.
-`kast upgrade` and `kast uninstall` print words on a terminal and in a pipe. `kast upgrade --json` prints one JSON result and JSON progress.
+`kast upgrade` and `kast uninstall` print words on a terminal and in a pipe. `kast upgrade --json` prints one JSON result and no progress.
 
 ### Inspect or edit workspace settings
 
@@ -107,7 +107,9 @@ kast upgrade --repair --json
 ```
 
 Repair selects the exact installed product. It does not resolve a newer channel head or replace only one component.
-The installer composes immutable vendor bytes with exact components and uses the existing replacement journal.
+Kast verifies and unpacks the whole build beside the installation before it changes anything.
+Then the installed build stops its workspace Hosts, and Kast switches to the new build.
+If an upgrade stops partway, run the same command again: it removes what was left and finishes or undoes the switch.
 Running owned work can end during replacement. A subsequent explicit request prepares the selected workspace generation.
 
 <span id="lifecycle-result-contract" />

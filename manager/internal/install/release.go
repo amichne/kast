@@ -83,9 +83,13 @@ type part struct {
 
 // release is one admitted build for one target. Its record matched the digest that selected it.
 type release struct {
+	// version is what a reader selects: the stable version, or the preview build. recordVersion is the build's own.
 	tag, version, revision, target string
+	recordVersion, tree            string
 	channel                        channel
 	parts                          []part
+	// facts is the record's entry for this target.
+	facts *targetDocument
 	// record is the exact admitted text, and sha its published digest.
 	record []byte
 	sha    string
@@ -311,6 +315,7 @@ func admit(raw []byte, found reference, platform string) (*release, error) {
 	}
 	// One invalid target makes the record invalid for every platform.
 	var parts []part
+	var facts *targetDocument
 	for index, target := range record.Targets {
 		if target.Target != targets[index] {
 			return nil, invalid("targets")
@@ -320,11 +325,12 @@ func admit(raw []byte, found reference, platform string) (*release, error) {
 			return nil, invalid(check)
 		}
 		if target.Target == platform {
-			parts = files
+			parts, facts = files, &record.Targets[index]
 		}
 	}
 	return &release{tag: found.tag, version: found.public, revision: record.SourceRevision, target: platform,
-		channel: found.channel, parts: parts, record: raw, sha: found.sha}, nil
+		recordVersion: record.Version, tree: record.SourceTree, channel: found.channel, parts: parts, facts: facts,
+		record: raw, sha: found.sha}, nil
 }
 
 // admit returns the target's files, or the name of the check that failed.

@@ -42,6 +42,7 @@ func main() {
 		Reset:       reset.Native,
 		Uninstall:   reset.NativeUninstall,
 		Upgrade:     install.NativeUpgrade,
+		Activate:    install.NativeActivate,
 		Install:     install.Native,
 		Agent:       agent.Native,
 	}))

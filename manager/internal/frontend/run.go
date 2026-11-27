@@ -42,6 +42,8 @@ type Process struct {
 	Uninstall func(home string, arguments []string, out io.Writer, settle func() error) error
 	// Upgrade performs `kast upgrade` on one home.
 	Upgrade func(ctx context.Context, home, platform string, arguments []string, out, log io.Writer) error
+	// Activate performs `kast install` that installs a build on one home.
+	Activate func(ctx context.Context, home, platform string, arguments []string, out, log io.Writer) error
 	// Install performs `kast install` with options on one home.
 	Install func(ctx context.Context, home, platform string, arguments []string, out, log io.Writer) error
 	// Agent performs `kast agent` on one installation, which is empty when none was found.
@@ -63,7 +65,9 @@ func Run(process Process) int {
 			}
 			return runReset(process, "uninstall", environment["HOME"], parsed.arguments[1:], uninstall)
 		case parsed.arguments[0] == "upgrade":
-			return runUpgrade(process, environment["HOME"], parsed.arguments[1:])
+			return runUpgrade(process, "upgrade", process.Upgrade, environment["HOME"], parsed.arguments[1:])
+		case installs(parsed.arguments) && install.Activates(parsed.arguments[1:]):
+			return runUpgrade(process, "install", process.Activate, environment["HOME"], parsed.arguments[1:])
 		case installs(parsed.arguments):
 			return runInstall(process, environment["HOME"], parsed.arguments[1:])
 		case parsed.arguments[0] == "agent":
@@ -140,11 +144,11 @@ func runReset(process Process, name, home string, arguments []string,
 	}
 }
 
-// installs reports whether the arguments select one of this process's installation modes. The JVM owns every other
-// `install` vector, such as `install skill` and its help.
+// installs reports whether the arguments select a build or one of this process's installation modes. The JVM owns
+// every other `install` vector, such as `install skill` and its help.
 func installs(arguments []string) bool {
 	return len(arguments) > 1 && arguments[0] == "install" && strings.HasPrefix(arguments[1], "--") &&
-		slices.ContainsFunc(arguments[1:], install.Mode)
+		slices.ContainsFunc(arguments[1:], install.Claims)
 }
 
 // installGrace bounds the wait for a cancelled installation, which restores the terminal before it returns.
@@ -227,47 +231,48 @@ func stopFailure(document string, status int) string {
 	return strings.ToLower(strings.ReplaceAll(rejected.Failure, "_", " "))
 }
 
-// runUpgrade performs an upgrade beside the signal wait. A signal asks the engine to stop, and this process waits for
-// it, because the engine must undo or record a replacement that it started.
-func runUpgrade(process Process, home string, arguments []string) int {
+// runUpgrade performs an activation beside the signal wait. A signal stops it before the installed build retires, and
+// this process waits for it, because a switch that began runs to its end.
+func runUpgrade(process Process, name string, perform func(ctx context.Context, home, platform string, arguments []string,
+	out, log io.Writer) error, home string, arguments []string) int {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	finished := make(chan error, 1)
 	go func() {
-		finished <- process.Upgrade(ctx, home, platform(), arguments, process.Stdout, process.Stderr)
+		finished <- perform(ctx, home, platform(), arguments, process.Stdout, process.Stderr)
 	}()
 	var interrupted os.Signal
 	for {
 		select {
 		case err := <-finished:
 			if interrupted != nil {
-				diagnose(process.Stderr, "upgrade: interrupted. Run `kast upgrade` again.")
+				diagnose(process.Stderr, name+": interrupted. Run `kast "+name+"` again.")
 				if interrupted == syscall.SIGTERM {
 					return terminatedStatus
 				}
 				return interruptedStatus
 			}
-			return upgradeStatus(process.Stderr, err)
+			return upgradeStatus(process.Stderr, name, err)
 		case signal := <-process.Signals:
 			if interrupted == nil {
 				interrupted = signal
-				diagnose(process.Stderr, "upgrade: stopping safely")
+				diagnose(process.Stderr, name+": stopping safely")
 				cancel()
 			}
 		}
 	}
 }
 
-func upgradeStatus(stderr io.Writer, err error) int {
+func upgradeStatus(stderr io.Writer, name string, err error) int {
 	var rejection *install.Rejection
 	switch {
 	case err == nil:
 		return 0
 	case !errors.As(err, &rejection):
-		diagnose(stderr, "upgrade: "+err.Error())
+		diagnose(stderr, name+": "+err.Error())
 		return runtimeStatus
 	}
-	diagnose(stderr, "upgrade: "+rejection.Error()+"\n"+rejection.Next)
+	diagnose(stderr, name+": "+rejection.Error()+"\n"+rejection.Next)
 	if rejection.Failure == install.UsageRejected {
 		return inputStatus
 	}

@@ -27,6 +27,9 @@ const (
 	PinnedBuild           Failure = "PINNED_BUILD"
 	LocalArtifactRequired Failure = "LOCAL_ARTIFACT_REQUIRED"
 	ActivationRejected    Failure = "ACTIVATION_REJECTED"
+	ActivationBusy        Failure = "ACTIVATION_BUSY"
+	CommandForeign        Failure = "COMMAND_FOREIGN"
+	StopRejected          Failure = "STOP_REJECTED"
 	RecoveryRequired      Failure = "RECOVERY_REQUIRED"
 )
 
@@ -49,6 +52,10 @@ var next = map[Failure]string{
 	PinnedBuild:           "Select `--channel stable` or `--channel preview` to follow a channel again.",
 	LocalArtifactRequired: "Install from the local directory again, or select a published build.",
 	ActivationRejected:    "Run the same command again. If it repeats, run `kast reset` to see what it would remove.",
+	ActivationBusy:        "Wait for the other Kast command to end, then run the same command again.",
+	CommandForeign:        "Move that file away, or run `kast reset` to see what it would remove, then install again.",
+	StopRejected: "Wait for running Kast requests to end, then run the same command again. `kast reset` ends them " +
+		"without waiting.",
 	RecoveryRequired: "Run `kast upgrade` again to finish or undo it. If it repeats, run `kast reset` to see what it would " +
 		"remove.",
 }

@@ -461,7 +461,6 @@ func TestEveryEntryOtherThanPublicQueriesReplacesTheProcessWithTheJvmEntry(t *te
 	for _, arguments := range [][]string{
 		{"-Duser.home=/home/caller", "--internal-entrypoint=mcp", "--catalog", "common"},
 		{"-Xmx512m", "-XX:+UseSerialGC", "--internal-entrypoint=jq", "FILTER"},
-		{"install", "--channel", "stable"},
 		{"workspace", "session-start"},
 		{"--internal-entrypoint=query", "hook", "pre-tool"},
 	} {

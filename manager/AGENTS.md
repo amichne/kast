@@ -4,8 +4,8 @@ title: "Kast manager"
 description: "Owns the Go Control executable: public queries through the persistent coordinator, reset, and every other entry on the JVM."
 resource: "repo://manager"
 tags: [kast, manager, frontend, coordinator]
-timestamp: "2026-11-23T00:00:00Z"
-source_revision: 402240fd87e8cf55254ddec55f6f02a809e4101c
+timestamp: "2026-11-27T00:00:00Z"
+source_revision: dfcd16821b1a90cd9d70a038c06d639fad6344d8
 code_sources:
   - path: manager/cmd/kast/main.go
   - path: manager/internal/agent/agent.go
@@ -36,8 +36,10 @@ because a module path change alters the bootstrap bytes that `install.sh` pins.
 The Go binary is the installed Control executable at `share/kast/libexec/kast-management`, and the public `kast` command is its copy.
 It serves the public query commands through the persistent coordinator and owns bootstrap, transport, signals, output delivery, and process status for them.
 It also owns `kast reset`, which returns a damaged installation to "nothing installed" without a record, a runtime, or a JVM.
-It selects and downloads published builds for `kast install`, without changing an installation.
-It owns the `kast upgrade` and `kast uninstall` commands. The installed engine still activates an upgrade.
+It selects, downloads, verifies and installs published builds for `kast install` and `kast upgrade`, and owns `kast uninstall`.
+An activation writes the layout the Python engine wrote: the same records, runtime store entry and payload manifest, without the private Python.
+The outgoing build stops its own workspace Hosts through `--internal-install managed-retire`.
+The installed Python engine only finishes an upgrade that it recorded in `recovery/replacement`.
 It connects Claude Code, Codex, GitHub Copilot, and Pi to the installed plugin for `kast agent`, through each agent's own commands.
 Every other invocation replaces the process with `KastControlMain` on the Host's Java runtime, from the installation's `lib` class path.
 The coordinator and the JVM entry own lowering, defaults, workspace decisions, semantic admission, and presentation.
@@ -58,10 +60,15 @@ Read the [tracer evidence](../docs/reviews/go-frontend-tracer.md) for the measur
 - When stdout is a terminal and the caller names no format, present results as an outline. `--json`, `--jq`, and a set output setting keep the exact document.
   A pipe always receives the exact document.
 - Run the JVM as a child only for a presented command in `childServed`, and to settle Hosts for an uninstall. Never run `hook` or a private entry as a child.
-- Verify every installed payload file before an upgrade runs the engine. Anything unexpected stops and names `kast reset`.
-- An upgrade succeeds only with a success document and status 0. After a signal, ask the engine to stop once and wait for it; never kill it.
+- Verify every installed payload file before an upgrade runs any of it. Anything unexpected stops and names `kast reset`.
+- Verify each composed runtime file and each extracted Control file against the admitted record before any effect on the installation.
+- Unpack and train beside the management root. Retire the installed build only after the new one is complete, then switch by two renames.
+- After retirement begins, finish the switch. Before it, a signal stops the activation and leaves the installation untouched.
+- Hold `management.lock` and `activation.lock` only to recover leftovers and to replace, never during a download.
+- Recover an interrupted activation by its leftover names, which `kast reset` also removes. Undo a switch that lost its installation.
+- Let the Python engine finish only its own journal. After a signal, ask it to stop once and wait for it; never kill it.
 - An uninstall settles every Host before it stops a process, and refuses an unfinished upgrade or an entry that Kast did not write.
-- Never run an upgrade or uninstall test against a real engine, Host, or home. Script them in `upgrade_test.go` and `uninstall_test.go`.
+- Never run an activation or uninstall test against a real engine, Host, or home. Script them in `upgrade_test.go` and `uninstall_test.go`.
 - Read `host-progress.json` only to draw a progress line on stderr. `HostProgressRecord` derives the phase; never derive it in Go.
 - Replace control characters in presented values, so a result cannot drive the terminal.
 - Route JVM warnings to stderr with `-Xlog:disable -Xlog:all=warning:stderr`, so standard output carries only the entry's document.
@@ -75,10 +82,10 @@ Read the [tracer evidence](../docs/reviews/go-frontend-tracer.md) for the measur
 - Delete only names that a cited Kast source writes. Select jobs by label and program path, and processes by executable path.
 - Delete the public command last, so that an interrupted reset can run again.
 - Never run a reset test against a real home or supervisor. Inject the adapters in `reset_test.go`, which reject unexpected effects.
-- Route `install` to this process only with `--dry-run` or `--download-only`. The JVM owns every other `install` vector.
+- Route `install` to this process only with a mode, a build selector, or `--json`. The JVM owns every other `install` vector.
 - Admit each downloaded byte through one digest chain: the catalog or release mapping, the build record, then each file.
 - Accept only the current build record schema. Reject an older release before any file request.
-- Write only `~/.local/share/.kast-downloads`. A reset deletes that directory. A dry run writes nothing.
+- Planning writes nothing, and a download writes only `~/.local/share/.kast-downloads`. A reset deletes that directory.
 - Never run an installation test against the network. Inject the transport in `install_test.go`, which rejects unexpected requests.
 - Draw the download view only on a terminal, on stderr. Keep stdout, pipes, `TERM=dumb` and `--json` free of control sequences.
 - Keep the view without input and without signal handling. With input, Bubble Tea asks the terminal questions whose answers reach the shell.
@@ -112,9 +119,12 @@ Read the [tracer evidence](../docs/reviews/go-frontend-tracer.md) for the measur
 - [reset.go](internal/reset/reset.go) - the reset sequence, its failures, and the supervisor and process adapters.
 - [paths.go](internal/reset/paths.go) - the exact deletion targets, their owners, and deletion without links.
 - [uninstall.go](internal/reset/uninstall.go) - what an uninstall refuses, and its order.
-- [upgrade.go](internal/install/upgrade.go) - build choice, the engine's command, and the result.
+- [upgrade.go](internal/install/upgrade.go) - build choice, the activation's order, and the result.
+- [activate.go](internal/install/activate.go) - locks, leftover recovery, retirement, the switch, and the receipts.
+- [runtime.go](internal/install/runtime.go) - runtime composition from its two archives, and the store's records.
+- [control.go](internal/install/control.go) - the Control payload, kept configuration, class-data training, and the manifest.
 - [payload.go](internal/install/payload.go) - proof of the installed files.
-- [stages.go](internal/install/stages.go) - the engine's stages and result as words.
+- [stages.go](internal/install/stages.go) - stages and results as words.
 - [backup.go](internal/reset/backup.go) - the client configuration and workspace evidence that a reset copies first.
 - [agent.go](internal/agent/agent.go) - ownership, selection, and the install, remove, and refresh sequences.
 - [harness.go](internal/agent/harness.go) - each agent's vocabulary and reported state.

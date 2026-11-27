@@ -169,6 +169,34 @@ func TestAnInterruptedUpgradeIsAwaited(t *testing.T) {
 	}
 }
 
+func TestAnInstallWithABuildSelectorActivatesHereAndOtherModesOnlyDownload(t *testing.T) {
+	for _, test := range []struct {
+		arguments []string
+		activates bool
+	}{
+		{[]string{"install", "--channel", "preview"}, true}, {[]string{"install", "--version=1.2.3"}, true},
+		{[]string{"install", "--json"}, true}, {[]string{"install", "--commit", "abc", "--dry-run"}, false},
+		{[]string{"install", "--download-only"}, false},
+	} {
+		f := installed(t)
+		var activated, downloaded []string
+		record := func(into *[]string) func(context.Context, string, string, []string, io.Writer, io.Writer) error {
+			return func(_ context.Context, _, _ string, arguments []string, _, _ io.Writer) error {
+				*into = arguments
+				return &install.Rejection{Failure: install.UsageRejected}
+			}
+		}
+		result := f.lifecycle(t, nil, Process{Activate: record(&activated), Install: record(&downloaded)}, test.arguments...)
+		got, other := downloaded, activated
+		if test.activates {
+			got, other = activated, downloaded
+		}
+		if !slices.Equal(got, test.arguments[1:]) || other != nil || result.status != inputStatus {
+			t.Errorf("%v: activated %v, downloaded %v, %+v", test.arguments, activated, downloaded, result)
+		}
+	}
+}
+
 func TestAnUninstallSettlesHostsThroughTheInstalledEntry(t *testing.T) {
 	for _, test := range []struct {
 		status    int
