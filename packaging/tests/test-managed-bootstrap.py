@@ -14,7 +14,8 @@ from pathlib import Path
 from unittest.mock import patch
 
 try:
-    import defusedxml  # noqa: F401  # The retained support's dependency must be importable.
+    # The retained support's dependency must be importable; the import is the check.
+    import defusedxml  # noqa: F401  # pyright: ignore[reportUnusedImport]
 
     import bootstrap_release as published
     import generate_bootstrap as generator
