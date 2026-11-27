@@ -9771,6 +9771,11 @@
             <sha256 value="7d91ab741bc84ec8ea4612308113a404f45dd71b91433985dd2c4c784af05479" origin="Verified Maven Central bytes and published SHA256"/>
          </artifact>
       </component>
+      <component group="tools.jackson" name="jackson-base" version="3.1.8">
+         <artifact name="jackson-base-3.1.8.pom">
+            <sha256 value="282090b4c492ac40162d73d5a7181e9476d40e9b50bc690b171dab745b8ce278" origin="Verified Maven Central bytes and published SHA256"/>
+         </artifact>
+      </component>
       <component group="tools.jackson" name="jackson-base" version="3.2.1">
          <artifact name="jackson-base-3.2.1.pom">
             <sha256 value="0b0406e39eb815ae61542e9422d7754d2105439adca6a32166aed73a26ea07f3" origin="Verified official SHA256 from https://repo.maven.apache.org/maven2/tools/jackson/jackson-base/3.2.1/jackson-base-3.2.1.pom.sha256"/>
@@ -9964,6 +9969,11 @@
       <component group="tools.jackson.dataformat" name="jackson-dataformats-text" version="3.1.1">
          <artifact name="jackson-dataformats-text-3.1.1.pom">
             <sha256 value="780687e60093ed8a25ac4086b27d08214ed259b6463f18c51ae800fa6fd6e9c3" origin="Verified Maven Central bytes and published SHA256"/>
+         </artifact>
+      </component>
+      <component group="tools.jackson.dataformat" name="jackson-dataformats-text" version="3.1.8">
+         <artifact name="jackson-dataformats-text-3.1.8.pom">
+            <sha256 value="c390932913f28c120689b3443672426648b7327ad17546cfc0674fb0f4cba03d" origin="Verified Maven Central bytes and published SHA256"/>
          </artifact>
       </component>
       <component group="tools.jackson.dataformat" name="jackson-dataformats-text" version="3.2.1">
