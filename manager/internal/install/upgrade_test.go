@@ -622,7 +622,8 @@ func TestAnUnfinishedPythonUpgradeIsFinishedByItsOwnEngine(t *testing.T) {
 
 func TestAChildThatOutlivesItsTimeoutIsStopped(t *testing.T) {
 	started := time.Now()
-	status, err := runChild(context.Background(), []string{"/bin/sh", "-c", "sleep 5"}, nil, 100*time.Millisecond)
+	// The descendant outlives a shell that only waits for it, as a retiring JVM's children can.
+	status, err := runChild(context.Background(), []string{"/bin/sh", "-c", "sleep 5 & wait"}, nil, 100*time.Millisecond)
 	if err != nil || status == 0 || time.Since(started) > 3*time.Second {
 		t.Errorf("status %d, %v after %v", status, err, time.Since(started))
 	}

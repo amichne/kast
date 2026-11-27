@@ -30,16 +30,18 @@ const (
 // runner runs one child to its end, or stops it after the timeout. Its status is the child's exit status.
 type runner func(ctx context.Context, command, environment []string, timeout time.Duration) (int, error)
 
-// runChild ends a child that outlives its timeout. A cancelled context does not end it: the caller decides when an
-// effect may stop.
+// runChild ends a child and everything it started when it outlives its timeout. A cancelled context does not end it:
+// the caller decides when an effect may stop. Its output goes to the null device, so no descendant can hold a pipe
+// that the wait reads.
 func runChild(_ context.Context, command, environment []string, timeout time.Duration) (int, error) {
 	child := exec.Command(command[0], command[1:]...)
-	child.Env, child.Stdout, child.Stderr = environment, io.Discard, io.Discard
+	child.Env = environment
 	child.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
 	if err := child.Start(); err != nil {
 		return 0, err
 	}
-	timer := time.AfterFunc(timeout, func() { _ = child.Process.Signal(syscall.SIGTERM) })
+	group := -child.Process.Pid
+	timer := time.AfterFunc(timeout, func() { _ = syscall.Kill(group, syscall.SIGTERM) })
 	defer timer.Stop()
 	err := child.Wait()
 	var exited *exec.ExitError
