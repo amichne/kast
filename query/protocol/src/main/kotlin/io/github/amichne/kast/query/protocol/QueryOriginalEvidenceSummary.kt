@@ -16,12 +16,16 @@ import io.github.amichne.kast.protocol.contract.SourceReadLimitationDocument
 import io.github.amichne.kast.query.contract.QueryItemFailure
 import io.github.amichne.kast.query.contract.QueryResult
 import io.github.amichne.kast.query.contract.QuerySourceFailure
+import io.github.amichne.kast.relation.contract.CallbackNamedCallPolicy
 import io.github.amichne.kast.traversal.contract.TraversalRejection
 
 /** Pure metadata over original facts, before presentation selection or issued-reference effects. */
 internal fun QueryResult.originalEvidenceSummary(request: QueryRunRequest.Run): QueryOriginalEvidenceSummaryDocument {
     val sourceFailures = failures.filterIsInstance<QueryItemFailure.Source>().map { it.reason }
     val walks = failures.filterIsInstance<QueryItemFailure.Walk>().map { it.reason }
+    val callbacks =
+        relationObservations.flatMap { it.callbackObservations } +
+            walkObservations.flatMap { it.callbackObservations }.map { it.observation }
     return QueryOriginalEvidenceSummaryDocument(
         summaryOffset(failures.size),
         summaryOffset(omissions.size),
@@ -60,10 +64,12 @@ internal fun QueryResult.originalEvidenceSummary(request: QueryRunRequest.Run): 
             QueryCallbackCompletion.from(QueryQuestionDocument.from(request)) ==
                 QueryCallbackCompletion.SOURCE_RELATIONSHIPS
         )
-            (relationObservations.asSequence().flatMap { it.callbackObservations } +
-                    walkObservations.asSequence().flatMap { it.callbackObservations }.map { it.observation })
-                .firstNotNullOfOrNull { it.unprovenNavigationCause() }
+            callbacks.firstNotNullOfOrNull { it.unprovenNavigationCause() }
         else null,
+        // A stored-lambda call is not a caller row; counting it keeps a caller list from reading as a call-site list.
+        summaryOffset(
+            callbacks.filter { it.policy is CallbackNamedCallPolicy.Excluded }.map { it.occurrence }.distinct().size
+        ),
     )
 }
 

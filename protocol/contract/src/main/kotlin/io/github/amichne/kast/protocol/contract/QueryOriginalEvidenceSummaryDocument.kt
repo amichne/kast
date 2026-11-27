@@ -74,11 +74,21 @@ data class QueryOriginalEvidenceSummaryDocument(
     @EncodeDefault(EncodeDefault.Mode.NEVER)
     @SerialName("first_unproven_callback")
     val firstUnprovenCallback: QueryCallbackGraphCauseDocument? = null,
+    /**
+     * Distinct call occurrences that the named-caller policy excluded because they run inside a stored lambda. Each
+     * remains in `callback_observations`; it is not a caller row, so a caller list is not a call-site list.
+     */
+    @EncodeDefault(EncodeDefault.Mode.NEVER)
+    @SerialName("excluded_callback_calls")
+    val excludedCallbackCalls: ProtocolOffset = offset(0),
 ) {
     companion object {
         fun from(result: QueryRunResult): QueryOriginalEvidenceSummaryDocument {
             val failures = result.failures.values
             val walks = failures.filterIsInstance<QueryItemFailureDocument.Walk>().map { it.reason }
+            val callbacks =
+                result.relationObservations.values.flatMap { it.callbackObservations.values } +
+                    result.walkObservations.values.flatMap { it.callbackObservations.values }.map { it.observation }
             return QueryOriginalEvidenceSummaryDocument(
                 offset(failures.size),
                 offset(result.omissions.values.size),
@@ -97,15 +107,18 @@ data class QueryOriginalEvidenceSummaryDocument(
                 finite(failures.filterIsInstance<QueryItemFailureDocument.Relation>().map { it.reason }),
                 finite(walks.filterIsInstance<QueryWalkFailureDocument.OneHop>().map { it.reason }),
                 finite(walks.map { it.summaryKind() }),
-                (result.relationObservations.values.asSequence().flatMap { it.callbackObservations.values } +
-                        result.walkObservations.values
-                            .asSequence()
-                            .flatMap { it.callbackObservations.values }
-                            .map { it.observation })
+                callbacks
                     .map { it.navigation }
                     .filterIsInstance<QueryCallbackNavigationDocument.Unproven>()
                     .firstOrNull()
                     ?.cause,
+                offset(
+                    callbacks
+                        .filter { it.namedPolicy is QueryCallbackNamedPolicyDocument.Excluded }
+                        .map { it.occurrence }
+                        .distinct()
+                        .size
+                ),
             )
         }
     }

@@ -99,21 +99,21 @@ class VerdictTest(KastRecipeCase):
         )
 
     def test_evidence_beyond_the_first_page_is_read_after_the_last_row(self) -> None:
-        # The first page presented only an evidence prefix. The remaining evidence settles both evidence fields.
-        partial = VERDICT.replace('"excluded_callback_calls":4,"evidence_complete":true',
-                                  '"excluded_callback_calls":1,"evidence_complete":false')
+        # The first page presented only an evidence prefix. The remaining evidence settles evidence_complete; the
+        # excluded-call count is Kast's summary over the original facts and is never recounted from pages.
+        partial = VERDICT.replace('"evidence_complete":true', '"evidence_complete":false')
         evidence_read = ["result", "read", "--ref", RESULT, "--cursor", "2", "--evidence-cursor"]
         plan = [
             {"prefix": ["query"], "stdout": f'["null {RESULT}",{partial},[{{"name":"only"}}]]'},
             {"prefix": [*evidence_read, "0", "--output", "symbols", "--max-returned-bytes", BUDGET, "--jq"],
-             "stdout": '["MORE 3 0","a.kt:5;b.kt:7"]'},
+             "stdout": '["MORE 3 0",null]'},
             {"prefix": [*evidence_read, "3", "--output", "symbols", "--max-returned-bytes", BUDGET, "--jq"],
-             "stdout": '["FINAL 5 0","a.kt:5;c.kt:9"]'},
+             "stdout": '["FINAL 5 0",null]'},
         ]
         result, _ = self.run_recipe(plan, "verdict", "--ref", "exact:v5:A", "--relation", "references")
         self.assertEqual(0, result.returncode, result.stderr)
         verdict = json.loads(result.stdout)["verdict"]
-        self.assertEqual((3, True), (verdict["excluded_callback_calls"], verdict["evidence_complete"]))
+        self.assertEqual((4, True), (verdict["excluded_callback_calls"], verdict["evidence_complete"]))
 
     def test_deferred_evidence_keeps_the_verdict_incomplete(self) -> None:
         partial = VERDICT.replace('"excluded_callback_calls":4,"evidence_complete":true',
@@ -121,7 +121,7 @@ class VerdictTest(KastRecipeCase):
         plan = [
             {"prefix": ["query"], "stdout": f'["null {RESULT}",{partial},[]]'},
             {"prefix": ["result", "read", "--ref", RESULT, "--cursor", "2", "--evidence-cursor", "0"],
-             "stdout": '["FINAL 4 1",""]'},
+             "stdout": '["FINAL 4 1",null]'},
         ]
         result, _ = self.run_recipe(plan, "verdict", "--ref", "exact:v5:A", "--relation", "references")
         self.assertEqual(0, result.returncode, result.stderr)
@@ -139,7 +139,7 @@ class VerdictTest(KastRecipeCase):
         partial = VERDICT.replace('"evidence_complete":true', '"evidence_complete":false')
         plan = [
             {"prefix": ["query"], "stdout": f'["null {RESULT}",{partial},[]]'},
-            {"prefix": ["result", "read"], "stdout": '["MORE 0 0",""]'},
+            {"prefix": ["result", "read"], "stdout": '["MORE 0 0",null]'},
         ]
         result, _ = self.run_recipe(plan, "verdict", "--ref", "exact:v5:A", "--relation", "references")
         self.assertEqual(64, result.returncode)
