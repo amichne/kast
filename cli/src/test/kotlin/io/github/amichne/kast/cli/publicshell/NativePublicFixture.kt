@@ -192,8 +192,7 @@ internal class NativePublicFixture(
         javaHome = runtimeRoot.resolve(homes.getValue(currentPlatform()).jsonPrimitive.content)
         Files.createDirectories(javaHome.parent)
         val testRuntime = Path.of(System.getProperty("java.home")).toRealPath()
-        if (ownedRuntime) copyRuntime(testRuntime, javaHome)
-        else Files.createSymbolicLink(javaHome, testRuntime)
+        if (ownedRuntime) copyRuntime(testRuntime, javaHome) else Files.createSymbolicLink(javaHome, testRuntime)
         Files.writeString(
             installation.parent.resolve("management.json"),
             Json.encodeToString(RuntimeReceipt(RuntimeReference(runtimeRoot.toString()))),
@@ -207,17 +206,18 @@ internal class NativePublicFixture(
     /** Copies every directory, file and link, so each copied executable is a separate file with its own path. */
     private fun copyRuntime(source: Path, destination: Path) {
         Files.walk(source).use { paths ->
-            paths.forEach { path ->
-                val target = destination.resolve(source.relativize(path).toString())
-                when {
-                    Files.isSymbolicLink(path) -> Files.createSymbolicLink(target, Files.readSymbolicLink(path))
-                    Files.isDirectory(path) -> Files.createDirectories(target)
-                    else -> {
-                        Files.copy(path, target)
-                        if (Files.isExecutable(path))
-                            Files.setPosixFilePermissions(target, PosixFilePermissions.fromString("rwxr-xr-x"))
-                    }
-                }
+            paths.forEach { path -> copyRuntimeEntry(path, destination.resolve(source.relativize(path).toString())) }
+        }
+    }
+
+    private fun copyRuntimeEntry(path: Path, target: Path) {
+        when {
+            Files.isSymbolicLink(path) -> Files.createSymbolicLink(target, Files.readSymbolicLink(path))
+            Files.isDirectory(path) -> Files.createDirectories(target)
+            else -> {
+                Files.copy(path, target)
+                if (Files.isExecutable(path))
+                    Files.setPosixFilePermissions(target, PosixFilePermissions.fromString("rwxr-xr-x"))
             }
         }
     }

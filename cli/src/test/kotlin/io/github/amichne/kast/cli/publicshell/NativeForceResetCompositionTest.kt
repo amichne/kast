@@ -26,7 +26,8 @@ class NativeForceResetCompositionTest {
     @Test
     fun `a reset retires a live native jq worker and preserves a foreign installation`(@TempDir evidence: Path) {
         NativePublicFixture(Files.createDirectory(evidence.resolve("selected")), ownedRuntime = true).use { selected ->
-            NativePublicFixture(Files.createDirectory(evidence.resolve("foreign")), ownedRuntime = true).use { foreign ->
+            val foreignRoot = Files.createDirectory(evidence.resolve("foreign"))
+            NativePublicFixture(foreignRoot, ownedRuntime = true).use { foreign ->
                 withJqWorker(selected, evidence.resolve("selected-jq.stderr")) { worker ->
                     withJqWorker(foreign, evidence.resolve("foreign-jq.stderr")) { unrelated ->
                         // Both genuine warm workers have an open stdin; EOF is deliberately withheld.
