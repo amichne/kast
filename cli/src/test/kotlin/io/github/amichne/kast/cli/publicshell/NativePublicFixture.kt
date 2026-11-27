@@ -20,14 +20,25 @@ import org.junit.jupiter.api.Assertions.assertTrue
  * The staged Control product in a private installation: its Go executable, its JVM libraries and its catalog, run on
  * this test's Java runtime through a Host runtime root. No entry or invocation adapter is substituted.
  */
-internal class NativePublicFixture(val evidence: Path) : AutoCloseable {
+internal class NativePublicFixture(
+    val evidence: Path,
+    /**
+     * Places a copy of the test's Java runtime in the workspace store, where an installed runtime lives, so a removal
+     * selects its processes by their executable as it does on a real installation. Otherwise the runtime root links to
+     * the test's own runtime, outside every Kast root.
+     */
+    private val ownedRuntime: Boolean = false,
+) : AutoCloseable {
     // Unix-domain paths must fit the production 100-byte bound, independently of JUnit's temporary path.
     val home: Path = Files.createTempDirectory(Path.of("/tmp").toRealPath(), "kn -")
     val workspace: Path = Files.createDirectory(home.resolve("workspace with spaces"))
     val installation: Path = Files.createDirectories(home.resolve(".local/share/kast/installation"))
     val payload: Path = installation.resolve("share/kast/libexec/kast-management")
     /** The runtime every Control JVM process runs, as its process command reports it. */
-    val javaExecutable: Path = Path.of(System.getProperty("java.home")).toRealPath().resolve("bin/java")
+    val javaExecutable: Path
+        get() = javaHome.toRealPath().resolve("bin/java")
+
+    private lateinit var javaHome: Path
 
     /** The public command, a copy of the payload, as the installer publishes it beneath HOME. */
     val command: Path = home.resolve(".local/bin/kast")
@@ -178,9 +189,11 @@ internal class NativePublicFixture(val evidence: Path) : AutoCloseable {
     private fun writeRuntimeReceipt() {
         val catalog = Json.parseToJsonElement(Files.readString(installation.resolve(CONTROL_CATALOG))).jsonObject
         val homes = catalog.getValue("control").jsonObject.getValue("javaHomes").jsonObject
-        val javaHome = runtimeRoot.resolve(homes.getValue(currentPlatform()).jsonPrimitive.content)
+        javaHome = runtimeRoot.resolve(homes.getValue(currentPlatform()).jsonPrimitive.content)
         Files.createDirectories(javaHome.parent)
-        Files.createSymbolicLink(javaHome, Path.of(System.getProperty("java.home")).toRealPath())
+        val testRuntime = Path.of(System.getProperty("java.home")).toRealPath()
+        if (ownedRuntime) copyRuntime(testRuntime, javaHome)
+        else Files.createSymbolicLink(javaHome, testRuntime)
         Files.writeString(
             installation.parent.resolve("management.json"),
             Json.encodeToString(RuntimeReceipt(RuntimeReference(runtimeRoot.toString()))),
@@ -188,7 +201,26 @@ internal class NativePublicFixture(val evidence: Path) : AutoCloseable {
     }
 
     private val runtimeRoot: Path
-        get() = home.resolve("runtime")
+        get() =
+            if (ownedRuntime) home.resolve(".local/share/kast-workspaces/runtimes/fixture") else home.resolve("runtime")
+
+    /** Copies every directory, file and link, so each copied executable is a separate file with its own path. */
+    private fun copyRuntime(source: Path, destination: Path) {
+        Files.walk(source).use { paths ->
+            paths.forEach { path ->
+                val target = destination.resolve(source.relativize(path).toString())
+                when {
+                    Files.isSymbolicLink(path) -> Files.createSymbolicLink(target, Files.readSymbolicLink(path))
+                    Files.isDirectory(path) -> Files.createDirectories(target)
+                    else -> {
+                        Files.copy(path, target)
+                        if (Files.isExecutable(path))
+                            Files.setPosixFilePermissions(target, PosixFilePermissions.fromString("rwxr-xr-x"))
+                    }
+                }
+            }
+        }
+    }
 
     private fun digest(text: String): String =
         java.util.HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(text.toByteArray()))

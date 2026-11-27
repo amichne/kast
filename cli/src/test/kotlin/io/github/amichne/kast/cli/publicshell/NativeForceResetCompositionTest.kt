@@ -8,10 +8,7 @@ import java.nio.file.Path
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 import kotlinx.serialization.encodeToString
-import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonPrimitive
-import kotlinx.serialization.json.jsonObject
-import kotlinx.serialization.json.jsonPrimitive
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertNotNull
@@ -20,15 +17,16 @@ import org.junit.jupiter.api.Tag
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
 
-/** Actual force uninstall under a disposable HOME with one live native client and no Host. */
+/**
+ * Actual `kast reset --yes` under a disposable HOME with one live native client and no Host. The fixture's runtime is a
+ * copy in the workspace store, so the reset selects its processes by their executable, as on a real installation.
+ */
 @Tag("public-launcher")
 class NativeForceResetCompositionTest {
     @Test
-    fun `force uninstall retires a live native jq worker and preserves a foreign installation`(
-        @TempDir evidence: Path
-    ) {
-        NativePublicFixture(Files.createDirectory(evidence.resolve("selected"))).use { selected ->
-            NativePublicFixture(Files.createDirectory(evidence.resolve("foreign"))).use { foreign ->
+    fun `a reset retires a live native jq worker and preserves a foreign installation`(@TempDir evidence: Path) {
+        NativePublicFixture(Files.createDirectory(evidence.resolve("selected")), ownedRuntime = true).use { selected ->
+            NativePublicFixture(Files.createDirectory(evidence.resolve("foreign")), ownedRuntime = true).use { foreign ->
                 withJqWorker(selected, evidence.resolve("selected-jq.stderr")) { worker ->
                     withJqWorker(foreign, evidence.resolve("foreign-jq.stderr")) { unrelated ->
                         // Both genuine warm workers have an open stdin; EOF is deliberately withheld.
@@ -37,14 +35,10 @@ class NativeForceResetCompositionTest {
                         assertNotNull(worker.toHandle().info().startInstant().orElseThrow())
                         assertTrue(worker.isAlive)
                         assertTrue(unrelated.isAlive)
-                        val reset =
-                            selected.start(
-                                "force",
-                                listOf("-Duser.home=${selected.home}", "uninstall", "--force", "--json"),
-                            )
-                        selected.assertExit(reset, 0, "force")
-                        assertTrue(worker.waitFor(5, TimeUnit.SECONDS), "Native jq worker survived force uninstall")
-                        assertTrue(unrelated.isAlive, "Force uninstall signalled a foreign installation")
+                        val reset = selected.start("reset", listOf("reset", "--yes"))
+                        selected.assertExit(reset, 0, "reset")
+                        assertTrue(worker.waitFor(5, TimeUnit.SECONDS), "Native jq worker survived the reset")
+                        assertTrue(unrelated.isAlive, "The reset signalled a foreign installation")
                         assertFalse(Files.exists(selected.installation))
                         assertTrue(Files.exists(foreign.installation))
                     }
@@ -54,8 +48,8 @@ class NativeForceResetCompositionTest {
     }
 
     @Test
-    fun `force uninstall retires a live native MCP client before it removes Control`(@TempDir evidence: Path) {
-        NativePublicFixture(evidence).use { fixture ->
+    fun `a reset retires a live native MCP client before it removes Control`(@TempDir evidence: Path) {
+        NativePublicFixture(evidence, ownedRuntime = true).use { fixture ->
             val client = startMcp(fixture, evidence)
             val reader = Executors.newSingleThreadExecutor()
             try {
@@ -70,19 +64,15 @@ class NativeForceResetCompositionTest {
                 client.outputStream.flush()
                 assertNotNull(initialized.get(20, TimeUnit.SECONDS).result)
                 assertTrue(client.isAlive)
-                val reset =
-                    fixture.start("force", listOf("-Duser.home=${fixture.home}", "uninstall", "--force", "--json"))
-                fixture.assertExit(reset, 0, "force")
-                assertEquals(
-                    "REMOVED",
-                    Json.parseToJsonElement(Files.readString(evidence.resolve("force.stdout")))
-                        .jsonObject
-                        .getValue("type")
-                        .jsonPrimitive
-                        .content,
-                )
-                assertTrue(client.waitFor(5, TimeUnit.SECONDS), "Native client survived force uninstall")
+                val reset = fixture.start("reset", listOf("reset", "--yes"))
+                fixture.assertExit(reset, 0, "reset")
+                // The reset lists what it stopped, then reports that nothing of Kast remains for this user.
+                val report = Files.readString(evidence.resolve("reset.stdout"))
+                assertTrue(report.contains("Stop:\n"), report)
+                assertTrue(report.contains("Kast is not installed for this user."), report)
+                assertTrue(client.waitFor(5, TimeUnit.SECONDS), "Native client survived the reset")
                 assertFalse(Files.exists(fixture.installation))
+                assertFalse(Files.exists(fixture.command))
             } finally {
                 if (client.isAlive) client.destroyForcibly()
                 assertTrue(client.waitFor(5, TimeUnit.SECONDS))
