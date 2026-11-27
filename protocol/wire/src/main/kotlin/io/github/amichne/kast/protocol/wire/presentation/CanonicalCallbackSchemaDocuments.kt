@@ -19,6 +19,7 @@ import io.github.amichne.kast.protocol.wire.QueryCallbackParameterIdentityWireDo
 import io.github.amichne.kast.protocol.wire.QueryCallbackParameterSupplierWireDocument
 import io.github.amichne.kast.protocol.wire.QueryCallbackSupplierInventoryWireDocument
 import io.github.amichne.kast.protocol.wire.QueryCallbackSupplierPartitionWireDocument
+import io.github.amichne.kast.protocol.wire.QueryCallbackTargetWireDocument
 import io.github.amichne.kast.protocol.wire.QueryImmutableCallbackFlowWireDocument
 import io.github.amichne.kast.protocol.wire.QueryImmutableCallbackValueNodeWireDocument
 import io.github.amichne.kast.protocol.wire.QueryImmutableCallbackValueWireDocument
@@ -45,6 +46,7 @@ object CanonicalCallbackSchemaDocuments {
                 "namedCallbackReference" to QueryNamedCallbackReferenceWireDocument.serializer(),
                 "callbackBody" to QueryCallbackBodyWireDocument.serializer(),
                 "callbackCallable" to QueryCallbackCallableWireDocument.serializer(),
+                "callbackTarget" to QueryCallbackTargetWireDocument.serializer(),
                 "callbackBinding" to QueryCallbackBindingWireDocument.serializer(),
                 "callbackBodyBinding" to QueryCallbackBodyBindingWireDocument.serializer(),
                 "callbackObservedFlow" to QueryCallbackFlowWireDocument.Observed.serializer(),

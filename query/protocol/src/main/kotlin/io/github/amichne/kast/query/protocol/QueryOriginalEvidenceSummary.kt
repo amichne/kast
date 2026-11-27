@@ -16,12 +16,15 @@ import io.github.amichne.kast.protocol.contract.SourceReadLimitationDocument
 import io.github.amichne.kast.query.contract.QueryItemFailure
 import io.github.amichne.kast.query.contract.QueryResult
 import io.github.amichne.kast.query.contract.QuerySourceFailure
+import io.github.amichne.kast.relation.contract.CallbackNamedCallPolicy
+import io.github.amichne.kast.relation.contract.RelationCallbackObservation
 import io.github.amichne.kast.traversal.contract.TraversalRejection
 
 /** Pure metadata over original facts, before presentation selection or issued-reference effects. */
 internal fun QueryResult.originalEvidenceSummary(request: QueryRunRequest.Run): QueryOriginalEvidenceSummaryDocument {
     val sourceFailures = failures.filterIsInstance<QueryItemFailure.Source>().map { it.reason }
     val walks = failures.filterIsInstance<QueryItemFailure.Walk>().map { it.reason }
+    val callbacks = callbackObservations()
     return QueryOriginalEvidenceSummaryDocument(
         summaryOffset(failures.size),
         summaryOffset(omissions.size),
@@ -60,11 +63,21 @@ internal fun QueryResult.originalEvidenceSummary(request: QueryRunRequest.Run): 
             QueryCallbackCompletion.from(QueryQuestionDocument.from(request)) ==
                 QueryCallbackCompletion.SOURCE_RELATIONSHIPS
         )
-            (relationObservations.asSequence().flatMap { it.callbackObservations } +
-                    walkObservations.asSequence().flatMap { it.callbackObservations }.map { it.observation })
-                .firstNotNullOfOrNull { it.unprovenNavigationCause() }
+            callbacks.firstNotNullOfOrNull { it.unprovenNavigationCause() }
         else null,
+        summaryOffset(callbacks.excludedCallCount()),
     )
+}
+
+/** Every callback observation of the original facts, from relation reads and from walk hops. */
+private fun QueryResult.callbackObservations(): List<RelationCallbackObservation> =
+    relationObservations.flatMap { it.callbackObservations } +
+        walkObservations.flatMap { it.callbackObservations }.map { it.observation }
+
+/** A stored-lambda call is not a caller row; counting it keeps a caller list from reading as a call-site list. */
+private fun List<RelationCallbackObservation>.excludedCallCount(): Int {
+    val excluded = filter { it.policy is CallbackNamedCallPolicy.Excluded }
+    return excluded.map { it.occurrence }.distinct().size
 }
 
 private fun List<QueryItemFailure>.predicateReasons(): List<QueryPredicateFailureDocument> =

@@ -102,7 +102,7 @@ class QueryCallbackWireFixture {
         val flow = callbackFlow(owner, mapped, body)
         return QueryCallbackObservationDocument.create(
                 occurrence("Seed.kt", 5, 8),
-                target,
+                io.github.amichne.kast.protocol.contract.QueryCallbackTargetDocument.Source(target),
                 owner,
                 body,
                 QueryCallbackNamedPolicyDocument.Excluded(
@@ -235,6 +235,18 @@ class QueryCallbackWireFixture {
             is Refinement.Rejected -> error("Invalid fixture: $failure")
         }
 }
+
+/** The fixture observation invokes a source callable; a binary target fails the fixture rather than the product. */
+internal val QueryCallbackObservationDocument.sourceTarget: QueryCallbackCallableDocument
+    get() =
+        (target as? io.github.amichne.kast.protocol.contract.QueryCallbackTargetDocument.Source)?.callable
+            ?: error("The fixture observation must invoke a source callable")
+
+internal val QueryCallbackObservationWireDocument.sourceTarget: QueryCallbackCallableWireDocument
+    get() =
+        (target as? QueryCallbackTargetWireDocument.Source)?.let {
+            QueryCallbackCallableWireDocument(it.declaration, it.compilerTarget)
+        } ?: error("The fixture observation must invoke a source callable")
 
 /** Only negative fixtures: nullable fields deliberately represent omitted required facts. */
 @OptIn(ExperimentalSerializationApi::class)

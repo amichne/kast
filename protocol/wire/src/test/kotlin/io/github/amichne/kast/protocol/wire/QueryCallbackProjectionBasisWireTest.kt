@@ -80,7 +80,7 @@ class QueryCallbackProjectionBasisWireTest {
         val callback = fixture.callbackDocument().toWireDocument()
         val reference =
             QueryNamedCallbackReferenceWireDocument(
-                callback.target,
+                callback.sourceTarget,
                 QueryCallbackReferenceReceiverWireDocument.Absent,
                 QueryCallbackReferenceReceiverWireDocument.Unbound,
                 QueryNamedCallbackReferenceFlowWireDocument.Unavailable(

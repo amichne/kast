@@ -130,7 +130,10 @@ internal class NativeSemanticOwnersPublicOracle(private val root: Path) {
     private fun target(
         callback: io.github.amichne.kast.protocol.contract.QueryCallbackObservationDocument
     ): NativeSemanticOwnersTarget {
-        val signature = callback.target.compilerTarget.compilerEvidence.signature
+        val target =
+            callback.target as? io.github.amichne.kast.protocol.contract.QueryCallbackTargetDocument.Source
+                ?: error("An owner fixture target must be source")
+        val signature = target.compilerTarget.compilerEvidence.signature
         val shape =
             when (signature) {
                 is CompilerSignatureDocument.Function -> NativeSemanticOwnersTargetShape.FUNCTION
@@ -141,8 +144,8 @@ internal class NativeSemanticOwnersPublicOracle(private val root: Path) {
             identity = semanticOwnersIdentity(signature),
             shape = shape,
             occurrence = callback.occurrence.range.semanticOwnersSpan(),
-            declaration = callback.target.declaration.range.semanticOwnersSpan(),
-            file = normalizeSourceFile(callback.target.declaration.file.value),
+            declaration = target.callable.declaration.range.semanticOwnersSpan(),
+            file = normalizeSourceFile(target.callable.declaration.file.value),
             compilerIdentity = callback.target.compilerTarget.compilerEvidence.identity.value,
         )
     }

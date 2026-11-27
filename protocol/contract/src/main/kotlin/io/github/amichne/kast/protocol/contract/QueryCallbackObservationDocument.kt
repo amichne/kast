@@ -66,11 +66,26 @@ data class QueryCallbackCallableDocument(
     val compilerTarget: QueryExcludedCompilerTargetDocument,
 )
 
+/**
+ * The invoked declaration. A source callable has a source handle; a compiled one, such as the library subject of a
+ * callers search, has compiler facts only and no source handle to issue.
+ */
+sealed interface QueryCallbackTargetDocument {
+    val compilerTarget: QueryExcludedCompilerTargetDocument
+
+    data class Source(val callable: QueryCallbackCallableDocument) : QueryCallbackTargetDocument {
+        override val compilerTarget: QueryExcludedCompilerTargetDocument
+            get() = callable.compilerTarget
+    }
+
+    data class Binary(override val compilerTarget: QueryExcludedCompilerTargetDocument) : QueryCallbackTargetDocument
+}
+
 @ConsistentCopyVisibility
 data class QueryCallbackObservationDocument
 private constructor(
     val occurrence: RelationOccurrenceDocument,
-    val target: QueryCallbackCallableDocument,
+    val target: QueryCallbackTargetDocument,
     val lexicalOwner: QueryCallbackCallableDocument,
     val callbackBody: RelationOccurrenceDocument,
     val namedPolicy: QueryCallbackNamedPolicyDocument,
@@ -86,7 +101,7 @@ private constructor(
     companion object {
         fun create(
             occurrence: RelationOccurrenceDocument,
-            target: QueryCallbackCallableDocument,
+            target: QueryCallbackTargetDocument,
             lexicalOwner: QueryCallbackCallableDocument,
             callbackBody: RelationOccurrenceDocument,
             namedPolicy: QueryCallbackNamedPolicyDocument,
