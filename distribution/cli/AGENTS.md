@@ -30,6 +30,7 @@ code_sources:
 
 This module owns management commands. `cli` composes them into the single native Control executable.
 The public management verbs are `config`, `install`, `status`, `stop`, `versions`, `upgrade`, and `uninstall`.
+The Go Control serves `upgrade` and `uninstall` before this parser starts. Their commands here supply help and await removal.
 Route `query`, `result`, `source`, and `describe` through the selected `bin/kast-query-complete` launcher with unchanged argv.
 Hooks use the internal query entry point, not a public management verb.
 The query process mode owns semantic options, admission, output, and public-shell exit policy.
@@ -57,7 +58,8 @@ Never signal shared IDEA or Gradle processes.
 Keep deletion scope distinct from ownership. Never erase filesystem roots, HOME, or its ancestors.
 
 Force removal carries prerequisites in privately constructed fenced, quiescent, and erased states.
-A single-use lease rejects repeated destructive effects. Keep `reinstall` retired; exact repair belongs to `upgrade --repair` and the existing replacement journal.
+A single-use lease rejects repeated destructive effects. Keep `reinstall` retired; exact repair belongs to the Go `upgrade --repair`.
+The Go activation runs `--internal-install managed-retire` from the outgoing installation. Keep that entry until a Go retirement replaces it.
 Report kept storage when retirement or cleanup rejects. OS refusal is a finite failure.
 The exterior lock stays stable across directory deletion and later reset tries.
 

@@ -65,13 +65,12 @@ func (p Progress) line() string {
 		if step.phase != found.Phase {
 			continue
 		}
-		text := fmt.Sprintf("step %d of %d, %s", index+1, len(steps), step.text)
+		text := fmt.Sprintf("(%d/%d): %s", index+1, len(steps), step.text)
 		if found.Index.QueuedFiles > 0 {
-			files := fmt.Sprintf(" (about %s files)", grouped(found.Index.QueuedFiles))
 			if found.Phase != "SCANNING" && found.Phase != "INDEXING" {
-				files = "; also indexing" + files
+				text += ", indexing"
 			}
-			text += files
+			text += fmt.Sprintf(" ~%s files", grouped(found.Index.QueuedFiles))
 		}
 		return text
 	}
@@ -163,7 +162,7 @@ func (p Progress) Follow(ctx context.Context, out io.Writer) {
 func (p Progress) draw(out io.Writer, drawn string, elapsed time.Duration) string {
 	text := ""
 	if line := p.line(); line != "" {
-		text = fmt.Sprintf("Preparing workspace: %s, %ds", line, int(elapsed.Seconds()))
+		text = fmt.Sprintf("Preparing %s, %ds", line, int(elapsed.Seconds()))
 		if len(text) > maximumLineLength {
 			text = text[:maximumLineLength]
 		}

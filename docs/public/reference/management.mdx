@@ -61,7 +61,7 @@ On a terminal, a query that waits for preparation shows the same step on stderr 
 
 When standard output is a terminal, commands show an outline instead of JSON. A pipe receives the exact document.
 Use `--json` or `--jq` for machine output on a terminal, such as an agent that runs commands in a pseudo-terminal.
-`kast upgrade` and `kast uninstall` still print JSON progress lines.
+`kast upgrade` and `kast uninstall` print words on a terminal and in a pipe. `kast upgrade --json` prints one JSON result and no progress.
 
 ### Inspect or edit workspace settings
 
@@ -107,7 +107,9 @@ kast upgrade --repair --json
 ```
 
 Repair selects the exact installed product. It does not resolve a newer channel head or replace only one component.
-The installer composes immutable vendor bytes with exact components and uses the existing replacement journal.
+Kast verifies and unpacks the whole build beside the installation before it changes anything.
+Then the installed build stops its workspace Hosts, and Kast switches to the new build.
+If an upgrade stops partway, run the same command again: it removes what was left and finishes or undoes the switch.
 Running owned work can end during replacement. A subsequent explicit request prepares the selected workspace generation.
 
 <span id="lifecycle-result-contract" />
@@ -173,13 +175,13 @@ These are source-level rules; native cleanup qualification remains pending.
 kast uninstall
 ```
 
-The removal contract covers owned installation bytes and workspace state after process retirement.
-Repositories, external Gradle homes, and agent configuration remain outside that scope.
+Uninstall asks every workspace Host to stop first. A running Host that works or holds an unsettled change refuses, and nothing is removed.
+It then ends the remaining Kast processes, copies client configuration and workspace change evidence to `~/.local/share/kast-reset-backup-*`, and removes the installation and workspace state.
+Repositories, external Gradle homes, agent configuration, and `~/.kast` stay.
 To disconnect an agent, [remove the plugin](/reference/integrations#remove-the-plugin) and any exported skill before you uninstall.
 Uninstall also removes the fixed Kast-owned `kast-workspaces/shared/gradle` cache, without following links to external targets.
-Foreign siblings, foreign owners, or `.kast` recovery evidence prevent that cleanup.
+A file that Kast did not write beside its own entries prevents removal, and so does an unfinished upgrade. The message names it.
 Removing one workspace does not remove the shared cache.
-If ownership or retirement cannot be proved, keep the recovery output instead of deleting paths manually.
 Native removal acceptance remains part of the qualification work; this guide is not evidence that it passed.
 
 <span id="reset" />

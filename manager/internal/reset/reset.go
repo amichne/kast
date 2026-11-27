@@ -80,6 +80,9 @@ type Reset struct {
 	Now        func() time.Time
 	Out        io.Writer
 
+	// Installing means that an installation continues after this reset, so the reset does not say what to run next.
+	Installing bool
+
 	// remove deletes one inventoried path and returns what it left. Tests replace it to interrupt a deletion.
 	remove func(path string) []string
 }
@@ -126,13 +129,29 @@ func (r *Reset) Run(arguments []string) error {
 			strings.Join(running.ancestors, ", "))
 	}
 	if len(found.targets) == 0 && len(running.lines()) == 0 {
-		r.print(notInstalled)
+		r.conclude(notInstalled)
 		return nil
 	}
 	if len(arguments) == 0 {
-		r.print("Nothing was changed. Run `kast reset --yes` to stop and delete this.")
+		r.conclude("Nothing was changed. Run `kast reset --yes` to stop and delete this.")
 		return nil
 	}
+	if err := r.perform(paths, found); err != nil {
+		return err
+	}
+	r.conclude(notInstalled)
+	return nil
+}
+
+// conclude names the next step, which an installation that continues takes itself.
+func (r *Reset) conclude(text string) {
+	if !r.Installing {
+		r.print(text)
+	}
+}
+
+// perform stops what runs, copies what the user would lose, and deletes the inventory.
+func (r *Reset) perform(paths *layout, found *inventory) error {
 	if err := r.stop(paths, found); err != nil {
 		return err
 	}
@@ -140,7 +159,8 @@ func (r *Reset) Run(arguments []string) error {
 		return err
 	}
 	// The backup took time. A process that started meanwhile keeps everything in place.
-	if running, err = r.observe(paths, found); err != nil {
+	running, err := r.observe(paths, found)
+	if err != nil {
 		return err
 	}
 	if lines := running.lines(); len(lines) > 0 {
@@ -273,7 +293,6 @@ func (r *Reset) finish(paths *layout, left []string) error {
 		return reject(ResetIncomplete, "these remain; correct what is listed and run `kast reset --yes` again:\n  %s",
 			strings.Join(remaining, "\n  "))
 	}
-	r.print(notInstalled)
 	return nil
 }
 

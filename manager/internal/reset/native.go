@@ -20,17 +20,35 @@ const commandTimeout = 10 * time.Second
 
 // Native resets the current user's installation beneath home.
 func Native(home string, arguments []string, out io.Writer) error {
+	reset, err := native(home, out)
+	if err != nil {
+		return err
+	}
+	return reset.Run(arguments)
+}
+
+// NativeBeforeInstall resets the installation that an installation cannot replace. It shows what it stops, deletes and
+// copies, and leaves the next step to the installation.
+func NativeBeforeInstall(home string, arguments []string, out io.Writer) error {
+	reset, err := native(home, out)
+	if err != nil {
+		return err
+	}
+	reset.Installing = true
+	return reset.Run(arguments)
+}
+
+func native(home string, out io.Writer) (*Reset, error) {
 	temporary, err := filepath.EvalSymlinks("/tmp")
 	if err != nil {
-		return reject(RootRejected, "%v", err)
+		return nil, reject(RootRejected, "%v", err)
 	}
 	uid := os.Getuid()
-	reset := &Reset{
+	return &Reset{
 		Home: home, UID: uid, PID: os.Getpid(), Temporary: temporary,
 		Supervisor: nativeSupervisor{uid}, Processes: nativeProcesses{},
 		Pause: time.Sleep, Now: time.Now, Out: out,
-	}
-	return reset.Run(arguments)
+	}, nil
 }
 
 type nativeProcesses struct{}

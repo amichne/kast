@@ -87,6 +87,8 @@ Owns installer adapters, isolated runtime archives, offline lifecycle helpers, c
 - The first explicit semantic request uses native workspace admission for exact-root trust.
 - The standalone Python installer, `kast-task` launcher, desktop shell installers, and Gradle `installLocal` task are retired.
 - The native probe uses a disposable fixture and a fresh evidence directory.
+- The probe installs the candidate and its baseline with `kast install --local-artifact`, run by the candidate's own Go command.
+  It extracts that command from the candidate bundle and checks it against the qualified digest.
 - Add `composed-host-fixture-overlay` to the fixture copy. Keep the original callback fixture because the probe uses exact source paths.
 - Assembly receipts report artifact identity. Native probe results cover their stated cases.
 - `packaging/uv.lock` owns the project test and tool dependencies.

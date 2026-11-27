@@ -13,6 +13,8 @@ import (
 	"time"
 
 	"github.com/coder/websocket"
+
+	"github.com/amichne/kast/frontend/internal/install"
 )
 
 const completedDocument = `{"type":"complete","items":[{"name":"A"}]}`
@@ -109,7 +111,7 @@ func TestOnlyCommandsThatKeepTheInstallationRunAsAChild(t *testing.T) {
 		return 0, nil
 	}
 	for _, arguments := range [][]string{
-		{"upgrade"}, {"uninstall"}, {"hook", "session-start"}, {"--internal-entrypoint=mcp"},
+		{"hook", "session-start"}, {"--internal-entrypoint=mcp"},
 		{"--internal-entrypoint=service", "run"}, {"status", "--json"},
 	} {
 		f := installed(t)
@@ -117,6 +119,118 @@ func TestOnlyCommandsThatKeepTheInstallationRunAsAChild(t *testing.T) {
 		if len(f.executed) != 1 {
 			t.Errorf("%v was not executed", arguments)
 		}
+	}
+}
+
+func (f *fixture) lifecycle(t *testing.T, signals <-chan os.Signal, process Process, arguments ...string) outcome {
+	t.Helper()
+	var stdout, stderr bytes.Buffer
+	process.Executable, process.Arguments = f.root+"/"+payloadPath, arguments
+	process.Environment, process.Directory = []string{"HOME=" + f.root}, f.root
+	process.Stdin, process.Stdout, process.Stderr, process.Signals = strings.NewReader(""), &stdout, &stderr, signals
+	return outcome{Run(process), stdout.String(), stderr.String()}
+}
+
+func TestAnUpgradeRunsHereAndMapsItsFailuresToPublishedStatuses(t *testing.T) {
+	for _, test := range []struct {
+		err  error
+		want int
+	}{
+		{nil, 0}, {&install.Rejection{Failure: install.UsageRejected}, inputStatus},
+		{&install.Rejection{Failure: install.PinnedBuild, Next: "next action"}, runtimeStatus},
+		{errors.New("other"), runtimeStatus},
+	} {
+		f := installed(t)
+		var got []string
+		result := f.lifecycle(t, nil, Process{Upgrade: func(_ context.Context, home, _ string, arguments []string,
+			_, _ io.Writer) error {
+			got = append([]string{home}, arguments...)
+			return test.err
+		}}, "upgrade", "--channel", "stable")
+		if result.status != test.want || !slices.Equal(got, []string{f.root, "--channel", "stable"}) {
+			t.Errorf("%v: status %d, arguments %v", test.err, result.status, got)
+		}
+	}
+}
+
+func TestAnInterruptedUpgradeIsAwaited(t *testing.T) {
+	f := installed(t)
+	signals, ended := make(chan os.Signal, 2), false
+	result := f.lifecycle(t, signals, Process{Upgrade: func(ctx context.Context, _, _ string, _ []string, _, _ io.Writer) error {
+		signals <- syscall.SIGINT
+		<-ctx.Done()
+		signals <- syscall.SIGINT
+		time.Sleep(50 * time.Millisecond)
+		ended = true
+		return nil
+	}}, "upgrade")
+	if !ended || result.status != interruptedStatus || strings.Count(result.stderr, "stopping safely") != 1 {
+		t.Errorf("ended %v, %+v", ended, result)
+	}
+}
+
+func TestAnInstallWithABuildSelectorActivatesHereAndOtherModesOnlyDownload(t *testing.T) {
+	for _, test := range []struct {
+		arguments []string
+		activates bool
+	}{
+		{[]string{"install", "--channel", "preview"}, true}, {[]string{"install", "--version=1.2.3"}, true},
+		{[]string{"install", "--json"}, true}, {[]string{"install", "--commit", "abc", "--dry-run"}, false},
+		{[]string{"install", "--download-only"}, false},
+	} {
+		f := installed(t)
+		var activated, downloaded []string
+		record := func(into *[]string) func(context.Context, string, string, []string, io.Writer, io.Writer) error {
+			return func(_ context.Context, _, _ string, arguments []string, _, _ io.Writer) error {
+				*into = arguments
+				return &install.Rejection{Failure: install.UsageRejected}
+			}
+		}
+		result := f.lifecycle(t, nil, Process{Activate: record(&activated), Install: record(&downloaded)}, test.arguments...)
+		got, other := downloaded, activated
+		if test.activates {
+			got, other = activated, downloaded
+		}
+		if !slices.Equal(got, test.arguments[1:]) || other != nil || result.status != inputStatus {
+			t.Errorf("%v: activated %v, downloaded %v, %+v", test.arguments, activated, downloaded, result)
+		}
+	}
+}
+
+func TestAnUninstallSettlesHostsThroughTheInstalledEntry(t *testing.T) {
+	for _, test := range []struct {
+		status    int
+		document  string
+		capture   error
+		want      int
+		wantError string
+	}{
+		{0, `{"type":"STOPPED"}`, nil, 0, ""},
+		{1, `{"type":"REJECTED","failure":"BUSY"}`, nil, runtimeStatus, "busy"},
+		{9, "", nil, runtimeStatus, "status 9"},
+		{0, "", errors.New("no java"), runtimeStatus, "no java"},
+	} {
+		f := installed(t)
+		var ran []string
+		result := f.lifecycle(t, nil, Process{
+			Uninstall: func(_ string, _ []string, _ io.Writer, settle func() error) error { return settle() },
+			Capture: func(_ context.Context, argv, _ []string, _ io.Reader, stdout, _ io.Writer) (int, error) {
+				ran = argv
+				io.WriteString(stdout, test.document)
+				return test.status, test.capture
+			},
+		}, "uninstall")
+		if result.status != test.want || !strings.Contains(result.stderr, test.wantError) ||
+			!slices.Equal(ran[len(ran)-3:], []string{"stop", "--all", "--json"}) {
+			t.Errorf("%+v, ran %v", result, ran)
+		}
+	}
+	f := newFixture(t)
+	result := f.lifecycle(t, nil, Process{
+		Uninstall: func(_ string, _ []string, _ io.Writer, settle func() error) error { return settle() },
+	}, "uninstall")
+	if result.status != runtimeStatus || !strings.Contains(result.stderr, "unavailable") {
+		t.Errorf("%+v", result)
 	}
 }
 

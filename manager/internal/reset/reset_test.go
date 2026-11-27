@@ -83,6 +83,8 @@ type fixture struct {
 	out     bytes.Buffer
 	remove  func(string) []string
 	pause   func()
+	// installing runs the reset that precedes an installation.
+	installing bool
 }
 
 func newFixture(t *testing.T) *fixture {
@@ -217,9 +219,31 @@ func (f *fixture) run(arguments ...string) error {
 				f.pause()
 			}
 		},
-		Now: func() time.Time { return time.Date(2026, 11, 23, 10, 11, 12, 0, time.UTC) },
+		Now:        func() time.Time { return time.Date(2026, 11, 23, 10, 11, 12, 0, time.UTC) },
+		Installing: f.installing,
 	}
 	return r.Run(arguments)
+}
+
+func TestAResetBeforeAnInstallationShowsItsWorkWithoutTheNextStep(t *testing.T) {
+	f := newFixture(t)
+	targets := f.install()
+	f.installing = true
+	if err := f.run(); err != nil {
+		t.Fatal(err)
+	}
+	if err := f.run("--yes"); err != nil {
+		t.Fatal(err)
+	}
+	f.requireAbsent(targets)
+	for _, text := range []string{InstallCommand, "Nothing was changed"} {
+		if strings.Contains(f.out.String(), text) {
+			t.Errorf("output names the next step %q:\n%s", text, f.out.String())
+		}
+	}
+	if !strings.Contains(f.out.String(), "Backup: ") || !strings.Contains(f.out.String(), targets[0]) {
+		t.Errorf("output lacks the plan or the backup:\n%s", f.out.String())
+	}
 }
 
 func (f *fixture) Jobs() ([]Job, error) { return slices.Clone(f.jobs), nil }

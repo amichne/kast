@@ -8,12 +8,17 @@
 # passes through unchanged with Kast's exit status. A recipe refusal prints
 # {"type":"recipe_rejected","reason":TOKEN} and exits 64.
 #
+# Every Kast call passes --json: the parsers below read JSON, and the caller's
+# KAST_OUTPUT_TOON=1 would otherwise encode each projection as TOON.
+#
 # Requires only the installed `kast` command and POSIX sh, sed, grep, sort, uniq and paste.
 set -eu
 
 KAST=${KAST_RECIPE_KAST:-kast}
 # Large enough that evidence is inlined instead of deferred; a deferred entry is reported, never guessed.
 BUDGET=16000000
+
+kast_json() { "$KAST" "$@" --json; }
 
 usage() {
     cat >&2 <<'EOF'
@@ -45,9 +50,13 @@ pass_through() {
 
 # Projections in Kast's embedded jq. String interpolation is unavailable there.
 META='(.document.next_cursor|tostring) + " " + (.document.retention.reference // "none")'
-EXCLUDED='[.document.relation_observations[]?.callback_observations[]?
+EXCLUDED_CALLS='[.document.relation_observations[]?.callback_observations[]?
   | select(.named_policy.type == "EXCLUDED") | .occurrence
-  | .file + ":" + (.range.startInclusive|tostring)] | unique | length'
+  | .file + ":" + (.range.startInclusive|tostring)] | unique'
+EXCLUDED="$EXCLUDED_CALLS | length"
+# One evidence page: "WINDOW END DEFERRED" and its excluded callback calls, ';'-joined.
+EVIDENCE_PAGE="[(.document.evidence_window.type // \"FINAL\") + \" \" + ((.document.evidence_window.end // 0)|tostring)
+  + \" \" + ((.document.deferred_evidence // []) | length | tostring), ($EXCLUDED_CALLS | join(\";\"))]"
 EVIDENCE='((.document.evidence_window.type // "FINAL") == "FINAL") and ((.document.deferred_evidence // []) | length == 0)'
 VERDICT="{type, status: .document.status, exhaustive: .document.coverage.exhaustive,
   failures: .document.original_evidence_summary.failure_count,
@@ -65,11 +74,41 @@ OCCURRENCE='(.occurrence.occurrence.file // .relation.occurrence.file) + "|"
 
 meta_of() { printf '%s' "$1" | sed -n 's/^\["\([^"]*\)",.*$/\1/p'; }
 
+# A first page presents only the evidence that fits beside its rows, so its evidence_window can say MORE. Read a
+# retained result's evidence from position 0, after its last row, and settle excluded_callback_calls and
+# evidence_complete on all of it. Evidence stays incomplete when a page defers an entry. $1 verdict, $2 result, $3 kind.
+settled_verdict() {
+    verdict=$1 ref=$2 kind=$3
+    case "$verdict" in *'"evidence_complete":false}') ;; *) printf '%s' "$verdict"; return 0 ;; esac
+    if [ "$ref" = "none" ]; then printf '%s' "$verdict"; return 0; fi
+    rows=$(printf '%s' "$verdict" | sed -n 's/^.*"total":\([0-9][0-9]*\),.*$/\1/p')
+    [ -n "$rows" ] || refuse PAGE_UNREADABLE
+    position=0 calls="" complete=false
+    while :; do
+        page=$(kast_json result read --ref "$ref" --cursor "$rows" --evidence-cursor "$position" --output "$kind" \
+            --max-returned-bytes "$BUDGET" --jq "$EVIDENCE_PAGE") || pass_through "$page" $?
+        meta=$(meta_of "$page")
+        [ -n "$meta" ] || refuse PAGE_UNREADABLE
+        window=${meta%% *} counts=${meta#* }
+        end=${counts%% *} deferred=${counts#* }
+        found=$(printf '%s' "$page" | sed -e 's/^\["[^"]*","//' -e 's/"\]$//')
+        if [ -n "$found" ]; then calls=${calls:+$calls;}$found; fi
+        [ "$deferred" = 0 ] || break
+        case "$window" in
+            FINAL) complete=true; break ;;
+            MORE) [ "$end" -gt "$position" ] || refuse EVIDENCE_CURSOR_STALLED; position=$end ;;
+            *) break ;;
+        esac
+    done
+    excluded=$(printf '%s\n' "$calls" | tr ';' '\n' | sed '/^$/d' | sort -u | wc -l | tr -d ' ')
+    printf '%s' "$verdict" | sed "s/\"excluded_callback_calls\":[0-9]*,\"evidence_complete\":false}\$/\"excluded_callback_calls\":$excluded,\"evidence_complete\":$complete}/"
+}
+
 # Items of every page after the first, comma-joined without brackets. $1 result, $2 cursor, $3 kind.
 remaining_items() {
     ref=$1 cursor=$2 kind=$3 joined=""
     while [ "$cursor" != "null" ]; do
-        page=$("$KAST" result read --ref "$ref" --cursor "$cursor" --output "$kind" \
+        page=$(kast_json result read --ref "$ref" --cursor "$cursor" --output "$kind" \
             --max-returned-bytes "$BUDGET" --jq "[$META, [.document.items[]? | $SYMBOL]]") || pass_through "$page" $?
         meta=$(meta_of "$page")
         [ -n "$meta" ] || refuse PAGE_UNREADABLE
@@ -95,9 +134,9 @@ cmd_verdict() {
         # A request document owns its retention, budget and output; Kast admits no other flag beside it.
         [ "$#" -eq 2 ] || refuse REQUEST_TAKES_ONE_FILE
         kind=$(sed -n 's/.*"output":{"type":"\([A-Z_]*\)".*/\1/p' "$2" 2>/dev/null | tr 'A-Z_' 'a-z-')
-        first=$("$KAST" query --request "$2" --jq "$projection") || pass_through "$first" $?
+        first=$(kast_json query --request "$2" --jq "$projection") || pass_through "$first" $?
     else
-        first=$("$KAST" query "$@" --retain --max-returned-bytes "$BUDGET" --jq "$projection") ||
+        first=$(kast_json query "$@" --retain --max-returned-bytes "$BUDGET" --jq "$projection") ||
             pass_through "$first" $?
     fi
     [ -n "$kind" ] || kind=symbols
@@ -112,6 +151,7 @@ cmd_verdict() {
         more=$(remaining_items "$ref" "$cursor" "$kind") || pass_through "$more" $?
         if [ -n "$more" ]; then items=${items:+$items,}$more; fi
     fi
+    verdict=$(settled_verdict "$verdict" "$ref" "$kind") || pass_through "$verdict" $?
     if [ "$ref" = "none" ]; then handle=null; else handle="\"$ref\""; fi
     printf '{"verdict":%s,"result":%s,"items":[%s]}\n' "$verdict" "$handle" "$items"
 }
@@ -120,7 +160,7 @@ cmd_verdict() {
 remaining_rows() {
     ref=$1 cursor=$2 joined=""
     while [ "$cursor" != "null" ]; do
-        page=$("$KAST" result read --ref "$ref" --cursor "$cursor" --output occurrences \
+        page=$(kast_json result read --ref "$ref" --cursor "$cursor" --output occurrences \
             --max-returned-bytes "$BUDGET" --jq "[$META, ([.document.items[]? | $OCCURRENCE] | join(\";\"))]") ||
             pass_through "$page" $?
         meta=$(meta_of "$page")
@@ -142,7 +182,7 @@ cmd_call_sites() {
             --*) refuse FLAG_NOT_A_RELATION_SCOPE ;;
         esac
     done
-    first=$("$KAST" query --ref "$ref" --relation references --output occurrences "$@" --retain \
+    first=$(kast_json query --ref "$ref" --relation references --output occurrences "$@" --retain \
         --max-returned-bytes "$BUDGET" --jq "[$META, $VERDICT, ([.document.items[]? | $OCCURRENCE] | join(\";\"))]") ||
         pass_through "$first" $?
     meta=$(meta_of "$first")
@@ -156,6 +196,7 @@ cmd_call_sites() {
         more=$(remaining_rows "$retained" "$cursor") || pass_through "$more" $?
         if [ -n "$more" ]; then rows=${rows:+$rows;}$more; fi
     fi
+    verdict=$(settled_verdict "$verdict" "$retained" occurrences) || pass_through "$verdict" $?
     sites="" documentation=0
     remaining=$rows
     while [ -n "$remaining" ]; do
@@ -169,7 +210,7 @@ cmd_call_sites() {
         case "$candidate" in candidate:*) ;; *) refuse CANDIDATE_MISSING ;; esac
         case "$context" in *[!A-Z_]*|'') refuse CONTEXT_UNRECOGNIZED ;; esac
         # Kast maps the UTF-16 occurrence to its line; no offset arithmetic happens here.
-        line=$("$KAST" source read --ref "$candidate" --jq '.document.text.lines.startInclusive') ||
+        line=$(kast_json source read --ref "$candidate" --jq '.document.text.lines.startInclusive') ||
             pass_through "$line" $?
         case "$line" in ''|*[!0-9]*) refuse LINE_UNAVAILABLE ;; esac
         text=$(sed -n "${line}p" "$file" 2>/dev/null) || refuse SOURCE_LINE_UNREADABLE
@@ -197,12 +238,12 @@ cmd_impact() {
     case "$seed_index" in ''|*[!0-9]*|0*) refuse SEED_INDEX_INVALID ;; esac
     case "$flow" in KOTLIN_FORWARD_V1|KOTLIN_JAVA_FORWARD_V2) ;; *) refuse FLOW_INVALID ;; esac
     # The seed is copied from Kast's own callers row; no offset or range is computed here.
-    seed=$("$KAST" query --ref "$ref" --relation callers --output occurrences --max-returned-bytes "$BUDGET" \
+    seed=$(kast_json query --ref "$ref" --relation callers --output occurrences --max-returned-bytes "$BUDGET" \
         --jq "[.document.items[]? | select(.producerSeed) | .producerSeed] | .[$seed_index - 1] // null") ||
         pass_through "$seed" $?
     [ "$seed" != "null" ] || refuse PRODUCER_SEED_UNAVAILABLE
     request=$(printf '{"request":{"type":"RUN","source":{"type":"IMPACT","seeds":[%s],"declarations":[],"domain":{"type":"WORKSPACE"},"flow":"%s","models":[]},"steps":[],"terminalStep":{"type":"EMIT","output":{"type":"VALUE_PATHS"}},"retention":"RETAIN","executionBudget":{"maxReturnedBytes":%s}}}' "$seed" "$flow" "$BUDGET")
-    if output=$(printf '%s' "$request" | "$KAST" query --request - \
+    if output=$(printf '%s' "$request" | kast_json query --request - \
         --jq '{type, status: .document.status, paths: (.document.items | length), result: .document.retention.reference}'); then
         printf '%s\n' "$output"
         return 0
@@ -218,7 +259,7 @@ cmd_impact() {
     [ -n "$retained" ] || pass_through "$output" "$status"
     # The findings of a qualified investigation are qualified too, so Kast prints them unprojected.
     findings=$(printf '{"request":{"type":"READ_RESULT","result":"%s","output":{"type":"IMPACT_WITNESS","section":"FINDINGS"}}}' "$retained" |
-        "$KAST" query --request - --json) || true
+        kast_json query --request -) || true
     frontiers=$(printf '%s' "$findings" |
         grep -o '"terminal":{"type":"[A-Z_]*","cause":"[A-Z_]*"' |
         sed 's/"terminal":{"type":"\([A-Z_]*\)","cause":"\([A-Z_]*\)"/\1:\2/' |

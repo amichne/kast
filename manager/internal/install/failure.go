@@ -1,6 +1,10 @@
 package install
 
-import "fmt"
+import (
+	"fmt"
+
+	"github.com/amichne/kast/frontend/internal/reset"
+)
 
 // Failure is the closed set of reasons an invocation does not finish.
 type Failure string
@@ -17,6 +21,16 @@ const (
 	DownloadBusy        Failure = "DOWNLOAD_BUSY"
 	StorageRejected     Failure = "STORAGE_REJECTED"
 	Interrupted         Failure = "INTERRUPTED"
+
+	NotInstalled          Failure = "NOT_INSTALLED"
+	InstallationDamaged   Failure = "INSTALLATION_DAMAGED"
+	PinnedBuild           Failure = "PINNED_BUILD"
+	LocalArtifactRequired Failure = "LOCAL_ARTIFACT_REQUIRED"
+	ActivationRejected    Failure = "ACTIVATION_REJECTED"
+	ActivationBusy        Failure = "ACTIVATION_BUSY"
+	CommandForeign        Failure = "COMMAND_FOREIGN"
+	StopRejected          Failure = "STOP_REJECTED"
+	RecoveryRequired      Failure = "RECOVERY_REQUIRED"
 )
 
 // next is the one action each failure offers the reader.
@@ -32,6 +46,18 @@ var next = map[Failure]string{
 	DownloadBusy:        "Wait for the other download to end, then run the same command again.",
 	StorageRejected:     "Free space or repair the named path, then run the same command again.",
 	Interrupted:         "Run the same command again to continue.",
+
+	NotInstalled:          "To install it:\n  " + reset.InstallCommand,
+	InstallationDamaged:   "Run `kast reset` to see what it would remove, then install again.",
+	PinnedBuild:           "Select `--channel stable` or `--channel preview` to follow a channel again.",
+	LocalArtifactRequired: "Install from the local directory again, or select a published build.",
+	ActivationRejected:    "Run the same command again. If it repeats, run `kast reset` to see what it would remove.",
+	ActivationBusy:        "Wait for the other Kast command to end, then run the same command again.",
+	CommandForeign:        "Move that file away, or run `kast reset` to see what it would remove, then install again.",
+	StopRejected: "Wait for running Kast requests to end, then run the same command again. `kast reset` ends them " +
+		"without waiting.",
+	RecoveryRequired: "Run `kast upgrade` again to finish or undo it. If it repeats, run `kast reset` to see what it would " +
+		"remove.",
 }
 
 // Rejection is one failure, what it concerns, and the next action.
@@ -39,10 +65,12 @@ type Rejection struct {
 	Failure Failure
 	Detail  string
 	Next    string
+	// reported means that standard output already holds the failure's document.
+	reported bool
 }
 
 func (r *Rejection) Error() string { return string(r.Failure) + ": " + r.Detail }
 
 func reject(failure Failure, format string, values ...any) error {
-	return &Rejection{failure, fmt.Sprintf(format, values...), next[failure]}
+	return &Rejection{Failure: failure, Detail: fmt.Sprintf(format, values...), Next: next[failure]}
 }

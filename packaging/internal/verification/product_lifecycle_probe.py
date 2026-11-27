@@ -21,6 +21,7 @@ import shutil
 import signal
 import subprocess
 import sys
+import tarfile
 import tempfile
 import time
 import uuid
@@ -38,7 +39,6 @@ if not sys.flags.isolated:
         for family in ("bootstrap", "composition", "installation", "product", "runtime")
     ] + [str(Path(__file__).resolve().parents[2])]
 
-import managed_installation as installation
 import managed_release as product
 import product_acceptance as acceptance
 from composed_host_probe import (
@@ -117,6 +117,51 @@ class StageTiming:
 class StageTimings:
     schemaVersion: int
     stages: tuple[StageTiming, ...]
+
+
+# An installation verifies, unpacks and trains a product; it never waits on the network.
+INSTALL_TIMEOUT_SECONDS = 1800
+CONTROL_EXECUTABLE = "share/kast/libexec/kast-management"
+MAXIMUM_CONTROL_EXECUTABLE_BYTES = 64 << 20
+
+
+def control_executable(
+    directory: Path, record: product.ProductRecord | product.LocalProductRecord, destination: Path
+) -> Path:
+    """Extract this machine's qualified Go Control command from the product's own bundle."""
+    native = host_platform(platform.system(), platform.machine())
+    facts = next(
+        (
+            item
+            for item in record.targets
+            if isinstance(native, HostPlatform) and item.target == native.value
+        ),
+        None,
+    )
+    if facts is None:
+        raise ValueError("product has no target for this machine")
+    name = f"setup-kast/assets/kast-control-v{record.version}-{facts.target}.tar.gz"
+    with tarfile.open(directory / "payload" / facts.bundle.name, "r:gz") as bundle:
+        stream = bundle.extractfile(bundle.getmember(name))
+        if stream is None:
+            raise ValueError("bundle Control archive is not a file")
+        with tarfile.open(fileobj=stream, mode="r|gz") as control:
+            for member in control:
+                if member.name != CONTROL_EXECUTABLE:
+                    continue
+                source = control.extractfile(member)
+                if source is None or member.size > MAXIMUM_CONTROL_EXECUTABLE_BYTES:
+                    raise ValueError("Control executable is not a small file")
+                with source, destination.open("xb") as output:
+                    shutil.copyfileobj(source, output)
+                break
+    if (
+        not destination.is_file()
+        or product.file_digest(destination) != facts.qualification.controlSha256
+    ):
+        raise ValueError("Control executable differs from qualified bytes")
+    destination.chmod(0o700)
+    return destination
 
 
 # Far above the probe's cases; a runaway loop cannot grow the evidence without bound.
@@ -498,6 +543,8 @@ class Probe:
     timings: list[StageTiming] = field(default_factory=lambda: list[StageTiming]())
     # Monotonic nanoseconds; injected so a test can script elapsed time.
     clock: Callable[[], int] = time.monotonic_ns
+    # The candidate's Go command installs every product of a part, including its baseline.
+    installer: Path | None = None
 
     def record_stage(self, stage: str, kind: StageKind, started: int, code: int | None) -> None:
         elapsed = (self.clock() - started) // 1_000_000
@@ -833,39 +880,28 @@ class Probe:
     def install(
         self, directory: Path, record: product.ProductRecord | product.LocalProductRecord
     ) -> None:
-        source = None
-        if isinstance(record, product.LocalProductRecord):
-            arguments = ["--local-artifact", str(directory)]
-        else:
-            selection = product.ProductSelection(
-                f"developer-v{record.version}",
-                record,
-                product.file_digest(directory / "build-record.json"),
-                "PinnedBuild",
-                None,
-                record.sourceRevision,
-            )
-            path = self.evidence / f"selection-{selection.recordSha256}.json"
-            _ = path.write_bytes(encoded(selection))
-            arguments = ["--resolved-selection", str(path)]
-            source = LocalSource(directory, record)
-        # Production activation and its retirement journal, with only acquisition virtualized.
+        """Install through a Go Control command, as install.sh does; only acquisition is local."""
         stage = f"install-{1 + sum(item.kind is StageKind.INSTALLATION for item in self.timings)}"
+        installer = (
+            self.installer
+            if self.installer is not None
+            else control_executable(directory, record, self.evidence / f"{stage}-kast")
+        )
         started, code = self.clock(), None
         try:
-            code = installation.main(
-                [
-                    *arguments,
-                    "--install-root",
-                    str(self.root),
-                    "--private-python-archive",
-                    str(self.python),
-                    "--private-dependency",
-                    str(self.dependency),
-                    "--json",
-                ],
-                source=source,
-            )
+            with (
+                (self.evidence / f"{stage}.stdout").open("wb") as output,
+                (self.evidence / f"{stage}.stderr").open("wb") as errors,
+            ):
+                code = subprocess.run(
+                    [str(installer), "install", "--local-artifact", str(directory), "--json"],
+                    env=self.environment,
+                    stdin=subprocess.DEVNULL,
+                    stdout=output,
+                    stderr=errors,
+                    timeout=INSTALL_TIMEOUT_SECONDS,
+                    check=False,
+                ).returncode
         finally:
             self.record_stage(stage, StageKind.INSTALLATION, started, code)
         if code != 0:
@@ -1199,6 +1235,7 @@ def execute(
         os.environ.clear()
         os.environ.update(env)
         probe = Probe(root, home, evidence, python, dependency, env)
+        probe.installer = control_executable(directory, record, work / "kast-installer")
         facts = next(item for item in record.targets if item.target == target)
         prior = next(item for item in baseline.targets if item.target == target)
         subject = Subject(

@@ -16,12 +16,15 @@ const (
 	repository = "amichne/kast"
 	catalogURL = "https://raw.githubusercontent.com/" + repository + "/developer-latest/builds.json"
 	// GitHub's API limits unauthenticated reads per address, so this is the latest stable release's own mapping.
-	stableURL     = "https://github.com/" + repository + "/releases/latest/download/release-mapping.json"
-	releases      = "https://github.com/" + repository + "/releases/download"
-	recordSchema  = 3
-	maximumRecord = 64 << 10
-	maximumAsset  = int64(2) << 30
-	maximumBuilds = 5
+	stableURL    = "https://github.com/" + repository + "/releases/latest/download/release-mapping.json"
+	releases     = "https://github.com/" + repository + "/releases/download"
+	recordSchema = 3
+	// localRecordSchema is LocalProductRecord, and macRecordSchema MACOS_PRODUCT_SCHEMA, in managed_release.py.
+	localRecordSchema = 4
+	macRecordSchema   = 5
+	maximumRecord     = 64 << 10
+	maximumAsset      = int64(2) << 30
+	maximumBuilds     = 5
 )
 
 var (
@@ -83,9 +86,16 @@ type part struct {
 
 // release is one admitted build for one target. Its record matched the digest that selected it.
 type release struct {
+	// version is what a reader selects: the stable version, or the preview build. recordVersion is the build's own.
 	tag, version, revision, target string
+	recordVersion, tree            string
 	channel                        channel
 	parts                          []part
+	// facts is the record's entry for this target.
+	facts *targetDocument
+	// record is the exact admitted text, and sha its published digest.
+	record []byte
+	sha    string
 }
 
 func (r *release) bytes() (total int64) {
@@ -108,6 +118,8 @@ func (r *release) missing(reused map[string]bool) (total int64) {
 type reference struct {
 	tag, public, revision, sha string
 	channel                    channel
+	// local admits the record forms that only a local product directory holds.
+	local bool
 }
 
 type catalogDocument struct {
@@ -141,9 +153,25 @@ type recordDocument struct {
 	SourceRevision string           `json:"sourceRevision"`
 	SourceTree     string           `json:"sourceTree"`
 	Version        string           `json:"version"`
-	Producer       producerDocument `json:"producer"`
+	Producer       jsontext.Value   `json:"producer"`
 	Targets        []targetDocument `json:"targets"`
 }
+
+// recordForm is what one record schema holds: its targets in order, whether a local build produced it, and whether
+// each runtime is split from a base. Only a published release uses recordSchema; a local directory admits each form.
+type recordForm struct {
+	targets      []string
+	local, based bool
+}
+
+var recordForms = map[int]recordForm{
+	recordSchema:      {targets: targets, based: true},
+	localRecordSchema: {local: true},
+	macRecordSchema:   {targets: []string{"macos-aarch64"}, based: true},
+}
+
+// The local producer is LocalProductProducer in managed_release.py.
+const localProducer = `{"kind":"LOCAL"}`
 
 type targetDocument struct {
 	Target        string                `json:"target"`
@@ -151,7 +179,8 @@ type targetDocument struct {
 	Bundle        Asset                 `json:"bundle"`
 	Runtime       Asset                 `json:"runtime"`
 	Qualification qualificationDocument `json:"qualification"`
-	RuntimeBase   Asset                 `json:"runtimeBase"`
+	// RuntimeBase is absent from a local build, whose runtime archive holds every file.
+	RuntimeBase *Asset `json:"runtimeBase"`
 }
 
 type inputsDocument struct {
@@ -162,14 +191,24 @@ type inputsDocument struct {
 }
 
 type qualificationDocument struct {
-	Receipt     Asset               `json:"receipt"`
-	Producer    producerDocument    `json:"producer"`
-	Bundle      string              `json:"bundleSha256"`
-	Runtime     string              `json:"runtimeSha256"`
-	Control     string              `json:"controlSha256"`
-	Kind        string              `json:"kind"`
-	Outcome     string              `json:"outcome"`
-	Composition compositionDocument `json:"composition"`
+	Receipt     Asset                `json:"receipt"`
+	Producer    jsontext.Value       `json:"producer"`
+	Bundle      string               `json:"bundleSha256"`
+	Runtime     string               `json:"runtimeSha256"`
+	Control     string               `json:"controlSha256"`
+	Kind        string               `json:"kind"`
+	Outcome     string               `json:"outcome"`
+	Composition *compositionDocument `json:"composition"`
+}
+
+// producedBy admits a CI producer, or exactly the local producer for a local build.
+func producedBy(raw jsontext.Value, local bool) bool {
+	if local {
+		var compact jsontext.Value = append(jsontext.Value(nil), raw...)
+		return compact.Compact() == nil && string(compact) == localProducer
+	}
+	var producer producerDocument
+	return strict(raw, &producer) == nil && producer.RunID > 0 && producer.RunAttempt > 0 && producer.Workflow != ""
 }
 
 type compositionDocument struct {
@@ -283,7 +322,8 @@ func admit(raw []byte, found reference, platform string) (*release, error) {
 	if json.Unmarshal(raw, &schema) != nil {
 		return nil, reject(RecordInvalid, "the build record of %s is not one JSON object", found.tag)
 	}
-	if schema.Version != recordSchema {
+	form, known := recordForms[schema.Version]
+	if !known || (schema.Version != recordSchema && !found.local) {
 		return nil, reject(ReleaseUnsupported, "%s has build record version %d; this installer needs version %d", found.tag,
 			schema.Version, recordSchema)
 	}
@@ -303,55 +343,76 @@ func admit(raw []byte, found reference, platform string) (*release, error) {
 		return nil, invalid("revision")
 	case !buildForm.MatchString(record.Version) || (found.channel == preview && found.public != record.Version):
 		return nil, invalid("version")
-	case len(record.Targets) != len(targets):
+	case !producedBy(record.Producer, form.local):
+		return nil, invalid("producer")
+	case form.targets != nil && len(record.Targets) != len(form.targets), form.targets == nil && len(record.Targets) != 1:
 		return nil, invalid("targets")
 	}
 	// One invalid target makes the record invalid for every platform.
 	var parts []part
+	var facts *targetDocument
 	for index, target := range record.Targets {
-		if target.Target != targets[index] {
+		if (form.targets != nil && target.Target != form.targets[index]) || platformNames[target.Target] == "" {
 			return nil, invalid("targets")
 		}
-		files, check := target.admit(record.Version)
+		files, check := target.admit(record.Version, form)
 		if check != "" {
 			return nil, invalid(check)
 		}
 		if target.Target == platform {
-			parts = files
+			parts, facts = files, &record.Targets[index]
 		}
 	}
+	if facts == nil {
+		return nil, reject(PlatformUnsupported, "%s has no build for %s", found.tag, platformNames[platform])
+	}
 	return &release{tag: found.tag, version: found.public, revision: record.SourceRevision, target: platform,
-		channel: found.channel, parts: parts}, nil
+		recordVersion: record.Version, tree: record.SourceTree, channel: found.channel, parts: parts, facts: facts,
+		record: raw, sha: found.sha}, nil
 }
 
 // admit returns the target's files, or the name of the check that failed.
-func (t *targetDocument) admit(version string) ([]part, string) {
+func (t *targetDocument) admit(version string, form recordForm) ([]part, string) {
 	evidence, composition := t.Qualification, t.Qualification.Composition
-	for _, value := range []string{t.Inputs.JavaRelease, t.Inputs.DependencyLocks, t.Inputs.CompositionRecipe,
-		t.Inputs.Donor, evidence.Control, composition.NativeRuntime, composition.NativeBundle} {
-		if !digestForm.MatchString(value) {
-			return nil, "digests"
-		}
+	if (t.RuntimeBase != nil) != form.based || (composition != nil) != form.based {
+		return nil, "runtime base"
 	}
-	for _, expected := range []struct {
+	digests := []string{t.Inputs.JavaRelease, t.Inputs.DependencyLocks, t.Inputs.CompositionRecipe, t.Inputs.Donor,
+		evidence.Control}
+	files := []struct {
 		name  string
 		asset Asset
 	}{
 		{"kast-composed-setup-v" + version + "-" + t.Target + ".tar.gz", t.Bundle},
 		{"kast-runtime-v" + version + "-" + t.Target + ".zip", t.Runtime},
 		{"qualification-" + t.Target + ".json", evidence.Receipt},
-		{"kast-runtime-base-" + t.Target + "-" + t.RuntimeBase.SHA256 + ".zip", t.RuntimeBase},
-	} {
+	}
+	if form.based {
+		digests = append(digests, composition.NativeRuntime, composition.NativeBundle)
+		files = append(files, struct {
+			name  string
+			asset Asset
+		}{"kast-runtime-base-" + t.Target + "-" + t.RuntimeBase.SHA256 + ".zip", *t.RuntimeBase})
+	}
+	for _, value := range digests {
+		if !digestForm.MatchString(value) {
+			return nil, "digests"
+		}
+	}
+	for _, expected := range files {
 		if expected.asset.Name != expected.name || !digestForm.MatchString(expected.asset.SHA256) ||
 			expected.asset.Bytes <= 0 || expected.asset.Bytes >= maximumAsset {
 			return nil, "files"
 		}
 	}
 	if evidence.Kind != "NATIVE" || evidence.Outcome != "COMPLETE" || evidence.Bundle != t.Bundle.SHA256 ||
-		evidence.Runtime != t.Runtime.SHA256 || composition.Base != t.RuntimeBase.SHA256 ||
-		composition.Runtime != t.Runtime.SHA256 {
+		evidence.Runtime != t.Runtime.SHA256 || !producedBy(evidence.Producer, form.local) ||
+		(form.based && (composition.Base != t.RuntimeBase.SHA256 || composition.Runtime != t.Runtime.SHA256)) {
 		return nil, "qualification"
 	}
-	return []part{{t.Bundle, product}, {t.Runtime, analysisRuntime}, {evidence.Receipt, qualificationReceipt},
-		{t.RuntimeBase, runtimeBase}}, ""
+	parts := []part{{t.Bundle, product}, {t.Runtime, analysisRuntime}, {evidence.Receipt, qualificationReceipt}}
+	if form.based {
+		parts = append(parts, part{*t.RuntimeBase, runtimeBase})
+	}
+	return parts, ""
 }

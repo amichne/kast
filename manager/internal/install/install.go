@@ -1,5 +1,6 @@
-// Package install selects one published Kast build, shows it, and downloads its verified files. It changes no
-// installation: it writes only its own download directory, and a dry run writes nothing.
+// Package install selects one published Kast build, downloads and verifies its files, and installs it in place of
+// the installed build. Planning and downloading change no installation; an upgrade or `kast install` with a build
+// selector replaces it.
 package install
 
 import (
@@ -11,6 +12,7 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"strings"
 	"time"
 )
 
@@ -67,6 +69,14 @@ const (
 
 // Mode reports whether an argument selects what an invocation does.
 func Mode(argument string) bool { return argument == dryRun || argument == downloadOnly }
+
+// Claims reports whether an argument makes `kast install` this package's: a mode, a build selector, --json, or
+// --replace-existing.
+func Claims(argument string) bool {
+	name, _, _ := strings.Cut(argument, "=")
+	return Mode(argument) || argument == "--json" || argument == "--replace-existing" || name == "--channel" ||
+		name == "--version" || name == "--commit" || name == "--local-artifact"
+}
 
 type options struct {
 	selected selector
