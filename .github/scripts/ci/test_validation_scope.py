@@ -975,7 +975,19 @@ class SourceInventoryTest(unittest.TestCase):
     def test_stable_promotion_only_maps_exact_retained_preview_bytes(self):
         release = (Path(__file__).resolve().parents[2] / "workflows/release.yml").read_text()
         jobs = release.split("\njobs:\n", 1)[1]
-        self.assertEqual(["publish"], re.findall(r"^  ([\w-]+):$", jobs, re.M))
+        self.assertEqual(["publish", "marketplace"], re.findall(r"^  ([\w-]+):$", jobs, re.M))
+        # The marketplace projects the promoted release afterwards; it never builds or repackages.
+        marketplace = yaml.safe_load(release)["jobs"]["marketplace"]
+        self.assertEqual("publish", marketplace["needs"])
+        self.assertEqual("./.github/workflows/publish-marketplace.yml", marketplace["uses"])
+        self.assertEqual(
+            {"public_version": "${{ inputs.public_version }}"}, marketplace["with"]
+        )
+        self.assertIn(
+            "publish_marketplace.py --public-version", task_run("release:marketplace")
+        )
+        for build_command in ("./gradlew", "assembleRelease", "composed_release.py"):
+            self.assertNotIn(build_command, task_run("release:marketplace"))
         self.assertIn("if: github.ref == 'refs/heads/main'", jobs)
         self.assertIn("runs-on: ubuntu-24.04", jobs)
         self.assertIn("ref: ${{ github.sha }}", jobs)

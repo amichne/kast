@@ -3,6 +3,24 @@ extends = "fixed"
 description = "Promote the retained preview archives to a public version"
 run = "python3 .github/scripts/release/publish_developer.py stable --source-tag \"$SOURCE_TAG\" --record-sha256 \"$RECORD_SHA256\" --public-version \"$PUBLIC_VERSION\""
 
+["release:marketplace"]
+extends = "fixed"
+description = "Publish the stable agent marketplace to its own repository"
+run = '''
+#!/usr/bin/env bash
+set -euo pipefail
+checkout=build/marketplace
+python3 .github/scripts/release/publish_marketplace.py --public-version "$PUBLIC_VERSION" --checkout "$checkout"
+bot=(-c user.name="github-actions[bot]" -c user.email="41898282+github-actions[bot]@users.noreply.github.com")
+git -C "$checkout" add --all
+if ! git -C "$checkout" diff --cached --quiet; then
+  git -C "$checkout" "${bot[@]}" commit --quiet --message "Kast $PUBLIC_VERSION" --message "Source: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/releases/tag/v$PUBLIC_VERSION"
+fi
+# An existing tag must already name this commit; the atomic push rejects a moved one.
+git -C "$checkout" tag "v$PUBLIC_VERSION" 2>/dev/null || [[ "$(git -C "$checkout" rev-parse "v$PUBLIC_VERSION^{commit}")" == "$(git -C "$checkout" rev-parse HEAD)" ]]
+git -C "$checkout" push --atomic origin HEAD:refs/heads/main "refs/tags/v$PUBLIC_VERSION"
+'''
+
 ["release:candidate"]
 extends = "fixed"
 description = "Admit the retained candidate and its native qualification"

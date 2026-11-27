@@ -51,3 +51,12 @@ jobs:
 
       - name: Admit published inventory and promote identical archives
         run: mise run release:stable
+
+  marketplace:
+    name: Publish the agent marketplace
+    needs: publish
+    uses: ./.github/workflows/publish-marketplace.yml
+    with:
+      public_version: ${{ inputs.public_version }}
+    secrets:
+      KAST_PLUGINS_DEPLOY_KEY: ${{ secrets.KAST_PLUGINS_DEPLOY_KEY }}

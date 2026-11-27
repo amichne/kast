@@ -95,6 +95,44 @@ If the upgrade reports that an agent keeps an older plugin, run the update yours
 kast agent refresh
 ```
 
+## Install from the published marketplace
+
+Each stable release also publishes the plugin to the [`amichne/kast-plugins`](https://github.com/amichne/kast-plugins) repository. It holds only the marketplace, so a clone stays small.
+Add it with your agent's own commands when you want the agent to fetch the plugin from GitHub:
+
+<Tabs>
+  <Tab title="Claude Code">
+    ```shell
+    claude plugin marketplace add amichne/kast-plugins
+    claude plugin install kast@kast
+    ```
+
+    To update, run `claude plugin marketplace update kast`, then `claude plugin update kast@kast`.
+  </Tab>
+  <Tab title="Codex">
+    ```shell
+    codex plugin marketplace add amichne/kast-plugins
+    codex plugin add kast@kast
+    ```
+
+    To update, run `codex plugin marketplace upgrade`, then `codex plugin add kast@kast`.
+  </Tab>
+  <Tab title="GitHub Copilot">
+    ```shell
+    copilot plugin marketplace add amichne/kast-plugins
+    copilot plugin install kast@kast
+    ```
+
+    To update, run `copilot plugin marketplace update`, then `copilot plugin update kast@kast`.
+  </Tab>
+</Tabs>
+
+The repository has a tag for each release, such as `v0.55.0`. To pin one, add `--ref v0.55.0` for Codex, `#v0.55.0` after the repository for Claude Code, or `https://github.com/amichne/kast-plugins.git#v0.55.0` for Copilot.
+`kast-release.json` in the repository names the Kast release and the build that produced it.
+
+The plugin runs your installed `kast` command. Keep the plugin and Kast at the same release.
+`kast agent install`, `kast agent refresh`, and `kast upgrade` replace this marketplace with the copy in your Kast installation.
+
 ## Remove the plugin
 
 ```shell

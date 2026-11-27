@@ -20,7 +20,7 @@ default = true
 [tool.pyright]
 pythonVersion = "3.12"
 typeCheckingMode = "strict"
-include = ["developer_catalog.py", "publish_bootstrap.py", "publish_developer.py", "product_candidate.py", "product_producer.py", "test_product_producer.py", "test_product_candidate.py", "qualified_runtime_assets.py", "test_developer_catalog.py", "test_developer_publication.py", "candidate_admission.py", "test_candidate_admission.py"]
+include = ["developer_catalog.py", "publish_bootstrap.py", "publish_developer.py", "product_candidate.py", "product_producer.py", "test_product_producer.py", "test_product_candidate.py", "qualified_runtime_assets.py", "test_developer_catalog.py", "test_developer_publication.py", "candidate_admission.py", "test_candidate_admission.py", "publish_marketplace.py"]
 extraPaths = [
     "../ci",
     "../../../packaging/internal/bootstrap",
@@ -39,13 +39,13 @@ reportUnnecessaryTypeIgnoreComment = "error"
 [tool.ruff]
 target-version = "py312"
 line-length = 100
-include = ["**/developer_catalog.py", "**/publish_bootstrap.py", "**/publish_developer.py", "**/product_candidate.py", "**/product_producer.py", "**/test_product_producer.py", "**/test_product_candidate.py", "**/qualified_runtime_assets.py", "**/test_developer_catalog.py", "**/test_developer_publication.py", "**/candidate_admission.py", "**/test_candidate_admission.py"]
+include = ["**/developer_catalog.py", "**/publish_bootstrap.py", "**/publish_developer.py", "**/product_candidate.py", "**/product_producer.py", "**/test_product_producer.py", "**/test_product_candidate.py", "**/qualified_runtime_assets.py", "**/test_developer_catalog.py", "**/test_developer_publication.py", "**/candidate_admission.py", "**/test_candidate_admission.py", "**/publish_marketplace.py"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B"]
 
 [tool.ruff.lint.isort]
-known-first-party = ["build_candidate", "candidate_admission", "developer_catalog", "product_candidate", "product_producer", "publish_developer", "qualified_runtime_assets", "test_developer_catalog", "test_developer_publication", "test_product_candidate", "test_product_producer"]
+known-first-party = ["build_candidate", "candidate_admission", "developer_catalog", "product_candidate", "product_producer", "publish_developer", "publish_marketplace", "qualified_runtime_assets", "test_developer_catalog", "test_developer_publication", "test_product_candidate", "test_product_producer"]
 
 [tool.pytest.ini_options]
 addopts = "--strict-config --strict-markers --import-mode=importlib -ra"
