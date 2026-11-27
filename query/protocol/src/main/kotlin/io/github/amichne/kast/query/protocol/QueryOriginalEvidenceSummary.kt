@@ -75,8 +75,10 @@ private fun QueryResult.callbackObservations(): List<RelationCallbackObservation
         walkObservations.flatMap { it.callbackObservations }.map { it.observation }
 
 /** A stored-lambda call is not a caller row; counting it keeps a caller list from reading as a call-site list. */
-private fun List<RelationCallbackObservation>.excludedCallCount(): Int =
-    filter { it.policy is CallbackNamedCallPolicy.Excluded }.map { it.occurrence }.distinct().size
+private fun List<RelationCallbackObservation>.excludedCallCount(): Int {
+    val excluded = filter { it.policy is CallbackNamedCallPolicy.Excluded }
+    return excluded.map { it.occurrence }.distinct().size
+}
 
 private fun List<QueryItemFailure>.predicateReasons(): List<QueryPredicateFailureDocument> =
     filterIsInstance<QueryItemFailure.Visibility>().map { QueryPredicateFailureDocument.valueOf(it.reason.name) } +

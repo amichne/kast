@@ -1,6 +1,8 @@
 package io.github.amichne.kast.query.protocol
 
 import io.github.amichne.kast.kernel.Refinement
+import io.github.amichne.kast.protocol.contract.CompilerSignatureDocument
+import io.github.amichne.kast.protocol.contract.QueryCallbackTargetDocument
 import io.github.amichne.kast.query.contract.QueryRelationObservation
 import io.github.amichne.kast.relation.contract.CallbackExclusionReason
 import io.github.amichne.kast.relation.contract.CallbackInvocationFlowCause
@@ -29,8 +31,6 @@ import io.github.amichne.kast.symbol.contract.SymbolLibraryPolicy
 import io.github.amichne.kast.symbol.contract.SymbolSearchScope
 import io.github.amichne.kast.symbol.contract.SymbolSelector
 import io.github.amichne.kast.symbol.contract.SymbolSourceKindPolicy
-import io.github.amichne.kast.protocol.contract.CompilerSignatureDocument
-import io.github.amichne.kast.protocol.contract.QueryCallbackTargetDocument
 import java.nio.file.Path
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertInstanceOf
@@ -51,9 +51,12 @@ internal class BinaryCallerCallbackProjectionTest {
         val callback = projected!!.callbackObservations.values.single()
         val target = assertInstanceOf(QueryCallbackTargetDocument.Binary::class.java, callback.target)
         assertEquals(BINARY_FILE, target.compilerTarget.file.value)
-        assertEquals("kotlinx.serialization.json.JsonPrimitive", target.compilerTarget.compilerEvidence.signature.let {
-            (it as CompilerSignatureDocument.Function).qualifiedIdentity.value
-        })
+        assertEquals(
+            "kotlinx.serialization.json.JsonPrimitive",
+            target.compilerTarget.compilerEvidence.signature.let {
+                (it as CompilerSignatureDocument.Function).qualifiedIdentity.value
+            },
+        )
         // The call site, callback body and owner are source and keep their issued handles.
         assertEquals(CALLER_FILE, callback.occurrence.file.value)
         assertEquals(CALL_START, callback.occurrence.range.startInclusive.value)

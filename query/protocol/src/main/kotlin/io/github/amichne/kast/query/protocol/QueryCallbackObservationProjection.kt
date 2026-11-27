@@ -16,8 +16,8 @@ import io.github.amichne.kast.protocol.contract.QueryCallbackForwardingEvidenceD
 import io.github.amichne.kast.protocol.contract.QueryCallbackInvocationDocument
 import io.github.amichne.kast.protocol.contract.QueryCallbackNamedPolicyDocument
 import io.github.amichne.kast.protocol.contract.QueryCallbackObservationDocument
-import io.github.amichne.kast.protocol.contract.QueryCallbackTargetDocument
 import io.github.amichne.kast.protocol.contract.QueryCallbackParameterIdentityDocument
+import io.github.amichne.kast.protocol.contract.QueryCallbackTargetDocument
 import io.github.amichne.kast.protocol.contract.QueryExcludedCompilerTargetDocument
 import io.github.amichne.kast.protocol.contract.QueryRelationDomainFingerprint
 import io.github.amichne.kast.protocol.contract.QueryWalkCallbackObservationDocument
