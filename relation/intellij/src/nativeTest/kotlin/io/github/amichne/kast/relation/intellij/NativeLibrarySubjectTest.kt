@@ -1,8 +1,10 @@
 package io.github.amichne.kast.relation.intellij
 
+import com.intellij.codeInsight.ExternalAnnotationsManager
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.application.PathManager
 import com.intellij.openapi.application.readAction
+import com.intellij.openapi.project.ProjectManager
 import com.intellij.openapi.roots.ModuleRootModificationUtil
 import com.intellij.openapi.roots.OrderRootType
 import com.intellij.psi.PsiNamedElement
@@ -30,6 +32,12 @@ class NativeLibrarySubjectTest : NativeReferenceFixtureTest() {
     override val fixtureSdkName = "library-subject-jdk"
 
     override fun runInDispatchThread() = false
+
+    override fun setUpProject() {
+        super.setUpProject()
+        // The class-file mirror can initialize this application-lifetime default-project service.
+        ExternalAnnotationsManager.getInstance(ProjectManager.getInstance().defaultProject)
+    }
 
     fun testReferencesFindEverySourceUseOfOneOverload() {
         val fixture = libraryFixture()
@@ -83,6 +91,40 @@ class NativeLibrarySubjectTest : NativeReferenceFixtureTest() {
         for ((label, subject) in subjects) {
             val read = fixture.read(RelationMeaning.References, subject)
             assertTrue("$label must fail closed, received $read", read is RelationCompilation.Qualified)
+        }
+    }
+
+    /** A compiled Java member reachable only by its own name is a subject like a compiled Kotlin one. */
+    fun testReferencesAndCallersOfACompiledJavaMethod() {
+        val fixture = libraryFixture()
+        val references = fixture.complete(RelationMeaning.References) { javaMember("java.io.File", "mkdirs") }
+        assertEquals(setOf("java method"), references.sites("mkdirs"))
+        val callers = fixture.complete(RelationMeaning.Callers) { javaMember("java.io.File", "mkdirs") }
+        assertEquals(listOf("useJavaMethod"), callers.facts.map { it.source.name.value })
+    }
+
+    fun testReferencesOfACompiledJavaField() {
+        val fixture = libraryFixture()
+        val references = fixture.complete(RelationMeaning.References) { javaMember("java.io.File", "separatorChar") }
+        assertEquals(setOf("java field"), references.sites("separatorChar"))
+    }
+
+    /** No Kotlin code contains `parentFile`, so the explicit calls are every use of the getter. */
+    fun testACompiledJavaAccessorWithoutPropertyUsesCompletes() {
+        val fixture = libraryFixture()
+        val references = fixture.complete(RelationMeaning.References) { javaMember("java.io.File", "getParentFile") }
+        assertEquals(setOf("java getter"), references.sites("getParentFile"))
+    }
+
+    /**
+     * Kotlin source reads `getName` as the property `name`, and native search enumerates the method name only. A
+     * compiled convention method also answers an operator, which native search misses for compiled declarations.
+     */
+    fun testCompiledJavaAccessorAndConventionUsesFailClosed() {
+        val fixture = libraryFixture()
+        for (name in listOf("getName", "compareTo")) {
+            val read = fixture.read(RelationMeaning.References) { javaMember("java.io.File", name) }
+            assertTrue("$name must fail closed, received $read", read is RelationCompilation.Qualified)
         }
     }
 
@@ -165,6 +207,21 @@ class NativeLibrarySubjectTest : NativeReferenceFixtureTest() {
             it.receiverTypeReference?.text?.substringBefore('<')?.substringAfterLast('.') == receiver
         }
 
+    private fun javaMember(owner: String, name: String): PsiNamedElement {
+        val type =
+            checkNotNull(
+                com.intellij.psi.JavaPsiFacade.getInstance(project)
+                    .findClass(owner, GlobalSearchScope.allScope(project))
+            ) {
+                "Missing compiled Java class $owner"
+            }
+        assertTrue("$owner must be compiled", type is com.intellij.psi.impl.compiled.ClsClassImpl)
+        return type.findMethodsByName(name, false).singleOrNull()
+            ?: checkNotNull(type.findFieldByName(name, false)) {
+                "Missing $owner.$name"
+            }
+    }
+
     private fun classlike(name: String): PsiNamedElement =
         KotlinFullClassNameIndex.get(name, project, GlobalSearchScope.allScope(project)).single()
 
@@ -221,5 +278,10 @@ private val SOURCE =
     fun useShadow() = Shadow.listOfNotNull(9) /*shadow*/
     fun useAlias(all: List<String?>) = all.dropNulls()
     fun usePair() = 1 to 2
+    fun useJavaMethod() = java.io.File("x").mkdirs() /*java method*/
+    fun useJavaField() = java.io.File.separatorChar /*java field*/
+    fun useJavaAccessor() = java.io.File("x").name /*java accessor*/
+    fun useJavaGetter() = java.io.File("x").getParentFile() /*java getter*/
+    fun useJavaConvention() = java.io.File("a") < java.io.File("b")
     """
         .trimIndent()

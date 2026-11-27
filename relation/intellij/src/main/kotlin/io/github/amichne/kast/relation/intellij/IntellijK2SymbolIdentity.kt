@@ -21,6 +21,7 @@ import org.jetbrains.kotlin.analysis.api.symbols.KaAnonymousObjectSymbol
 import org.jetbrains.kotlin.analysis.api.symbols.KaClassLikeSymbol
 import org.jetbrains.kotlin.analysis.api.symbols.KaConstructorSymbol
 import org.jetbrains.kotlin.analysis.api.symbols.KaFunctionSymbol
+import org.jetbrains.kotlin.analysis.api.symbols.KaJavaFieldSymbol
 import org.jetbrains.kotlin.analysis.api.symbols.KaKotlinPropertySymbol
 import org.jetbrains.kotlin.analysis.api.symbols.KaNamedFunctionSymbol
 import org.jetbrains.kotlin.analysis.api.symbols.KaSymbol
@@ -74,6 +75,7 @@ internal fun KaSymbol.compilerProjection(
         is KaConstructorSymbol -> projectedConstructor()
         is KaFunctionSymbol -> projectedFunction()
         is KaKotlinPropertySymbol -> projectedProperty()
+        is KaJavaFieldSymbol -> projectedJavaField()
         is KaTypeAliasSymbol -> {
             val className = classId?.asSingleFqName()?.asString() ?: return IntellijCompilerProjectionResult.Unsupported
             projected(
@@ -172,6 +174,22 @@ private fun KaKotlinPropertySymbol.projectedProperty(): IntellijCompilerProjecti
         propertySignature(callable),
     )
 }
+
+/** Kotlin reads a Java field as a property without a receiver or context, so its identity takes that shape. */
+private fun KaJavaFieldSymbol.projectedJavaField(): IntellijCompilerProjectionResult {
+    val callable = callableId?.asSingleFqName()?.asString() ?: return IntellijCompilerProjectionResult.Unsupported
+    return projected(CompilerSymbolKind.PROPERTY, callable, javaFieldSignature(callable))
+}
+
+internal fun KaJavaFieldSymbol.javaFieldSignature(
+    callable: String
+): Refinement<CanonicalCompilerSignature, CanonicalCompilerSignatureFailure> =
+    CanonicalCompilerSignature.property(
+        rawQualifiedIdentity = callable,
+        rawReceiverType = null,
+        rawContextReceiverTypes = emptyList(),
+        rawReturnType = returnType.toString(),
+    )
 
 internal fun KaKotlinPropertySymbol.propertySignature(
     callable: String
