@@ -84,8 +84,8 @@ Read the [tracer evidence](../docs/reviews/go-frontend-tracer.md) for the measur
 - Never run a reset test against a real home or supervisor. Inject the adapters in `reset_test.go`, which reject unexpected effects.
 - Route `install` to this process only with a mode, a build selector, `--local-artifact`, `--replace-existing`, or `--json`.
   The JVM owns every other `install` vector.
-- Admit a local product directory's record in each local form: schema 3, the local schema 4 without a base, and the Mac schema 5.
-  A published release admits only schema 3.
+- Admit a local product directory's record in each form that `managed_release.py` installs: schemas 2, 3, 4 and 5.
+  `local-product install` writes schema 2, whose runtimes have no base. A published release admits only schema 3.
 - Reset an installation that cannot be replaced only after the new build is verified, and only with `--replace-existing` or a person's answer.
 - After `kast install` on a terminal, run the new command's `agent install` on the terminal. Otherwise refresh the connected agents.
 - Admit each downloaded byte through one digest chain: the catalog or release mapping, the build record, then each file.
