@@ -9,6 +9,7 @@ import com.intellij.openapi.project.Project
 import com.intellij.psi.PsiMethod
 import com.intellij.psi.PsiNamedElement
 import com.intellij.psi.search.GlobalSearchScope
+import io.github.amichne.kast.symbol.contract.isKotlinConventionName
 import io.github.amichne.kast.workspace.intellij.read.IntellijReadObservation
 import io.github.amichne.kast.workspace.intellij.read.observedAnalyze
 import org.jetbrains.kotlin.analysis.api.KaSession
@@ -38,7 +39,8 @@ internal enum class ConventionSearchCoverage {
  * delegate accessors behind `provideDelegate`. For other operators it follows inferred types, and that route stops at
  * values from a source-declared iterator or delegate. Such a link qualifies the subject only when the link can produce
  * the subject's receiver type. Native search also enumerates a Java accessor by its method name only, so [searched]
- * qualifies the accessor when its Kotlin code contains the property name.
+ * qualifies the accessor when its Kotlin code contains the property name. This holds for source and compiled Java
+ * alike.
  */
 internal fun IntellijK2RelationProjection.conventionSearchCoverage(
     project: Project,
@@ -48,8 +50,11 @@ internal fun IntellijK2RelationProjection.conventionSearchCoverage(
     val incomplete =
         hasUnsearchedPropertyUses(project, subject, searched) ||
             when (subject) {
-                // Kotlin accepts a matching Java method as an operator without a modifier.
-                is PsiMethod -> subject.name in UNSEARCHABLE_CONVENTIONS
+                // Kotlin accepts a matching Java method as an operator without a modifier. Native search misses the
+                // operator uses of a compiled one, as it does for a compiled Kotlin operator.
+                is PsiMethod ->
+                    subject.name in UNSEARCHABLE_CONVENTIONS ||
+                        (subject.isBinaryDeclaration() && isKotlinConventionName(subject.name))
                 is KtNamedFunction ->
                     isConventionSubject(subject) &&
                         (subject.isBinaryDeclaration() ||
