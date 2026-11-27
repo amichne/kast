@@ -21,8 +21,9 @@ type testBuild struct {
 	base    map[string]bool
 	// mutate changes the archives' members before they are packed, for rejection cases.
 	mutate func(*archives)
-	// local packs a local build: one runtime archive without a base, and local producers.
-	local bool
+	// local packs a local build: one runtime archive without a base, and local producers. unsplit packs one runtime
+	// archive without a base and keeps CI producers, as a schema 2 record names them.
+	local, unsplit bool
 }
 
 type payloadMember struct {
@@ -111,8 +112,8 @@ func (p *testBuild) assets(t *testing.T) (map[string]any, map[string][]byte) {
 		baseAsset = map[string]any{"name": "kast-runtime-base-" + p.target + "-" + digest(base) + ".zip",
 			"sha256": digest(base), "bytes": len(base)}
 	}
-	if p.local {
-		// A local build's runtime archive holds every file and names no base.
+	if p.local || p.unsplit {
+		// An unsplit runtime archive holds every file and names no base.
 		for name, data := range packed.base {
 			if name != baseManifestName {
 				packed.runtime[name] = data
@@ -147,11 +148,13 @@ func (p *testBuild) assets(t *testing.T) (map[string]any, map[string][]byte) {
 		},
 		"runtimeBase": baseAsset,
 	}
-	if p.local {
+	if p.local || p.unsplit {
 		delete(document, "runtimeBase")
 		qualification := document["qualification"].(map[string]any)
 		delete(qualification, "composition")
-		qualification["producer"] = map[string]any{"kind": "LOCAL"}
+		if p.local {
+			qualification["producer"] = map[string]any{"kind": "LOCAL"}
+		}
 		return document, map[string][]byte{
 			document["bundle"].(map[string]any)["name"].(string):  bundle,
 			document["runtime"].(map[string]any)["name"].(string): runtime,
