@@ -19,6 +19,10 @@ updates:
     ignore:
       - dependency-name: "com.jetbrains.intellij.idea:*"
       - dependency-name: "com.jetbrains.intellij.platform:*"
+      # `reviewed-scope-stdlib` and `reviewed-array-stdlib` pin reviewed fixture artifacts that native
+      # relation tests load by file name. The toolchain `kotlin` version still moves through the
+      # Kotlin Gradle plugin and plugin IDs that share that version reference.
+      - dependency-name: "org.jetbrains.kotlin:kotlin-stdlib"
     groups:
       kotlin-toolchain:
         patterns:
