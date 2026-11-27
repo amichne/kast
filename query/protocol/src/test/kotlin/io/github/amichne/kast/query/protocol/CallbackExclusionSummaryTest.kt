@@ -24,7 +24,11 @@ internal class CallbackExclusionSummaryTest : CompleteOnlyCallbackQueryCase() {
             Script(
                 listOf(emptyList()),
                 resultForPage = { rows, _ ->
-                    QueryResult(QueryRows.Symbols.of(rows), emptyList(), relationObservations = listOf(observation(true)))
+                    QueryResult(
+                        QueryRows.Symbols.of(rows),
+                        emptyList(),
+                        relationObservations = listOf(observation(true)),
+                    )
                 },
             )
         val result =
@@ -41,7 +45,10 @@ internal class CallbackExclusionSummaryTest : CompleteOnlyCallbackQueryCase() {
     @Test
     fun `a complete answer with no stored-lambda call encodes no exclusion count`() = runTest {
         val script =
-            Script(listOf(listOf(row)), resultForPage = { rows, _ -> QueryResult(QueryRows.Symbols.of(rows), emptyList()) })
+            Script(
+                listOf(listOf(row)),
+                resultForPage = { rows, _ -> QueryResult(QueryRows.Symbols.of(rows), emptyList()) },
+            )
         val result =
             CanonicalQueryProtocol(script.operations, fixture.references)
                 .execute(strict, fixture.authority, budget, policy())
