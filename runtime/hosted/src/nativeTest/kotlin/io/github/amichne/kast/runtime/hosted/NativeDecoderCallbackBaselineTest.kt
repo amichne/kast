@@ -186,7 +186,12 @@ class NativeDecoderCallbackBaselineTest : NativeSmartModeFixtureTest() {
             steps.first().source,
         )
         assertEquals(
-            QueryCallbackNavigationNodeDocument.Callable(QueryCallbackBodyDocument.Named(callback.target)),
+            QueryCallbackNavigationNodeDocument.Callable(
+                QueryCallbackBodyDocument.Named(
+                    (callback.target as io.github.amichne.kast.protocol.contract.QueryCallbackTargetDocument.Source)
+                        .callable
+                )
+            ),
             steps.last().target,
         )
         steps.zipWithNext().forEach { (before, after) -> assertEquals(before.target, after.source) }

@@ -296,7 +296,7 @@ class QueryNamedCallbackReferenceWireTest {
         val binding = flow.binding as QueryCallbackBindingDocument.Bound
         val reference =
             QueryNamedCallbackReferenceDocument(
-                observation.target,
+                observation.sourceTarget,
                 QueryCallbackReferenceReceiverDocument.Absent,
                 QueryCallbackReferenceReceiverDocument.Unbound,
                 QueryNamedCallbackReferenceFlowDocument.Supplied(binding, flow.invocations, flow.forwarding),
@@ -317,7 +317,7 @@ class QueryNamedCallbackReferenceWireTest {
         val flow = observation.flow as QueryCallbackFlowDocument.Observed
         val reference =
             QueryNamedCallbackReferenceDocument(
-                observation.target,
+                observation.sourceTarget,
                 QueryCallbackReferenceReceiverDocument.Absent,
                 QueryCallbackReferenceReceiverDocument.Absent,
                 QueryNamedCallbackReferenceFlowDocument.Supplied(

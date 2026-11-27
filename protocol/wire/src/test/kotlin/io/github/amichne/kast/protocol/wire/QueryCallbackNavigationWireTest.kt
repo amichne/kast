@@ -20,7 +20,7 @@ class QueryCallbackNavigationAdmissionWireTest {
             val body = QueryCallbackNavigationNodeWireDocument.Callable(flow.body)
             val target =
                 QueryCallbackNavigationNodeWireDocument.Callable(
-                    QueryCallbackBodyWireDocument.Named(observation.target)
+                    QueryCallbackBodyWireDocument.Named(observation.sourceTarget)
                 )
             val steps =
                 rootedPrefix(observation, flow).let { prefix ->

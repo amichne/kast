@@ -50,13 +50,11 @@ pass_through() {
 
 # Projections in Kast's embedded jq. String interpolation is unavailable there.
 META='(.document.next_cursor|tostring) + " " + (.document.retention.reference // "none")'
-EXCLUDED_CALLS='[.document.relation_observations[]?.callback_observations[]?
-  | select(.named_policy.type == "EXCLUDED") | .occurrence
-  | .file + ":" + (.range.startInclusive|tostring)] | unique'
-EXCLUDED="$EXCLUDED_CALLS | length"
-# One evidence page: "WINDOW END DEFERRED" and its excluded callback calls, ';'-joined.
-EVIDENCE_PAGE="[(.document.evidence_window.type // \"FINAL\") + \" \" + ((.document.evidence_window.end // 0)|tostring)
-  + \" \" + ((.document.deferred_evidence // []) | length | tostring), ($EXCLUDED_CALLS | join(\";\"))]"
+# Kast counts excluded stored-lambda calls over the original facts, before any page is selected, and omits a zero.
+EXCLUDED='.document.original_evidence_summary.excluded_callback_calls // 0'
+# One evidence page as "WINDOW END DEFERRED".
+EVIDENCE_PAGE='[(.document.evidence_window.type // "FINAL") + " " + ((.document.evidence_window.end // 0)|tostring)
+  + " " + ((.document.deferred_evidence // []) | length | tostring), null]'
 EVIDENCE='((.document.evidence_window.type // "FINAL") == "FINAL") and ((.document.deferred_evidence // []) | length == 0)'
 VERDICT="{type, status: .document.status, exhaustive: .document.coverage.exhaustive,
   failures: .document.original_evidence_summary.failure_count,
@@ -75,15 +73,15 @@ OCCURRENCE='(.occurrence.occurrence.file // .relation.occurrence.file) + "|"
 meta_of() { printf '%s' "$1" | sed -n 's/^\["\([^"]*\)",.*$/\1/p'; }
 
 # A first page presents only the evidence that fits beside its rows, so its evidence_window can say MORE. Read a
-# retained result's evidence from position 0, after its last row, and settle excluded_callback_calls and
-# evidence_complete on all of it. Evidence stays incomplete when a page defers an entry. $1 verdict, $2 result, $3 kind.
+# retained result's evidence from position 0, after its last row, and settle evidence_complete on all of it. Evidence
+# stays incomplete when a page defers an entry. $1 verdict, $2 result, $3 kind.
 settled_verdict() {
     verdict=$1 ref=$2 kind=$3
     case "$verdict" in *'"evidence_complete":false}') ;; *) printf '%s' "$verdict"; return 0 ;; esac
     if [ "$ref" = "none" ]; then printf '%s' "$verdict"; return 0; fi
     rows=$(printf '%s' "$verdict" | sed -n 's/^.*"total":\([0-9][0-9]*\),.*$/\1/p')
     [ -n "$rows" ] || refuse PAGE_UNREADABLE
-    position=0 calls="" complete=false
+    position=0 complete=false
     while :; do
         page=$(kast_json result read --ref "$ref" --cursor "$rows" --evidence-cursor "$position" --output "$kind" \
             --max-returned-bytes "$BUDGET" --jq "$EVIDENCE_PAGE") || pass_through "$page" $?
@@ -91,8 +89,6 @@ settled_verdict() {
         [ -n "$meta" ] || refuse PAGE_UNREADABLE
         window=${meta%% *} counts=${meta#* }
         end=${counts%% *} deferred=${counts#* }
-        found=$(printf '%s' "$page" | sed -e 's/^\["[^"]*","//' -e 's/"\]$//')
-        if [ -n "$found" ]; then calls=${calls:+$calls;}$found; fi
         [ "$deferred" = 0 ] || break
         case "$window" in
             FINAL) complete=true; break ;;
@@ -100,8 +96,7 @@ settled_verdict() {
             *) break ;;
         esac
     done
-    excluded=$(printf '%s\n' "$calls" | tr ';' '\n' | sed '/^$/d' | sort -u | wc -l | tr -d ' ')
-    printf '%s' "$verdict" | sed "s/\"excluded_callback_calls\":[0-9]*,\"evidence_complete\":false}\$/\"excluded_callback_calls\":$excluded,\"evidence_complete\":$complete}/"
+    printf '%s' "$verdict" | sed "s/\"evidence_complete\":false}\$/\"evidence_complete\":$complete}/"
 }
 
 # Items of every page after the first, comma-joined without brackets. $1 result, $2 cursor, $3 kind.

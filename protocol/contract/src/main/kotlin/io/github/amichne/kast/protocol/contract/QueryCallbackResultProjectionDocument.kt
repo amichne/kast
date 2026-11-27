@@ -46,7 +46,7 @@ sealed interface QueryCallbackResultProjectionDocument {
         relation: RelationKindDocument,
         domain: QueryRelationDomainFingerprint,
         occurrence: RelationOccurrenceDocument,
-        target: QueryCallbackCallableDocument,
+        target: QueryCallbackTargetDocument,
         flow: QueryCallbackFlowDocument,
     ): Boolean =
         when (this) {
@@ -92,7 +92,7 @@ sealed interface QueryCallbackResultProjectionDocument {
 private fun callbackResultSites(
     relation: RelationKindDocument,
     occurrence: RelationOccurrenceDocument,
-    target: QueryCallbackCallableDocument,
+    target: QueryCallbackTargetDocument,
     flow: QueryCallbackFlowDocument,
 ): List<QueryCallbackResultSiteDocument> =
     when (relation) {
@@ -114,7 +114,12 @@ private fun callbackResultSites(
                     is QueryCallbackFlowDocument.Unavailable,
                     is QueryCallbackFlowDocument.ContractRejected -> emptyList()
                 }
-        RelationKindDocument.CALLEES -> listOf(QueryCallbackResultSiteDocument.Target(target))
+        // A compiled callee has no source site, so no result domain can admit it.
+        RelationKindDocument.CALLEES ->
+            when (target) {
+                is QueryCallbackTargetDocument.Source -> listOf(QueryCallbackResultSiteDocument.Target(target.callable))
+                is QueryCallbackTargetDocument.Binary -> emptyList()
+            }
         RelationKindDocument.REFERENCES,
         RelationKindDocument.TYPE_USES,
         RelationKindDocument.IMPLEMENTATIONS,
