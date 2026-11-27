@@ -60,6 +60,8 @@ class KastRecipeCase(unittest.TestCase):
             "KAST_RECIPE_KAST": str(self.fake),
             "FAKE_KAST_PLAN": str(plan_path),
             "FAKE_KAST_LOG": str(self.log),
+            # Agents commonly select TOON; every recipe parser reads JSON, so each call must override it.
+            "KAST_OUTPUT_TOON": "1",
         }
         result = subprocess.run(
             ["sh", str(RECIPE), *arguments], cwd=self.directory, env=environment, capture_output=True, text=True,
@@ -67,6 +69,8 @@ class KastRecipeCase(unittest.TestCase):
         )
         calls = [json.loads(line) for line in self.log.read_text().splitlines() if line.strip()]
         self.assertEqual(len(plan), len(calls), f"unconsumed or extra kast calls: {calls}\n{result.stderr}")
+        for call in calls:
+            self.assertEqual("--json", call["argv"][-1], f"call does not select JSON over TOON: {call['argv']}")
         return result, calls
 
 
@@ -74,6 +78,7 @@ VERDICT = (
     '{"type":"complete","status":"complete","exhaustive":true,"failures":0,"omissions":0,'
     '"total":2,"excluded_callback_calls":4,"evidence_complete":true}'
 )
+RESULT = "result:v1:0d6e2c5a-7b3f-4c1d-9e8a-6f5b4a3c2d1e"
 
 
 class VerdictTest(KastRecipeCase):
@@ -92,6 +97,53 @@ class VerdictTest(KastRecipeCase):
             {"verdict": json.loads(VERDICT), "result": "result:v1:0d6e2c5a-7b3f-4c1d-9e8a-6f5b4a3c2d1e", "items": [{"name": "first"}, {"name": "second"}]},
             json.loads(result.stdout),
         )
+
+    def test_evidence_beyond_the_first_page_is_read_after_the_last_row(self) -> None:
+        # The first page presented only an evidence prefix. The remaining evidence settles both evidence fields.
+        partial = VERDICT.replace('"excluded_callback_calls":4,"evidence_complete":true',
+                                  '"excluded_callback_calls":1,"evidence_complete":false')
+        evidence_read = ["result", "read", "--ref", RESULT, "--cursor", "2", "--evidence-cursor"]
+        plan = [
+            {"prefix": ["query"], "stdout": f'["null {RESULT}",{partial},[{{"name":"only"}}]]'},
+            {"prefix": [*evidence_read, "0", "--output", "symbols", "--max-returned-bytes", BUDGET, "--jq"],
+             "stdout": '["MORE 3 0","a.kt:5;b.kt:7"]'},
+            {"prefix": [*evidence_read, "3", "--output", "symbols", "--max-returned-bytes", BUDGET, "--jq"],
+             "stdout": '["FINAL 5 0","a.kt:5;c.kt:9"]'},
+        ]
+        result, _ = self.run_recipe(plan, "verdict", "--ref", "exact:v5:A", "--relation", "references")
+        self.assertEqual(0, result.returncode, result.stderr)
+        verdict = json.loads(result.stdout)["verdict"]
+        self.assertEqual((3, True), (verdict["excluded_callback_calls"], verdict["evidence_complete"]))
+
+    def test_deferred_evidence_keeps_the_verdict_incomplete(self) -> None:
+        partial = VERDICT.replace('"excluded_callback_calls":4,"evidence_complete":true',
+                                  '"excluded_callback_calls":0,"evidence_complete":false')
+        plan = [
+            {"prefix": ["query"], "stdout": f'["null {RESULT}",{partial},[]]'},
+            {"prefix": ["result", "read", "--ref", RESULT, "--cursor", "2", "--evidence-cursor", "0"],
+             "stdout": '["FINAL 4 1",""]'},
+        ]
+        result, _ = self.run_recipe(plan, "verdict", "--ref", "exact:v5:A", "--relation", "references")
+        self.assertEqual(0, result.returncode, result.stderr)
+        verdict = json.loads(result.stdout)["verdict"]
+        self.assertEqual((0, False), (verdict["excluded_callback_calls"], verdict["evidence_complete"]))
+
+    def test_unretained_evidence_stays_as_the_first_page_reported(self) -> None:
+        partial = VERDICT.replace('"evidence_complete":true', '"evidence_complete":false')
+        plan = [{"prefix": ["query"], "stdout": f'["null none",{partial},[]]'}]
+        result, _ = self.run_recipe(plan, "verdict", "--ref", "exact:v5:A", "--relation", "references")
+        self.assertEqual(0, result.returncode, result.stderr)
+        self.assertEqual(json.loads(partial), json.loads(result.stdout)["verdict"])
+
+    def test_an_evidence_cursor_that_does_not_advance_is_refused(self) -> None:
+        partial = VERDICT.replace('"evidence_complete":true', '"evidence_complete":false')
+        plan = [
+            {"prefix": ["query"], "stdout": f'["null {RESULT}",{partial},[]]'},
+            {"prefix": ["result", "read"], "stdout": '["MORE 0 0",""]'},
+        ]
+        result, _ = self.run_recipe(plan, "verdict", "--ref", "exact:v5:A", "--relation", "references")
+        self.assertEqual(64, result.returncode)
+        self.assertEqual({"type": "recipe_rejected", "reason": "EVIDENCE_CURSOR_STALLED"}, json.loads(result.stdout))
 
     def test_flags_the_recipe_owns_are_refused_before_any_kast_call(self) -> None:
         for flag in ("--jq", "--json", "--retain"):
