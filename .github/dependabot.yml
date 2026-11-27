@@ -66,7 +66,8 @@ updates:
         patterns:
           - "*"
 
-  - package-ecosystem: "pip"
+  # CI runs this project with `uv run --locked`; the uv ecosystem updates uv.lock with pyproject.toml.
+  - package-ecosystem: "uv"
     directory: "/experiments/host-observation"
     schedule:
       interval: "weekly"
