@@ -19,12 +19,14 @@ const (
 	stableURL    = "https://github.com/" + repository + "/releases/latest/download/release-mapping.json"
 	releases     = "https://github.com/" + repository + "/releases/download"
 	recordSchema = 3
+	// unsplitRecordSchema is a record whose runtimes have no base: local_product_probe.py fixture_record writes it.
 	// localRecordSchema is LocalProductRecord, and macRecordSchema MACOS_PRODUCT_SCHEMA, in managed_release.py.
-	localRecordSchema = 4
-	macRecordSchema   = 5
-	maximumRecord     = 64 << 10
-	maximumAsset      = int64(2) << 30
-	maximumBuilds     = 5
+	unsplitRecordSchema = 2
+	localRecordSchema   = 4
+	macRecordSchema     = 5
+	maximumRecord       = 64 << 10
+	maximumAsset        = int64(2) << 30
+	maximumBuilds       = 5
 )
 
 var (
@@ -165,9 +167,10 @@ type recordForm struct {
 }
 
 var recordForms = map[int]recordForm{
-	recordSchema:      {targets: targets, based: true},
-	localRecordSchema: {local: true},
-	macRecordSchema:   {targets: []string{"macos-aarch64"}, based: true},
+	unsplitRecordSchema: {targets: targets},
+	recordSchema:        {targets: targets, based: true},
+	localRecordSchema:   {local: true},
+	macRecordSchema:     {targets: []string{"macos-aarch64"}, based: true},
 }
 
 // The local producer is LocalProductProducer in managed_release.py.

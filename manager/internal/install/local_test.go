@@ -15,7 +15,7 @@ import (
 func (a *activation) localDirectory(built *testBuild, schema int) string {
 	a.t.Helper()
 	directory := filepath.Join(a.t.TempDir(), "product")
-	built.local = schema == localRecordSchema
+	built.local, built.unsplit = schema == localRecordSchema, schema == unsplitRecordSchema
 	mac, assets := built.assets(a.t)
 	record := map[string]any{"schemaVersion": schema, "repository": repository, "sourceRevision": nextRevision,
 		"sourceTree": nextRevision, "version": built.version, "targets": []any{mac},
@@ -24,7 +24,7 @@ func (a *activation) localDirectory(built *testBuild, schema int) string {
 		record["producer"] = map[string]any{"kind": "LOCAL"}
 	} else {
 		other := newProduct(built.version, "linux")
-		other.target = "linux-x86_64"
+		other.target, other.unsplit = "linux-x86_64", built.unsplit
 		linux, _ := other.assets(a.t)
 		record["targets"] = []any{linux, mac}
 	}
@@ -68,6 +68,25 @@ func TestAPublishedRecordInAProductDirectoryInstalls(t *testing.T) {
 	if len(a.calls) != 0 || a.read(filepath.Join(a.installation, managementPath)) != "management candidate" ||
 		!strings.Contains(a.out.String(), `"type":"PRODUCT_INSTALLED"`) {
 		t.Errorf("requests %v, out %q", a.calls, a.out.String())
+	}
+}
+
+// local_product_install.py installs through local_product_probe.py's schema 2 record: both targets, CI producers,
+// and runtimes without a base.
+func TestAnUnsplitRecordInAProductDirectoryInstalls(t *testing.T) {
+	a := newActivation(t)
+	directory := a.localDirectory(newProduct(nextVersion, "unsplit"), unsplitRecordSchema)
+	a.calls = nil
+	if err := a.first("--local-artifact", directory); err != nil {
+		t.Fatal(err)
+	}
+	var selection productReference
+	if err := json.Unmarshal([]byte(a.read(filepath.Join(a.installation, selectionPath))), &selection); err != nil {
+		t.Fatal(err)
+	}
+	if len(a.calls) != 0 || a.read(filepath.Join(a.installation, managementPath)) != "management unsplit" ||
+		a.read(filepath.Join(selection.RuntimeRoot, prefix, "lib/base.jar")) != "base" {
+		t.Errorf("requests %v, selection %+v", a.calls, selection)
 	}
 }
 
