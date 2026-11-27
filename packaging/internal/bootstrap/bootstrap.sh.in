@@ -1,42 +1,40 @@
 #!/bin/bash
 # Generated from packaging/internal/bootstrap/bootstrap.sh.in.
+# Delivers the pinned Go kast command, verified by digest, and lets it install. Every later lifecycle step belongs to
+# the installed command.
 set -euo pipefail
 readonly INSTALL_DOWNLOAD_RETRIES=5
 readonly INSTALL_DOWNLOAD_RETRY_DELAY_MILLIS=2000
 fail() { printf 'kast: %s\n' "$*" >&2; exit 1; }
 arguments=()
 selection=0
-dry_run=0
-channel_head=1
-replace=0
-json=0
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --help|-h)
       printf '%s\n' 'Usage: install.sh [--channel stable|preview | --version X.Y.Z | --commit SHA | --local-artifact DIRECTORY] [--dry-run] [--replace-existing] [--json]' \
         'Installs one complete private-runtime product. Without a selector, installs the latest stable build.' \
-        'An installation that cannot be upgraded is removed after you confirm, or without asking with --replace-existing.' \
+        'An installation that cannot be replaced is removed after you confirm, or without asking with --replace-existing.' \
         'No Python, uv, or IDEA installation is required.' \
-        'Local products contain build-record.json and payload/; private bootstrap inputs still download.'
+        'A local product directory holds build-record.json and payload/.'
       exit 0 ;;
     --channel|--version|--commit|--local-artifact)
       [[ "$selection" == 0 && $# -ge 2 ]] || fail 'select exactly one build with a value'
+      value="$2"
       case "$1:$2" in
         --channel:stable|--channel:preview) ;;
         --version:*) [[ "$2" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || fail 'invalid version' ;;
         --commit:*) [[ "$2" =~ ^[0-9a-f]{7,40}$ ]] || fail 'invalid commit' ;;
-        --local-artifact:*) [[ -d "$2" && ! -L "$2" ]] || fail 'local artifact directory required' ;;
+        --local-artifact:*)
+          [[ -d "$2" && ! -L "$2" ]] || fail 'local artifact directory required'
+          value="$(cd -- "$2" && pwd -P)" ;;
         *) fail 'unsupported channel' ;;
       esac
-      [[ "$1" == --channel ]] || channel_head=0
-      selection=1; arguments+=("$1" "$2"); shift 2 ;;
-    --dry-run) dry_run=1; arguments+=("$1"); shift ;;
-    --recover-only) channel_head=0; arguments+=("$1"); shift ;;
-    --replace-existing) replace=1; shift ;;
-    --json) json=1; arguments+=("$1"); shift ;;
+      selection=1; arguments+=("$1" "$value"); shift 2 ;;
+    --dry-run|--replace-existing|--json) arguments+=("$1"); shift ;;
     *) fail "unsupported product installation option: $1" ;;
   esac
 done
+[[ "$selection" == 1 ]] || arguments+=(--channel stable)
 [[ -n "${HOME:-}" && "$HOME" == /* ]] || fail 'an absolute HOME is required'
 for retired in KAST_VERSION KAST_HOST_VERSION KAST_INSTALL_ASSETS_DIRECTORY KAST_RELEASE_BASE_URL KAST_INSTALL_IDEA_HOME KAST_INSTALL_ROOT KAST_RUNTIME_STORE KAST_RUNTIME_ARCHIVE; do
   [[ -z "${!retired+x}" ]] || fail "$retired is not a public product input; use an explicit build selector"
@@ -44,101 +42,28 @@ done
 # Platform admission precedes downloads, temporary storage, or installation effects.
 case "$(uname -s):$(uname -m)" in
   Darwin:arm64|Darwin:aarch64)
-    python_url='@MAC_URL@'; python_sha='@MAC_SHA@'; hasher=(shasum -a 256)
+    hasher=(shasum -a 256)
     bootstrap_url='@MAC_BOOTSTRAP_URL@'; bootstrap_sha='@MAC_BOOTSTRAP_SHA@' ;;
   Linux:x86_64|Linux:amd64)
-    python_url='@LINUX_URL@'; python_sha='@LINUX_SHA@'; hasher=(sha256sum)
+    hasher=(sha256sum)
     bootstrap_url='@LINUX_BOOTSTRAP_URL@'; bootstrap_sha='@LINUX_BOOTSTRAP_SHA@' ;;
   *) fail 'supported complete products: macOS ARM64 and Linux x86-64' ;;
 esac
-for tool in curl tar mktemp mkdir rm "${hasher[0]}"; do
+for tool in curl mktemp chmod rm "${hasher[0]}"; do
   command -v "$tool" >/dev/null 2>&1 || fail "required system tool unavailable: $tool"
 done
 temporary="$(mktemp -d "${TMPDIR:-/tmp}/kast-bootstrap.XXXXXX")"
 temporary="$(cd -- "$temporary" && pwd -P)"
 trap 'rm -rf -- "$temporary"' EXIT
+# Bash runs these after the installer ends: it finishes or undoes what it started before it exits.
 trap 'exit 130' INT
 trap 'exit 143' TERM
-fetch() {
-  curl --fail --silent --show-error --location --proto '=https' --proto-redir '=https' \
-    --retry "$INSTALL_DOWNLOAD_RETRIES" --retry-delay "$((INSTALL_DOWNLOAD_RETRY_DELAY_MILLIS / 1000))" \
-    --connect-timeout 30 --max-time 300 --output "$2" "$1"
-}
-verify() {
-  local actual
-  actual="$("${hasher[@]}" "$1")"
-  [[ "${actual%% *}" == "$2" ]] || fail 'bootstrap artifact digest mismatch'
-}
-# The pinned bootstrap plans a channel's head from its published records. It reads one record schema, so every other
-# selection keeps the engine that also admits older records. Its own default channel can differ from this one.
-if [[ "$dry_run:$channel_head" == 1:1 ]]; then
-  [[ "$selection" == 1 ]] || arguments+=(--channel stable)
-  command -v chmod >/dev/null 2>&1 || fail 'required system tool unavailable: chmod'
-  fetch "$bootstrap_url" "$temporary/kast"
-  verify "$temporary/kast" "$bootstrap_sha"
-  chmod 700 "$temporary/kast"
-  status=0
-  "$temporary/kast" install "${arguments[@]}" || status=$?
-  exit "$status"
-fi
-fetch "$python_url" "$temporary/python.tar.gz"
-verify "$temporary/python.tar.gz" "$python_sha"
-fetch '@DEPENDENCY_URL@' "$temporary/defusedxml.whl"
-verify "$temporary/defusedxml.whl" '@DEPENDENCY_SHA@'
-tar -xzf "$temporary/python.tar.gz" -C "$temporary"
-mkdir "$temporary/engine"
-"$temporary/python/bin/python3.12" -I -B -c \
-  'import base64,hashlib,io,shutil,sys,tarfile
-payload = base64.b85decode(sys.stdin.buffer.read().strip())
-if hashlib.sha256(payload).hexdigest() != sys.argv[1]:
-    sys.exit("kast: bootstrap engine digest mismatch")
-tarfile.open(fileobj=io.BytesIO(payload), mode="r:bz2").extractall(sys.argv[2], filter="data")
-shutil.copyfile(sys.argv[3], sys.argv[2] + "/defusedxml.whl")' \
-  '@ENGINE_SHA@' "$temporary/engine" "$temporary/defusedxml.whl" <<'KAST_ENGINE'
-@ENGINE@
-KAST_ENGINE
-engine() {
-  status=0
-  outcome="$("$temporary/python/bin/python3.12" -I -B "$temporary/engine/bootstrap_entry.py" \
-    --private-python-archive "$temporary/python.tar.gz" --private-dependency "$temporary/defusedxml.whl" \
-    ${arguments[@]+"${arguments[@]}"})" || status=$?
-}
-engine
-# Status 3 is PRIOR_INSTALLATION_UNSUPPORTED: the new product is verified, nothing was changed, and only a reset
-# makes progress.
-if [[ "$status" == 3 ]]; then
-  consent=declined
-  if [[ "$replace" == 1 ]]; then consent=given
-  elif [[ "$json" == 0 ]] && (: <>/dev/tty) 2>/dev/null; then consent=ask; fi
-  if [[ "$consent" == declined ]]; then
-    printf '%s\n' 'kast: run this command again with --replace-existing to remove that installation and install this one.' >&2
-  else
-    command -v chmod >/dev/null 2>&1 || fail 'required system tool unavailable: chmod'
-    fetch "$bootstrap_url" "$temporary/kast"
-    verify "$temporary/kast" "$bootstrap_sha"
-    chmod 700 "$temporary/kast"
-    if [[ "$consent" == ask ]]; then
-      "$temporary/kast" reset >&2
-      printf 'Stop and delete this, then install the new version? [y/N] ' >/dev/tty
-      answer=''
-      read -r answer </dev/tty || true
-      case "$answer" in y|Y|yes) ;; *) fail 'nothing was changed' ;; esac
-    fi
-    "$temporary/kast" reset --yes >&2
-    engine
-  fi
-fi
-[[ -z "$outcome" ]] || printf '%s\n' "$outcome"
-# A build from before the selector has no Pi package. The selector is the confirmation. Without a terminal, or with
-# --json, only an agent that already has this Kast changes.
-if [[ "$status:$dry_run" == 0:0 && -x "$HOME/.local/bin/kast" &&
-  -f "$HOME/.local/share/kast/installation/share/kast/agent-tools/plugins/kast/package.json" ]]; then
-  if [[ "$json" == 0 ]] && (: <>/dev/tty) 2>/dev/null; then
-    "$HOME/.local/bin/kast" agent install </dev/tty >/dev/tty 2>/dev/tty || \
-      printf '%s\n' 'kast: the installation is complete. Run kast agent install to connect an agent.' >&2
-  else
-    "$HOME/.local/bin/kast" agent refresh </dev/null >&2 || \
-      printf '%s\n' 'kast: the installation is complete. Run kast agent refresh to update a connected agent.' >&2
-  fi
-fi
+curl --fail --silent --show-error --location --proto '=https' --proto-redir '=https' \
+  --retry "$INSTALL_DOWNLOAD_RETRIES" --retry-delay "$((INSTALL_DOWNLOAD_RETRY_DELAY_MILLIS / 1000))" \
+  --connect-timeout 30 --max-time 300 --output "$temporary/kast" "$bootstrap_url"
+actual="$("${hasher[@]}" "$temporary/kast")"
+[[ "${actual%% *}" == "$bootstrap_sha" ]] || fail 'bootstrap artifact digest mismatch'
+chmod 700 "$temporary/kast"
+status=0
+"$temporary/kast" install "${arguments[@]}" || status=$?
 exit "$status"

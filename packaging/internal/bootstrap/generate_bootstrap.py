@@ -1,13 +1,8 @@
 """Generate the self-contained public bootstrap from its existing Python owners."""
 
 import argparse
-import base64
-import bz2
-import hashlib
-import io
+import re
 import sys
-import tarfile
-import tokenize
 from collections.abc import Iterable
 from pathlib import Path
 
@@ -20,7 +15,6 @@ sys.path.extend(
 )
 
 from bootstrap_release import BOOTSTRAP_PINS
-from private_interpreter import DEPENDENCY_SHA256, DEPENDENCY_URL, PINS
 
 HERE = Path(__file__).resolve().parent
 INTERNAL = HERE.parent
@@ -159,49 +153,19 @@ def stage_support(destination: Path) -> None:
         raise ValueError("installer support projection changed")
 
 
-def engine_member(name: str) -> bytes:
-    """Omit comments from the transient engine copy; code and line numbers stay unchanged."""
-    raw = source_file(name).read_bytes()
-    if not name.endswith(".py"):
-        return raw
-    text = raw.decode()
-    lines = text.splitlines(keepends=True)
-    for token in tokenize.generate_tokens(io.StringIO(text).readline):
-        if token.type == tokenize.COMMENT:
-            row, column = token.start
-            lines[row - 1] = lines[row - 1][:column].rstrip() + "\n"
-    return "".join(lines).encode()
-
-
 def render() -> bytes:
-    payload = io.BytesIO()
-    with tarfile.open(fileobj=payload, mode="w", format=tarfile.USTAR_FORMAT) as archive:
-        for name in sorted(validate_members(SOURCES)):
-            raw = engine_member(name)
-            member = tarfile.TarInfo(name)
-            member.mode, member.size = 0o600, len(raw)
-            archive.addfile(member, io.BytesIO(raw))
-    # Keep the documented bash -c bootstrap below Linux's per-argument byte limit.
-    # The already admitted private interpreter owns decompression, not a PATH tool.
-    compressed = bz2.compress(payload.getvalue())
+    """The public installer names only the pinned Go bootstrap of each platform."""
     text = (HERE / "bootstrap.sh.in").read_text()
-    mac, linux = PINS
     mac_bootstrap, linux_bootstrap = BOOTSTRAP_PINS
     for name, value in (
         ("MAC_BOOTSTRAP_URL", mac_bootstrap.url),
         ("MAC_BOOTSTRAP_SHA", mac_bootstrap.sha256),
         ("LINUX_BOOTSTRAP_URL", linux_bootstrap.url),
         ("LINUX_BOOTSTRAP_SHA", linux_bootstrap.sha256),
-        ("MAC_URL", mac.url),
-        ("MAC_SHA", mac.sha256),
-        ("LINUX_URL", linux.url),
-        ("LINUX_SHA", linux.sha256),
-        ("DEPENDENCY_URL", DEPENDENCY_URL),
-        ("DEPENDENCY_SHA", DEPENDENCY_SHA256),
-        ("ENGINE", base64.b85encode(compressed).decode()),
-        ("ENGINE_SHA", hashlib.sha256(compressed).hexdigest()),
     ):
         text = text.replace("@" + name + "@", value)
+    if re.search(r"@[A-Z_]+@", text):
+        raise ValueError("unreplaced installer placeholder")
     return text.encode()
 
 

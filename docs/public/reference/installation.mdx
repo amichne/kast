@@ -13,8 +13,8 @@ Since `0.53.0`, Kast provides a managed Host for macOS ARM64 and Linux x86-64. D
 ## Requirements
 
 Use a supported machine, a Kotlin Gradle project, Bash, curl, and standard archive and checksum utilities.
-Kast supplies its private interpreter, Java runtime, and IntelliJ analysis runtime. No user Python, uv, or pip installation is required.
-The bootstrap downloads pinned interpreter and dependency bytes, so setup still requires network access.
+Kast supplies its Java runtime and IntelliJ analysis runtime. No user Python, uv, or pip installation is required.
+The installer downloads a pinned `kast` command and checks its digest, so setup requires network access.
 Your project still supplies its build configuration, dependencies, and any required credentials.
 
 <a id="install" />
@@ -31,7 +31,7 @@ Kast cannot upgrade some earlier versions in place, including `0.52.0`. From one
 The installer downloads and verifies the new product first. It then lists what to stop and delete, and asks you to confirm.
 It copies your client configuration to a backup directory before it deletes anything, and prints that directory.
 
-Without a terminal, or with `--json`, the installer does not ask. It changes nothing and exits with status `3`.
+Without a terminal, or with `--json`, the installer does not ask. It changes nothing and exits with status `4`.
 To confirm in advance, add `--replace-existing`:
 
 ```shell
@@ -64,7 +64,6 @@ mise exec -- uv run --locked --project packaging python packaging/internal/produ
 From a checkout, pass a local product directory to the same installer:
 
 ```shell
-/bin/bash ./install.sh --local-artifact /absolute/path/to/product --dry-run --json
 /bin/bash ./install.sh --local-artifact /absolute/path/to/product --json
 ```
 
@@ -74,10 +73,10 @@ A Control archive or setup bundle alone is not a complete product.
 Local build records identify only the qualified platform. They record local provenance, not GitHub runs or release qualification.
 
 This uses the normal installation and command paths above, not a separate contributor installation.
-The installer pins the record's exact product identity and verifies the same digests, archive inventories, and qualification evidence as remote setup.
+The installer pins the record's exact product identity and verifies every file against the record before it changes anything.
 It reads product bytes locally and never falls back to GitHub for missing files.
-The bootstrap still downloads its pinned private interpreter and dependency; this option does not make setup offline.
-Do not combine `--local-artifact` with `--channel`, `--version`, or `--commit`.
+The installer still downloads its pinned `kast` command, so this option does not make setup offline.
+Do not combine `--local-artifact` with `--channel`, `--version`, `--commit`, or `--dry-run`.
 `kast upgrade --repair` rejects a local product with `LOCAL_ARTIFACT_REQUIRED` before effects, because its bytes exist only in the local directory.
 
 <Note>
@@ -86,7 +85,8 @@ Do not combine `--local-artifact` with `--channel`, `--version`, or `--commit`.
   Use `install.sh` for managed product setup.
 </Note>
 
-Upgrade, recorded recovery, and product removal reuse admitted private support; missing or changed bytes reject without an ambient interpreter fallback.
+The installed `kast` command performs upgrades and removal itself.
+Only an upgrade that an earlier installer left unfinished needs that installation's own private interpreter. Without it, the upgrade names `kast reset`.
 
 ## 1. Install the selected release
 
