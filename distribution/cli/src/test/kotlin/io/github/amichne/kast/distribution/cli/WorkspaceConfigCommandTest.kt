@@ -119,4 +119,92 @@ class WorkspaceConfigCommandTest {
         assertTrue(managementChild(temporary, listOf("config", "set", key, "SHARED") + args).first != 0)
         assertEquals("keep", Files.readString(generated))
     }
+
+    @Test
+    fun `the Host heap is edited in place, admitted by its owner, and explains how to apply it`() {
+        val (workspace, overlay) = installedWorkspace("my project")
+        val args = listOf("--workspace", workspace.toString(), "--json")
+        val heap = "KAST_HOST_MAX_HEAP_MIB"
+        fun config(vararg command: String) =
+            managementChild(temporary, listOf("config", *command) + args).let { (code, output) ->
+                assertEquals(0, code, output)
+                Json.parseToJsonElement(output).jsonObject
+            }
+        val unset = config("explain", heap).getValue("explanation").jsonObject
+        assertEquals("null", unset.getValue("effective").toString())
+        assertEquals("1024", unset.getValue("admittedRange").jsonObject.getValue("minimum").jsonPrimitive.content)
+        assertEquals("NEXT_WORKER_LAUNCH", unset.getValue("applicationBoundary").jsonPrimitive.content)
+        val quoted = "'$workspace'"
+        assertEquals(
+            "kast config set $heap <value> --workspace $quoted",
+            unset.getValue("edit").jsonObject.getValue("set").jsonPrimitive.content,
+        )
+        assertTrue(unset.getValue("apply").jsonPrimitive.content.contains("kast stop --workspace $quoted"))
+
+        Files.createDirectories(overlay.parent)
+        Files.writeString(overlay, "# keep\n$heap=2048\nKAST_HOST_IDLE_SHUTDOWN=30\n")
+        val raised = config("set", heap, "4096").getValue("explanation").jsonObject.getValue("effective").jsonObject
+        assertEquals("4096", raised.getValue("value").jsonPrimitive.content)
+        assertEquals("SAVED_WORKSPACE", raised.getValue("source").jsonPrimitive.content)
+        assertEquals("# keep\n$heap=4096\nKAST_HOST_IDLE_SHUTDOWN=30\n", Files.readString(overlay))
+
+        for (rejected in listOf("512", "40000", "4g", "")) {
+            val (code, output) = managementChild(temporary, listOf("config", "set", heap, rejected) + args)
+            assertTrue(code != 0, "$rejected was admitted: $output")
+        }
+        assertEquals("# keep\n$heap=4096\nKAST_HOST_IDLE_SHUTDOWN=30\n", Files.readString(overlay))
+
+        config("unset", heap)
+        assertEquals("# keep\nKAST_HOST_IDLE_SHUTDOWN=30\n", Files.readString(overlay))
+        val (code, output) = managementChild(temporary, listOf("config", "set", "KAST_GRADLE_JAVA_HOME", "/jdk") + args)
+        assertTrue(code != 0, output)
+        assertEquals("# keep\nKAST_HOST_IDLE_SHUTDOWN=30\n", Files.readString(overlay))
+    }
+
+    @Test
+    fun `each editable setting saves only the value its owner admits, in the owner's form`() {
+        fun saved(setting: EditableWorkspaceSetting, raw: String) =
+            when (val admitted = setting.admit(raw)) {
+                is Refinement.Refined -> admitted.value.line
+                is Refinement.Rejected -> admitted.failure.name
+            }
+        assertEquals("KAST_HOST_MAX_HEAP_MIB=8192", saved(EditableWorkspaceSetting.HOST_MAX_HEAP_MIB, "8192"))
+        assertEquals("VALUE_REJECTED", saved(EditableWorkspaceSetting.HOST_MAX_HEAP_MIB, "1023"))
+        assertEquals("VALUE_REJECTED", saved(EditableWorkspaceSetting.HOST_MAX_HEAP_MIB, "8g"))
+        assertEquals("KAST_HOST_IDLE_SHUTDOWN=off", saved(EditableWorkspaceSetting.HOST_IDLE_SHUTDOWN, "off"))
+        assertEquals("KAST_HOST_IDLE_SHUTDOWN=30", saved(EditableWorkspaceSetting.HOST_IDLE_SHUTDOWN, "30"))
+        assertEquals("VALUE_REJECTED", saved(EditableWorkspaceSetting.HOST_IDLE_SHUTDOWN, "4"))
+        assertEquals(
+            "KAST_WORKSPACE_DEPENDENCY_SHARING=PRIVATE",
+            saved(EditableWorkspaceSetting.WORKSPACE_DEPENDENCY_SHARING, "PRIVATE"),
+        )
+        assertEquals("VALUE_REJECTED", saved(EditableWorkspaceSetting.WORKSPACE_DEPENDENCY_SHARING, "private-ish"))
+    }
+
+    @Test
+    fun `a setting the command cannot edit names where it can be set`() {
+        val (workspace, _) = installedWorkspace("project")
+        val (code, output) =
+            managementChild(
+                temporary,
+                listOf("config", "explain", "KAST_GRADLE_JAVA_HOME", "--workspace", workspace.toString(), "--json"),
+            )
+        assertEquals(0, code, output)
+        val explanation = Json.parseToJsonElement(output).jsonObject.getValue("explanation").jsonObject
+        assertEquals("null", explanation.getValue("edit").toString())
+        assertTrue(explanation.getValue("sources").jsonArray.any { it.jsonPrimitive.content == "SAVED_WORKSPACE" })
+    }
+
+    private fun installedWorkspace(name: String): Pair<Path, Path> {
+        val home = temporary.toRealPath()
+        val installation = Files.createDirectories(home.resolve(".local/share/kast/installation"))
+        Files.writeString(
+            installation.resolve("installation.json"),
+            managementJson.encodeToString(BundledManifest(3, installation.toString(), emptyList())),
+        )
+        val workspace = Files.createDirectory(home.resolve(name))
+        Files.writeString(workspace.resolve("settings.gradle.kts"), "")
+        val id = MessageDigest.getInstance("SHA-256").digest(workspace.toString().toByteArray()).toHexString()
+        return workspace to installation.resolve("config/workspaces/$id/environment")
+    }
 }

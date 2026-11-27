@@ -5713,6 +5713,26 @@
     },
     {
       "fingerprint": {
+        "path": "distribution/contract/src/test/kotlin/io/github/amichne/kast/distribution/contract/HostSettingsConflictTest.kt",
+        "scope": "type:HostSettingsConflictTest/fun:the conflict encodes the workspace and both sides of each public setting()",
+        "kind": "JSON_LITERAL",
+        "sha256": "dcc52341abe43e0447a1a1d4a9a2ae75df61bbee24ecdcbd74a06d2fed8d27a4"
+      },
+      "count": 1,
+      "justification": "Independent expected encoded shape for the HOST_SETTINGS conflict: discriminator, workspace, and an explicit null side of a public value."
+    },
+    {
+      "fingerprint": {
+        "path": "distribution/contract/src/test/kotlin/io/github/amichne/kast/distribution/contract/HostSettingsConflictTest.kt",
+        "scope": "type:HostSettingsConflictTest/fun:a conflict without public values still encodes an empty list()",
+        "kind": "JSON_LITERAL",
+        "sha256": "a01e6f4173b952cf1bc8980fcf3592628f18f18e009c4e08520a954b81ba4831"
+      },
+      "count": 1,
+      "justification": "Independent expected encoded shape: the required values field stays present as an empty list."
+    },
+    {
+      "fingerprint": {
         "path": "distribution/contract/src/test/kotlin/io/github/amichne/kast/distribution/contract/HostExitRecordTest.kt",
         "scope": "type:HostExitRecordTest/fun:an unknown reason is rejected()/declaration:<anonymous>",
         "kind": "JSON_LITERAL",

@@ -9,6 +9,7 @@ import io.github.amichne.kast.appserver.query.PublicToolContract
 import io.github.amichne.kast.appserver.runtime.WorkspaceDemandCause
 import io.github.amichne.kast.distribution.cli.WorkspaceQueryEnvironment
 import io.github.amichne.kast.distribution.contract.ContainerFailure
+import io.github.amichne.kast.distribution.contract.HostSettingDifference
 import io.github.amichne.kast.distribution.contract.HostSettingsComparison
 import io.github.amichne.kast.distribution.contract.WorkspaceConfigurationConflict
 import io.github.amichne.kast.distribution.managed.CanonicalRoot
@@ -304,7 +305,15 @@ class ManagedCoordinatorOperationsTest {
 
     private fun hostConflict(stage: HostSettingsComparison) =
         rejectedOperation(
-            DaemonOperationFailure.ManagedWorkspace(WorkspaceConfigurationConflict.HostSettings(stage, listOf(HEAP)))
+            DaemonOperationFailure.ManagedWorkspace(
+                WorkspaceConfigurationConflict.HostSettings(
+                    stage,
+                    listOf(HEAP),
+                    "/workspaces/a",
+                    // The prepared Host inherited its heap; this caller named 1024 MiB.
+                    listOf(HostSettingDifference(HEAP, prepared = null, requested = "1024")),
+                )
+            )
         )
 
     private val lifecycleTransition =
@@ -413,7 +422,7 @@ private class ScriptedWorkspaces : ManagedWorkspaceAcquisition {
         expected: WorkspaceHostIdentity,
         action: () -> T,
     ): Refinement<T, DaemonOperationFailure> = leased {
-        identity(root, environment).conflictWith(expected)?.let {
+        identity(root, environment).conflictWith(root, expected)?.let {
             return@leased Refinement.Rejected(it)
         }
         Refinement.Refined(action())
@@ -426,7 +435,7 @@ private class ScriptedWorkspaces : ManagedWorkspaceAcquisition {
         expected: WorkspaceHostIdentity?,
     ): DaemonOperationResult = leased {
         if (expected != null)
-            identity(root, environment).conflictWith(expected)?.let {
+            identity(root, environment).conflictWith(root, expected)?.let {
                 return@leased rejectedOperation(it)
             }
         if (existingUnavailable)

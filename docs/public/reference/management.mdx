@@ -66,21 +66,24 @@ Use `--json` or `--jq` for machine output on a terminal, such as an agent that r
 ### Inspect or edit workspace settings
 
 Use `show` to see the resolved configuration and the exact workspace file.
-Use `explain` to see one setting and its source.
+Use `explain` to see one setting: its meaning, accepted values, effective value and source, and the commands that change and apply it.
 
 ```shell
 kast config show --workspace . --json
-kast config explain KAST_WORKSPACE_DEPENDENCY_SHARING --workspace . --json
+kast config explain KAST_HOST_MAX_HEAP_MIB --workspace . --json
 ```
 
-To save the shared policy for this workspace, use `set`.
-To remove the workspace override, use `unset`.
+`set` saves a value for this workspace, and `unset` removes it.
+They edit `KAST_WORKSPACE_DEPENDENCY_SHARING`, `KAST_HOST_MAX_HEAP_MIB`, and `KAST_HOST_IDLE_SHUTDOWN`.
+Each value passes the same check as at Host launch before Kast writes it. Other lines in the file stay unchanged.
 
 ```shell
 kast config set KAST_WORKSPACE_DEPENDENCY_SHARING SHARED --workspace . --json
-kast config unset KAST_WORKSPACE_DEPENDENCY_SHARING --workspace . --json
+kast config set KAST_HOST_MAX_HEAP_MIB 8192 --workspace . --json
+kast config unset KAST_HOST_MAX_HEAP_MIB --workspace . --json
 ```
 
+A running Host keeps its settings. `explain` names the `kast stop --workspace` command that applies a Host setting.
 Each edit reports the resolved setting after Kast reads the file again.
 The `DEFAULT` source names the policy for a new workspace.
 For an existing workspace, `workspaceAccess` reports the recorded policy or the conflict that blocks reuse.
