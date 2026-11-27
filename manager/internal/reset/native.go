@@ -27,6 +27,17 @@ func Native(home string, arguments []string, out io.Writer) error {
 	return reset.Run(arguments)
 }
 
+// NativeBeforeInstall resets the installation that an installation cannot replace. It shows what it stops, deletes and
+// copies, and leaves the next step to the installation.
+func NativeBeforeInstall(home string, arguments []string, out io.Writer) error {
+	reset, err := native(home, out)
+	if err != nil {
+		return err
+	}
+	reset.Installing = true
+	return reset.Run(arguments)
+}
+
 func native(home string, out io.Writer) (*Reset, error) {
 	temporary, err := filepath.EvalSymlinks("/tmp")
 	if err != nil {

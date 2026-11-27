@@ -1,6 +1,7 @@
 package install
 
 import (
+	"bufio"
 	"bytes"
 	"context"
 	"encoding/json/v2"
@@ -15,12 +16,15 @@ import (
 	"strings"
 	"syscall"
 	"time"
+
+	"github.com/amichne/kast/frontend/internal/reset"
 )
 
 const (
 	upgradeUsage = "Usage: kast upgrade [--channel stable|preview | --version X.Y.Z | --commit SHA | --repair] " +
 		"[--dry-run] [--json]"
-	activateUsage = "Usage: kast install [--channel stable|preview | --version X.Y.Z | --commit SHA] [--json]"
+	activateUsage = "Usage: kast install [--channel stable|preview | --version X.Y.Z | --commit SHA | --local-artifact DIRECTORY] " +
+		"[--replace-existing] [--json]"
 )
 
 const (
@@ -43,6 +47,12 @@ type Upgrade struct {
 	Child runner
 	// Refresh updates the plugin of connected agents with the new command.
 	Refresh func(ctx context.Context, command string, environment []string, log io.Writer) error
+	// Reset performs `kast reset` on the home, which an installation that cannot be replaced needs first.
+	Reset func(home string, arguments []string, out io.Writer) error
+	// Confirm asks the person at the terminal one yes-or-no question.
+	Confirm func(question string) bool
+	// Connect runs the new command's `agent install` on the terminal, where the person chooses agents.
+	Connect func(ctx context.Context, command string, environment []string) error
 }
 
 // NativeUpgrade performs one `kast upgrade` beneath home.
@@ -70,8 +80,40 @@ func native(home, platform string, out, log io.Writer) *Upgrade {
 			Stall: time.Minute, Pause: time.Sleep, Now: time.Now, Terminal: terminal(log), Environment: os.Environ(),
 			Out: out, Log: log,
 		},
-		Temporary: os.TempDir(), Engine: runEngine, Child: runChild, Refresh: refreshAgents,
+		Temporary: os.TempDir(), Engine: runEngine, Child: runChild, Refresh: refreshAgents, Reset: reset.NativeBeforeInstall,
+		Confirm: confirm, Connect: connectAgents,
 	}
+}
+
+// confirm reads one answer from the controlling terminal. Without one, the answer is no.
+func confirm(question string) bool {
+	tty, err := os.OpenFile("/dev/tty", os.O_RDWR, 0)
+	if err != nil {
+		return false
+	}
+	defer tty.Close()
+	fmt.Fprint(tty, question)
+	answer, err := bufio.NewReader(tty).ReadString('\n')
+	if err != nil {
+		return false
+	}
+	switch strings.TrimSpace(answer) {
+	case "y", "Y", "yes":
+		return true
+	}
+	return false
+}
+
+// connectAgents gives `kast agent install` the terminal, so it can ask which agents to connect.
+func connectAgents(ctx context.Context, command string, environment []string) error {
+	tty, err := os.OpenFile("/dev/tty", os.O_RDWR, 0)
+	if err != nil {
+		return err
+	}
+	defer tty.Close()
+	child := exec.CommandContext(ctx, command, "agent", "install")
+	child.Env, child.Stdin, child.Stdout, child.Stderr = environment, tty, tty, tty
+	return child.Run()
 }
 
 // Activates reports whether `kast install` with these arguments installs a build, rather than only planning or
@@ -107,17 +149,24 @@ func refreshAgents(ctx context.Context, command string, environment []string, lo
 }
 
 type upgradeOptions struct {
-	// selected is nil when the recorded policy selects the build.
+	// selected is nil when the recorded policy selects the build, or when local names it.
 	selected             selector
 	repair, dryRun, json bool
 	help                 bool
 	// first means that no installation is required: `kast install`.
 	first bool
+	// local is a product directory with build-record.json and payload/, and replace consents to a reset of an
+	// installation that cannot be replaced.
+	local   string
+	replace bool
 }
 
 // Run performs one upgrade. With --json, standard output holds exactly one document, also for a failure.
 func (u *Upgrade) Run(ctx context.Context, arguments []string) error {
 	parsed, err := parseUpgrade(arguments)
+	if err == nil && (parsed.local != "" || parsed.replace) {
+		err = reject(UsageRejected, "only `kast install` accepts --local-artifact and --replace-existing\n%s", upgradeUsage)
+	}
 	return u.finish(ctx, parsed, err, upgradeUsage+"\n\nInstalls the latest verified build of the recorded channel, or the "+
 		"selected build.\n--repair reinstalls the exact installed build. --dry-run verifies a build without installing it.")
 }
@@ -132,10 +181,12 @@ func (u *Upgrade) RunInstall(ctx context.Context, arguments []string) error {
 		usage.Detail = strings.ReplaceAll(usage.Detail, upgradeUsage, activateUsage)
 	}
 	parsed.first = true
-	if parsed.selected == nil {
+	if parsed.selected == nil && parsed.local == "" {
 		parsed.selected = channelHead{stable}
 	}
 	return u.finish(ctx, parsed, err, activateUsage+"\n\nInstalls the latest stable build, or the selected build.\n"+
+		"--local-artifact installs a product directory that holds build-record.json and payload/.\n"+
+		"--replace-existing removes an installation that cannot be replaced, without asking.\n"+
 		"`kast install --dry-run` shows the build without downloading it.")
 }
 
@@ -164,13 +215,20 @@ func parseUpgrade(arguments []string) (upgradeOptions, error) {
 	for index := 0; index < len(arguments); index++ {
 		name, value, inline := strings.Cut(arguments[index], "=")
 		switch name {
-		case "--channel", "--version", "--commit":
+		case "--channel", "--version", "--commit", "--local-artifact":
 			selectors++
 			if !inline {
 				if index++; index == len(arguments) {
 					return parsed, reject(UsageRejected, "%s needs a value\n%s", name, upgradeUsage)
 				}
 				value = arguments[index]
+			}
+			if name == "--local-artifact" {
+				if !filepath.IsAbs(value) {
+					return parsed, reject(UsageRejected, "--local-artifact needs an absolute directory\n%s", upgradeUsage)
+				}
+				parsed.local = filepath.Clean(value)
+				continue
 			}
 			selected, ok := selection(name, value)
 			if !ok {
@@ -185,6 +243,8 @@ func parseUpgrade(arguments []string) (upgradeOptions, error) {
 			parsed.repair = true
 		case "--dry-run":
 			parsed.dryRun = true
+		case "--replace-existing":
+			parsed.replace = true
 		case "--json":
 			parsed.json = true
 		case "--help", "-h":
@@ -221,7 +281,8 @@ func (u *Upgrade) perform(ctx context.Context, parsed upgradeOptions) error {
 	if !present(installation) && !parsed.first {
 		return reject(NotInstalled, "%s", installation)
 	}
-	if present(installation) {
+	// An installation replaces whatever it admits, and resets the rest once the new build is verified.
+	if present(installation) && !parsed.first {
 		if err := admitPayload(installation); err != nil {
 			return err
 		}
@@ -259,6 +320,10 @@ const (
 
 // choose admits the build and the policy that the installation records with it.
 func (u *Upgrade) choose(ctx context.Context, parsed upgradeOptions, installation string) (*release, string, error) {
+	if parsed.local != "" {
+		found, err := localRelease(parsed.local, u.Platform)
+		return found, pinnedBuild, err
+	}
 	if parsed.repair {
 		return installedRelease(installation, u.Platform)
 	}
@@ -351,19 +416,28 @@ type (
 // new one. Until retirement begins, an interruption changes nothing that the installation uses.
 func (u *Upgrade) activate(ctx context.Context, parsed upgradeOptions, p paths, found *release, policy string) error {
 	if !parsed.json {
-		fmt.Fprintf(u.Out, "Kast %s (%s), %s\n", found.version, found.channel, megabytes(found.bytes()))
+		origin := string(found.channel)
+		if parsed.local != "" {
+			origin = "from " + parsed.local
+		}
+		fmt.Fprintf(u.Out, "Kast %s (%s), %s\n", found.version, origin, megabytes(found.bytes()))
 	}
-	files, err := u.obtain(ctx, found, parsed.json)
+	assets, release, err := u.assets(ctx, parsed, found)
 	if err != nil {
 		return err
 	}
-	defer files.close()
+	defer release()
+	if parsed.first && !parsed.dryRun {
+		if err := u.resetUnreplaceable(parsed, p); err != nil {
+			return err
+		}
+	}
 	enter, finish := func(string) {}, func() {}
 	if !parsed.json {
 		stage := newStages(u.Log, u.Terminal, u.Now)
 		enter, finish = stage.enter, stage.end
 	}
-	reference, installedAt, left, err := u.replace(ctx, parsed, p, found, policy, files, enter)
+	reference, installedAt, left, err := u.replace(ctx, parsed, p, found, policy, assets, enter)
 	finish()
 	if err != nil {
 		return err
@@ -383,14 +457,89 @@ func (u *Upgrade) activate(ctx context.Context, parsed upgradeOptions, p paths, 
 	} else {
 		fmt.Fprintf(u.Out, "Kast %s is installed. Start a fresh agent session to use it.\n", found.version)
 	}
+	// An installation offers to connect agents when a person can answer; otherwise it refreshes the connected ones.
+	if parsed.first && !parsed.json && u.Terminal && u.Connect != nil {
+		if err := u.Connect(ctx, p.command, u.Environment); err != nil {
+			fmt.Fprintln(u.Log, "kast: the installation is complete. Run `kast agent install` to connect an agent.")
+		}
+		return nil
+	}
 	u.refresh(ctx, p.home)
 	return nil
+}
+
+// assets resolves each file of the build to verified bytes: the download store's, or a local product directory's.
+func (u *Upgrade) assets(ctx context.Context, parsed upgradeOptions, found *release) (func(Asset) string, func(), error) {
+	if parsed.local == "" {
+		files, err := u.obtain(ctx, found, parsed.json)
+		if err != nil {
+			return nil, nil, err
+		}
+		return files.path, files.close, nil
+	}
+	payload := filepath.Join(parsed.local, "payload")
+	for _, part := range found.parts {
+		if !holds(filepath.Join(payload, part.Name), part.Asset) {
+			return nil, nil, reject(DownloadInvalid, "payload/%s in %s does not match its record", part.Name, parsed.local)
+		}
+	}
+	return func(asset Asset) string { return filepath.Join(payload, asset.Name) }, func() {}, nil
+}
+
+// resetUnreplaceable removes an installation that an activation cannot replace, once the new build is verified. It
+// needs --replace-existing, or a person's answer at the terminal.
+func (u *Upgrade) resetUnreplaceable(parsed upgradeOptions, p paths) error {
+	_, cause := admitPrior(p)
+	var rejection *Rejection
+	if cause == nil || !errors.As(cause, &rejection) ||
+		(rejection.Failure != InstallationDamaged && rejection.Failure != CommandForeign) {
+		return cause
+	}
+	if !parsed.replace {
+		if parsed.json || !u.Terminal || u.Confirm == nil {
+			rejection.Next = "Run the same command with --replace-existing to remove that installation and install this " +
+				"build."
+			return rejection
+		}
+		fmt.Fprintf(u.Log, "kast: %s\n", rejection.Detail)
+		if err := u.Reset(p.home, nil, u.Log); err != nil {
+			return err
+		}
+		if !u.Confirm("Stop and delete this, then install the new build? [y/N] ") {
+			return reject(Interrupted, "nothing was changed")
+		}
+	}
+	if err := u.Reset(p.home, []string{"--yes"}, u.Log); err != nil {
+		return reject(ActivationRejected, "the earlier installation was not removed: %v", err)
+	}
+	return nil
+}
+
+// localRelease admits a product directory's record. Its files are verified when the activation reads them.
+func localRelease(directory, platform string) (*release, error) {
+	info, err := os.Lstat(directory)
+	if err != nil || !info.IsDir() {
+		return nil, reject(UsageRejected, "%s is not a product directory", directory)
+	}
+	raw, err := readRegular(filepath.Join(directory, "build-record.json"), maximumRecord)
+	if err != nil {
+		return nil, reject(RecordInvalid, "%s/build-record.json is unreadable: %v", directory, err)
+	}
+	var head struct {
+		Version        string `json:"version"`
+		SourceRevision string `json:"sourceRevision"`
+	}
+	if json.Unmarshal(raw, &head) != nil {
+		return nil, reject(RecordInvalid, "%s/build-record.json is not one JSON object", directory)
+	}
+	return admit(raw, reference{tag: "developer-v" + head.Version, public: head.Version, revision: head.SourceRevision,
+		sha: sha256Hex(raw), channel: preview, local: true}, platform)
 }
 
 // replace performs the activation's effects in order. It returns the installed product, its command, and a retired
 // installation that could not be deleted.
 func (u *Upgrade) replace(ctx context.Context, parsed upgradeOptions, p paths, found *release, policy string,
-	files *store, enter func(string)) (productReference, string, string, error) {
+	files func(Asset) string, enter func(string)) (productReference, string, string, error) {
 	var reference productReference
 	release, err := lockRoot(p.root)
 	if err != nil {
@@ -405,9 +554,11 @@ func (u *Upgrade) replace(ctx context.Context, parsed upgradeOptions, p paths, f
 		return reference, "", "", err
 	}
 	facts := found.facts
-	source := &runtimeSource{runtime: files.path(facts.Runtime), base: files.path(facts.RuntimeBase),
-		qualification: files.path(facts.Qualification.Receipt), facts: facts, record: found.record,
-		recordSHA: found.sha, target: found.target}
+	source := &runtimeSource{runtime: files(facts.Runtime), qualification: files(facts.Qualification.Receipt), facts: facts,
+		record: found.record, recordSHA: found.sha, target: found.target}
+	if facts.RuntimeBase != nil {
+		source.base = files(*facts.RuntimeBase)
+	}
 	if err := readRuntimeManifest(source, found.recordVersion); err != nil {
 		return reference, "", "", err
 	}
@@ -433,7 +584,7 @@ func (u *Upgrade) replace(ctx context.Context, parsed upgradeOptions, p paths, f
 		return reference, "", "", storageFailure(err)
 	}
 	defer removeTree(staged)
-	control := &controlSource{bundle: files.path(facts.Bundle), version: found.recordVersion, target: found.target,
+	control := &controlSource{bundle: files(facts.Bundle), version: found.recordVersion, target: found.target,
 		management: facts.Qualification.Control, record: found.record, reference: reference, home: p.home}
 	if old != nil {
 		control.prior = old.installation

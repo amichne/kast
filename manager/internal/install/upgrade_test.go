@@ -34,6 +34,12 @@ type activation struct {
 	engine      func(command []string, out io.Writer) (int, error)
 	refreshes   []string
 	environment []string
+	// resets records each reset's arguments; reset performs it. answer is the person's reply, and connects counts
+	// agent connections.
+	resets   [][]string
+	reset    func(arguments []string) error
+	answer   *bool
+	connects int
 }
 
 func newActivation(t *testing.T) *activation {
@@ -130,6 +136,31 @@ func (a *activation) upgrader() *Upgrade {
 		},
 		Refresh: func(_ context.Context, command string, _ []string, _ io.Writer) error {
 			a.refreshes = append(a.refreshes, command)
+			return nil
+		},
+		Reset: func(home string, arguments []string, _ io.Writer) error {
+			if home != a.home {
+				a.t.Errorf("reset of %s", home)
+			}
+			a.resets = append(a.resets, arguments)
+			if a.reset == nil {
+				a.t.Errorf("unexpected reset %v", arguments)
+				return nil
+			}
+			return a.reset(arguments)
+		},
+		Confirm: func(string) bool {
+			if a.answer == nil {
+				a.t.Error("unexpected question")
+				return false
+			}
+			return *a.answer
+		},
+		Connect: func(_ context.Context, command string, _ []string) error {
+			if command != a.command {
+				a.t.Errorf("connect with %s", command)
+			}
+			a.connects++
 			return nil
 		}}
 }

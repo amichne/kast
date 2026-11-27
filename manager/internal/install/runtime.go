@@ -215,27 +215,35 @@ func composeRuntime(source *runtimeSource, directory, root string) error {
 		return invalidRuntime("the runtime archive is not a ZIP file: %v", err)
 	}
 	defer runtime.Close()
-	base, err := zip.OpenReader(source.base)
-	if err != nil {
-		return invalidRuntime("the base archive is not a ZIP file: %v", err)
-	}
-	defer base.Close()
 	own, err := members(&runtime.Reader, "runtime")
 	if err != nil {
 		return err
 	}
-	shared, err := members(&base.Reader, "base")
-	if err != nil {
-		return err
-	}
-	marker, err := member(own, runtimeMarkerName, 64<<10)
-	if err != nil {
-		return err
-	}
-	var reference baseReference
-	if strict(marker, &reference) != nil || reference.SchemaVersion != 1 || reference.Kind != "KAST_RUNTIME_COMPOSITION_V1" ||
-		reference.Target != source.target || reference.Base != source.facts.RuntimeBase {
-		return invalidRuntime("the runtime archive names another base")
+	// A local build's runtime archive holds every file, and names no base.
+	shared := map[string]*zip.File{}
+	if source.facts.RuntimeBase == nil {
+		if own[runtimeMarkerName] != nil {
+			return invalidRuntime("the runtime archive names a base that its record lacks")
+		}
+	} else {
+		base, err := zip.OpenReader(source.base)
+		if err != nil {
+			return invalidRuntime("the base archive is not a ZIP file: %v", err)
+		}
+		defer base.Close()
+		if shared, err = members(&base.Reader, "base"); err != nil {
+			return err
+		}
+		marker, err := member(own, runtimeMarkerName, 64<<10)
+		if err != nil {
+			return err
+		}
+		var reference baseReference
+		if strict(marker, &reference) != nil || reference.SchemaVersion != 1 ||
+			reference.Kind != "KAST_RUNTIME_COMPOSITION_V1" || reference.Target != source.target ||
+			reference.Base != *source.facts.RuntimeBase {
+			return invalidRuntime("the runtime archive names another base")
+		}
 	}
 	// Each entry comes from exactly one archive, and neither archive holds anything else.
 	listed := map[string]bool{}

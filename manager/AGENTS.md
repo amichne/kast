@@ -82,7 +82,12 @@ Read the [tracer evidence](../docs/reviews/go-frontend-tracer.md) for the measur
 - Delete only names that a cited Kast source writes. Select jobs by label and program path, and processes by executable path.
 - Delete the public command last, so that an interrupted reset can run again.
 - Never run a reset test against a real home or supervisor. Inject the adapters in `reset_test.go`, which reject unexpected effects.
-- Route `install` to this process only with a mode, a build selector, or `--json`. The JVM owns every other `install` vector.
+- Route `install` to this process only with a mode, a build selector, `--local-artifact`, `--replace-existing`, or `--json`.
+  The JVM owns every other `install` vector.
+- Admit a local product directory's record in each local form: schema 3, the local schema 4 without a base, and the Mac schema 5.
+  A published release admits only schema 3.
+- Reset an installation that cannot be replaced only after the new build is verified, and only with `--replace-existing` or a person's answer.
+- After `kast install` on a terminal, run the new command's `agent install` on the terminal. Otherwise refresh the connected agents.
 - Admit each downloaded byte through one digest chain: the catalog or release mapping, the build record, then each file.
 - Accept only the current build record schema. Reject an older release before any file request.
 - Planning writes nothing, and a download writes only `~/.local/share/.kast-downloads`. A reset deletes that directory.

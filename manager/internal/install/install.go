@@ -70,10 +70,12 @@ const (
 // Mode reports whether an argument selects what an invocation does.
 func Mode(argument string) bool { return argument == dryRun || argument == downloadOnly }
 
-// Claims reports whether an argument makes `kast install` this package's: a mode, a build selector, or --json.
+// Claims reports whether an argument makes `kast install` this package's: a mode, a build selector, --json, or
+// --replace-existing.
 func Claims(argument string) bool {
 	name, _, _ := strings.Cut(argument, "=")
-	return Mode(argument) || argument == "--json" || name == "--channel" || name == "--version" || name == "--commit"
+	return Mode(argument) || argument == "--json" || argument == "--replace-existing" || name == "--channel" ||
+		name == "--version" || name == "--commit" || name == "--local-artifact"
 }
 
 type options struct {
