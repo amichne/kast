@@ -6,7 +6,6 @@ import io.github.amichne.kast.relation.contract.RelationCompilation
 import io.github.amichne.kast.relation.contract.RelationCompilerPort
 import io.github.amichne.kast.relation.contract.RelationCompilerRejection
 import io.github.amichne.kast.relation.contract.RelationRequest
-import io.github.amichne.kast.symbol.contract.SymbolGeneratedSourcePolicy
 import io.github.amichne.kast.symbol.contract.SymbolLibraryPolicy
 import io.github.amichne.kast.symbol.contract.SymbolSearchScope
 import io.github.amichne.kast.workspace.contract.SemanticReadAuthority
@@ -48,8 +47,8 @@ object ProjectBoundIntellijRelationPort {
 
 /**
  * A binary subject is admitted with its declaration, so its library scope is allowed. Its destinations must stay in
- * source. An explicit destination can include generated source; a subject cannot.
+ * source. An explicit destination can include generated source. A subject issued from such a destination keeps that
+ * scope; [AdmittedRelationScopes] admits it only from authored source.
  */
 private fun RelationRequest.unsupportedByBoundHost(): Boolean =
-    subject.scope.generatedSources == SymbolGeneratedSourcePolicy.INCLUDE ||
-        (searchScope as? SymbolSearchScope.Workspace)?.libraries == SymbolLibraryPolicy.INCLUDE
+    (searchScope as? SymbolSearchScope.Workspace)?.libraries == SymbolLibraryPolicy.INCLUDE

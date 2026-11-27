@@ -23,6 +23,9 @@ Semantic results, errors, plans, and descriptors use JSON by default. Keep reque
 `IMPACT` investigates values and their qualified transfers.
 None establishes runtime behavior or unrestricted transitive reachability.
 Discovery scope selects seeds; expansion scope restricts destinations.
+Without an expansion scope, `EXPAND_RELATION`, `TRACE`, and a `WALK` without `maximumDepth` search the workspace.
+A `WALK` with `maximumDepth` searches only the scope of each seed, `RETAINED_SEED`.
+To compare a `WALK` with a `CALLERS` query, give both the same `expansionScope`.
 `CALLERS` follows incoming calls; `CALLEES` follows outgoing calls, including constructors.
 
 ### Calls inside stored lambdas

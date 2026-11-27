@@ -170,13 +170,7 @@ internal fun RelationFact.toQuerySymbol(
     val selector =
         when (expanded) {
             is RelationEndpoint.Subject -> expanded.selector
-            is RelationEndpoint.Resolved ->
-                SymbolSelector.issue(
-                    expanded.lease,
-                    expanded.scope,
-                    expanded.evidence,
-                    expanded.constraints,
-                )
+            is RelationEndpoint.Resolved -> expanded.selector()
         }
     return QuerySymbol(
         SymbolDescription.from(selector),

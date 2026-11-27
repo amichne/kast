@@ -94,6 +94,17 @@ class NativeScopedCacheManagerTraceTest : NativeSmartModeFixtureTest() {
         println("Scoped TRACE attachedConnectionEntries=$attachedEntries")
         println("Scoped TRACE counters=${fixture.observation.snapshot()}")
         assertTrue(fixture.observation[IntellijReadCounter.CALLBACK_DEPENDENCY_CONTRACTS_ADMITTED] > 0L)
+        // Later subjects are issued under a domain with generated sources and are admitted from authored source.
+        val generated = domain.copy(generatedSources = QueryDiscoveryInclusionPolicyDocument.INCLUDE)
+        val withGenerated =
+            protocol.execute(
+                request = request("CacheManager", true, generated),
+                lease = fixture.lease,
+                budget = budget,
+                policy = policy,
+            )
+        assertTrue("Expected complete TRACE, received $withGenerated", withGenerated is OperationOutcome.Complete)
+        assertTrace((withGenerated as OperationOutcome.Complete).evidence.payload, fixture.lease.workspaceRoot)
         val empty =
             protocol.execute(
                 request = request("execute", false),
@@ -296,7 +307,7 @@ class NativeScopedCacheManagerTraceTest : NativeSmartModeFixtureTest() {
             )
         }
 
-    private fun request(name: String, trace: Boolean) =
+    private fun request(name: String, trace: Boolean, domain: QueryExpansionScopeDocument.Sources = this.domain) =
         QueryRunRequest.Run(
             from =
                 QueryFromDocument.Symbols(
