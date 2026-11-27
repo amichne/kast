@@ -30,6 +30,22 @@ func TestACommandReturnsOnlyStandardOutputAndReadsNoInput(t *testing.T) {
 	}
 }
 
+// An agent fetches through the caller's proxy and trusts the caller's certificates, as when a person runs it.
+func TestACommandKeepsTheCallersCertificateAndProxyEnvironment(t *testing.T) {
+	names := []string{"SSL_CERT_FILE", "SSL_CERT_DIR", "NODE_EXTRA_CA_CERTS", "REQUESTS_CA_BUNDLE", "CURL_CA_BUNDLE",
+		"GIT_SSL_CAINFO", "HTTPS_PROXY", "https_proxy", "HTTP_PROXY", "NO_PROXY", "npm_config_cafile"}
+	var script, want strings.Builder
+	for _, name := range names {
+		t.Setenv(name, "/corporate/"+name)
+		fmt.Fprintf(&script, "printf '%%s\\n' \"$%s\"\n", name)
+		fmt.Fprintf(&want, "/corporate/%s\n", name)
+	}
+	output, err := runCommand(context.Background(), []string{program(t, script.String())})
+	if err != nil || string(output) != want.String() {
+		t.Errorf("%v, output %q", err, output)
+	}
+}
+
 func TestAFailedCommandReportsItsLastLineWithoutControlCharacters(t *testing.T) {
 	_, err := runCommand(context.Background(), []string{program(t,
 		`printf 'first\n\033[31mno login\033[0m\n\n' >&2; exit 3`+"\n")})
