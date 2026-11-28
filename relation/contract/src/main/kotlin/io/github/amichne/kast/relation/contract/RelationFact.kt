@@ -103,6 +103,15 @@ sealed interface RelationEndpoint {
         override val compilerIdentity: CompilerSymbolIdentity = evidence.compilerIdentity
         override val valueIdentity = ValueDeclarationIdentity(compilerIdentity, file, range)
 
+        /**
+         * Proof transition: `RelationEndpoint.Resolved -> SymbolSelector`.
+         *
+         * Issues the reusable selector for this endpoint. The endpoint keeps its destination scope, which may include
+         * generated source; the selector keeps that scope under the subject rule, so a later subject, describe, or
+         * source read admits it like a discovery-issued selector.
+         */
+        fun selector(): SymbolSelector = SymbolSelector.issue(lease, scope.subjectScope(), evidence, constraints)
+
         companion object {
             internal fun create(
                 lease: SemanticReadAuthority,

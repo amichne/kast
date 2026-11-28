@@ -16,6 +16,7 @@ import io.github.amichne.kast.protocol.contract.QueryCallbackNavigationNodeDocum
 import io.github.amichne.kast.protocol.contract.QueryCallbackObservationDocument
 import io.github.amichne.kast.protocol.contract.QueryCallbackOwnerExecutionDocument
 import io.github.amichne.kast.protocol.contract.QueryCompletionEvidenceDocument
+import io.github.amichne.kast.protocol.contract.QueryDiscoveryInclusionPolicyDocument
 import io.github.amichne.kast.protocol.contract.QueryExpansionScopeDocument
 import io.github.amichne.kast.protocol.contract.QueryImmutableCallbackUseDocument
 import io.github.amichne.kast.protocol.contract.QueryImmutableCallbackValueOriginDocument
@@ -50,6 +51,13 @@ class NativeDecoderCallbackBaselineTest : NativeSmartModeFixtureTest() {
     fun testUseDepthOneCallers() = walk(DecoderCallbackRequests.useScope, 1)
 
     fun testUseDepthTwoCallers() = walk(DecoderCallbackRequests.useScope, 2)
+
+    /** The second hop's subject was found under generated sources; it is admitted from authored source. */
+    fun testUseWithGeneratedSourcesDepthTwoCallers() =
+        walk(
+            DecoderCallbackRequests.useScope.copy(generatedSources = QueryDiscoveryInclusionPolicyDocument.INCLUDE),
+            2,
+        )
 
     fun testWorkspaceDepthOneCallers() = walk(QueryExpansionScopeDocument.Workspace, 1)
 

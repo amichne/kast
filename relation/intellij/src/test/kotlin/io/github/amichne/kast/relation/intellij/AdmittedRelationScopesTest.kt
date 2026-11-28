@@ -2,9 +2,11 @@ package io.github.amichne.kast.relation.intellij
 
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.relation.contract.RelationCompilerRejection
+import io.github.amichne.kast.relation.contract.RelationEndpoint
 import io.github.amichne.kast.relation.contract.RelationMeaning
 import io.github.amichne.kast.relation.contract.RelationRequest
 import io.github.amichne.kast.relation.contract.RelationSearchBoundary
+import io.github.amichne.kast.symbol.contract.CompilerGroundedSymbolEvidence
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryConstraints
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryContainment
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryDirectory
@@ -13,6 +15,7 @@ import io.github.amichne.kast.symbol.contract.SymbolDiscoverySourceSets
 import io.github.amichne.kast.symbol.contract.SymbolGeneratedSourcePolicy
 import io.github.amichne.kast.symbol.contract.SymbolLibraryPolicy
 import io.github.amichne.kast.symbol.contract.SymbolSearchScope
+import io.github.amichne.kast.symbol.contract.SymbolSelector
 import io.github.amichne.kast.symbol.contract.SymbolSourceKindPolicy
 import io.github.amichne.kast.workspace.contract.WorkspaceSourceSetName
 import io.github.amichne.kast.workspace.intellij.read.IntellijReadCall
@@ -35,7 +38,7 @@ class AdmittedRelationScopesTest {
     @Test
     fun `identical scope obligations execute once and retain the same proof for every relation meaning`() {
         for (meaning in RelationMeaning.all) {
-            val base = RelationReadTest().request(meaning)
+            val base = authored(RelationReadTest().request(meaning))
             for (boundary in
                 listOf(
                     RelationSearchBoundary.RETAINED_SUBJECT,
@@ -63,12 +66,12 @@ class AdmittedRelationScopesTest {
 
     @Test
     fun `different source generated and library policies require two compilations`() {
-        val base = RelationReadTest().request(RelationMeaning.Callers)
+        val base = authored(RelationReadTest().request(RelationMeaning.Callers))
         val scope = base.subject.scope as SymbolSearchScope.Workspace
         for (selected in
             listOf(
                 scope.copy(sourceKinds = SymbolSourceKindPolicy.TEST_ONLY),
-                scope.copy(generatedSources = SymbolGeneratedSourcePolicy.EXCLUDE),
+                scope.copy(generatedSources = SymbolGeneratedSourcePolicy.INCLUDE),
                 scope.copy(libraries = SymbolLibraryPolicy.INCLUDE),
             )) {
             assertDistinct(base, RelationSearchBoundary.Explicit(selected))
@@ -76,8 +79,52 @@ class AdmittedRelationScopesTest {
     }
 
     @Test
+    fun `a subject issued under generated sources is admitted only from authored roots`() {
+        val issued = RelationReadTest().request(RelationMeaning.Callees)
+        val issuedScope = issued.subject.scope as SymbolSearchScope.Workspace
+        assertEquals(SymbolGeneratedSourcePolicy.INCLUDE, issuedScope.generatedSources)
+        val authoredScope = issuedScope.copy(generatedSources = SymbolGeneratedSourcePolicy.EXCLUDE)
+
+        // The destination keeps generated sources; the subject obligation does not inherit them.
+        val retained = request(issued, RelationSearchBoundary.RETAINED_SUBJECT)
+        val inputs = mutableListOf<ScopeInputObservation>()
+        val observation = Observation()
+        val admitted =
+            assertInstanceOf<Refinement.Refined<AdmittedRelationScopes<ScopeInputObservation>>>(
+                AdmittedRelationScopes.compile(retained, observation) { scope, constraints ->
+                    check(inputs.size < 2)
+                    Refinement.Refined(ScopeInputObservation(scope, constraints).also(inputs::add))
+                }
+            )
+        assertEquals(
+            listOf(
+                ScopeInputObservation(issuedScope, issued.subject.constraints),
+                ScopeInputObservation(authoredScope, issued.subject.constraints),
+            ),
+            inputs,
+        )
+        assertNotSame(admitted.value.search, admitted.value.subject)
+        assertEquals(2, observation.entered)
+
+        // An authored destination equal to the subject obligation reuses one proof.
+        val reused = mutableListOf<ScopeInputObservation>()
+        val single =
+            assertInstanceOf<Refinement.Refined<AdmittedRelationScopes<ScopeInputObservation>>>(
+                AdmittedRelationScopes.compile(
+                    request(issued, RelationSearchBoundary.Explicit(authoredScope)),
+                    Observation(),
+                ) { scope, constraints ->
+                    check(reused.isEmpty()) { "The authored destination already proves the subject obligation" }
+                    Refinement.Refined(ScopeInputObservation(scope, constraints).also(reused::add))
+                }
+            )
+        assertEquals(listOf(ScopeInputObservation(authoredScope, issued.subject.constraints)), reused)
+        assertSame(single.value.search, single.value.subject)
+    }
+
+    @Test
     fun `equal scopes with different directory or source set constraints require two compilations`() {
-        val base = RelationReadTest().request(RelationMeaning.References)
+        val base = authored(RelationReadTest().request(RelationMeaning.References))
         val directory =
             SymbolDiscoveryDirectoryConstraint(
                 (SymbolDiscoveryDirectory.parse("src/main") as Refinement.Refined).value,
@@ -163,6 +210,23 @@ class AdmittedRelationScopesTest {
 
     private fun request(base: RelationRequest, boundary: RelationSearchBoundary) =
         RelationRequest.start(base.subject, base.meaning, base.budget, boundary)
+
+    /** The same declaration selected under authored sources only, as discovery issues it. */
+    private fun authored(base: RelationRequest): RelationRequest {
+        val selector = (base.subject as RelationEndpoint.Subject).selector
+        val scope =
+            (selector.scope as SymbolSearchScope.Workspace).copy(generatedSources = SymbolGeneratedSourcePolicy.EXCLUDE)
+        return RelationRequest.start(
+            SymbolSelector.issue(
+                selector.lease,
+                scope,
+                CompilerGroundedSymbolEvidence.fromSelector(selector),
+                selector.constraints,
+            ),
+            base.meaning,
+            base.budget,
+        )
+    }
 
     private data class ScopeInputObservation(val scope: SymbolSearchScope, val constraints: SymbolDiscoveryConstraints)
 
