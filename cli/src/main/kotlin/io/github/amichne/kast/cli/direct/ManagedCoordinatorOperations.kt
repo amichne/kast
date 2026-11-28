@@ -16,7 +16,6 @@ import io.github.amichne.kast.distribution.cli.ControlStageOutcome
 import io.github.amichne.kast.distribution.cli.ControlStageTrace
 import io.github.amichne.kast.distribution.cli.WorkspaceQueryEnvironment
 import io.github.amichne.kast.distribution.contract.HostSettingsComparison
-import io.github.amichne.kast.distribution.contract.WorkspaceConfigurationConflict
 import io.github.amichne.kast.distribution.managed.CanonicalRoot
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.protocol.contract.IdeLifecycleFailure
@@ -172,11 +171,12 @@ internal class ManagedCoordinatorOperations(
                 is WorkspaceEntry.Failed -> Refinement.Refined(beginPreparation(root, slot, settings))
                 is WorkspaceEntry.Draining -> Refinement.Rejected(lifecycleTransition)
                 is WorkspaceEntry.Ready -> Refinement.Refined(WorkspaceTicket(slot, entry))
-                is WorkspaceEntry.Preparing -> joinPreparation(slot, entry, settings.host)
+                is WorkspaceEntry.Preparing -> joinPreparation(root, slot, entry, settings.host)
             }
         }
 
     private fun joinPreparation(
+        root: CanonicalRoot,
         slot: WorkspaceSlot,
         entry: WorkspaceEntry.Preparing,
         requested: WorkspaceSettingsIdentity,
@@ -189,15 +189,16 @@ internal class ManagedCoordinatorOperations(
             )
             return Refinement.Refined(WorkspaceTicket(slot, entry))
         }
-        val differences =
-            changedHostSettings(requested.values, entry.settings.values) +
-                if (requested.delegated != entry.settings.delegated) listOf("gradleImportEnvironmentIdentity")
-                else emptyList()
-        return Refinement.Rejected(
-            DaemonOperationFailure.ManagedWorkspace(
-                WorkspaceConfigurationConflict.HostSettings(HostSettingsComparison.PREPARING, differences)
+        val conflict =
+            hostSettingsConflict(
+                HostSettingsComparison.PREPARING,
+                root,
+                requested = requested.values,
+                prepared = entry.settings.values,
+                homeChanged = false,
+                delegatedChanged = requested.delegated != entry.settings.delegated,
             )
-        )
+        return Refinement.Rejected(DaemonOperationFailure.ManagedWorkspace(conflict))
     }
 
     @OptIn(ExperimentalCoroutinesApi::class)

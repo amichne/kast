@@ -12,6 +12,7 @@ import io.github.amichne.kast.distribution.cli.ContainerFailure
 import io.github.amichne.kast.distribution.cli.InstalledProductRuntime
 import io.github.amichne.kast.distribution.cli.ManagedWorkspaceQuery
 import io.github.amichne.kast.distribution.cli.WorkspaceQueryEnvironment
+import io.github.amichne.kast.distribution.contract.HostSettingDifference
 import io.github.amichne.kast.distribution.contract.HostSettingsComparison
 import io.github.amichne.kast.distribution.contract.WorkspaceAdmissionFailure
 import io.github.amichne.kast.distribution.contract.WorkspaceConfigurationConflict
@@ -191,7 +192,7 @@ internal class InstalledWorkspaceAcquisition(private val context: InstalledClien
             admitInstallation()?.let {
                 return@use Refinement.Rejected(it)
             }
-            workspace.hostIdentity().conflictWith(expected)?.let {
+            workspace.hostIdentity().conflictWith(root, expected)?.let {
                 return@use Refinement.Rejected(it)
             }
             Refinement.Refined(action())
@@ -214,7 +215,7 @@ internal class InstalledWorkspaceAcquisition(private val context: InstalledClien
                 return@use rejectedOperation(it)
             }
             if (expected != null)
-                workspace.hostIdentity().conflictWith(expected)?.let {
+                workspace.hostIdentity().conflictWith(root, expected)?.let {
                     return@use rejectedOperation(it)
                 }
             when (
@@ -263,24 +264,43 @@ private fun WorkspaceAdmissionFailure.daemonFailure(): DaemonOperationFailure.Ma
         is WorkspaceConfigurationConflict -> DaemonOperationFailure.ManagedWorkspace(this)
     }
 
+/** This request's identity against the [expected] one of the prepared Host for [workspace]. */
 internal fun WorkspaceHostIdentity.conflictWith(
-    expected: WorkspaceHostIdentity
+    workspace: CanonicalRoot,
+    expected: WorkspaceHostIdentity,
 ): DaemonOperationFailure.ManagedWorkspace? {
     if (this == expected) return null
-    val differences = buildList {
-        if (home != expected.home) add("workspaceHome")
-        addAll(changedHostSettings(environment, expected.environment))
-        if (delegated != expected.delegated) add("gradleImportEnvironmentIdentity")
-    }
-    return DaemonOperationFailure.ManagedWorkspace(
-        WorkspaceConfigurationConflict.HostSettings(HostSettingsComparison.PREPARED, differences)
-    )
+    val conflict =
+        hostSettingsConflict(
+            HostSettingsComparison.PREPARED,
+            workspace,
+            requested = environment,
+            prepared = expected.environment,
+            homeChanged = home != expected.home,
+            delegatedChanged = delegated != expected.delegated,
+        )
+    return DaemonOperationFailure.ManagedWorkspace(conflict)
 }
 
-internal fun changedHostSettings(actual: Map<String, String>, expected: Map<String, String>): List<String> {
-    val changed = (actual.keys + expected.keys).filter { actual[it] != expected[it] }
-    return changed.filter { it in CALLER_CONFIGURATION_KEYS }.sorted() +
-        if (changed.any { it !in CALLER_CONFIGURATION_KEYS }) listOf("processEnvironment") else emptyList()
+internal fun hostSettingsConflict(
+    stage: HostSettingsComparison,
+    workspace: CanonicalRoot,
+    requested: Map<String, String>,
+    prepared: Map<String, String>,
+    homeChanged: Boolean,
+    delegatedChanged: Boolean,
+): WorkspaceConfigurationConflict.HostSettings {
+    val changed = (requested.keys + prepared.keys).filter { requested[it] != prepared[it] }
+    val named = changed.filter { it in CALLER_CONFIGURATION_KEYS }.sorted()
+    val differences = buildList {
+        if (homeChanged) add("workspaceHome")
+        addAll(named)
+        if (changed.any { it !in CALLER_CONFIGURATION_KEYS }) add("processEnvironment")
+        if (delegatedChanged) add("gradleImportEnvironmentIdentity")
+    }
+    val values =
+        named.filter { it in PUBLIC_CONFIGURATION_KEYS }.map { HostSettingDifference(it, prepared[it], requested[it]) }
+    return WorkspaceConfigurationConflict.HostSettings(stage, differences, workspace.path.toString(), values)
 }
 
 internal fun ManagedToolFailure.daemonFailure(): DaemonOperationFailure =
@@ -295,6 +315,12 @@ internal fun rejectedOperation(failure: DaemonOperationFailure): DaemonOperation
 private val CALLER_CONFIGURATION_KEYS =
     ConfigurationParameter.entries
         .filter { it.declaration().disclosure != ConfigurationDisclosure.SECRET_PRESENCE }
+        .map { it.key }
+        .toSet()
+
+private val PUBLIC_CONFIGURATION_KEYS =
+    ConfigurationParameter.entries
+        .filter { it.declaration().disclosure == ConfigurationDisclosure.PUBLIC }
         .map { it.key }
         .toSet()
 
