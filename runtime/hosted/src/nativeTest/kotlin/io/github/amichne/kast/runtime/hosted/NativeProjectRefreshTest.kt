@@ -14,6 +14,7 @@ import com.intellij.openapi.vfs.newvfs.BulkFileListener
 import com.intellij.openapi.vfs.newvfs.events.VFileEvent
 import com.intellij.psi.PsiDocumentManager
 import com.intellij.psi.PsiManager
+import com.intellij.testFramework.runInEdtAndGet
 import com.intellij.testFramework.runInEdtAndWait
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.runtime.hosted.workspace.IntellijWorkspaceRefreshPort
@@ -42,12 +43,15 @@ class NativeProjectRefreshTest : NativeSmartModeFixtureTest() {
         val owner = SupervisorJob(coroutineContext[Job])
         val query = HostedQueryService(project, CoroutineScope(coroutineContext + owner))
         try {
-            runInEdtAndWait {
+            // FileDocumentManager caches documents weakly. Hold this one, as an open editor would, so the refresh
+            // must update the loaded document instead of a fresh load reading the new bytes.
+            val loaded = runInEdtAndGet {
                 val file = checkNotNull(LocalFileSystem.getInstance().refreshAndFindFileByNioFile(path))
                 val psi = checkNotNull(PsiManager.getInstance(project).findFile(file))
                 val document = checkNotNull(FileDocumentManager.getInstance().getDocument(file))
                 assertEquals("class Before\n", psi.text)
                 assertEquals("class Before\n", document.text)
+                document
             }
             Files.writeString(path, "class FromExternalWriter\n")
             // Model a delivered watcher notification, independent of native watcher timing.
@@ -63,18 +67,17 @@ class NativeProjectRefreshTest : NativeSmartModeFixtureTest() {
                 )
             val completed = CompletableDeferred<WorkspaceRefreshEffectResult>()
             port.startIncremental { outcome ->
-                ReadAction.run<RuntimeException> {
+                completed.completeAfterReadCheck(outcome) {
                     val file = checkNotNull(LocalFileSystem.getInstance().findFileByNioFile(path))
-                    val document = checkNotNull(FileDocumentManager.getInstance().getCachedDocument(file))
-                    assertFalse(FileDocumentManager.getInstance().isDocumentUnsaved(document))
-                    assertTrue(PsiDocumentManager.getInstance(project).isCommitted(document))
-                    assertEquals("class FromExternalWriter\n", document.text)
+                    assertSame(loaded, FileDocumentManager.getInstance().getCachedDocument(file))
+                    assertFalse(FileDocumentManager.getInstance().isDocumentUnsaved(loaded))
+                    assertTrue(PsiDocumentManager.getInstance(project).isCommitted(loaded))
+                    assertEquals("class FromExternalWriter\n", loaded.text)
                     assertEquals(
                         "class FromExternalWriter\n",
                         checkNotNull(PsiManager.getInstance(project).findFile(file)).text,
                     )
                 }
-                completed.complete(outcome)
             }
             assertEquals(WorkspaceRefreshEffectResult.SUCCEEDED, withTimeout(15.seconds) { completed.await() })
             assertEquals("class FromExternalWriter\n", Files.readString(path))
@@ -100,14 +103,13 @@ class NativeProjectRefreshTest : NativeSmartModeFixtureTest() {
                 )
             val completed = CompletableDeferred<WorkspaceRefreshEffectResult>()
             port.startIncremental { outcome ->
-                ReadAction.run<RuntimeException> {
+                completed.completeAfterReadCheck(outcome) {
                     val file = checkNotNull(LocalFileSystem.getInstance().findFileByNioFile(fixture.edited))
                     assertEquals(
                         "class AfterExternalEdit\n",
                         checkNotNull(PsiManager.getInstance(project).findFile(file)).text,
                     )
                 }
-                completed.complete(outcome)
             }
             assertEquals(WorkspaceRefreshEffectResult.SUCCEEDED, withTimeout(15.seconds) { completed.await() })
             val observed = delivered.toSet()
@@ -127,6 +129,18 @@ class NativeProjectRefreshTest : NativeSmartModeFixtureTest() {
             Disposer.dispose(query)
             owner.cancelAndJoin()
         }
+    }
+
+    /**
+     * The refresh callback runs on the EDT, where a thrown assertion is only logged. Forward it to the awaiting test so
+     * a failed check fails the case instead of surfacing as a completion timeout.
+     */
+    private fun CompletableDeferred<WorkspaceRefreshEffectResult>.completeAfterReadCheck(
+        outcome: WorkspaceRefreshEffectResult,
+        check: () -> Unit,
+    ) {
+        runCatching { ReadAction.run<RuntimeException> { check() } }
+            .fold(onSuccess = { complete(outcome) }, onFailure = ::completeExceptionally)
     }
 
     private class ImportedScopeFixture(val base: Path, val root: CanonicalWorkspaceRoot) {
