@@ -194,8 +194,7 @@ private constructor(
         val selector =
             when (endpoint) {
                 is RelationEndpoint.Subject -> endpoint.selector
-                is RelationEndpoint.Resolved ->
-                    SymbolSelector.issue(endpoint.lease, endpoint.scope, endpoint.evidence, endpoint.constraints)
+                is RelationEndpoint.Resolved -> endpoint.selector()
             }
         return when (val issued = issueExact(selector)) {
             is ExactSelectorIssuance.Issued -> RelationEndpointIssuance.Issued(issued.selector)
